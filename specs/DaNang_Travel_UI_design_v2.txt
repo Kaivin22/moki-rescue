@@ -1,0 +1,1471 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+UX/UI DESIGN BRIEF — ux-ui-agent-skills WORKFLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Skill   : plugin87/ux-ui-agent-skills đã được cài qua npx.
+Target  : Flutter 3.24+ (Dart) — Material 3
+Project : "Lịch Trình Đà Nẵng" — Travel itinerary planner app
+
+WORKFLOW CHỈ DẪN CHO UX-UI-AGENT-SKILLS:
+  Bước 1  — /design-tokens : Tạo DTCG token system từ spec bên dưới.
+             Output: lib/core/theme/tokens/ (colors.dart, typography.dart,
+             spacing.dart, shadows.dart, borders.dart)
+  Bước 2  — /design-component : Tạo từng component theo danh sách Atomic Design.
+             Mỗi component: variants đầy đủ, states, token mapping, WCAG 2.2 AA.
+  Bước 3  — /design-code flutter : Tạo Flutter widget code cho từng screen.
+             Dùng đúng tokens, đúng components đã tạo ở Bước 1–2.
+  Bước 4  — /a11y-audit : Audit WCAG 2.2 AA sau khi mỗi screen hoàn thành.
+
+KHÔNG dùng màu hardcode trong widget code — LUÔN dùng token.
+KHÔNG viết style inline — LUÔN reference ThemeData hoặc token constant.
+Mọi component phải pass WCAG 2.2 Level AA minimum.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AESTHETIC REFERENCE — /apply-aesthetic
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Aesthetic personality: "Nature-Warm Playful"
+  Tone        : Warm, inviting, trustworthy — như một người bạn địa phương
+                dẫn đường, không lạnh lùng corporate.
+  Energy      : Playful nhưng không childish. Soft nhưng không nhạt.
+  Inspiration : Ứng dụng tham chiếu có cards nổi nhẹ trên nền xanh sage,
+                accent vàng amber nổi bật cho CTA, olive green cho secondary.
+                Cards "float" với soft shadow, không sharp edge.
+                Rounded pill shapes cho buttons và tags.
+                Large bold numbers và headings tạo visual hierarchy rõ ràng.
+
+Visual fingerprint:
+  - Cards: border-radius 20px, box-shadow rgba(45,51,32,0.08) 0 4px 16px
+  - Buttons: full-width pill r=26, 52px height
+  - Background: #F7F7F5 main, #B5C6B1 tinted sections
+  - Accent: #DDA92E amber — tất cả primary CTA, active states, highlights
+  - Secondary: #A8B468 olive — secondary actions, tags, icons
+  - Text dark: #2D3320 (near-black từ olive family)
+  - Illustrations: flat 2D, travel-themed (compass, map, luggage, landmark)
+
+Closest reference systems: Airbnb (warmth + trust) × Duolingo (playful cards)
+Apply this aesthetic to all generated code. Override any system defaults that
+conflict with this personality.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DTCG DESIGN TOKEN SYSTEM — 3-TIER ARCHITECTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TIER 1 — PRIMITIVE TOKENS (raw values, never reference directly in widgets)
+
+Color primitives:
+  sage.100  : #EDF3EC    sage.200  : #D6E8D4
+  sage.300  : #B5C6B1    sage.400  : #94A990
+  sage.500  : #7A8A6E    sage.600  : #5C6A52
+
+  amber.100 : #FFF4D6    amber.200 : #FFE4A0
+  amber.300 : #F5C842    amber.400 : #DDA92E  ← brand primary
+  amber.500 : #C08920    amber.600 : #9A6D14
+
+  olive.100 : #EFF4DC    olive.200 : #D4E0A8
+  olive.300 : #BAC87A    olive.400 : #A8B468  ← brand secondary
+  olive.500 : #8A9450    olive.600 : #6B7240
+
+  neutral.0  : #FFFFFF    neutral.50 : #F7F7F5  ← surface
+  neutral.100: #EFEFED    neutral.200: #DDDDD9
+  neutral.300: #BCBCB6    neutral.400: #9A9A93
+  neutral.500: #6B6B64    neutral.600: #4A4A44
+  neutral.900: #2D3320    ← text primary (olive-dark family)
+
+  red.400: #E53E3E    red.500: #C0392B    ← error only
+  green.400: #38A169  green.500: #276749  ← success only
+
+Spacing primitives (4px base unit):
+  space.1:4px  space.2:8px   space.3:12px  space.4:16px
+  space.5:20px space.6:24px  space.8:32px  space.10:40px
+  space.12:48px space.16:64px space.20:80px
+
+Border radius primitives:
+  radius.xs:4px  radius.sm:8px   radius.md:12px  radius.lg:16px
+  radius.xl:20px radius.2xl:24px radius.3xl:28px radius.full:9999px
+
+Shadow primitives:
+  shadow.sm  : 0 1px 4px  rgba(45,51,32,0.06)
+  shadow.md  : 0 4px 16px rgba(45,51,32,0.08)
+  shadow.lg  : 0 8px 32px rgba(45,51,32,0.12)
+  shadow.amber: 0 4px 16px rgba(221,169,46,0.30)  ← CTA glow
+
+Typography primitives — font: "Be Vietnam Pro" (Google Fonts)
+  font.display  : 40sp Bold
+  font.h1       : 32sp Bold
+  font.h2       : 24sp SemiBold
+  font.h3       : 20sp SemiBold
+  font.h4       : 18sp Medium
+  font.body.lg  : 16sp Regular
+  font.body.md  : 14sp Regular
+  font.body.sm  : 13sp Regular
+  font.caption  : 12sp Regular
+  font.label    : 11sp Bold
+
+TIER 2 — SEMANTIC TOKENS (intent-based, use in design specs)
+
+color.background.primary      → neutral.50   (#F7F7F5)
+color.background.secondary    → sage.100     (#EDF3EC)
+color.background.card         → neutral.0    (#FFFFFF)
+color.background.tinted       → sage.300     (#B5C6B1)
+color.background.amber.tint   → amber.100    (#FFF4D6)
+color.background.olive.tint   → olive.100    (#EFF4DC)
+
+color.action.primary          → amber.400    (#DDA92E)
+color.action.primary.hover    → amber.500    (#C08920)
+color.action.secondary        → olive.400    (#A8B468)
+color.action.secondary.hover  → olive.500    (#8A9450)
+color.action.disabled         → sage.300     (#B5C6B1)
+
+color.text.primary            → neutral.900  (#2D3320)
+color.text.secondary          → sage.500     (#7A8A6E)
+color.text.placeholder        → sage.400     (#94A990)
+color.text.on.primary         → neutral.900  (#2D3320) [dark text on amber]
+color.text.on.dark            → neutral.0    (#FFFFFF)
+color.text.link               → olive.400    (#A8B468)
+
+color.border.default          → sage.300     (#B5C6B1)
+color.border.focus            → olive.400    (#A8B468)
+color.border.error            → red.500      (#C0392B)
+color.border.card             → neutral.200  (#DDDDD9)
+
+color.status.success          → green.400    (#38A169)
+color.status.warning          → amber.400    (#DDA92E)
+color.status.error            → red.500      (#C0392B)
+color.status.info             → olive.400    (#A8B468)
+
+spacing.layout.xs   → space.2  (8px)
+spacing.layout.sm   → space.4  (16px)
+spacing.layout.md   → space.6  (24px)
+spacing.layout.lg   → space.8  (32px)
+spacing.layout.xl   → space.12 (48px)
+spacing.component.gap  → space.3 (12px)
+spacing.component.pad  → space.4 (16px)
+
+radius.card       → radius.xl   (20px)
+radius.button     → radius.full (9999px)
+radius.chip       → radius.full (9999px)
+radius.input      → radius.lg   (16px)
+radius.sheet      → radius.3xl  (28px) [top corners only]
+radius.avatar     → radius.full (9999px)
+
+TIER 3 — COMPONENT TOKENS (use directly in widget code)
+
+button.primary.bg           → color.action.primary
+button.primary.text         → color.text.primary    [dark on amber — contrast 7:1]
+button.primary.height       → 52px
+button.primary.radius       → radius.button
+button.primary.shadow       → shadow.amber
+button.secondary.border     → color.action.secondary
+button.secondary.text       → color.action.secondary
+button.disabled.bg          → color.action.disabled
+button.disabled.text        → color.text.placeholder
+
+card.bg                     → color.background.card
+card.radius                 → radius.card
+card.shadow                 → shadow.md
+card.border                 → color.border.card (1px)
+card.padding                → spacing.component.pad
+
+input.bg                    → color.background.primary
+input.border.default        → color.border.default (1px)
+input.border.focused        → color.border.focus (2px)
+input.border.error          → color.border.error (2px)
+input.radius                → radius.input
+input.height                → 52px
+input.padding.h             → space.4 (16px)
+input.padding.v             → space.3 (12px)
+
+chip.radius                 → radius.full
+chip.height                 → 36px
+chip.padding.h              → space.3 (12px)
+chip.selected.bg            → color.action.secondary
+chip.selected.text          → color.text.on.dark
+chip.unselected.bg          → color.background.primary
+chip.unselected.text        → color.text.secondary
+chip.unselected.border      → color.border.default (1px)
+
+nav.bar.bg                  → color.background.card
+nav.bar.shadow              → shadow.md
+nav.bar.radius              → radius.3xl (top corners)
+nav.item.active.color       → color.action.primary
+nav.item.inactive.color     → color.text.secondary
+nav.indicator.bg            → color.action.primary
+nav.indicator.size          → 6px circle
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FLUTTER THEME IMPLEMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: lib/core/theme/app_theme.dart
+
+ThemeData lightTheme = ThemeData(
+  useMaterial3: true,
+  colorScheme: ColorScheme.light(
+    primary:        Color(0xFFDDA92E),  // amber.400
+    onPrimary:      Color(0xFF2D3320),  // neutral.900 — WCAG contrast 7:1
+    secondary:      Color(0xFFA8B468),  // olive.400
+    onSecondary:    Color(0xFF2D3320),
+    surface:        Color(0xFFF7F7F5),  // neutral.50
+    onSurface:      Color(0xFF2D3320),
+    surfaceVariant: Color(0xFFB5C6B1),  // sage.300
+    error:          Color(0xFFC0392B),
+    onError:        Color(0xFFFFFFFF),
+    outline:        Color(0xFFB5C6B1),  // sage.300
+  ),
+  fontFamily: 'BeVietnamPro',
+  // Tải Be Vietnam Pro từ Google Fonts trong pubspec.yaml
+  cardTheme: CardTheme(
+    color: Color(0xFFFFFFFF),
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(20),
+      side: BorderSide(color: Color(0xFFDDDDD9), width: 1),
+    ),
+    margin: EdgeInsets.zero,
+  ),
+  elevatedButtonTheme: ElevatedButtonThemeData(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Color(0xFFDDA92E),
+      foregroundColor: Color(0xFF2D3320),
+      minimumSize: Size(double.infinity, 52),
+      shape: StadiumBorder(),
+      textStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+      elevation: 0,
+    ),
+  ),
+  outlinedButtonTheme: OutlinedButtonThemeData(
+    style: OutlinedButton.styleFrom(
+      foregroundColor: Color(0xFFA8B468),
+      minimumSize: Size(double.infinity, 52),
+      shape: StadiumBorder(),
+      side: BorderSide(color: Color(0xFFA8B468), width: 1.5),
+    ),
+  ),
+  inputDecorationTheme: InputDecorationTheme(
+    filled: true,
+    fillColor: Color(0xFFF7F7F5),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: BorderSide(color: Color(0xFFB5C6B1)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: BorderSide(color: Color(0xFFA8B468), width: 2),
+    ),
+    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+  ),
+  chipTheme: ChipThemeData(
+    backgroundColor: Color(0xFFF7F7F5),
+    selectedColor: Color(0xFFA8B468),
+    labelStyle: TextStyle(color: Color(0xFF7A8A6E)),
+    side: BorderSide(color: Color(0xFFB5C6B1)),
+    shape: StadiumBorder(),
+    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+  ),
+  scaffoldBackgroundColor: Color(0xFFF7F7F5),
+  appBarTheme: AppBarTheme(
+    backgroundColor: Color(0xFFF7F7F5),
+    foregroundColor: Color(0xFF2D3320),
+    elevation: 0,
+    centerTitle: false,
+    titleTextStyle: TextStyle(
+      fontFamily: 'BeVietnamPro',
+      fontWeight: FontWeight.bold,
+      fontSize: 20,
+      color: Color(0xFF2D3320),
+    ),
+  ),
+);
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ATOMIC DESIGN COMPONENT LIBRARY — /design-component flutter
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tạo từng component theo thứ tự: Atoms → Molecules → Organisms → Templates.
+Mỗi component: all variants, all states, WCAG 2.2 AA, const constructors,
+token-driven (no hardcoded values).
+
+═══════════════════════════════════════
+ATOMS (lib/shared/widgets/atoms/)
+═══════════════════════════════════════
+
+C-01: AppButton
+  File: app_button.dart
+  Variants: primary | secondary | text | icon | loading | disabled
+  States: default | hovered | pressed | focused | disabled | loading
+  Token mapping:
+    primary bg    → button.primary.bg
+    primary text  → button.primary.text
+    secondary border → button.secondary.border
+    disabled bg   → button.disabled.bg
+  Required params: String label, VoidCallback? onPressed
+  Optional params: bool isLoading=false, Widget? prefixIcon
+  Loading: CircularProgressIndicator.adaptive() inside button, same height
+  Min touch target: 52px height (bắt buộc WCAG 2.5.5)
+  Flutter code note: use ElevatedButton / OutlinedButton / TextButton
+    wrapping with SizedBox(width: double.infinity, height: 52)
+
+C-02: AppTextField
+  File: app_text_field.dart
+  Variants: default | with-prefix-icon | with-suffix-icon | password | multiline
+  States: default | focused | filled | error | disabled
+  Token mapping:
+    bg → input.bg
+    border.default → input.border.default
+    border.focused → input.border.focused
+    border.error → input.border.error
+  Required: String? label, String? hint
+  Optional: Widget? prefixIcon, Widget? suffixIcon, bool obscureText,
+            String? errorText, int? maxLines, TextInputType keyboardType
+  Password variant: eye toggle suffix icon
+  Error state: red border + error text below (12sp, red.500)
+  WCAG: label always visible (not just placeholder), contrast ratio ≥ 4.5:1
+
+C-03: TagChip
+  File: tag_chip.dart
+  Variants: selectable | display-only | category | filter
+  States: selected (olive fill, white text) | unselected (sage border, muted text)
+  Token: chip.* tokens
+  Optional leading: emoji Text widget (không dùng Icon để tránh font conflict)
+  WCAG: selected state không chỉ dùng màu — thêm checkmark icon
+
+C-04: RatingBar
+  File: rating_bar.dart
+  Variants: compact (stars + number) | full (5 stars, interactive) | breakdown
+  Compact: Row [★★★★½ amber] [4,5 Bold] [(120 đánh giá) muted]
+  Full interactive: tap từng sao để chọn, animation scale on select
+  Breakdown: label + linear bar amber fill + percentage
+  WCAG: interactive variant có accessible label cho screen reader
+
+C-05: CategoryIcon
+  File: category_icon.dart
+  Hiển thị emoji icon trong Circle container (sage.100 bg, 36px)
+  Category → emoji mapping:
+    beach:entertainment:'🏖' | mountain:'🏔' | temple:'⛩' | museum:'🏛'
+    food:'🍜' | market:'🛒' | entertainment:'🎡' | nature:'🌿'
+    historical:'🏰' | viewpoint:'📍' | park:'🌳'
+  Size variants: sm(28px) | md(36px) | lg(48px)
+
+C-06: StatusBadge
+  File: status_badge.dart
+  Variants: in_stock | low | closed | open | vip | free | pending | resolved
+  Each: background color + text + optional icon, pill shape, 24px height
+  VIP: amber.400 gradient background
+  Open: green.400 | Closed: red.500 | Pending: amber.300
+
+C-07: StarRating (display only)
+  File: star_rating.dart
+  Filled amber stars, half-star support, grey empty stars
+  Sizes: sm(14px) | md(18px) | lg(24px)
+
+C-08: AppDivider
+  File: app_divider.dart
+  Horizontal divider: 1px sage.200
+  "Hoặc" divider: line — text — line, text neutral.400
+
+═══════════════════════════════════════
+MOLECULES (lib/shared/widgets/molecules/)
+═══════════════════════════════════════
+
+C-09: PlaceCard (vertical card)
+  File: place_card.dart
+  Size: w=160, h=220px, radius.card
+  Layout:
+    - Hero image 55% height, rounded top r=20, cached_network_image
+    - CategoryIcon badge top-left of image (olive chip, emoji)
+    - Heart save icon top-right: FloatingActionButton mini (white, shadow)
+    - Bottom padding 12px:
+        Place name: 14sp SemiBold, maxLines 2, overflow ellipsis
+        Row: StarRating compact | duration chip
+        Entry fee StatusBadge bottom-left
+  States: default | saved (heart filled amber) | loading (shimmer)
+  Required: PlaceEntity place, VoidCallback onTap
+  Optional: VoidCallback? onSave, bool isSaved=false
+
+C-10: PlaceListTile
+  File: place_list_tile.dart
+  Height: 96px, card.* tokens
+  Layout: Row [thumbnail 80×80 r=12] [Column: name, address, tags] [rating+distance]
+  Thumbnail: CachedNetworkImage với placeholder shimmer
+  Category dot: 8px circle, color by category
+  Distance badge: "1,2 km" muted 12sp (hiển thị khi user logged in)
+  Save heart icon far right
+
+C-11: ItineraryCard
+  File: itinerary_card.dart
+  Full-width, height 180px, radius.card
+  Layout: Stack [hero image] [gradient overlay] [content]
+  Hero: CachedNetworkImage, cover full card
+  Gradient: LinearGradient(dark bottom → transparent top)
+  Overlay content:
+    Top-right: days badge "3 ngày" amber pill
+    Bottom: Row [author avatar 32px + name white] [Spacer] [views count muted white]
+  VIP lock: blur overlay + lock icon nếu clone required VIP
+  States: default | loading shimmer
+
+C-12: DayCard
+  File: day_card.dart
+  Full-width, expandable/collapsible
+  Collapsed (72px): Row [amber left bar 4px] [day number Bold 32sp amber]
+    [day title 14sp] [estimated cost muted] [chevron]
+  Expanded: shows list of PlaceTimelineTile inside
+  Animation: AnimatedContainer height + chevron rotation
+  Required: int dayNumber, String title, List<PlaceWithTime> places
+
+C-13: PlaceTimelineTile
+  File: place_timeline_tile.dart
+  Inside DayCard, full-width
+  Layout: Row [time column 48px] [vertical line] [place info] [thumbnail 48×48]
+  Time column: arrival_time "08:30" Bold 12sp amber
+  Vertical connector: dashed line sage.300, 2px width
+  Place info: name Bold 13sp | duration chip | note (if any)
+  Bottom: transport chip "🏍 12 phút" olive chip
+  Drag handle: right side (ReorderableListView support)
+
+C-14: ReviewCard
+  File: review_card.dart
+  Full-width card.* tokens
+  Layout: [avatar + name + date row] [stars] [visit chips] [highlights] [comment]
+  Avatar: 40px circle, CachedNetworkImage, sage.300 ring border 2px
+  Highlights: Wrap of TagChip (olive.100 bg, olive.400 text), display-only variant
+  Comment: expandable, maxLines 3 default, "Xem thêm" link
+  Helpful: "X người thấy hữu ích" + 👍 TextButton
+
+C-15: QRCodeCard
+  File: qr_code_card.dart
+  White card, amber border 2px, r=20
+  Center: QrImageView 200×200 (qr_flutter package)
+  Title: "Quét để xem lịch trình" 14sp Bold center
+  Link text: truncated + "Sao chép" amber TextButton
+  Bottom buttons: [Chia sẻ] [Sao chép link]
+
+C-16: VoteCard
+  File: vote_card.dart
+  Full-width, card.* tokens
+  Layout: [thumbnail 64×64 r=12] [name + category] [vote bars] [vote buttons]
+  Vote bar: Row [👍 count] [LinearProgressIndicator amber] [👎 count]
+  If not voted: large [👍 Đồng ý] [👎 Không] ElevatedButton row
+  If voted: bars animated fill, "Đã bình chọn" StatusBadge
+
+C-17: SupportTicketTile
+  File: support_ticket_tile.dart
+  Height 80px, card.* tokens
+  Layout: [category icon circle 40px] [title + category + date] [status badge]
+  Category icon colors: payment=amber | bug=red | data=olive | suggestion=sage
+  Status: open=amber | in_progress=olive | resolved=green | closed=grey
+
+C-18: SectionHeader
+  File: section_header.dart
+  Row: [title 18sp SemiBold] [Spacer] ["Xem tất cả →" TextButton olive]
+  Optional: hide trailing link
+
+C-19: EmptyState
+  File: empty_state.dart
+  Center column: [Illustration SVG 200px] [title 18sp Bold] [subtitle 14sp muted] [CTA button?]
+  Variants (illustration + text khác nhau):
+    no_trips      : travel bag illustration
+    no_saved      : heart illustration
+    no_results    : magnifying glass illustration
+    no_internet   : disconnected wifi illustration
+    no_reviews    : star illustration
+    no_chat       : AI robot illustration
+    no_tickets    : support agent illustration
+  Illustration: SvgPicture.asset từ assets/illustrations/
+
+C-20: LoadingShimmer
+  File: loading_shimmer.dart
+  Package: shimmer (pub.dev)
+  Base: sage.200 | Highlight: neutral.50
+  Variants: PlaceCardSkeleton | ListTileSkeleton | ItineraryCardSkeleton
+  Duration: 1200ms loop
+
+═══════════════════════════════════════
+ORGANISMS (lib/shared/widgets/organisms/)
+═══════════════════════════════════════
+
+C-21: BottomNavigationShell
+  File: bottom_nav_shell.dart
+  5 tabs: 🏠 Trang chủ | 🔍 Khám phá | ➕ Lập lịch | 🗺 Bản đồ | 👤 Hồ sơ
+  Style: floating white card, radius.3xl top corners, shadow.md
+  Active: filled icon + amber dot indicator 6px below label
+  Inactive: outline icon + neutral.400 label
+  Flutter: BottomNavigationBar with custom painter hoặc NavigationBar Material 3
+  Tab 2 (Lập lịch): custom center FAB style — amber circle 56px, ➕ icon white
+
+C-22: SearchBar
+  File: search_bar_widget.dart
+  Full-width, 52px, radius.full, card.* tokens + shadow.sm
+  Left: magnify icon olive
+  Right: filter sliders icon olive
+  Flutter: Material SearchBar (Material 3) hoặc custom InkWell + TextField
+
+C-23: CategoryFilterRow
+  File: category_filter_row.dart
+  SingleChildScrollView horizontal, no scrollbar
+  CategoryChips từ C-03, gap 8px
+  All chips: 40px height, emoji + label
+  Snap scroll to active chip
+
+C-24: PlaceGrid
+  File: place_grid.dart
+  GridView 2 columns, PlaceCard, gap 12px
+  Infinite scroll: riverpod + pagination (20 items/page)
+
+C-25: MapOverlay
+  File: map_overlay.dart
+  Floating elements on top of Google Maps widget:
+    Top: location chip + CategoryFilterRow
+    Bottom-right: my location FAB (white circle, 48px, crosshair icon)
+  Custom MapMarker per category (emoji in amber circle)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SCREEN DESIGNS — /design-code flutter
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Mỗi screen: Flutter widget class + companion provider/notifier nếu cần.
+Xử lý đủ 4 states: loading (shimmer) | error (EmptyState error variant) |
+                   empty (EmptyState variant) | success (content).
+Comment tiếng Việt cho mỗi section quan trọng.
+const constructor cho mọi widget không có state.
+
+═══════════════════════════════════════
+GROUP 1: AUTH FLOW (9 screens)
+═══════════════════════════════════════
+
+SCREEN-01: SplashScreen
+  File: lib/features/auth/presentation/screens/splash_screen.dart
+  Full-screen Scaffold, backgroundColor: sage.300 (#B5C6B1)
+  Center Column:
+    SvgPicture.asset('assets/illustrations/compass_3d.svg') 120px
+    gap 24px
+    Text "Lịch Trình Đà Nẵng" style: font.h1 Bold, color: neutral.900
+    gap 8px
+    Text "Khám phá theo cách của bạn" style: font.body.md, color: sage.500
+    gap 48px
+    Row animated dots (3 dots, amber, animation wave)
+  Bottom: Positioned Text "v1.0.0" 12sp sage.500
+  initState: check auth → navigate sau 2s
+  Background: Stack với SvgPicture landmarks silhouette 5% opacity bottom
+
+SCREEN-02: OnboardingScreen
+  File: lib/features/auth/presentation/screens/onboarding_screen.dart
+  PageView 3 slides. Slide structure:
+    Stack:
+      Top 58%: SvgPicture.asset illustration (slide-specific)
+      Bottom 42%: white Container, radius.3xl top, Padding 24px:
+        Row dots indicator (active: amber 20px wide, inactive: sage 8px)
+        gap 20px
+        Text heading font.h2 SemiBold neutral.900
+        gap 12px
+        Text subtitle font.body.md sage.500 center
+        gap 32px
+        AppButton primary "Tiếp tục" / "Bắt đầu ngay" (slide 3)
+  Slide 1: map_tourist.svg | "Lập lịch trình thông minh"
+  Slide 2: group_share.svg | "Chia sẻ với cả nhóm"
+  Slide 3: ai_robot.svg | "Hỏi gì cũng biết"
+  Slide 3 thêm: AppButton secondary "Đăng nhập" below
+  TextButton "Bỏ qua" Positioned top-right 16px
+
+SCREEN-03: LoginScreen
+  File: lib/features/auth/presentation/screens/login_screen.dart
+  Stack:
+    [Top 35%] Container sage gradient (#B5C6B1 → #D6E8D4) với
+      Column center: SvgPicture logo 60px + Text "Xin chào!" font.h1 white Bold
+    [Bottom 65%] DraggableScrollableSheet hoặc Container radius.3xl top:
+      Padding 24px Column:
+        Text "Đăng nhập" font.h2 Bold neutral.900
+        gap 20px
+        AppTextField email (prefixIcon: email icon)
+        gap 12px
+        AppTextField password (obscureText, eye toggle suffix)
+        gap 8px
+        Align right: TextButton "Quên mật khẩu?" color olive.400
+        gap 20px
+        AppButton primary "Đăng nhập"
+        gap 16px
+        AppDivider "hoặc"
+        gap 16px
+        GoogleSignInButton (white card r=12, Google logo SVG + "Tiếp tục với Google")
+        gap 20px
+        Row center: Text "Chưa có tài khoản?" TextButton "Đăng ký" olive
+  Keyboard: resizeToAvoidBottomInset: true, SingleChildScrollView
+
+SCREEN-04: RegisterScreen
+  File: lib/features/auth/presentation/screens/register_screen.dart
+  Cùng layout LoginScreen (sage header). Form fields:
+    AppTextField "Họ và tên" (person icon prefix)
+    AppTextField "Email" (email icon)
+    AppTextField "Mật khẩu" (lock icon + eye toggle)
+    AppTextField "Xác nhận mật khẩu" (lock icon)
+    CheckboxListTile "Tôi đồng ý với Điều khoản sử dụng"
+      value link: TextButton olive inline
+  AppButton "Tạo tài khoản"
+  Bottom link: "Đã có tài khoản? Đăng nhập"
+
+SCREEN-05: ForgotPasswordScreen
+  File: lib/features/auth/presentation/screens/forgot_password_screen.dart
+  AppBar: back arrow + transparent background
+  Body center Column:
+    SvgPicture 'assets/illustrations/email_key.svg' 120px
+    gap 24px
+    Text "Quên mật khẩu?" font.h2 Bold
+    gap 12px
+    Text subtitle font.body.md sage.500 center Padding h 32px
+    gap 24px
+    AppTextField "Email của bạn" (email icon)
+    gap 20px
+    AppButton "Gửi link đặt lại"
+    gap 16px
+    TextButton "← Quay lại đăng nhập" olive
+
+SCREEN-06: EmailSentScreen
+  File: lib/features/auth/presentation/screens/email_sent_screen.dart
+  Center Column:
+    AnimatedScale checkmark: Container 80px circle amber.400
+      Icon Icons.check_rounded white 40px, scale animation 0.5→1.0
+    gap 24px
+    Text "Email đã được gửi!" font.h2 Bold
+    gap 12px
+    Text subtitle 14sp sage.500 center
+    gap 16px
+    Container amber.100 rounded pill: Text email Bold 14sp amber.400
+    gap 32px
+    TimerButton "Gửi lại sau 60s" → enabled after countdown
+      Disabled style: sage.300 text | Enabled: olive TextButton
+
+SCREEN-07: ProfileSetupScreen
+  File: lib/features/auth/presentation/screens/profile_setup_screen.dart
+  AppBar: "Hoàn thiện hồ sơ" + progress indicator LinearProgressIndicator amber
+  Body SingleChildScrollView Padding 24px Column:
+    Center Stack: CircleAvatar 96px + positioned camera FAB amber 32px bottom-right
+    gap 24px
+    AppTextField "Tên hiển thị" prefilled from Google
+    gap 12px
+    AppTextField "Thành phố thường trú" (home icon) default "Đà Nẵng"
+    gap 12px
+    AppTextField "Bio ngắn" maxLines 2, maxLength 100, counter shown
+    gap 20px
+    Text "Phong cách du lịch của bạn" font.h4 Medium
+    gap 12px
+    Wrap spacing 8px: TagChip selectable × 8 travel style chips
+    gap 24px
+    AppButton "Bắt đầu khám phá →"
+    gap 12px
+    TextButton "Bỏ qua, làm sau" sage.500
+
+SCREEN-08: GoogleSignInLoadingScreen
+  File: lib/features/auth/presentation/screens/google_signin_loading_screen.dart
+  Center: CircularProgressIndicator amber + Text "Đang đăng nhập..." 14sp sage.500
+
+SCREEN-09: AccountDeleteConfirmDialog
+  File: lib/features/auth/presentation/widgets/account_delete_dialog.dart
+  AlertDialog:
+    icon: warning amber
+    title: "Xóa tài khoản?"
+    content: "Hành động này không thể hoàn tác. Tất cả dữ liệu sẽ bị xóa."
+    actions: [TextButton "Hủy" olive] [ElevatedButton "Xóa" red.500 bg]
+
+═══════════════════════════════════════
+GROUP 2: HOME & EXPLORE (8 screens)
+═══════════════════════════════════════
+
+SCREEN-10: HomeScreen (logged in)
+  File: lib/features/place/presentation/screens/home_screen.dart
+  CustomScrollView slivers:
+    SliverAppBar pinned, expandedHeight 0:
+      Row: [Column greeting + sub] [Spacer] [notification bell + avatar]
+    SliverToBoxAdapter: SearchBar widget, Padding h 16px
+    SliverToBoxAdapter: OnboardingPromptCard (conditional, sage.100 card):
+      Row: Text "Bạn đang tìm sữa cho ai?" → chip [👶 Trẻ em] [👴 Người cao tuổi]
+      Wait — sai app. Correct:
+      Row: Text "Chọn phong cách du lịch" → redirect TravelPreferencesScreen
+      Positioned X button to dismiss (store in Hive preference)
+    SliverToBoxAdapter: SectionHeader "Địa điểm gợi ý" + horizontal PlaceCard list
+    SliverToBoxAdapter: SectionHeader "Khám phá cộng đồng" + ItineraryCard vertical list
+    SliverToBoxAdapter: QuickActionsRow (4 buttons: Lập lịch | Bản đồ | Hỏi AI | VIP)
+      Each: Column [Container 56px circle amber.100 + Icon amber.400] [Text label 12sp]
+
+SCREEN-11: HomeScreen (anonymous)
+  Same as SCREEN-10 but:
+    Greeting: "Khám phá Đà Nẵng 👋" no avatar, LoginButton right
+    No OnboardingPromptCard
+    "Gợi ý cho bạn" replaced by "Địa điểm phổ biến"
+    LoginPromptBanner: sage.200 Container full-width, 🔑 icon + text + amber button
+
+SCREEN-12: ExploreScreen
+  File: lib/features/explore/presentation/screens/explore_screen.dart
+  AppBar: "Khám phá" Bold
+  Filter tabs: DefaultTabController ["Tất cả" | "Phổ biến" | "Mới nhất" | "Gần tôi"]
+    TabBar indicator: amber underline 2px, labelStyle Bold amber
+  TabBarView: each tab = RefreshIndicator + ListView ItineraryCards + infinite scroll
+
+SCREEN-13: DiscoverScreen
+  File: lib/features/place/presentation/screens/discover_screen.dart
+  Persistent SearchBar at top (always focused when tab opens)
+  CategoryFilterRow below search
+  If empty query: "Gợi ý" + "Phổ biến nhất" + "Mới thêm" sections
+  If has query: filtered PlaceListTile list
+
+SCREEN-14: SearchResultScreen
+  File: lib/features/place/presentation/screens/search_result_screen.dart
+  AppBar: SearchBar with clear X + back, result count subtitle
+  Sort button: TextButton "Sắp xếp ▾" (opens SCREEN-17)
+  CategoryFilterRow below AppBar
+  PlaceListTile ListView.builder
+
+SCREEN-15: FilterBottomSheet
+  File: lib/features/place/presentation/widgets/filter_bottom_sheet.dart
+  DraggableScrollableSheet minExtent 0.6 maxExtent 0.95
+  Handle bar top-center 40×4px sage.300 rounded
+  Padding 24px Column:
+    Row: Text "Lọc địa điểm" font.h3 + TextButton "Đặt lại" olive
+    Divider
+    "Loại địa điểm" + CategoryChips Wrap
+    "Phù hợp với" + chips [Cặp đôi | Gia đình | Nhóm bạn | Một mình]
+    "Giá vé" + RangeSlider activeColor amber.400
+    "Thời gian tham quan" + chips
+    "Đánh giá tối thiểu" + StarRating interactive
+  Bottom: Padding AppButton "Áp dụng bộ lọc" + count preview text
+
+SCREEN-16: NotificationsScreen
+  File: lib/features/profile/presentation/screens/notifications_screen.dart
+  AppBar: "Thông báo" + TextButton "Đánh dấu đã đọc"
+  Grouped ListView:
+    GroupHeader: "Hôm nay" / "Tuần này" / "Trước đó" — Text 12sp sage.500 Bold
+    NotificationTile: ListTile (leading icon circle, title, subtitle, trailing time)
+      Unread: sage.100 background
+      Read: neutral.50 background
+  Empty: EmptyState no_tickets variant
+
+SCREEN-17: SortBottomSheet
+  File: lib/features/place/presentation/widgets/sort_bottom_sheet.dart
+  Container radius.3xl top, Padding 20px:
+    Handle bar
+    Text "Sắp xếp theo" font.h4 Bold
+    gap 12px
+    RadioListTile × 4: "Phổ biến nhất" | "Đánh giá cao" | "Mới nhất" | "Gần nhất"
+      activeColor: amber.400
+  AppButton "Áp dụng"
+
+═══════════════════════════════════════
+GROUP 3: PLACE DETAIL (6 screens)
+═══════════════════════════════════════
+
+SCREEN-18: PlaceDetailScreen — Overview Tab
+  File: lib/features/place/presentation/screens/place_detail_screen.dart
+  NestedScrollView:
+    SliverAppBar expandedHeight 260px:
+      FlexibleSpaceBar: PageView images (cached) + dots indicator bottom
+      Pinned actions: back | share | heart (save)
+    SliverToBoxAdapter body Padding 20px:
+      Row: CategoryIcon + "Đã xác minh" green chip
+      Text place name font.h2 SemiBold maxLines 2
+      RatingBar compact + review count
+      Row chips: [entry fee amber pill] [⏱ duration] [📍 city]
+      InfoRow: 📞 + phone tap-to-call link
+      InfoRow: 🕗 + hours + StatusBadge open/closed
+      Opening days Row: 7 day circles M-CN (amber=open, sage=closed)
+      DefaultTabController 3 tabs: [Tổng quan | Đánh giá | Mẹo hay]
+      TabBar + TabBarView:
+        Tab 0: description + suitable_for chips + tags + best months + tips preview
+        Tab 1: ReviewListScreen content (embedded)
+        Tab 2: tips list cards sage.100
+  Bottom sticky: AppButton "Thêm vào lịch trình" / "✓ Đã thêm" outline
+
+SCREEN-19: ReviewListScreen (embedded in tab)
+  File: lib/features/review/presentation/screens/review_list_screen.dart
+  Rating summary card sage.100:
+    Large rating number amber 48sp Bold center
+    Stars Row + count muted
+    Breakdown bars (LinearProgressIndicator amber × 5)
+  Conditional: AppButton "Viết đánh giá" olive outline (if logged in + not reviewed)
+  Filter chips: [Tất cả | 5★ | 4★ | Cặp đôi | Gia đình]
+  ReviewCard ListView
+
+SCREEN-20: PlaceDetailScreen — Tips Tab
+  (embedded, no separate file)
+  ListView tip cards:
+    Each: Container sage.100 r=12 Padding 16px:
+      Row: Text "💡" + Text tip title font.h4 Medium
+      Text tip body 14sp neutral.900
+  Footer: Text "Cập nhật bởi đội ngũ ứng dụng" 12sp sage.500
+
+SCREEN-21: WriteReviewScreen
+  File: lib/features/review/presentation/screens/write_review_screen.dart
+  AppBar: "Viết đánh giá" + TextButton "Gửi" olive (enabled when rating selected)
+  Body Padding 20px Column:
+    Place header: Row [thumbnail 60px r=12] [name + category]
+    Divider
+    Text "Đánh giá của bạn" font.h4
+    Row: 5 GestureDetector Stars 40px each, amber filled/outline
+    Divider
+    Text "Bạn đi cùng ai?" font.h4
+    Wrap: TagChip selectable [Một mình | Cặp đôi | Gia đình | Nhóm bạn]
+    Text "Tháng bạn đến?"
+    GridView 4×3 month chips compact
+    Text "Điểm nổi bật"
+    Wrap: TagChip multi-select [🏞 Phong cảnh | 🍽 Ẩm thực | 🧑‍🤝‍🧑 Thân thiện | 💰 Giá | ✨ Không khí | 🚗 Di chuyển]
+    AppTextField multiline 5 lines "Chia sẻ trải nghiệm..."
+  Bottom: AppButton "Gửi đánh giá"
+
+SCREEN-22: ReportPlaceScreen
+  File: lib/features/place/presentation/screens/report_place_screen.dart
+  AppBar: "Báo thông tin sai"
+  Body Padding 20px:
+    PlaceListTile (display, non-tappable, current place)
+    Text "Chọn vấn đề:" font.h4
+    RadioGroup [Giờ mở cửa sai | Giá vé sai | Đóng cửa | Ảnh sai | Địa chỉ sai | Khác]
+      ListTile Radio activeColor amber.400
+    AppTextField optional note multiline
+    AppButton "Gửi báo cáo"
+
+SCREEN-23: PlacePhotosScreen
+  File: lib/features/place/presentation/screens/place_photos_screen.dart
+  AppBar transparent black: back + "Ảnh (24)" white
+  GridView.count crossAxisCount 3, spacing 2px
+  CachedNetworkImage fill each cell
+  Tap → PhotoViewGallery fullscreen, swipe, counter "3/24" white top
+
+═══════════════════════════════════════
+GROUP 4: CREATE ITINERARY (11 screens)
+═══════════════════════════════════════
+
+SCREEN-24: Step1BasicInfoScreen
+  File: lib/features/itinerary/presentation/screens/step1_basic_info_screen.dart
+  AppBar: "Lập lịch trình" + IconButton close
+  LinearProgressIndicator value 0.2, amber
+  Text "Bước 1/5 — Thông tin cơ bản" 12sp sage.500
+  Body Padding 20px Column:
+    AppTextField "Tên lịch trình"
+    gap 20px
+    Text "Số ngày" font.h4
+    Card sage.100 r=16 Padding 16px:
+      Row: IconButton "−" | Text numDays 40sp amber Bold | IconButton "+"
+    gap 20px
+    Text "Ngày bắt đầu (tùy chọn)" font.h4
+    AppTextField with calendar icon suffix, tap opens DatePicker
+    gap 20px
+    Text "Số người" font.h4
+    Card sage.100 r=16 same stepper UI
+  Bottom sticky: AppButton "Tiếp theo →"
+
+SCREEN-25: Step2StyleBudgetScreen
+  File: lib/features/itinerary/presentation/screens/step2_style_budget_screen.dart
+  Progress 0.4. "Bước 2/5 — Phong cách & Ngân sách"
+  "Bạn thích loại hình du lịch nào?" + TagChip grid 3 columns × 8 items
+  "Phương tiện di chuyển" + Card grid 2×2:
+    Each card: Container 80px r=16, sage.100 bg, emoji 32px + Text
+    Selected: amber border 2px + amber.100 bg
+  "Ngân sách mỗi người" + SegmentedButton 4 options:
+    ["<200k" | "200–500k" | "500k–1tr" | ">1tr"]
+    selectedColor: amber.400
+  Bottom: Row [OutlinedButton "← Quay lại"] [ElevatedButton "Tiếp theo →" expanded]
+
+SCREEN-26: Step3SelectPlacesScreen
+  File: lib/features/itinerary/presentation/screens/step3_select_places_screen.dart
+  Progress 0.6. "Bước 3/5 — Chọn địa điểm"
+  SearchBar top
+  CategoryFilterRow
+  Selected count badge: amber pill "Đã chọn: 7"
+  Collapsed "Đã chọn" chip row (horizontal scroll, × remove each)
+  "Gợi ý cho bạn" section + all places ListView
+  PlaceListTile with Checkbox right (CheckboxListTile amber)
+  Bottom info bar: Container amber.100 Text "Đã chọn 7 địa điểm cho 3 ngày"
+  Bottom button row: [← Quay lại] [Tối ưu lộ trình →]
+
+SCREEN-27: Step4OptimizingScreen
+  File: lib/features/itinerary/presentation/screens/step4_optimizing_screen.dart
+  Full-screen sage.300 background
+  Center Column:
+    SvgPicture 'map_route_animated.svg' 200px (animated route drawing)
+    gap 24px
+    Text "Đang tối ưu lộ trình..." font.h2 Bold neutral.900
+    gap 20px
+    Column steps:
+      Each: AnimatedOpacity Row [Icon check/spinner] [Text step label]
+      Steps: "Phân nhóm địa điểm" | "Tính khoảng cách" | "Sắp xếp tối ưu" |
+             "Kiểm tra giờ mở cửa" | "Tính chi phí"
+      Completed: Icon check_circle green.400 | Pending: CircularProgressIndicator 16px amber
+    gap 16px
+    Text "Chỉ mất vài giây..." 14sp sage.500
+  AutoNavigate to Step5 when optimization complete
+
+SCREEN-28: Step5ResultScreen
+  File: lib/features/itinerary/presentation/screens/step5_result_screen.dart
+  AppBar: "Lịch trình của bạn" + IconButton save
+  Body:
+    Summary card sage.100 r=20 Padding 16px:
+      Wrap chips: ["📅 3 ngày" | "📍 9 địa điểm" | "💰 ~1.200.000đ" | "🏍 Xe máy"]
+      gap 8px
+      BudgetBar: LinearProgressIndicator amber fill
+      Warning card (if constraint violation): amber.100 Container:
+        Row: Icon warning amber + Text warning message
+    Divider
+    DayCards expandable list (all collapsed default)
+  Bottom sticky Row:
+    [OutlinedButton "✏ Sửa"] [OutlinedButton "🗺 Bản đồ"] [ElevatedButton "📤 Chia sẻ"]
+
+SCREEN-29: EditItineraryScreen
+  File: lib/features/itinerary/presentation/screens/edit_itinerary_screen.dart
+  AppBar: "Chỉnh sửa" + TextButton "Lưu" olive
+  TabBar days: ["Ngày 1" | "Ngày 2" | ...] amber indicator
+  TabBarView each day:
+    ReorderableListView PlaceTimelineTile list (drag handle visible)
+    Swipe left: delete action (red background, trash icon)
+    Tap arrival_time → showTimePicker
+    Tap duration → NumberPicker bottom sheet
+    "+" Thêm địa điểm button (outlined amber) at bottom
+  FAB: "↺ Tối ưu lại" amber
+
+SCREEN-30: ItineraryMapScreen
+  File: lib/features/itinerary/presentation/screens/itinerary_map_screen.dart
+  Stack:
+    GoogleMap full-screen
+    Top floating: day selector TabBar scrollable (white card, amber indicator)
+    Bottom DraggableScrollableSheet:
+      Handle bar
+      horizontal PageView PlaceCards for current day
+      Active card: amber border 2px glow
+      Tap card → map camera animate to place
+  Route polyline: amber.400 color, 3px width, dashed pattern
+  Custom numbered markers: amber circle + white number
+
+SCREEN-31: MyItinerariesScreen
+  File: lib/features/itinerary/presentation/screens/my_itineraries_screen.dart
+  AppBar: "Lịch trình của tôi" + IconButton add
+  Filter tabs: ["Tất cả" | "Đã lưu" | "Đã chia sẻ" | "Bản nháp"]
+  ListView ItineraryCards:
+    StatusBadge on each: "Đang lên kế hoạch" amber | "Đã hoàn thành" green
+    Long press: ModalBottomSheet menu [Chỉnh sửa | Chia sẻ | Clone | Xóa]
+  Free limit banner (if ≥3 trips): amber.100 card full-width:
+    "Đã tạo 3/3 lịch trình. Nâng cấp VIP để tạo thêm." + "Xem VIP →" amber
+
+SCREEN-32: SharedItineraryScreen
+  File: lib/features/itinerary/presentation/screens/shared_itinerary_screen.dart
+  No auth required (deep link target)
+  AppBar transparent + back + "💾 Lưu về máy" amber outlined
+  Banner Container sage.200 Row: [author avatar 32px] [Text "Chia sẻ bởi [Tên]"] [clone count]
+  Full itinerary read-only: Summary card + DayCards expand/collapse
+  Bottom sticky: [AppButton "💾 Lưu lịch trình"] [OutlinedButton "📤 Chia sẻ tiếp"]
+
+SCREEN-33: ShareItineraryScreen
+  File: lib/features/itinerary/presentation/screens/share_itinerary_screen.dart
+  AppBar: "Chia sẻ lịch trình"
+  Center: QRCodeCard widget
+  "Link chia sẻ": AppTextField readOnly + "Sao chép" amber suffix button
+  Share buttons Row: [Zalo | Facebook | Sao chép link]
+    Each: OutlinedButton 52px với brand icon + label
+  Divider "Tính năng nhóm"
+  InfoCard sage.100: icon + "Mời nhóm cùng vote địa điểm..."
+  AppButton "🗳 Tạo phiên vote"
+  TextButton "Đặt lại link chia sẻ" sage.500 small
+
+SCREEN-34: VoteSessionScreen
+  File: lib/features/group_vote/presentation/screens/vote_session_screen.dart
+  AppBar: "Phiên vote nhóm"
+  Stepper 3 bước không phải linear:
+    Step 1: Chọn địa điểm (CheckboxListTile list)
+    Step 2: Chia sẻ link (QRCodeCard + voters list realtime)
+    Step 3: Kết quả (VoteCard ranked list + "Áp dụng" button)
+  Bottom navigation giữa steps
+
+═══════════════════════════════════════
+GROUP 5: PUBLIC VOTE (2 screens)
+═══════════════════════════════════════
+
+SCREEN-35: PublicVoteScreen
+  File: lib/features/group_vote/presentation/screens/public_vote_screen.dart
+  No auth. Scaffold appBar null.
+  SafeArea Column:
+    Container amber.400 Padding 16px: Text "🗳 Bình chọn địa điểm" white Bold
+    Padding 20px:
+      Text "Bạn được mời bởi [Tên]" sage.500
+      AppTextField "Tên của bạn" (required before voting)
+      gap 16px
+      VoteCard list (each place, 👍/👎 buttons)
+    Bottom: TextButton "Xem kết quả" (after voted)
+
+SCREEN-36: VoteResultsScreen
+  File: lib/features/group_vote/presentation/screens/vote_results_screen.dart
+  AppBar: "Kết quả bình chọn" + Text "X người tham gia" subtitle sage.500
+  ListView VoteCard expanded (with animated fill bars):
+    Leading: medal emoji 🥇🥈🥉 for top 3
+    Vote bar: Row [👍 count] [progress amber/olive] [👎 count]
+  If owner: AppButton "Áp dụng top 5 vào lịch trình" sticky bottom
+
+═══════════════════════════════════════
+GROUP 6: MAP (3 screens)
+═══════════════════════════════════════
+
+SCREEN-37: MapScreen
+  File: lib/features/map/presentation/screens/map_screen.dart
+  Stack:
+    GoogleMap full-screen, mapStyle: custom (muted greens matching palette)
+    MapOverlay top (location chip + CategoryFilterRow)
+    Location chip: Container sage.100 r=full Padding h 12px v 6px:
+      Row: Icon 📍 olive + Text "Đà Nẵng & Hội An" 13sp Bold
+    My location FAB: FloatingActionButton mini white shadow.md
+    Custom markers per category (MapMarker component)
+    Cluster: amber circle with count Text white Bold
+  DraggableScrollableSheet bottom:
+    Handle bar
+    peek 200px, maxExtent 0.7
+    Text "Địa điểm gần đây" SectionHeader
+    ListView PlaceListTiles or Horizontal PlaceCards
+
+SCREEN-38: MapPlacePreviewSheet
+  File: lib/features/map/presentation/widgets/map_place_preview_sheet.dart
+  DraggableScrollableSheet at 50%:
+    CachedNetworkImage place hero 200px r=20 top
+    Padding 16px:
+      Text place name font.h3 Bold
+      CategoryIcon + StatusBadge open/closed + distance
+      TagChip row
+      Row: [AppButton "📍 Chỉ đường"] [OutlinedButton "+ Thêm vào lịch trình"]
+
+SCREEN-39: MapFilterSheet
+  File: lib/features/map/presentation/widgets/map_filter_sheet.dart
+  Container radius.3xl top Padding 20px:
+    Handle
+    Text "Lọc trên bản đồ" font.h4 Bold
+    CategoryChips multi-select
+    SwitchListTile "Chỉ điểm đang mở cửa" amber Switch
+    Text "Sẽ hiển thị X địa điểm" 13sp sage.500 center
+    AppButton "Áp dụng"
+
+═══════════════════════════════════════
+GROUP 7: AI CHAT (3 screens)
+═══════════════════════════════════════
+
+SCREEN-40: AIChatScreen (empty)
+  File: lib/features/ai_chat/presentation/screens/ai_chat_screen.dart
+  AppBar: [Row: bot avatar animated 32px + "Hỏi về Đà Nẵng" title] [clock history icon]
+  Bot avatar: Stack CircleAvatar gradient sage.300→olive.300 + eyes animation
+  DisclaimerBanner: Container amber.100 Padding v 8px h 16px full-width sticky:
+    Row: Icon shield sage.500 16px + Text disclaimer 12sp sage.500
+  Body Center: EmptyState no_chat variant +
+    Wrap suggestion chips 2 columns: [🏖 Bãi biển | 🍜 Ẩm thực | 🏍 Xe thuê | 🌧 Thời tiết]
+  Rate counter: Text "15/15 tin nhắn (Miễn phí)" 12sp sage.500 center
+  Input bar bottom: Row [AppTextField "Nhập câu hỏi..."] [IconButton send amber circle]
+
+SCREEN-41: AIChatScreen (active)
+  Same AppBar + DisclaimerBanner
+  Chat ListView (reverse):
+    User bubble: Container amber.400 r=18 sharp bottom-right
+      Text white Bold 14sp
+    Bot bubble: Card white shadow.sm r=18 sharp bottom-left
+      Row: bot avatar 24px + Column [Text + optional PlaceCard embedded]
+      Embedded PlaceCard: compact horizontal card in bubble, amber border
+    Timestamp: Text 11sp sage.400 below each bubble
+    Typing indicator: bot bubble with 3 animated dots
+  Rate warning (>10): LinearProgressIndicator amber + Text "X/15"
+  Rate limit reached: Center Card EmptyState with amber 🚫 + VIP upgrade button
+  Input bar: AppTextField + send IconButton (disabled if limit reached)
+  Suggestion chips above input (horizontal scroll)
+
+SCREEN-42: ChatHistoryScreen
+  File: lib/features/ai_chat/presentation/screens/chat_history_screen.dart
+  AppBar: "Lịch sử trò chuyện"
+  AppButton "+" outlined "Cuộc trò chuyện mới" below AppBar
+  ListView sessions:
+    ListTile: leading bot avatar 40px, title first message preview,
+    subtitle date, trailing message count badge amber
+  Empty: EmptyState no_chat
+
+═══════════════════════════════════════
+GROUP 8: PROFILE & SETTINGS (10 screens)
+═══════════════════════════════════════
+
+SCREEN-43: ProfileScreen
+  File: lib/features/profile/presentation/screens/profile_screen.dart
+  CustomScrollView:
+    SliverToBoxAdapter header card (sage.200 gradient, r=24 bottom):
+      Center Column:
+        CircleAvatar 80px + camera edit badge amber 28px
+        Text displayName font.h2 Bold
+        Text homeCity 14sp sage.500
+        Text bio 13sp sage.500 italic (if set)
+        gap 16px
+        Row stats: StatBadge × 3 with dividers
+        VIPBadge (if vip) or "Miễn phí" green chip
+        OutlinedButton "Chỉnh sửa hồ sơ" olive 40px
+    SliverToBoxAdapter: Padding 16px:
+      Travel style chips display row
+    SliverList menu sections:
+      Section headers: Text sage.500 12sp Bold uppercase
+      ListTile items: leading Icon + title + trailing chevron
+
+SCREEN-44: EditProfileScreen
+  File: lib/features/profile/presentation/screens/edit_profile_screen.dart
+  AppBar: "Chỉnh sửa hồ sơ" + TextButton "Lưu" olive
+  Avatar section center: CircleAvatar 96px + camera FAB + TextButton "Thay ảnh"
+  Form Padding 20px:
+    AppTextField: họ tên, tên hiển thị (counter 30), giới tính dropdown,
+    năm sinh, số điện thoại, thành phố, bio (multiline counter 100)
+  AppButton "Lưu thay đổi" sticky bottom
+
+SCREEN-45: TravelPreferencesScreen
+  File: lib/features/profile/presentation/screens/travel_preferences_screen.dart
+  AppBar: "Sở thích du lịch"
+  Body Padding 20px Column:
+    "Phong cách du lịch" font.h4 + Wrap TagChip × 8 multi-select
+    "Phương tiện ưa thích" font.h4 + Grid 2×2 large cards
+    "Thường đi cùng" font.h4 + Wrap TagChip × 4
+    InfoCard sage.100: 💡 "Dữ liệu này giúp gợi ý phù hợp hơn"
+    AppButton "Lưu sở thích" sticky bottom
+
+SCREEN-46: SavedPlacesScreen
+  File: lib/features/profile/presentation/screens/saved_places_screen.dart
+  AppBar: "Địa điểm yêu thích"
+  Sort filter row right
+  PlaceListTile ListView (swipe left: remove, long press: add to itinerary)
+  Empty: EmptyState no_saved
+
+SCREEN-47: MyReviewsScreen
+  File: lib/features/profile/presentation/screens/my_reviews_screen.dart
+  AppBar: "Đánh giá của tôi"
+  ListView items: [place thumbnail 60px] [place name + date + stars] [review preview]
+  Swipe left: [✏ Sửa red] [🗑 Xóa amber] actions
+  Empty: EmptyState no_reviews
+
+SCREEN-48: SettingsScreen
+  File: lib/features/profile/presentation/screens/settings_screen.dart
+  AppBar: "Cài đặt"
+  ListView grouped:
+    SwitchListTile × 3: Thông báo | Giao diện tối | Vị trí GPS
+      Switch activeColor amber.400
+    ListTile → : Ngôn ngữ | Quyền riêng tư | Xóa cache | Xuất dữ liệu
+    ListTile red: Xóa tài khoản → shows AccountDeleteConfirmDialog
+
+SCREEN-49: AboutScreen
+  File: lib/features/profile/presentation/screens/about_screen.dart
+  AppBar: "Về ứng dụng"
+  Center: AppIcon 80px + name + version + "Made with ♥ in Đà Nẵng"
+  ListTile sections: Điều khoản | Chính sách | Liên hệ | Nguồn dữ liệu | Rate app
+
+SCREEN-50: VIPScreen
+  File: lib/features/vip/presentation/screens/vip_screen.dart
+  Stack:
+    AppBar transparent
+    Hero header Container 220px amber gradient:
+      "⭐" Text 48sp + "VIP" Text white Bold 32sp center
+      SvgPicture crown.svg white
+    White card body:
+      Benefits list CheckListTile × 6 (green.400 check icons)
+      Pricing card: amber border 2px r=20:
+        "Gói theo chuyến" SectionHeader
+        "49.000đ" Text amber.400 48sp Bold center
+        "/30 ngày" Text sage.500
+        "~1.600đ/ngày" StatusBadge green small
+      AppButton "Nâng cấp VIP ngay"
+      TextButton "Điều khoản VIP" sage.500
+
+SCREEN-51: PaymentScreen
+  File: lib/features/vip/presentation/screens/payment_screen.dart
+  AppBar: "Thanh toán"
+  Order summary card sage.100: name + amount
+  "Phương tiện thanh toán" section:
+    RadioListTile × 3: [VNPay | MoMo | Thẻ ngân hàng]
+      activeColor amber.400, each with logo Image
+    Conditional card form (if thẻ selected): AppTextField × 3
+  Total row Bold amber
+  Terms note 12sp sage.500
+  AppButton "Thanh toán ngay" (disabled until method selected)
+
+SCREEN-52: PaymentSuccessScreen
+  File: lib/features/vip/presentation/screens/payment_success_screen.dart
+  Full-screen center:
+    AnimatedScale + AnimatedOpacity: Container 80px amber.400 circle + check icon white 40px
+    Text "Thanh toán thành công!" font.h2 Bold
+    Order summary card
+    VIP expiry StatusBadge green "VIP đến xx/xx/xxxx"
+    AppButton "Bắt đầu sử dụng VIP" → pop to Home
+
+SCREEN-53: PaymentFailedScreen
+  File: lib/features/vip/presentation/screens/payment_failed_screen.dart
+  Full-screen center:
+    Container 80px red.500 circle + close icon white 40px
+    Text "Thanh toán thất bại" font.h2 Bold
+    Text error detail + error code 12sp sage.500
+    AppButton "Thử lại"
+    OutlinedButton "Báo lỗi với hỗ trợ"
+
+═══════════════════════════════════════
+GROUP 9: SUPPORT (5 screens)
+═══════════════════════════════════════
+
+SCREEN-54: SupportScreen
+  File: lib/features/support/presentation/screens/support_screen.dart
+  AppBar: "Hỗ trợ & Báo lỗi"
+  Quick actions 2×2 GridView:
+    Each card Card sage.100 r=16 Padding 16px:
+      Icon 32px (category colored) + Text label + "→"
+  SectionHeader "Ticket của tôi" + ListView 3 recent SupportTicketTiles + link
+  FAQ accordion ExpansionTile × 5
+
+SCREEN-55: NewTicketScreen
+  File: lib/features/support/presentation/screens/new_ticket_screen.dart
+  AppBar: "Tạo yêu cầu hỗ trợ"
+  Form Padding 20px:
+    DropdownButtonFormField "Loại vấn đề" (6 options)
+    AppTextField "Tiêu đề"
+    AppTextField "Mô tả" multiline 5 lines
+    AppTextField "Mã đơn hàng (nếu có)" optional
+    Image picker row: "+ Đính kèm ảnh" + image thumbnail chips (max 3)
+  AppButton "Gửi yêu cầu"
+
+SCREEN-56: TicketDetailScreen
+  File: lib/features/support/presentation/screens/ticket_detail_screen.dart
+  AppBar: "#1234" + status badge
+  Body Padding 16px:
+    Ticket info card
+    Timeline ListView: date + status change + icon
+    Admin response card sage.100 (if replied):
+      "Phản hồi từ hỗ trợ" Bold + response text
+    OutlinedButton "Đánh dấu đã giải quyết" (if open)
+
+SCREEN-57: TicketHistoryScreen
+  File: lib/features/support/presentation/screens/ticket_history_screen.dart
+  AppBar: "Lịch sử yêu cầu"
+  Filter tabs: [Tất cả | Đang xử lý | Đã giải quyết]
+  SupportTicketTile ListView
+
+SCREEN-58: RateLimitReachedWidget (inline in AIChatScreen)
+  File: lib/features/ai_chat/presentation/widgets/rate_limit_reached_widget.dart
+  Center Card Padding 24px white shadow.md r=20:
+    Container 60px amber.100 r=full center: Text "🚫" 32sp
+    Text "Đã dùng hết 15 tin nhắn hôm nay" font.h4 Bold center
+    LinearProgressIndicator amber filled 100%
+    Text "Đặt lại lúc 00:00" 13sp sage.500 center
+    AppDivider "hoặc"
+    AppButton "⭐ Nâng cấp VIP"
+
+═══════════════════════════════════════
+GROUP 10: ADMIN PANEL (9 screens)
+═══════════════════════════════════════
+
+SCREEN-59: AdminDashboardScreen
+  File: lib/features/admin/presentation/screens/admin_dashboard_screen.dart
+  AppBar: "Quản trị" + StatusBadge "Admin" amber + logout
+  Body Padding 16px:
+    Stats GridView 2×3: Card each sage.100 r=16:
+      Text number amber.400 32sp Bold + Text label sage.500 12sp
+    gap 16px
+    Quick actions Row: 3 OutlinedButtons
+    RecentActivityFeed ListView last 5 entries
+
+SCREEN-60: AdminPlacesScreen
+  File: lib/features/admin/presentation/screens/admin_places_screen.dart
+  AppBar: "Địa điểm" + IconButton add
+  OutlinedButton "🔄 Sync từ Google" olive (amber Loading state)
+  SearchBar + filter
+  ListView PlaceListTile:
+    Trailing: Switch active/inactive (amber)
+    Swipe right: edit, swipe left: hide
+  Sync progress modal (when syncing): AlertDialog + LinearProgressIndicator + log
+
+SCREEN-61: AdminEditPlaceScreen
+  File: lib/features/admin/presentation/screens/admin_edit_place_screen.dart
+  AppBar: "Sửa địa điểm" + save
+  Form: all fields from PlaceEntity. Disabled fields (Google source) grey + lock icon.
+  Extra admin: "Google Place ID" field + "Tìm trên Google" button
+  "Xóa địa điểm" TextButton red at bottom
+
+SCREEN-62: AdminUsersScreen
+  File: lib/features/admin/presentation/screens/admin_users_screen.dart
+  AppBar: "Người dùng"
+  SearchBar + filter tabs [Tất cả | User | Editor | Admin | VIP]
+  ListView ListTile: avatar + name + email + role badge + join date
+
+SCREEN-63: AdminUserDetailScreen
+  File: lib/features/admin/presentation/screens/admin_user_detail_screen.dart
+  AppBar: user name + role badge
+  User info card
+  Stats Row
+  DropdownButton role selector
+  VIP toggle + date picker
+  "Khóa tài khoản" OutlinedButton red
+
+SCREEN-64: AdminTicketsScreen
+  File: lib/features/admin/presentation/screens/admin_tickets_screen.dart
+  AppBar: "Ticket hỗ trợ"
+  Priority tabs: [🔴 Khẩn | 🟡 Xử lý | ✅ Giải quyết]
+  Payment tickets pinned top with red.500 badge
+  SupportTicketTile + "Xử lý ngay" amber button
+
+SCREEN-65: AdminTicketDetailScreen
+  File: lib/features/admin/presentation/screens/admin_ticket_detail_screen.dart
+  Same as SCREEN-56 + admin controls:
+    AppTextField "Ghi chú nội bộ" olive border
+    DropdownButton status
+    AppTextField + "Gửi phản hồi" button
+    If payment: [ElevatedButton "Cấp VIP"] [OutlinedButton "Hoàn tiền"]
+
+SCREEN-66: AdminAnalyticsScreen
+  File: lib/features/admin/presentation/screens/admin_analytics_screen.dart
+  AppBar: "Thống kê"
+  SegmentedButton date range: [7 ngày | 30 ngày | 3 tháng]
+  Charts (fl_chart):
+    LineChart: trips per day, amber line
+    BarChart: top 10 places, olive bars
+    PieChart: category distribution
+  Stats cards Row below charts
+
+SCREEN-67: AdminSyncScreen
+  File: lib/features/admin/presentation/screens/admin_sync_screen.dart
+  AppBar: "Đồng bộ dữ liệu"
+  Sync section Card:
+    Text "Lần cuối: X ngày trước" sage.500
+    AppButton "Chạy đồng bộ ngay"
+    LinearProgressIndicator (when running)
+    Scrollable log Container sage.100 monospace font
+  Distances section Card:
+    Text info: "68 địa điểm · 4.556 cặp"
+    OutlinedButton "Tính lại khoảng cách"
+    Text "~$2.3 chi phí API" 12sp sage.500
+
+═══════════════════════════════════════
+GROUP 11: EDITOR PANEL (4 screens)
+═══════════════════════════════════════
+
+SCREEN-68: EditorDashboardScreen
+  File: lib/features/editor/presentation/screens/editor_dashboard_screen.dart
+  AppBar: "Editor Panel" + StatusBadge "Editor" olive
+  Stats Row 3 cards sage.100
+  "Báo cáo chờ xử lý" priority section: PlaceListTile + reason + "Xử lý →"
+  Quick nav buttons
+
+SCREEN-69: EditorPlacesScreen
+  File: lib/features/editor/presentation/screens/editor_places_screen.dart
+  AppBar: "Địa điểm" + add button
+  Filter tabs: [Tất cả | Thiếu tips | Thiếu giá | Có báo cáo]
+  PlaceListTile + edit trailing + red "!" badge if has report
+
+SCREEN-70: EditorEditPlaceScreen
+  File: lib/features/editor/presentation/screens/editor_edit_place_screen.dart
+  AppBar: "Chỉnh sửa" + "Lưu"
+  Form:
+    Disabled section (Google source): name, address, coordinates — grey + lock icon
+    Editable section: giá vé, thời gian, giờ mở cửa, tags, suitable_for,
+    tháng tốt nhất, thời điểm tốt nhất, tips (textarea 6 lines)
+
+SCREEN-71: AddNewPlaceScreen
+  File: lib/features/editor/presentation/screens/add_new_place_screen.dart
+  AppBar: "Thêm địa điểm mới"
+  Step 1: SearchBar "Tìm trên Google Places..." → results ListView
+    Each result: thumbnail + name + address + "Chọn" button
+  Step 2: form supplement fields (same as edit editable section)
+  AppButton "Lưu địa điểm mới"
+
+═══════════════════════════════════════
+GROUP 12: ERROR & EMPTY (4 screens)
+═══════════════════════════════════════
+
+SCREEN-72: NoInternetScreen
+  File: lib/shared/widgets/no_internet_screen.dart
+  Full-screen center Column:
+    SvgPicture 'disconnected.svg' 160px
+    Text "Không có kết nối" font.h2 Bold
+    Text "Kiểm tra lại kết nối..." sage.500
+    AppButton "Thử lại"
+    OutlinedButton "Xem lịch trình đã lưu" (Hive offline cache)
+
+SCREEN-73: GeneralErrorScreen
+  File: lib/shared/widgets/general_error_screen.dart
+  Center: SvgPicture 'broken_map.svg' 160px
+  Text "Có gì đó sai rồi!" font.h2 Bold
+  Text error detail + error code
+  AppButton "Thử lại"
+  TextButton "Báo lỗi" → NewTicketScreen
+
+SCREEN-74: SearchNoResultsScreen
+  File: lib/shared/widgets/search_no_results_screen.dart
+  Center: SvgPicture 'no_search.svg' 160px
+  Text "Không tìm thấy" font.h2 + query text amber Bold
+  Suggestion chips below
+  OutlinedButton "Xem tất cả địa điểm"
+
+SCREEN-75: LoginRequiredScreen
+  File: lib/shared/widgets/login_required_screen.dart
+  Center: SvgPicture 'locked_travel.svg' 160px
+  Text "Đăng nhập để tiếp tục" font.h2 Bold
+  Text feature description sage.500
+  AppButton "Đăng nhập"
+  OutlinedButton "Tạo tài khoản miễn phí"
+  TextButton "Tiếp tục xem (không lưu)" (if applicable)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WCAG 2.2 AA REQUIREMENTS (apply to ALL screens)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Color contrast minimums:
+  Dark text #2D3320 on #F7F7F5 → ratio 9.2:1 ✅ AAA
+  Dark text #2D3320 on #DDA92E → ratio 6.8:1 ✅ AA
+  White #FFFFFF on #A8B468    → ratio 3.2:1 ⚠ FAIL for normal text
+    → Fix: use #2D3320 on olive instead of white, or use #6B7240 (olive.600)
+  White #FFFFFF on #2D3320    → ratio 16:1 ✅ AAA
+  Sage #7A8A6E on #F7F7F5     → ratio 4.8:1 ✅ AA (secondary text OK)
+
+Touch targets: minimum 48×48px for ALL tappable elements (WCAG 2.5.5)
+  → AppButton height 52px ✅
+  → Star rating tappable area 48px ✅
+  → Heart save icon: minimum 48px InkWell target ✅
+  → Swipe-to-delete: additional keyboard/long-press alternative required
+
+Focus indicators: visible outline on all interactive elements (WCAG 2.4.7)
+  → focused border: olive.400 2px (input fields) ✅
+  → Flutter FocusNode + custom focusColor on all buttons
+
+Screen reader (WCAG 1.1.1):
+  → CachedNetworkImage always has semanticLabel
+  → CategoryIcon emojis wrapped in Semantics excludeSemantics:false, label: category name
+  → Decorative images: Semantics excludeSemantics:true
+  → Rating: Semantics label "Đánh giá 4.5 trên 5, 120 lượt đánh giá"
+  → Charts: semantic description in tooltip and accessible label
+
+Never rely on color alone (WCAG 1.4.1):
+  → StatusBadge: always text + color (not just dot)
+  → Selected state: checkmark icon + color change
+  → Error state: error icon + red border + error text
+
+Animation: respect system prefers-reduced-motion (WCAG 2.3.3)
+  → Wrap AnimatedContainer, AnimatedOpacity với:
+    if (MediaQuery.of(context).disableAnimations) { /* instant */ }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ASSETS & ILLUSTRATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+assets/illustrations/ (SVG, flat 2D style, brand colors only):
+  compass_3d.svg        → SCREEN-01 splash
+  map_tourist.svg       → SCREEN-02 onboarding slide 1
+  group_share.svg       → SCREEN-02 onboarding slide 2
+  ai_robot.svg          → SCREEN-02 onboarding slide 3, SCREEN-40 AI chat
+  email_key.svg         → SCREEN-05 forgot password
+  map_route_animated.svg → SCREEN-27 optimizing
+  travel_bag.svg        → EmptyState no_trips
+  heart_empty.svg       → EmptyState no_saved
+  magnify_empty.svg     → EmptyState no_results
+  wifi_off.svg          → SCREEN-72 no internet
+  star_empty.svg        → EmptyState no_reviews
+  support_agent.svg     → EmptyState no_tickets
+  broken_map.svg        → SCREEN-73 error
+  no_search.svg         → SCREEN-74 no results
+  locked_travel.svg     → SCREEN-75 login required
+  crown.svg             → SCREEN-50 VIP
+
+assets/fonts/
+  BeVietnamPro-Regular.ttf
+  BeVietnamPro-Medium.ttf
+  BeVietnamPro-SemiBold.ttf
+  BeVietnamPro-Bold.ttf
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TỔNG SỐ SCREENS: 75
+TỔNG SỐ COMPONENTS: 25 (8 Atoms + 12 Molecules + 5 Organisms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Đọc xong → /design-tokens trước (DTCG tier 1–3) → /design-component
+cho từng component theo thứ tự C-01 đến C-25 → /design-code flutter
+cho từng screen theo thứ tự SCREEN-01 đến SCREEN-75.
+Sau mỗi 5 screens: /a11y-audit trước khi tiếp tục.
