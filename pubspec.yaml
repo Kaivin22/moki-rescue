@@ -41,6 +41,8 @@ dependencies:
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1
   apple_maps_flutter: ^1.4.0
+  flutter_map: ^7.0.2          # Bản đồ cross-platform cho Android
+  latlong2: ^0.9.1             # LatLng type cho flutter_map
   supabase_flutter: ^2.8.4
   flutter_dotenv: ^5.2.1
   # State & Navigation
