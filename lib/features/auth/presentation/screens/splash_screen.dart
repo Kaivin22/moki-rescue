@@ -64,10 +64,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Lắng nghe authNotifierProvider — navigate khi state không còn là AuthInitial
-    ref.listen<AuthState>(authNotifierProvider, (prev, next) {
+    // ref.watch theo dõi authState — rebuild mỗi khi state thay đổi
+    final authState = ref.watch(authNotifierProvider);
+
+    // Navigate sau frame hiện tại — tránh gọi context.go trong build()
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      switch (next) {
+      switch (authState) {
         case AuthAuthenticated():
           context.go(AppRoutes.home);
         case AuthUnauthenticated():
