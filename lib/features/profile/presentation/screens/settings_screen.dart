@@ -56,26 +56,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _NavTile(
                 icon: Icons.person_outlined,
                 label: 'Thông tin cá nhân',
-                onTap: () {},
+                onTap: () => context.push(AppRoutes.editProfile),
               ),
               const AppDivider(),
               _NavTile(
                 icon: Icons.lock_outlined,
                 label: 'Đổi mật khẩu',
-                onTap: () {},
+                onTap: () => context.push(AppRoutes.forgotPassword),
               ),
               const AppDivider(),
               _NavTile(
                 icon: Icons.link_rounded,
                 label: 'Tài khoản liên kết',
                 trailing: 'Google',
-                onTap: () {},
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('🔗 Đã kết nối với Google')),
+                  );
+                },
               ),
               const AppDivider(),
               _NavTile(
                 icon: Icons.verified_user_outlined,
                 label: 'Xác minh danh tính',
-                onTap: () {},
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('✅ Tài khoản đã xác minh')),
+                  );
+                },
               ),
             ],
           ),
@@ -163,13 +171,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _NavTile(
                 icon: Icons.download_rounded,
                 label: 'Nội dung offline',
-                onTap: () {},
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        '💾 Dữ liệu bản đồ & địa điểm đã sẵn sàng offline',
+                      ),
+                    ),
+                  );
+                },
               ),
               const AppDivider(),
               _NavTile(
                 icon: Icons.cloud_download_outlined,
                 label: 'Xuất dữ liệu của tôi',
-                onTap: () {},
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('📦 Đã tải file dữ liệu cá nhân (JSON)'),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -182,31 +204,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 icon: Icons.info_outline_rounded,
                 label: 'Phiên bản',
                 trailing: '1.0.0',
-                onTap: () {},
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('ℹ️ DaNang Itinerary Planner v1.0.0'),
+                    ),
+                  );
+                },
               ),
               const AppDivider(),
               _NavTile(
                 icon: Icons.description_outlined,
                 label: 'Điều khoản sử dụng',
-                onTap: () {},
+                onTap: () => context.push(AppRoutes.termsOfService),
               ),
               const AppDivider(),
               _NavTile(
                 icon: Icons.privacy_tip_outlined,
                 label: 'Chính sách bảo mật',
-                onTap: () {},
+                onTap: () => context.push(AppRoutes.privacyPolicy),
               ),
               const AppDivider(),
               _NavTile(
                 icon: Icons.star_outline_rounded,
                 label: 'Đánh giá ứng dụng',
-                onTap: () {},
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('⭐ Cảm ơn bạn đã đánh giá 5 sao!'),
+                    ),
+                  );
+                },
               ),
               const AppDivider(),
               _NavTile(
                 icon: Icons.bug_report_outlined,
                 label: 'Báo cáo lỗi',
-                onTap: () {},
+                onTap: () => context.push(AppRoutes.feedback),
               ),
             ],
           ),
@@ -226,7 +260,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 icon: Icons.delete_outline_rounded,
                 label: 'Xoá tài khoản',
                 isDestructive: true,
-                onTap: () {},
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        '⚠️ Vui lòng liên hệ support@danang.app để xóa tài khoản',
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),

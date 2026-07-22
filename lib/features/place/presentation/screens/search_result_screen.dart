@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/tokens/app_colors.dart';
 import '../../../../core/theme/tokens/app_typography.dart';
@@ -7,6 +8,7 @@ import '../../../../shared/widgets/molecules/place_list_tile.dart';
 import '../../../../shared/widgets/molecules/loading_shimmer.dart';
 import '../../../../shared/widgets/molecules/empty_state.dart';
 import '../../../../shared/widgets/organisms/category_filter_row.dart';
+import '../widgets/sort_bottom_sheet.dart';
 
 /// ═══════════════════════════════════════════════════════
 /// SCREEN-14: SearchResultScreen
@@ -71,7 +73,10 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
   }
 
   void _showSortSheet() {
-    // TODO: showModalBottomSheet → SortBottomSheet
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => const SortBottomSheet(),
+    );
   }
 
   @override
@@ -224,7 +229,7 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
                         imageUrl: p.imageUrl,
                         distance: p.distance,
                         isSaved: p.isSaved,
-                        onTap: () {},
+                        onTap: () => context.push('/place/${p.name}'),
                         onSave: () {},
                       );
                     },

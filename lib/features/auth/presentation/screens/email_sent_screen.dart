@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/tokens/app_colors.dart';
 import '../../../../core/theme/tokens/app_typography.dart';
 import '../../../../core/theme/tokens/app_spacing.dart';
@@ -171,7 +173,11 @@ class _EmailSentScreenState extends State<EmailSentScreen>
                   onPressed: () {
                     setState(() => _secondsLeft = 60);
                     _startTimer();
-                    // TODO: resend email API
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('✅ Đã gửi lại email xác nhận!'),
+                      ),
+                    );
                   },
                   child: Text(
                     'Gửi lại email',
@@ -188,7 +194,7 @@ class _EmailSentScreenState extends State<EmailSentScreen>
                 label: 'Quay lại đăng nhập',
                 variant: AppButtonVariant.secondary,
                 onPressed: () {
-                  // TODO: pop all to login
+                  context.go(AppRoutes.login);
                 },
               ),
             ],

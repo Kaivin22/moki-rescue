@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/tokens/app_colors.dart';
 import '../../../../core/theme/tokens/app_typography.dart';
@@ -229,7 +230,9 @@ class _UserPublicProfileScreenState extends State<UserPublicProfileScreen>
                                 title: it.title,
                                 imageUrl: it.imageUrl,
                                 numDays: it.numDays,
-                                onTap: () {},
+                                onTap: () => context.push(
+                                  '/itinerary/${it.id}?title=${Uri.encodeComponent(it.title)}',
+                                ),
                               );
                             },
                           ),

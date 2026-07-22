@@ -56,8 +56,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isSubmitted)
+    if (_isSubmitted) {
       return _SuccessView(onDone: () => Navigator.maybePop(context));
+    }
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,

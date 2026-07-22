@@ -17,8 +17,9 @@ abstract final class AppValidator {
 
   /// Email hợp lệ
   static String? email(String? value) {
-    if (value == null || value.trim().isEmpty)
+    if (value == null || value.trim().isEmpty) {
       return 'Email không được để trống.';
+    }
     final regex = RegExp(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$');
     if (!regex.hasMatch(value.trim())) return 'Email không hợp lệ.';
     return null;
@@ -37,11 +38,13 @@ abstract final class AppValidator {
 
   /// Tên hiển thị: 2–50 ký tự
   static String? displayName(String? value) {
-    if (value == null || value.trim().isEmpty)
+    if (value == null || value.trim().isEmpty) {
       return 'Tên hiển thị không được để trống.';
+    }
     if (value.trim().length < 2) return 'Tên hiển thị phải có ít nhất 2 ký tự.';
-    if (value.trim().length > 50)
+    if (value.trim().length > 50) {
       return 'Tên hiển thị không được vượt quá 50 ký tự.';
+    }
     return null;
   }
 

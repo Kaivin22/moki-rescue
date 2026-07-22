@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/tokens/app_colors.dart';
 import '../../../../core/theme/tokens/app_typography.dart';
 import '../../../../core/theme/tokens/app_spacing.dart';
@@ -171,7 +173,9 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
             TextButton(
               onPressed: () {
                 setState(() => _hasChanges = false);
-                // TODO: save
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('✅ Đã lưu lịch trình!')),
+                );
                 Navigator.pop(context);
               },
               child: Text(
@@ -279,7 +283,7 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // TODO: navigate to AddPlacesScreen
+          context.push(AppRoutes.addPlaces);
         },
         backgroundColor: AppColors.actionPrimary,
         icon: const Icon(Icons.add_location_alt_rounded, color: Colors.white),

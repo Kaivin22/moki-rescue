@@ -48,7 +48,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             title: _GreetingRow(
               userName: profile?.displayName ?? 'Du khách',
               avatarUrl: profile?.avatarUrl,
-              onNotificationTap: () {},
+              onNotificationTap: () => context.push('/notification/system'),
             ),
           ),
 
@@ -73,7 +73,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: _OnboardingPromptCard(
                 onDismiss: () => setState(() => _showOnboardingCard = false),
                 onAction: () {
-                  // TODO: navigate to TravelPreferencesScreen
+                  context.push(AppRoutes.travelPreferences);
                 },
               ),
             ),
@@ -283,7 +283,18 @@ class _QuickActionsRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: _actions.map((a) {
           return GestureDetector(
-            onTap: () {},
+            onTap: () {
+              switch (a.label) {
+                case 'Lập lịch':
+                  context.push(AppRoutes.createItinerary);
+                case 'Bản đồ':
+                  context.push(AppRoutes.map);
+                case 'Hỏi AI':
+                  context.push(AppRoutes.aiChat);
+                case 'VIP':
+                  context.push(AppRoutes.vip);
+              }
+            },
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

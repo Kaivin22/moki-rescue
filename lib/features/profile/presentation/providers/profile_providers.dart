@@ -83,8 +83,9 @@ class EditProfileNotifier extends StateNotifier<EditProfileState> {
     if (phone != null) updates['phone'] = phone;
     if (travelStyle != null) updates['travel_style'] = travelStyle;
     if (vipStatus != null) updates['vip_status'] = vipStatus;
-    if (preferredTransport != null)
+    if (preferredTransport != null) {
       updates['preferred_transport'] = preferredTransport;
+    }
     if (travelWith != null) updates['travel_with'] = travelWith;
     if (homeCity != null) updates['home_city'] = homeCity;
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/tokens/app_colors.dart';
@@ -85,7 +86,7 @@ class ProfileScreen extends ConsumerWidget {
                     size: 20,
                   ),
                 ),
-                onPressed: () {},
+                onPressed: () => Share.share('https://danang.app/user/profile'),
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
@@ -259,18 +260,24 @@ class ProfileScreen extends ConsumerWidget {
                   _SettingsTile(
                     icon: Icons.notifications_outlined,
                     label: 'Thông báo',
-                    onTap: () {},
+                    onTap: () => context.push('/notification/system'),
                   ),
                   _SettingsTile(
                     icon: Icons.lock_outlined,
                     label: 'Quyền riêng tư',
-                    onTap: () {},
+                    onTap: () => context.push(AppRoutes.privacyPolicy),
                   ),
                   _SettingsTile(
                     icon: Icons.language_rounded,
                     label: 'Ngôn ngữ',
                     trailing: 'Tiếng Việt',
-                    onTap: () {},
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('🌐 Đang sử dụng Tiếng Việt'),
+                        ),
+                      );
+                    },
                   ),
                   _SettingsTile(
                     icon: Icons.help_outline_rounded,

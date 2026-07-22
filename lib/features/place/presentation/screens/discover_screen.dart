@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/tokens/app_colors.dart';
-
 import '../../../../core/theme/tokens/app_spacing.dart';
+import '../../../../shared/widgets/molecules/empty_state.dart';
+import '../../../../shared/widgets/molecules/loading_shimmer.dart';
 import '../../../../shared/widgets/molecules/place_list_tile.dart';
 import '../../../../shared/widgets/molecules/section_header.dart';
-import '../../../../shared/widgets/molecules/loading_shimmer.dart';
-import '../../../../shared/widgets/molecules/empty_state.dart';
-import '../../../../shared/widgets/organisms/search_bar_widget.dart';
 import '../../../../shared/widgets/organisms/category_filter_row.dart';
+import '../../../../shared/widgets/organisms/search_bar_widget.dart';
+import '../widgets/filter_bottom_sheet.dart';
 
 /// ═══════════════════════════════════════════════════════
 /// SCREEN-13: DiscoverScreen
@@ -117,7 +118,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 autofocus: false,
                 onChanged: (_) => setState(() {}),
                 onFilterTap: () {
-                  // TODO: show FilterBottomSheet
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (_) => const FilterBottomSheet(),
+                  );
                 },
               ),
             ),
@@ -192,7 +197,7 @@ class _SearchResultList extends StatelessWidget {
           rating: p.rating,
           imageUrl: p.imageUrl,
           distance: p.distance,
-          onTap: () {},
+          onTap: () => context.push('/place/${p.name}'),
           onSave: () {},
         );
       },

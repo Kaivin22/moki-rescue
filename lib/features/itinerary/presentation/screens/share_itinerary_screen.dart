@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/theme/tokens/app_colors.dart';
 import '../../../../core/theme/tokens/app_typography.dart';
@@ -189,11 +190,31 @@ class _ShareItineraryScreenState extends State<ShareItineraryScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _ShareOption(emoji: '💬', label: 'Zalo', onTap: () {}),
-                _ShareOption(emoji: '📘', label: 'Facebook', onTap: () {}),
-                _ShareOption(emoji: '📸', label: 'Instagram', onTap: () {}),
-                _ShareOption(emoji: '📨', label: 'Tin nhắn', onTap: () {}),
-                _ShareOption(emoji: '⋯', label: 'Thêm', onTap: () {}),
+                _ShareOption(
+                  emoji: '💬',
+                  label: 'Zalo',
+                  onTap: () => Share.share(_shareLink),
+                ),
+                _ShareOption(
+                  emoji: '📘',
+                  label: 'Facebook',
+                  onTap: () => Share.share(_shareLink),
+                ),
+                _ShareOption(
+                  emoji: '📸',
+                  label: 'Instagram',
+                  onTap: () => Share.share(_shareLink),
+                ),
+                _ShareOption(
+                  emoji: '📨',
+                  label: 'Tin nhắn',
+                  onTap: () => Share.share(_shareLink),
+                ),
+                _ShareOption(
+                  emoji: '⋯',
+                  label: 'Thêm',
+                  onTap: () => Share.share(_shareLink),
+                ),
               ],
             ),
 
@@ -267,7 +288,10 @@ class _ShareItineraryScreenState extends State<ShareItineraryScreen>
             ),
 
             const SizedBox(height: AppSpacing.layoutMd),
-            AppButton(label: '🔗 Chia sẻ link', onPressed: () {}),
+            AppButton(
+              label: '🔗 Chia sẻ link',
+              onPressed: () => Share.share(_shareLink),
+            ),
             const SizedBox(height: AppSpacing.layoutXl),
           ],
         ),

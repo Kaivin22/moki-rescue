@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/theme/tokens/app_colors.dart';
 import '../../../../core/theme/tokens/app_typography.dart';
@@ -104,7 +105,11 @@ class _PlacePhotosScreenState extends State<PlacePhotosScreen>
                       color: Colors.white,
                     ),
                     onPressed: () {
-                      // TODO: pick photo from gallery
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('📸 Chọn ảnh từ thư viện để tải lên!'),
+                        ),
+                      );
                     },
                     tooltip: 'Thêm ảnh',
                   ),
@@ -318,7 +323,7 @@ class _FullscreenViewerState extends State<_FullscreenViewer> {
                         Icons.share_outlined,
                         color: Colors.white,
                       ),
-                      onPressed: () {},
+                      onPressed: () => Share.share(photo.url),
                     ),
                   ],
                 ),

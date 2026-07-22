@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/tokens/app_colors.dart';
 import '../../../../core/theme/tokens/app_typography.dart';
 import '../../../../core/theme/tokens/app_spacing.dart';
@@ -191,7 +193,10 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                             ),
                             backgroundColor: AppColors.backgroundSecondary,
                             side: BorderSide(color: AppColors.borderDefault),
-                            onPressed: () {},
+                            onPressed: () {
+                              _searchController.text = c.label;
+                              setState(() {});
+                            },
                           ),
                         )
                         .toList(),
@@ -311,12 +316,15 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.layoutSm),
-                  AppButton(label: '💬 Chat với hỗ trợ', onPressed: () {}),
+                  AppButton(
+                    label: '💬 Chat với hỗ trợ',
+                    onPressed: () => context.push(AppRoutes.newTicket),
+                  ),
                   const SizedBox(height: AppSpacing.space3),
                   AppButton(
                     label: '📧 Gửi email hỗ trợ',
                     variant: AppButtonVariant.secondary,
-                    onPressed: () {},
+                    onPressed: () => context.push(AppRoutes.feedback),
                   ),
                   const SizedBox(height: AppSpacing.layoutXl),
                 ],

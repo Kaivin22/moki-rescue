@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/tokens/app_colors.dart';
 import '../../../../core/theme/tokens/app_typography.dart';
 import '../../../../core/theme/tokens/app_spacing.dart';
@@ -74,9 +76,7 @@ class HomeScreenAnonymous extends StatelessWidget {
                   ),
                 ),
                 TextButton(
-                  onPressed: () {
-                    // TODO: navigate to LoginScreen
-                  },
+                  onPressed: () => context.push(AppRoutes.login),
                   style: TextButton.styleFrom(
                     backgroundColor: AppColors.actionPrimary,
                     foregroundColor: AppColors.textOnPrimary,
@@ -108,7 +108,7 @@ class HomeScreenAnonymous extends StatelessWidget {
               child: SearchBarWidget(
                 hint: 'Tìm kiếm địa điểm...',
                 readOnly: true,
-                onTap: () {},
+                onTap: () => context.push(AppRoutes.discover),
               ),
             ),
           ),
@@ -121,9 +121,7 @@ class HomeScreenAnonymous extends StatelessWidget {
                 vertical: AppSpacing.space2,
               ),
               child: _LoginPromptBanner(
-                onLogin: () {
-                  // TODO: navigate to LoginScreen
-                },
+                onLogin: () => context.push(AppRoutes.login),
               ),
             ),
           ),
@@ -139,7 +137,7 @@ class HomeScreenAnonymous extends StatelessWidget {
               ),
               child: SectionHeader(
                 title: 'Địa điểm phổ biến',
-                onViewAll: () {},
+                onViewAll: () => context.push(AppRoutes.discover),
               ),
             ),
           ),
@@ -165,7 +163,7 @@ class HomeScreenAnonymous extends StatelessWidget {
                     rating: p.rating,
                     durationMin: p.duration,
                     entryFee: p.fee,
-                    onTap: () {},
+                    onTap: () => context.push(AppRoutes.discover),
                   );
                 },
               ),

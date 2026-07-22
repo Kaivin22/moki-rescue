@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/tokens/app_colors.dart';
 import '../../../../core/theme/tokens/app_typography.dart';
 import '../../../../core/theme/tokens/app_spacing.dart';
@@ -193,7 +195,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             AppButton(
               label: 'Bắt đầu khám phá →',
               onPressed: () {
-                // TODO: save profile + navigate to HomeScreen
+                context.go(AppRoutes.home);
               },
             ),
 
@@ -203,7 +205,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               label: 'Bỏ qua, làm sau',
               variant: AppButtonVariant.text,
               onPressed: () {
-                // TODO: navigate to HomeScreen without saving
+                context.go(AppRoutes.home);
               },
             ),
           ],

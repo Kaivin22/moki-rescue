@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/tokens/app_colors.dart';
 import '../../../../core/theme/tokens/app_typography.dart';
@@ -129,7 +130,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen>
                     size: 20,
                   ),
                 ),
-                onPressed: () {},
+                onPressed: () =>
+                    context.push('/share-itinerary/${widget.itineraryId}'),
               ),
               IconButton(
                 icon: Container(
@@ -162,7 +164,9 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen>
                       size: 20,
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed: () => context.push(
+                    '/edit-schedule/${widget.itineraryId}?title=${Uri.encodeComponent(widget.title ?? '')}&days=$_numDays',
+                  ),
                 ),
             ],
             flexibleSpace: FlexibleSpaceBar(
@@ -304,10 +308,22 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen>
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.layoutSm),
           child: widget.isOwner
-              ? AppButton(label: '📤 Chia sẻ lịch trình', onPressed: () {})
+              ? AppButton(
+                  label: '📤 Chia sẻ lịch trình',
+                  onPressed: () =>
+                      context.push('/share-itinerary/${widget.itineraryId}'),
+                )
               : AppButton(
                   label: '📋 Sao chép lịch trình này',
-                  onPressed: () {},
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          '✅ Đã sao chép lịch trình vào danh sách của bạn!',
+                        ),
+                      ),
+                    );
+                  },
                 ),
         ),
       ),

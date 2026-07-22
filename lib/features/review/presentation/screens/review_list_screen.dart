@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/tokens/app_colors.dart';
 import '../../../../core/theme/tokens/app_typography.dart';
 import '../../../../core/theme/tokens/app_spacing.dart';
@@ -191,7 +193,7 @@ class _ReviewListScreenState extends ConsumerState<ReviewListScreen> {
               label: '✏ Viết đánh giá',
               variant: AppButtonVariant.secondary,
               onPressed: () {
-                // TODO: navigate to WriteReviewScreen
+                context.push('/write-review/${widget.placeId}');
               },
             ),
           ],
