@@ -31,8 +31,10 @@ class _VipScreenState extends ConsumerState<VipScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('VIP Premium',
-            style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'VIP Premium',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
       ),
@@ -59,19 +61,23 @@ class _VipScreenState extends ConsumerState<VipScreen> {
                   Text(
                     isVip ? 'Bạn đang là VIP!' : 'Nâng cấp lên VIP',
                     style: AppTextStyles.h3.copyWith(
-                        color: Colors.white, fontWeight: FontWeight.w800),
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   if (isVip && profile?.vipGrantedUntil != null)
                     Text(
                       'Hết hạn: ${_formatDate(profile!.vipGrantedUntil!)}',
-                      style: AppTextStyles.bodyMd
-                          .copyWith(color: Colors.white70),
+                      style: AppTextStyles.bodyMd.copyWith(
+                        color: Colors.white70,
+                      ),
                     ),
                   if (!isVip)
                     Text(
                       'Mở khóa toàn bộ tính năng cao cấp',
-                      style: AppTextStyles.bodyMd
-                          .copyWith(color: Colors.white70),
+                      style: AppTextStyles.bodyMd.copyWith(
+                        color: Colors.white70,
+                      ),
                     ),
                 ],
               ),
@@ -90,23 +96,23 @@ class _VipScreenState extends ConsumerState<VipScreen> {
               // ── Plan selector ──
               _SectionTitle('Chọn gói'),
               const SizedBox(height: AppSpacing.space3),
-              ...VipPlan.plans.map((plan) => Padding(
-                    padding:
-                        const EdgeInsets.only(bottom: AppSpacing.space2),
-                    child: _PlanCard(
-                      plan: plan,
-                      isSelected: _selectedPlan.id == plan.id,
-                      onTap: () => setState(() => _selectedPlan = plan),
-                    ),
-                  )),
+              ...VipPlan.plans.map(
+                (plan) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.space2),
+                  child: _PlanCard(
+                    plan: plan,
+                    isSelected: _selectedPlan.id == plan.id,
+                    onTap: () => setState(() => _selectedPlan = plan),
+                  ),
+                ),
+              ),
 
               const SizedBox(height: AppSpacing.layoutMd),
 
               AppButton(
                 label: 'Nâng cấp — ${_selectedPlan.priceFormatted}',
                 onPressed: () {
-                  ref.read(selectedPlanProvider.notifier).state =
-                      _selectedPlan;
+                  ref.read(selectedPlanProvider.notifier).state = _selectedPlan;
                   context.push(AppRoutes.payment);
                 },
               ),
@@ -128,10 +134,8 @@ class _SectionTitle extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Text(
-        text,
-        style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
-      );
+  Widget build(BuildContext context) =>
+      Text(text, style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700));
 }
 
 class _FeatureTable extends StatelessWidget {
@@ -147,85 +151,97 @@ class _FeatureTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.borderDefault),
-          borderRadius: AppRadius.cardBorder,
-        ),
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.space4, vertical: AppSpacing.space3),
-              decoration: BoxDecoration(
-                color: AppColors.backgroundSecondary,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Expanded(child: SizedBox()),
-                  SizedBox(
-                    width: 80,
-                    child: Text('Free',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.bodySm
-                            .copyWith(fontWeight: FontWeight.w600)),
-                  ),
-                  SizedBox(
-                    width: 80,
-                    child: Text('VIP',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.bodySm.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFFFFA500))),
-                  ),
-                ],
-              ),
+    decoration: BoxDecoration(
+      border: Border.all(color: AppColors.borderDefault),
+      borderRadius: AppRadius.cardBorder,
+    ),
+    child: Column(
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space4,
+            vertical: AppSpacing.space3,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.backgroundSecondary,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(12),
+              topRight: Radius.circular(12),
             ),
-            // Rows
-            ..._rows.asMap().entries.map((entry) {
-              final isLast = entry.key == _rows.length - 1;
-              final row = entry.value;
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space4,
-                    vertical: AppSpacing.space3),
-                decoration: BoxDecoration(
-                  border: isLast
-                      ? null
-                      : Border(
-                          bottom: BorderSide(color: AppColors.borderDefault)),
+          ),
+          child: Row(
+            children: [
+              const Expanded(child: SizedBox()),
+              SizedBox(
+                width: 80,
+                child: Text(
+                  'Free',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodySm.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                        child: Text(row.$1,
-                            style: AppTextStyles.bodyMd)),
-                    SizedBox(
-                      width: 80,
-                      child: Text(row.$2,
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.bodyMd
-                              .copyWith(color: AppColors.textSecondary)),
-                    ),
-                    SizedBox(
-                      width: 80,
-                      child: Text(row.$3,
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.bodyMd.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.statusSuccess)),
-                    ),
-                  ],
+              ),
+              SizedBox(
+                width: 80,
+                child: Text(
+                  'VIP',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodySm.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFFFA500),
+                  ),
                 ),
-              );
-            }),
-          ],
+              ),
+            ],
+          ),
         ),
-      );
+        // Rows
+        ..._rows.asMap().entries.map((entry) {
+          final isLast = entry.key == _rows.length - 1;
+          final row = entry.value;
+          return Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space4,
+              vertical: AppSpacing.space3,
+            ),
+            decoration: BoxDecoration(
+              border: isLast
+                  ? null
+                  : Border(bottom: BorderSide(color: AppColors.borderDefault)),
+            ),
+            child: Row(
+              children: [
+                Expanded(child: Text(row.$1, style: AppTextStyles.bodyMd)),
+                SizedBox(
+                  width: 80,
+                  child: Text(
+                    row.$2,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.bodyMd.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 80,
+                  child: Text(
+                    row.$3,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.bodyMd.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.statusSuccess,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    ),
+  );
 }
 
 class _PlanCard extends StatelessWidget {
@@ -241,67 +257,70 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.all(AppSpacing.space4),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? const Color(0xFFFFF8E1)
-                : AppColors.backgroundCard,
-            borderRadius: AppRadius.cardBorder,
-            border: Border.all(
-              color: isSelected
-                  ? const Color(0xFFFFA500)
-                  : AppColors.borderDefault,
-              width: isSelected ? 2 : 1,
+    onTap: onTap,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      padding: const EdgeInsets.all(AppSpacing.space4),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFFFFF8E1) : AppColors.backgroundCard,
+        borderRadius: AppRadius.cardBorder,
+        border: Border.all(
+          color: isSelected ? const Color(0xFFFFA500) : AppColors.borderDefault,
+          width: isSelected ? 2 : 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected
+                    ? const Color(0xFFFFA500)
+                    : AppColors.borderDefault,
+                width: 2,
+              ),
             ),
+            child: isSelected
+                ? const Center(
+                    child: CircleAvatar(
+                      radius: 5,
+                      backgroundColor: Color(0xFFFFA500),
+                    ),
+                  )
+                : null,
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected
-                        ? const Color(0xFFFFA500)
-                        : AppColors.borderDefault,
-                    width: 2,
+          const SizedBox(width: AppSpacing.space3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  plan.name,
+                  style: AppTextStyles.bodyMd.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                child: isSelected
-                    ? const Center(
-                        child: CircleAvatar(
-                          radius: 5,
-                          backgroundColor: Color(0xFFFFA500),
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: AppSpacing.space3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(plan.name,
-                        style: AppTextStyles.bodyMd
-                            .copyWith(fontWeight: FontWeight.w700)),
-                    Text(plan.durationLabel,
-                        style: AppTextStyles.caption
-                            .copyWith(color: AppColors.textSecondary)),
-                  ],
+                Text(
+                  plan.durationLabel,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
-              Text(
-                plan.priceFormatted,
-                style: AppTextStyles.h4.copyWith(
-                    color: const Color(0xFFFFA500),
-                    fontWeight: FontWeight.w800),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
+          Text(
+            plan.priceFormatted,
+            style: AppTextStyles.h4.copyWith(
+              color: const Color(0xFFFFA500),
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }

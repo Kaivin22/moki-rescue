@@ -23,14 +23,12 @@ class CreateItineraryScreen extends ConsumerStatefulWidget {
       _CreateItineraryScreenState();
 }
 
-class _CreateItineraryScreenState
-    extends ConsumerState<CreateItineraryScreen> {
+class _CreateItineraryScreenState extends ConsumerState<CreateItineraryScreen> {
   final _nameController = TextEditingController();
   DateTimeRange? _dateRange;
   String? _companion;
   String? _budget;
   String _visibility = 'private';
-
 
   static const _companions = [
     ('🧑', 'Một mình'),
@@ -79,7 +77,9 @@ class _CreateItineraryScreenState
 
   Future<void> _onCreate() async {
     if (!_canProceed) return;
-    await ref.read(createItineraryProvider.notifier).create(
+    await ref
+        .read(createItineraryProvider.notifier)
+        .create(
           title: _nameController.text.trim(),
           startDate: _dateRange!.start,
           endDate: _dateRange!.end,
@@ -87,8 +87,8 @@ class _CreateItineraryScreenState
           budgetTier: _budget == 'Tiết kiệm'
               ? 'budget'
               : _budget == 'Cao cấp'
-                  ? 'luxury'
-                  : 'mid',
+              ? 'luxury'
+              : 'mid',
           visibility: _visibility,
         );
   }
@@ -165,14 +165,19 @@ class _CreateItineraryScreenState
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: AppRadius.inputBorder,
-                  borderSide: BorderSide(color: AppColors.borderFocus, width: 1.5),
+                  borderSide: BorderSide(
+                    color: AppColors.borderFocus,
+                    width: 1.5,
+                  ),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.space4,
                   vertical: AppSpacing.space3,
                 ),
               ),
-              style: AppTextStyles.bodyMd.copyWith(color: AppColors.textPrimary),
+              style: AppTextStyles.bodyMd.copyWith(
+                color: AppColors.textPrimary,
+              ),
             ),
 
             const SizedBox(height: AppSpacing.layoutSm),
@@ -242,7 +247,9 @@ class _CreateItineraryScreenState
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
                       margin: const EdgeInsets.only(right: AppSpacing.space2),
-                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space3),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.space3,
+                      ),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? AppColors.actionPrimary.withValues(alpha: 0.1)
@@ -365,8 +372,7 @@ class _CreateItineraryScreenState
           ),
           child: AppButton(
             label: 'Tiếp tục →',
-            onPressed:
-                (_canProceed && !isLoading) ? _onCreate : null,
+            onPressed: (_canProceed && !isLoading) ? _onCreate : null,
             isLoading: isLoading,
           ),
         ),
@@ -398,7 +404,9 @@ class _StepIndicator extends StatelessWidget {
                 height: 4,
                 margin: EdgeInsets.only(right: i < totalSteps - 1 ? 4 : 0),
                 decoration: BoxDecoration(
-                  color: isActive ? AppColors.actionPrimary : SagePalette.sage200,
+                  color: isActive
+                      ? AppColors.actionPrimary
+                      : SagePalette.sage200,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -416,12 +424,12 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        text,
-        style: AppTextStyles.h4.copyWith(
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-      );
+    text,
+    style: AppTextStyles.h4.copyWith(
+      fontWeight: FontWeight.w600,
+      color: AppColors.textPrimary,
+    ),
+  );
 }
 
 class _VisibilitySelector extends StatelessWidget {
@@ -430,66 +438,88 @@ class _VisibilitySelector extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   static const _options = [
-    (value: 'private', icon: Icons.lock_rounded, label: 'Riêng tư', sub: 'Chỉ bạn thấy'),
-    (value: 'friends', icon: Icons.people_rounded, label: 'Bạn bè', sub: 'Chia sẻ với người theo dõi'),
-    (value: 'public', icon: Icons.public_rounded, label: 'Công khai', sub: 'Mọi người đều thấy'),
+    (
+      value: 'private',
+      icon: Icons.lock_rounded,
+      label: 'Riêng tư',
+      sub: 'Chỉ bạn thấy',
+    ),
+    (
+      value: 'friends',
+      icon: Icons.people_rounded,
+      label: 'Bạn bè',
+      sub: 'Chia sẻ với người theo dõi',
+    ),
+    (
+      value: 'public',
+      icon: Icons.public_rounded,
+      label: 'Công khai',
+      sub: 'Mọi người đều thấy',
+    ),
   ];
 
   @override
   Widget build(BuildContext context) => Column(
-        children: _options.map((opt) {
-          final isSelected = value == opt.value;
-          return GestureDetector(
-            onTap: () => onChanged(opt.value),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              margin: const EdgeInsets.only(bottom: AppSpacing.space2),
-              padding: const EdgeInsets.all(AppSpacing.space4),
-              decoration: BoxDecoration(
+    children: _options.map((opt) {
+      final isSelected = value == opt.value;
+      return GestureDetector(
+        onTap: () => onChanged(opt.value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          margin: const EdgeInsets.only(bottom: AppSpacing.space2),
+          padding: const EdgeInsets.all(AppSpacing.space4),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.actionPrimary.withValues(alpha: 0.08)
+                : AppColors.backgroundSecondary,
+            borderRadius: AppRadius.cardBorder,
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.actionPrimary
+                  : AppColors.borderDefault,
+              width: isSelected ? 1.5 : 1.0,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                opt.icon,
                 color: isSelected
-                    ? AppColors.actionPrimary.withValues(alpha: 0.08)
-                    : AppColors.backgroundSecondary,
-                borderRadius: AppRadius.cardBorder,
-                border: Border.all(
-                  color: isSelected ? AppColors.actionPrimary : AppColors.borderDefault,
-                  width: isSelected ? 1.5 : 1.0,
+                    ? AppColors.actionPrimary
+                    : AppColors.textSecondary,
+                size: 22,
+              ),
+              const SizedBox(width: AppSpacing.space3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      opt.label,
+                      style: AppTextStyles.bodyMd.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      opt.sub,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    opt.icon,
-                    color: isSelected ? AppColors.actionPrimary : AppColors.textSecondary,
-                    size: 22,
-                  ),
-                  const SizedBox(width: AppSpacing.space3),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          opt.label,
-                          style: AppTextStyles.bodyMd.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        Text(
-                          opt.sub,
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (isSelected)
-                    Icon(Icons.check_circle_rounded,
-                        color: AppColors.actionPrimary, size: 20),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
+              if (isSelected)
+                Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.actionPrimary,
+                  size: 20,
+                ),
+            ],
+          ),
+        ),
       );
+    }).toList(),
+  );
 }

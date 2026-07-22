@@ -55,5 +55,6 @@ abstract final class SupabaseService {
   }
 
   /// Stream theo dõi thay đổi trạng thái xác thực (login / logout).
-  static Stream<AuthState> get authStateChanges => client.auth.onAuthStateChange;
+  static Stream<AuthState> get authStateChanges =>
+      client.auth.onAuthStateChange;
 }

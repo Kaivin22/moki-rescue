@@ -86,9 +86,8 @@ class PlaceCard extends StatelessWidget {
                   CachedNetworkImage(
                     imageUrl: imageUrl,
                     fit: BoxFit.cover,
-                    placeholder: (_, _) => Container(
-                      color: SagePalette.sage200,
-                    ),
+                    placeholder: (_, _) =>
+                        Container(color: SagePalette.sage200),
                     errorWidget: (_, _, _) => Container(
                       color: SagePalette.sage200,
                       child: const Icon(
@@ -108,7 +107,9 @@ class PlaceCard extends StatelessWidget {
                         vertical: AppSpacing.space1,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.backgroundOliveTint.withValues(alpha: 0.9),
+                        color: AppColors.backgroundOliveTint.withValues(
+                          alpha: 0.9,
+                        ),
                         borderRadius: AppRadius.chipBorder,
                       ),
                       child: Row(
@@ -142,7 +143,9 @@ class PlaceCard extends StatelessWidget {
                           width: 32,
                           height: 32,
                           decoration: BoxDecoration(
-                            color: AppColors.backgroundCard.withValues(alpha: 0.9),
+                            color: AppColors.backgroundCard.withValues(
+                              alpha: 0.9,
+                            ),
                             shape: BoxShape.circle,
                             boxShadow: AppShadows.sm,
                           ),
@@ -188,10 +191,7 @@ class PlaceCard extends StatelessWidget {
                     // Stars + duration
                     Row(
                       children: [
-                        StarRating(
-                          rating: rating,
-                          size: StarSize.sm,
-                        ),
+                        StarRating(rating: rating, size: StarSize.sm),
                         if (durationMin != null) ...[
                           const Spacer(),
                           Text(

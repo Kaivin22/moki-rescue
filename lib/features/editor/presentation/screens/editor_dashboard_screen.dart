@@ -23,8 +23,10 @@ class EditorDashboardScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundSecondary,
       appBar: AppBar(
-        title: Text('✏️ Editor Panel',
-            style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          '✏️ Editor Panel',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
       ),
@@ -51,13 +53,15 @@ class EditorDashboardScreen extends ConsumerWidget {
                       Text(
                         'Xin chào, ${profile?.displayName ?? 'Editor'}!',
                         style: AppTextStyles.h4.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700),
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       Text(
                         'Vai trò: ${profile?.role.toUpperCase() ?? 'EDITOR'}',
-                        style: AppTextStyles.bodyMd
-                            .copyWith(color: Colors.white70),
+                        style: AppTextStyles.bodyMd.copyWith(
+                          color: Colors.white70,
+                        ),
                       ),
                     ],
                   ),
@@ -71,7 +75,9 @@ class EditorDashboardScreen extends ConsumerWidget {
           // ── Stats ──
           placesAsync.when(
             loading: () => const LoadingShimmerList(
-                variant: ShimmerVariant.listTile, itemCount: 2),
+              variant: ShimmerVariant.listTile,
+              itemCount: 2,
+            ),
             error: (e, st) => const SizedBox.shrink(),
             data: (places) => GridView.count(
               crossAxisCount: 2,
@@ -100,9 +106,10 @@ class EditorDashboardScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.layoutMd),
 
           // ── Quick actions ──
-          Text('Thao tác nhanh',
-              style:
-                  AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            'Thao tác nhanh',
+            style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: AppSpacing.space3),
 
           _ActionCard(
@@ -141,26 +148,31 @@ class _MiniStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(AppSpacing.space3),
-        decoration: BoxDecoration(
-          color: AppColors.backgroundCard,
-          borderRadius: AppRadius.cardBorder,
-          border: Border.all(color: AppColors.borderDefault),
+    padding: const EdgeInsets.all(AppSpacing.space3),
+    decoration: BoxDecoration(
+      color: AppColors.backgroundCard,
+      borderRadius: AppRadius.cardBorder,
+      border: Border.all(color: AppColors.borderDefault),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 22)),
+        const Spacer(),
+        Text(
+          value,
+          style: AppTextStyles.h3.copyWith(
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 22)),
-            const Spacer(),
-            Text(value,
-                style: AppTextStyles.h3
-                    .copyWith(fontWeight: FontWeight.w800, color: color)),
-            Text(label,
-                style: AppTextStyles.caption
-                    .copyWith(color: AppColors.textSecondary)),
-          ],
+        Text(
+          label,
+          style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _ActionCard extends StatelessWidget {
@@ -180,44 +192,53 @@ class _ActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
+    onTap: onTap,
+    borderRadius: AppRadius.cardBorder,
+    child: Container(
+      padding: const EdgeInsets.all(AppSpacing.space4),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundCard,
         borderRadius: AppRadius.cardBorder,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.space4),
-          decoration: BoxDecoration(
-            color: AppColors.backgroundCard,
-            borderRadius: AppRadius.cardBorder,
-            border: Border.all(color: AppColors.borderDefault),
+        border: Border.all(color: AppColors.borderDefault),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 22),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+          const SizedBox(width: AppSpacing.space3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.bodyMd.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                child: Icon(icon, color: color, size: 22),
-              ),
-              const SizedBox(width: AppSpacing.space3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: AppTextStyles.bodyMd
-                            .copyWith(fontWeight: FontWeight.w600)),
-                    Text(subtitle,
-                        style: AppTextStyles.caption
-                            .copyWith(color: AppColors.textSecondary)),
-                  ],
+                Text(
+                  subtitle,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 14, color: AppColors.textSecondary),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 14,
+            color: AppColors.textSecondary,
+          ),
+        ],
+      ),
+    ),
+  );
 }

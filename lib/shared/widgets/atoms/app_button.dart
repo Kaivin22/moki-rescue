@@ -54,8 +54,7 @@ class AppButton extends StatelessWidget {
   final double? height;
 
   /// Callback thực tế — null nếu loading hoặc disabled
-  VoidCallback? get _effectiveOnPressed =>
-      isLoading ? null : onPressed;
+  VoidCallback? get _effectiveOnPressed => isLoading ? null : onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -83,14 +82,14 @@ class AppButton extends StatelessWidget {
   Widget _buildPrimaryButton(Widget child, Size minimumSize) {
     return Container(
       decoration: BoxDecoration(
-        boxShadow: _effectiveOnPressed != null ? AppShadows.amber : AppShadows.none,
+        boxShadow: _effectiveOnPressed != null
+            ? AppShadows.amber
+            : AppShadows.none,
         borderRadius: BorderRadius.circular(AppRadius.full),
       ),
       child: ElevatedButton(
         onPressed: _effectiveOnPressed,
-        style: ElevatedButton.styleFrom(
-          minimumSize: minimumSize,
-        ),
+        style: ElevatedButton.styleFrom(minimumSize: minimumSize),
         child: child,
       ),
     );
@@ -100,9 +99,7 @@ class AppButton extends StatelessWidget {
   Widget _buildSecondaryButton(Widget child, Size minimumSize) {
     return OutlinedButton(
       onPressed: _effectiveOnPressed,
-      style: OutlinedButton.styleFrom(
-        minimumSize: minimumSize,
-      ),
+      style: OutlinedButton.styleFrom(minimumSize: minimumSize),
       child: child,
     );
   }
@@ -111,9 +108,7 @@ class AppButton extends StatelessWidget {
   Widget _buildTextButton(Widget child, Size minimumSize) {
     return TextButton(
       onPressed: _effectiveOnPressed,
-      style: TextButton.styleFrom(
-        minimumSize: minimumSize,
-      ),
+      style: TextButton.styleFrom(minimumSize: minimumSize),
       child: child,
     );
   }

@@ -72,9 +72,10 @@ class SupabaseSupportDataSource {
         .stream(primaryKey: ['id'])
         .eq('user_id', userId)
         .order('created_at')
-        .map((rows) => rows
-            .map((e) => SupportTicket.fromJson(e))
-            .toList()
-            ..sort((a, b) => b.createdAt.compareTo(a.createdAt)));
+        .map(
+          (rows) =>
+              rows.map((e) => SupportTicket.fromJson(e)).toList()
+                ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+        );
   }
 }

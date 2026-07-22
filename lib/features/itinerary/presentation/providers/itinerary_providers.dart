@@ -9,8 +9,9 @@ import '../../domain/models/itinerary.dart';
 /// ═══════════════════════════════════════════════════════
 
 // ── DataSource ───────────────────────────────────────
-final itineraryDatasourceProvider =
-    Provider<SupabaseItineraryDataSource>((ref) {
+final itineraryDatasourceProvider = Provider<SupabaseItineraryDataSource>((
+  ref,
+) {
   return SupabaseItineraryDataSource();
 });
 
@@ -25,8 +26,10 @@ final myItinerariesProvider = FutureProvider<List<Itinerary>>((ref) async {
 });
 
 // ── Itinerary Detail ─────────────────────────────────
-final itineraryDetailProvider =
-    FutureProvider.family<Itinerary, String>((ref, id) async {
+final itineraryDetailProvider = FutureProvider.family<Itinerary, String>((
+  ref,
+  id,
+) async {
   final ds = ref.watch(itineraryDatasourceProvider);
   final (itinerary, failure) = await ds.getItineraryById(id);
   if (failure != null) throw failure;
@@ -35,8 +38,7 @@ final itineraryDetailProvider =
 });
 
 // ── Public Itineraries (Community Feed) ──────────────
-final publicItinerariesProvider =
-    FutureProvider<List<Itinerary>>((ref) async {
+final publicItinerariesProvider = FutureProvider<List<Itinerary>>((ref) async {
   final ds = ref.watch(itineraryDatasourceProvider);
   final (list, failure) = await ds.getPublicItineraries();
   if (failure != null) throw failure;
@@ -64,18 +66,15 @@ class CreateItineraryState {
     bool? isLoading,
     String? createdId,
     String? error,
-  }) =>
-      CreateItineraryState(
-        isLoading: isLoading ?? this.isLoading,
-        createdId: createdId ?? this.createdId,
-        error: error,
-      );
+  }) => CreateItineraryState(
+    isLoading: isLoading ?? this.isLoading,
+    createdId: createdId ?? this.createdId,
+    error: error,
+  );
 }
 
-class CreateItineraryNotifier
-    extends StateNotifier<CreateItineraryState> {
-  CreateItineraryNotifier(this._ref)
-      : super(const CreateItineraryState());
+class CreateItineraryNotifier extends StateNotifier<CreateItineraryState> {
+  CreateItineraryNotifier(this._ref) : super(const CreateItineraryState());
 
   final Ref _ref;
 
@@ -107,30 +106,23 @@ class CreateItineraryNotifier
     );
 
     if (failure != null) {
-      state = state.copyWith(
-        isLoading: false,
-        error: failure.message,
-      );
+      state = state.copyWith(isLoading: false, error: failure.message);
       return;
     }
 
     // Refresh danh sách lịch trình
     _ref.invalidate(myItinerariesProvider);
 
-    state = state.copyWith(
-      isLoading: false,
-      createdId: id,
-    );
+    state = state.copyWith(isLoading: false, createdId: id);
   }
 
   void reset() => state = const CreateItineraryState();
 }
 
 final createItineraryProvider =
-    StateNotifierProvider<CreateItineraryNotifier, CreateItineraryState>(
-        (ref) {
-  return CreateItineraryNotifier(ref);
-});
+    StateNotifierProvider<CreateItineraryNotifier, CreateItineraryState>((ref) {
+      return CreateItineraryNotifier(ref);
+    });
 
 /// ═══════════════════════════════════════════════════════
 /// ItineraryActionsNotifier — delete / like / clone
@@ -186,5 +178,5 @@ class ItineraryActionsNotifier extends StateNotifier<bool> {
 
 final itineraryActionsProvider =
     StateNotifierProvider<ItineraryActionsNotifier, bool>((ref) {
-  return ItineraryActionsNotifier(ref);
-});
+      return ItineraryActionsNotifier(ref);
+    });

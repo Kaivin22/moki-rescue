@@ -80,26 +80,46 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         title: Row(
           children: [
             Container(
-              width: 36, height: 36,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [AppColors.actionPrimary, AppColors.actionSecondary],
                 ),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 20),
+              child: const Icon(
+                Icons.smart_toy_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
             const SizedBox(width: AppSpacing.space2),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('AI Du lịch', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+                Text(
+                  'AI Du lịch',
+                  style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+                ),
                 Row(
                   children: [
-                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppColors.statusSuccess, shape: BoxShape.circle)),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: AppColors.statusSuccess,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
                     const SizedBox(width: 4),
-                    Text('Trực tuyến', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                    Text(
+                      'Trực tuyến',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -139,17 +159,24 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               height: 44,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.layoutSm,
+                ),
                 itemCount: _suggestions.length,
                 itemBuilder: (_, i) => GestureDetector(
                   onTap: () => _sendMessage(_suggestions[i]),
                   child: Container(
                     margin: const EdgeInsets.only(right: AppSpacing.space2),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.actionPrimary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.actionPrimary.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: AppColors.actionPrimary.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Text(
                       _suggestions[i],
@@ -169,7 +196,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
-                AppSpacing.layoutSm, 0, AppSpacing.layoutSm, AppSpacing.space2),
+                AppSpacing.layoutSm,
+                0,
+                AppSpacing.layoutSm,
+                AppSpacing.space2,
+              ),
               child: Row(
                 children: [
                   Expanded(
@@ -186,12 +217,18 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                         onSubmitted: _sendMessage,
                         decoration: InputDecoration(
                           hintText: 'Hỏi về địa điểm, lịch trình...',
-                          hintStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.textPlaceholder),
+                          hintStyle: AppTextStyles.bodyMd.copyWith(
+                            color: AppColors.textPlaceholder,
+                          ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.space3, vertical: AppSpacing.space3),
+                            horizontal: AppSpacing.space3,
+                            vertical: AppSpacing.space3,
+                          ),
                         ),
-                        style: AppTextStyles.bodyMd.copyWith(color: AppColors.textPrimary),
+                        style: AppTextStyles.bodyMd.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
                         textInputAction: TextInputAction.send,
                       ),
                     ),
@@ -207,7 +244,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                         color: AppColors.actionPrimary,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                      child: const Icon(
+                        Icons.send_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                   ),
                 ],
@@ -230,17 +271,26 @@ class _MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.space3),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isUser) ...[
             Container(
-              width: 28, height: 28,
+              width: 28,
+              height: 28,
               decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: [AppColors.actionPrimary, AppColors.actionSecondary]),
+                gradient: LinearGradient(
+                  colors: [AppColors.actionPrimary, AppColors.actionSecondary],
+                ),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 14),
+              child: const Icon(
+                Icons.smart_toy_rounded,
+                color: Colors.white,
+                size: 14,
+              ),
             ),
             const SizedBox(width: AppSpacing.space2),
           ],
@@ -248,19 +298,25 @@ class _MessageBubble extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(AppSpacing.space3),
               decoration: BoxDecoration(
-                color: isUser ? AppColors.actionPrimary : AppColors.backgroundCard,
+                color: isUser
+                    ? AppColors.actionPrimary
+                    : AppColors.backgroundCard,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
                   bottomLeft: Radius.circular(isUser ? 16 : 4),
                   bottomRight: Radius.circular(isUser ? 4 : 16),
                 ),
-                border: isUser ? null : Border.all(color: AppColors.borderDefault),
+                border: isUser
+                    ? null
+                    : Border.all(color: AppColors.borderDefault),
               ),
               child: Text(
                 message.text,
                 style: AppTextStyles.bodyMd.copyWith(
-                  color: isUser ? AppColors.textOnPrimary : AppColors.textPrimary,
+                  color: isUser
+                      ? AppColors.textOnPrimary
+                      : AppColors.textPrimary,
                   height: 1.5,
                 ),
               ),
@@ -278,38 +334,45 @@ class _TypingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.space3),
-        child: Row(
-          children: [
-            Container(
-              width: 28, height: 28,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: [AppColors.actionPrimary, AppColors.actionSecondary]),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 14),
+    padding: const EdgeInsets.only(bottom: AppSpacing.space3),
+    child: Row(
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.actionPrimary, AppColors.actionSecondary],
             ),
-            const SizedBox(width: AppSpacing.space2),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.backgroundCard,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                  bottomLeft: Radius.circular(4),
-                ),
-                border: Border.all(color: AppColors.borderDefault),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(3, (i) => _Dot(delay: i * 200)),
-              ),
-            ),
-          ],
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.smart_toy_rounded,
+            color: Colors.white,
+            size: 14,
+          ),
         ),
-      );
+        const SizedBox(width: AppSpacing.space2),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.backgroundCard,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              topRight: Radius.circular(16),
+              bottomRight: Radius.circular(16),
+              bottomLeft: Radius.circular(4),
+            ),
+            border: Border.all(color: AppColors.borderDefault),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(3, (i) => _Dot(delay: i * 200)),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Dot extends StatefulWidget {
@@ -334,9 +397,10 @@ class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
     Future.delayed(Duration(milliseconds: widget.delay), () {
       if (mounted) _ctrl.repeat(reverse: true);
     });
-    _anim = Tween(begin: 0.3, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _anim = Tween(
+      begin: 0.3,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -347,16 +411,17 @@ class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: FadeTransition(
-          opacity: _anim,
-          child: Container(
-            width: 7, height: 7,
-            decoration: BoxDecoration(
-              color: SagePalette.sage400,
-              shape: BoxShape.circle,
-            ),
-          ),
+    padding: const EdgeInsets.symmetric(horizontal: 2),
+    child: FadeTransition(
+      opacity: _anim,
+      child: Container(
+        width: 7,
+        height: 7,
+        decoration: BoxDecoration(
+          color: SagePalette.sage400,
+          shape: BoxShape.circle,
         ),
-      );
+      ),
+    ),
+  );
 }

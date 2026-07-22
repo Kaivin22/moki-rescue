@@ -30,8 +30,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _showOnboardingCard = true;
 
-
-
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(currentProfileProvider);
@@ -128,10 +126,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       durationMin: p.durationMin,
                       entryFee: p.entryFeeMax,
                       isSaved: isSaved,
-                      onTap: () => context.push(
-                        AppRoutes.placeDetail,
-                        extra: p.id,
-                      ),
+                      onTap: () =>
+                          context.push(AppRoutes.placeDetail, extra: p.id),
                       onSave: () => ref
                           .read(savePlaceNotifierProvider.notifier)
                           .toggle(p.id),
@@ -239,11 +235,13 @@ class _GreetingRow extends StatelessWidget {
         CircleAvatar(
           radius: 18,
           backgroundColor: SagePalette.sage200,
-          backgroundImage:
-              avatarUrl != null ? NetworkImage(avatarUrl!) : null,
+          backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
           child: avatarUrl == null
-              ? const Icon(Icons.person_rounded,
-                  size: 18, color: AppColors.textSecondary)
+              ? const Icon(
+                  Icons.person_rounded,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                )
               : null,
         ),
       ],
@@ -256,9 +254,21 @@ class _QuickActionsRow extends StatelessWidget {
   const _QuickActionsRow();
 
   static const _actions = [
-    (icon: Icons.calendar_today_rounded, label: 'Lập lịch', color: AppColors.actionPrimary),
-    (icon: Icons.map_rounded, label: 'Bản đồ', color: AppColors.actionSecondary),
-    (icon: Icons.smart_toy_rounded, label: 'Hỏi AI', color: SagePalette.sage500),
+    (
+      icon: Icons.calendar_today_rounded,
+      label: 'Lập lịch',
+      color: AppColors.actionPrimary,
+    ),
+    (
+      icon: Icons.map_rounded,
+      label: 'Bản đồ',
+      color: AppColors.actionSecondary,
+    ),
+    (
+      icon: Icons.smart_toy_rounded,
+      label: 'Hỏi AI',
+      color: SagePalette.sage500,
+    ),
     (icon: Icons.star_rounded, label: 'VIP', color: AppColors.actionPrimary),
   ];
 
@@ -326,7 +336,10 @@ class _OnboardingPromptCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.explore_outlined, color: AppColors.actionSecondary),
+            const Icon(
+              Icons.explore_outlined,
+              color: AppColors.actionSecondary,
+            ),
             const SizedBox(width: AppSpacing.space3),
             Expanded(
               child: Column(
@@ -365,7 +378,11 @@ class _OnboardingPromptCard extends StatelessWidget {
             ),
             IconButton(
               onPressed: onDismiss,
-              icon: const Icon(Icons.close, size: 16, color: AppColors.textSecondary),
+              icon: const Icon(
+                Icons.close,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             ),

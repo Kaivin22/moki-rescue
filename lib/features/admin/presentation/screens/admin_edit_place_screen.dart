@@ -22,8 +22,7 @@ class AdminEditPlaceScreen extends ConsumerStatefulWidget {
       _AdminEditPlaceScreenState();
 }
 
-class _AdminEditPlaceScreenState
-    extends ConsumerState<AdminEditPlaceScreen> {
+class _AdminEditPlaceScreenState extends ConsumerState<AdminEditPlaceScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
@@ -34,8 +33,14 @@ class _AdminEditPlaceScreenState
   bool _initialized = false;
 
   static const _categories = [
-    'beach', 'food', 'historical', 'nature', 'viewpoint',
-    'hotel', 'shopping', 'entertainment',
+    'beach',
+    'food',
+    'historical',
+    'nature',
+    'viewpoint',
+    'hotel',
+    'shopping',
+    'entertainment',
   ];
 
   @override
@@ -55,7 +60,9 @@ class _AdminEditPlaceScreenState
       loading: () => Scaffold(
         appBar: AppBar(title: const Text('Đang tải...')),
         body: const LoadingShimmerList(
-            variant: ShimmerVariant.listTile, itemCount: 6),
+          variant: ShimmerVariant.listTile,
+          itemCount: 6,
+        ),
       ),
       error: (e, _) => Scaffold(
         appBar: AppBar(title: const Text('Lỗi')),
@@ -74,9 +81,10 @@ class _AdminEditPlaceScreenState
         return Scaffold(
           backgroundColor: AppColors.backgroundPrimary,
           appBar: AppBar(
-            title: Text('Sửa địa điểm',
-                style: AppTextStyles.h4
-                    .copyWith(fontWeight: FontWeight.w700)),
+            title: Text(
+              'Sửa địa điểm',
+              style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+            ),
             backgroundColor: AppColors.backgroundPrimary,
             surfaceTintColor: Colors.transparent,
           ),
@@ -92,9 +100,8 @@ class _AdminEditPlaceScreenState
                   _TextField(
                     controller: _nameCtrl,
                     hint: 'VD: Bãi biển Mỹ Khê',
-                    validator: (v) => v == null || v.isEmpty
-                        ? 'Bắt buộc'
-                        : null,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Bắt buộc' : null,
                   ),
 
                   const SizedBox(height: AppSpacing.layoutSm),
@@ -114,19 +121,15 @@ class _AdminEditPlaceScreenState
                   _TextField(
                     controller: _addressCtrl,
                     hint: 'VD: Sơn Trà, Đà Nẵng',
-                    validator: (v) => v == null || v.isEmpty
-                        ? 'Bắt buộc'
-                        : null,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Bắt buộc' : null,
                   ),
 
                   const SizedBox(height: AppSpacing.layoutSm),
 
                   _FieldLabel('URL hình ảnh'),
                   const SizedBox(height: AppSpacing.space2),
-                  _TextField(
-                    controller: _imageCtrl,
-                    hint: 'https://...',
-                  ),
+                  _TextField(controller: _imageCtrl, hint: 'https://...'),
 
                   const SizedBox(height: AppSpacing.layoutSm),
 
@@ -138,27 +141,29 @@ class _AdminEditPlaceScreenState
                       filled: true,
                       fillColor: AppColors.backgroundSecondary,
                       border: OutlineInputBorder(
-                          borderRadius: AppRadius.inputBorder,
-                          borderSide: BorderSide(
-                              color: AppColors.borderDefault)),
+                        borderRadius: AppRadius.inputBorder,
+                        borderSide: BorderSide(color: AppColors.borderDefault),
+                      ),
                       enabledBorder: OutlineInputBorder(
-                          borderRadius: AppRadius.inputBorder,
-                          borderSide: BorderSide(
-                              color: AppColors.borderDefault)),
+                        borderRadius: AppRadius.inputBorder,
+                        borderSide: BorderSide(color: AppColors.borderDefault),
+                      ),
                       focusedBorder: OutlineInputBorder(
-                          borderRadius: AppRadius.inputBorder,
-                          borderSide: BorderSide(
-                              color: AppColors.borderFocus,
-                              width: 1.5)),
+                        borderRadius: AppRadius.inputBorder,
+                        borderSide: BorderSide(
+                          color: AppColors.borderFocus,
+                          width: 1.5,
+                        ),
+                      ),
                     ),
                     items: _categories
-                        .map((c) => DropdownMenuItem(
-                            value: c, child: Text(c)))
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
                     onChanged: (v) =>
                         setState(() => _category = v ?? _category),
-                    style: AppTextStyles.bodyMd
-                        .copyWith(color: AppColors.textPrimary),
+                    style: AppTextStyles.bodyMd.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
                   ),
 
                   const SizedBox(height: AppSpacing.layoutXl),
@@ -200,8 +205,9 @@ class _AdminEditPlaceScreenState
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
-            content: Text('Lỗi: $e'),
-            backgroundColor: AppColors.statusError),
+          content: Text('Lỗi: $e'),
+          backgroundColor: AppColors.statusError,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -215,10 +221,9 @@ class _FieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        text,
-        style:
-            AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600),
-      );
+    text,
+    style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600),
+  );
 }
 
 class _TextField extends StatelessWidget {
@@ -236,29 +241,29 @@ class _TextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TextFormField(
-        controller: controller,
-        maxLines: maxLines,
-        validator: validator,
-        style: AppTextStyles.bodyMd
-            .copyWith(color: AppColors.textPrimary),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: AppTextStyles.bodyMd
-              .copyWith(color: AppColors.textPlaceholder),
-          filled: true,
-          fillColor: AppColors.backgroundSecondary,
-          border: OutlineInputBorder(
-              borderRadius: AppRadius.inputBorder,
-              borderSide:
-                  BorderSide(color: AppColors.borderDefault)),
-          enabledBorder: OutlineInputBorder(
-              borderRadius: AppRadius.inputBorder,
-              borderSide:
-                  BorderSide(color: AppColors.borderDefault)),
-          focusedBorder: OutlineInputBorder(
-              borderRadius: AppRadius.inputBorder,
-              borderSide: BorderSide(
-                  color: AppColors.borderFocus, width: 1.5)),
-        ),
-      );
+    controller: controller,
+    maxLines: maxLines,
+    validator: validator,
+    style: AppTextStyles.bodyMd.copyWith(color: AppColors.textPrimary),
+    decoration: InputDecoration(
+      hintText: hint,
+      hintStyle: AppTextStyles.bodyMd.copyWith(
+        color: AppColors.textPlaceholder,
+      ),
+      filled: true,
+      fillColor: AppColors.backgroundSecondary,
+      border: OutlineInputBorder(
+        borderRadius: AppRadius.inputBorder,
+        borderSide: BorderSide(color: AppColors.borderDefault),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: AppRadius.inputBorder,
+        borderSide: BorderSide(color: AppColors.borderDefault),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: AppRadius.inputBorder,
+        borderSide: BorderSide(color: AppColors.borderFocus, width: 1.5),
+      ),
+    ),
+  );
 }

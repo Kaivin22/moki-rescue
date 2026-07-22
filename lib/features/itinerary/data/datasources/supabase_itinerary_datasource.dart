@@ -1,4 +1,4 @@
-﻿import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/errors/exception_mapper.dart';
 import '../../../../core/errors/failures.dart';
@@ -34,10 +34,7 @@ class SupabaseItineraryDataSource {
           .eq('user_id', userId)
           .order('created_at', ascending: false);
 
-      return (
-        (data as List).map((e) => Itinerary.fromJson(e)).toList(),
-        null,
-      );
+      return ((data as List).map((e) => Itinerary.fromJson(e)).toList(), null);
     } catch (e) {
       return (<Itinerary>[], ExceptionMapper.map(e));
     }
@@ -102,14 +99,17 @@ class SupabaseItineraryDataSource {
       final itineraryId = result['id'] as String;
 
       // Tạo ngày cho lịch trình
-      final dayRows = List.generate(numDays, (i) => {
-            'itinerary_id': itineraryId,
-            'day_index': i,
-            'date': startDate
-                .add(Duration(days: i))
-                .toIso8601String()
-                .substring(0, 10),
-          });
+      final dayRows = List.generate(
+        numDays,
+        (i) => {
+          'itinerary_id': itineraryId,
+          'day_index': i,
+          'date': startDate
+              .add(Duration(days: i))
+              .toIso8601String()
+              .substring(0, 10),
+        },
+      );
 
       await _client.from('itinerary_days').insert(dayRows);
 
@@ -130,15 +130,18 @@ class SupabaseItineraryDataSource {
     String? budgetTier,
   }) async {
     try {
-      await _client.from('itineraries').update({
-        'title': title,
-        'description': description,
-        'visibility': visibility,
-        'cover_image_url': coverImageUrl,
-        'companion': companion,
-        'budget_tier': budgetTier,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', id);
+      await _client
+          .from('itineraries')
+          .update({
+            'title': title,
+            'description': description,
+            'visibility': visibility,
+            'cover_image_url': coverImageUrl,
+            'companion': companion,
+            'budget_tier': budgetTier,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', id);
       return null;
     } catch (e) {
       return ExceptionMapper.map(e);
@@ -205,14 +208,17 @@ class SupabaseItineraryDataSource {
     int? travelTimeMin,
   }) async {
     try {
-      await _client.from('itinerary_slots').update({
-        'start_time': startTime,
-        'duration_min': durationMin,
-        'order_index': orderIndex,
-        'note': note,
-        'transport_mode': transportMode,
-        'travel_time_min': travelTimeMin,
-      }).eq('id', slotId);
+      await _client
+          .from('itinerary_slots')
+          .update({
+            'start_time': startTime,
+            'duration_min': durationMin,
+            'order_index': orderIndex,
+            'note': note,
+            'transport_mode': transportMode,
+            'travel_time_min': travelTimeMin,
+          })
+          .eq('id', slotId);
       return null;
     } catch (e) {
       return ExceptionMapper.map(e);
@@ -231,7 +237,8 @@ class SupabaseItineraryDataSource {
 
   /// Batch update thứ tự slots sau khi reorder
   Future<Failure?> reorderSlots(
-      List<({String id, int orderIndex})> updates) async {
+    List<({String id, int orderIndex})> updates,
+  ) async {
     try {
       for (final upd in updates) {
         await _client
@@ -332,9 +339,7 @@ class SupabaseItineraryDataSource {
         userId: targetUserId,
         title: '${source.title} (sao chép)',
         startDate: DateTime.now(),
-        endDate: DateTime.now().add(
-          Duration(days: source.numDays - 1),
-        ),
+        endDate: DateTime.now().add(Duration(days: source.numDays - 1)),
         companion: source.companion,
         budgetTier: source.budgetTier,
         visibility: 'private',
@@ -354,4 +359,3 @@ class SupabaseItineraryDataSource {
     }
   }
 }
-

@@ -68,7 +68,8 @@ class PlaceGrid extends StatelessWidget {
       return GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        padding: padding ??
+        padding:
+            padding ??
             const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
@@ -96,7 +97,8 @@ class PlaceGrid extends StatelessWidget {
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        padding: padding ??
+        padding:
+            padding ??
             const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
@@ -121,9 +123,7 @@ class PlaceGrid extends StatelessWidget {
             entryFee: item.entryFee,
             isSaved: item.isSaved,
             onTap: () => onItemTap(index),
-            onSave: onItemSave != null
-                ? () => onItemSave!(index)
-                : null,
+            onSave: onItemSave != null ? () => onItemSave!(index) : null,
           );
         },
       ),

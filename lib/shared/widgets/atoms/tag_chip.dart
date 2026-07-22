@@ -46,7 +46,8 @@ class TagChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool interactive = variant == TagChipVariant.selectable ||
+    final bool interactive =
+        variant == TagChipVariant.selectable ||
         variant == TagChipVariant.filter;
 
     return GestureDetector(
@@ -72,11 +73,7 @@ class TagChip extends StatelessWidget {
           children: [
             // Checkmark cho selected state (WCAG: không chỉ dùng màu)
             if (isSelected && interactive) ...[
-              Icon(
-                Icons.check_rounded,
-                size: 14,
-                color: _textColor,
-              ),
+              Icon(Icons.check_rounded, size: 14, color: _textColor),
               const SizedBox(width: AppSpacing.space1),
             ],
 
@@ -104,11 +101,7 @@ class TagChip extends StatelessWidget {
               const SizedBox(width: AppSpacing.space1),
               GestureDetector(
                 onTap: onDeleted,
-                child: Icon(
-                  Icons.close_rounded,
-                  size: 14,
-                  color: _textColor,
-                ),
+                child: Icon(Icons.close_rounded, size: 14, color: _textColor),
               ),
             ],
           ],

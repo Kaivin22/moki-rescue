@@ -77,7 +77,10 @@ class PrivacyPolicyScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Chính sách bảo mật', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Chính sách bảo mật',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
       ),
@@ -94,16 +97,28 @@ class PrivacyPolicyScreen extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.privacy_tip_outlined, color: AppColors.actionPrimary, size: 24),
+                const Icon(
+                  Icons.privacy_tip_outlined,
+                  color: AppColors.actionPrimary,
+                  size: 24,
+                ),
                 const SizedBox(width: AppSpacing.space3),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Cập nhật lần cuối: 01/07/2025',
-                          style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
-                      Text('Có hiệu lực từ ngày 01/07/2025',
-                          style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                      Text(
+                        'Cập nhật lần cuối: 01/07/2025',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      Text(
+                        'Có hiệu lực từ ngày 01/07/2025',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -116,7 +131,10 @@ class PrivacyPolicyScreen extends StatelessWidget {
           Text(
             'Chúng tôi coi trọng quyền riêng tư của bạn. Chính sách này giải thích cách DaNang Itinerary '
             'thu thập, sử dụng và bảo vệ thông tin cá nhân của bạn.',
-            style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary, height: 1.6),
+            style: AppTextStyles.bodyMd.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.6,
+            ),
           ),
 
           const SizedBox(height: AppSpacing.layoutMd),
@@ -130,18 +148,27 @@ class PrivacyPolicyScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.layoutMd),
 
           // ── Contact ──
-          Text('Liên hệ về quyền riêng tư',
-              style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600)),
+          Text(
+            'Liên hệ về quyền riêng tư',
+            style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: AppSpacing.space3),
           Text(
             'Email: privacy@danangapp.vn\n'
             'Địa chỉ: 123 Trần Phú, Hải Châu, Đà Nẵng\n'
             'Giờ làm việc: 8:00 – 17:00, Thứ 2 – Thứ 6',
-            style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary, height: 1.6),
+            style: AppTextStyles.bodyMd.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.6,
+            ),
           ),
 
           const SizedBox(height: AppSpacing.layoutLg),
-          AppButton(label: '📧 Liên hệ về bảo mật', variant: AppButtonVariant.secondary, onPressed: () {}),
+          AppButton(
+            label: '📧 Liên hệ về bảo mật',
+            variant: AppButtonVariant.secondary,
+            onPressed: () {},
+          ),
           const SizedBox(height: AppSpacing.layoutXl),
         ],
       ),
@@ -150,7 +177,11 @@ class PrivacyPolicyScreen extends StatelessWidget {
 }
 
 class _PolicySection {
-  const _PolicySection({required this.id, required this.title, required this.content});
+  const _PolicySection({
+    required this.id,
+    required this.title,
+    required this.content,
+  });
   final int id;
   final String title;
   final String content;
@@ -162,14 +193,26 @@ class _SectionBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.layoutMd),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(section.title, style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700, color: AppColors.actionPrimary)),
-            const SizedBox(height: AppSpacing.space3),
-            Text(section.content, style: AppTextStyles.bodyMd.copyWith(color: AppColors.textPrimary, height: 1.6)),
-          ],
+    padding: const EdgeInsets.only(bottom: AppSpacing.layoutMd),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          section.title,
+          style: AppTextStyles.h4.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.actionPrimary,
+          ),
         ),
-      );
+        const SizedBox(height: AppSpacing.space3),
+        Text(
+          section.content,
+          style: AppTextStyles.bodyMd.copyWith(
+            color: AppColors.textPrimary,
+            height: 1.6,
+          ),
+        ),
+      ],
+    ),
+  );
 }

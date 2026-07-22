@@ -99,8 +99,10 @@ class _PlacePhotosScreenState extends State<PlacePhotosScreen>
                 actions: [
                   // Upload button
                   IconButton(
-                    icon: const Icon(Icons.add_photo_alternate_outlined,
-                        color: Colors.white),
+                    icon: const Icon(
+                      Icons.add_photo_alternate_outlined,
+                      color: Colors.white,
+                    ),
                     onPressed: () {
                       // TODO: pick photo from gallery
                     },
@@ -120,10 +122,7 @@ class _PlacePhotosScreenState extends State<PlacePhotosScreen>
             body: TabBarView(
               controller: _tabController,
               children: [
-                _PhotoGrid(
-                  photos: _photos,
-                  onTap: _openFullscreen,
-                ),
+                _PhotoGrid(photos: _photos, onTap: _openFullscreen),
                 _PhotoGrid(
                   photos: _photos.where((p) => p.isOwn).toList(),
                   onTap: _openFullscreen,
@@ -207,8 +206,11 @@ class _PhotoGrid extends StatelessWidget {
               placeholder: (_, _) => Container(color: Colors.grey[850]),
               errorWidget: (_, _, _) => Container(
                 color: Colors.grey[900],
-                child: const Icon(Icons.broken_image_outlined,
-                    color: Colors.white30, size: 28),
+                child: const Icon(
+                  Icons.broken_image_outlined,
+                  color: Colors.white30,
+                  size: 28,
+                ),
               ),
             ),
           ),
@@ -256,7 +258,8 @@ class _FullscreenViewerState extends State<_FullscreenViewer> {
 
     return GestureDetector(
       onVerticalDragEnd: (details) {
-        if (details.primaryVelocity != null && details.primaryVelocity!.abs() > 300) {
+        if (details.primaryVelocity != null &&
+            details.primaryVelocity!.abs() > 300) {
           widget.onClose();
         }
       },
@@ -277,10 +280,9 @@ class _FullscreenViewerState extends State<_FullscreenViewer> {
                     child: CachedNetworkImage(
                       imageUrl: p.url,
                       fit: BoxFit.contain,
-                      placeholder: (_, _) =>
-                          const CircularProgressIndicator(
-                            color: AppColors.actionPrimary,
-                          ),
+                      placeholder: (_, _) => const CircularProgressIndicator(
+                        color: AppColors.actionPrimary,
+                      ),
                       errorWidget: (_, _, _) => const Icon(
                         Icons.broken_image_outlined,
                         color: Colors.white30,
@@ -299,7 +301,10 @@ class _FullscreenViewerState extends State<_FullscreenViewer> {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white,
+                      ),
                       onPressed: widget.onClose,
                     ),
                     const Spacer(),
@@ -309,7 +314,10 @@ class _FullscreenViewerState extends State<_FullscreenViewer> {
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.share_outlined, color: Colors.white),
+                      icon: const Icon(
+                        Icons.share_outlined,
+                        color: Colors.white,
+                      ),
                       onPressed: () {},
                     ),
                   ],
@@ -321,9 +329,12 @@ class _FullscreenViewerState extends State<_FullscreenViewer> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: MediaQuery.of(context).padding.bottom + AppSpacing.layoutSm,
+              bottom:
+                  MediaQuery.of(context).padding.bottom + AppSpacing.layoutSm,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.layoutSm,
+                ),
                 child: Text(
                   '📷 ${photo.authorName}',
                   style: AppTextStyles.caption.copyWith(color: Colors.white70),

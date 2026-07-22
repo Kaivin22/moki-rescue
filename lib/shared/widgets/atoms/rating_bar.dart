@@ -47,7 +47,8 @@ class RatingBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Đánh giá ${rating.toStringAsFixed(1)} trên 5'
+      label:
+          'Đánh giá ${rating.toStringAsFixed(1)} trên 5'
           '${reviewCount != null ? ', $reviewCount lượt đánh giá' : ''}',
       child: switch (variant) {
         RatingBarVariant.compact => _buildCompact(),

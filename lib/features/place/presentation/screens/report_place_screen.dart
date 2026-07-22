@@ -66,9 +66,7 @@ class _ReportPlaceScreenState extends State<ReportPlaceScreen> {
           ),
           backgroundColor: AppColors.statusSuccess,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.cardBorder,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.cardBorder),
         ),
       );
       Navigator.pop(context);
@@ -105,8 +103,11 @@ class _ReportPlaceScreenState extends State<ReportPlaceScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.place_rounded,
-                      color: AppColors.actionSecondary, size: 20),
+                  const Icon(
+                    Icons.place_rounded,
+                    color: AppColors.actionSecondary,
+                    size: 20,
+                  ),
                   const SizedBox(width: AppSpacing.space2),
                   Expanded(
                     child: Text(
@@ -236,12 +237,16 @@ class _ReportPlaceScreenState extends State<ReportPlaceScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: AppRadius.inputBorder,
-                  borderSide:
-                      BorderSide(color: AppColors.borderFocus, width: 1.5),
+                  borderSide: BorderSide(
+                    color: AppColors.borderFocus,
+                    width: 1.5,
+                  ),
                 ),
                 contentPadding: const EdgeInsets.all(AppSpacing.space4),
               ),
-              style: AppTextStyles.bodyMd.copyWith(color: AppColors.textPrimary),
+              style: AppTextStyles.bodyMd.copyWith(
+                color: AppColors.textPrimary,
+              ),
             ),
 
             const SizedBox(height: AppSpacing.layoutXl),

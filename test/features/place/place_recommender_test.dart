@@ -17,23 +17,22 @@ Place _makePlace({
   List<String> suitableFor = const [],
   List<int> bestMonths = const [],
   String region = 'danang',
-}) =>
-    Place(
-      id: id,
-      name: name,
-      nameEn: name,
-      category: category,
-      region: region,
-      lat: 16.047,
-      lng: 108.206,
-      address: 'Test Address',
-      tags: tags,
-      ratingAvg: ratingAvg,
-      ratingCount: ratingCount,
-      entryFeeMax: entryFeeMax,
-      suitableFor: suitableFor,
-      bestMonths: bestMonths,
-    );
+}) => Place(
+  id: id,
+  name: name,
+  nameEn: name,
+  category: category,
+  region: region,
+  lat: 16.047,
+  lng: 108.206,
+  address: 'Test Address',
+  tags: tags,
+  ratingAvg: ratingAvg,
+  ratingCount: ratingCount,
+  entryFeeMax: entryFeeMax,
+  suitableFor: suitableFor,
+  bestMonths: bestMonths,
+);
 
 void main() {
   group('PlaceRecommender', () {
@@ -66,8 +65,11 @@ void main() {
       );
 
       expect(result.length, 2);
-      expect(result.first.place.id, 'beach1',
-          reason: 'Beach place phải đứng trên museum khi user thích biển');
+      expect(
+        result.first.place.id,
+        'beach1',
+        reason: 'Beach place phải đứng trên museum khi user thích biển',
+      );
     });
 
     // ────────────────────────────────────────────────
@@ -77,18 +79,18 @@ void main() {
         entryFeeMax: 300000, // 300k > 200k budget nhưng ≤ 300k (150%)
       );
 
-      final input = RecommendInput(
-        travelStyle: [],
-        budgetPerPerson: 200000,
-      );
+      final input = RecommendInput(travelStyle: [], budgetPerPerson: 200000);
       final result = PlaceRecommender.recommend(
         candidates: [expensivePlace],
         input: input,
       );
 
       expect(result.length, 1);
-      expect(result.first.breakdown.budgetScore, 0.5,
-          reason: 'Giá 300k vượt 200k budget nhưng ≤ 150%, budgetScore = 0.5');
+      expect(
+        result.first.breakdown.budgetScore,
+        0.5,
+        reason: 'Giá 300k vượt 200k budget nhưng ≤ 150%, budgetScore = 0.5',
+      );
     });
 
     // ────────────────────────────────────────────────
@@ -106,8 +108,11 @@ void main() {
         input: input,
       );
 
-      expect(result.any((r) => r.place.id == 'visited1'), false,
-          reason: 'Visited place phải bị loại khỏi kết quả');
+      expect(
+        result.any((r) => r.place.id == 'visited1'),
+        false,
+        reason: 'Visited place phải bị loại khỏi kết quả',
+      );
       expect(result.length, 1);
     });
 
@@ -117,23 +122,24 @@ void main() {
       // Tháng nào cũng trừ tháng hiện tại
       final closedThisMonth = _makePlace(
         id: 'closed1',
-        bestMonths: List.generate(12, (i) => i + 1)
-            .where((m) => m != currentMonth)
-            .toList(),
+        bestMonths: List.generate(
+          12,
+          (i) => i + 1,
+        ).where((m) => m != currentMonth).toList(),
       );
       final openAllYear = _makePlace(id: 'open1', bestMonths: []);
 
-      final input = RecommendInput(
-        travelStyle: [],
-        budgetPerPerson: 500000,
-      );
+      final input = RecommendInput(travelStyle: [], budgetPerPerson: 500000);
       final result = PlaceRecommender.recommend(
         candidates: [closedThisMonth, openAllYear],
         input: input,
       );
 
-      expect(result.any((r) => r.place.id == 'closed1'), false,
-          reason: 'Địa điểm đóng cửa tháng hiện tại phải bị lọc');
+      expect(
+        result.any((r) => r.place.id == 'closed1'),
+        false,
+        reason: 'Địa điểm đóng cửa tháng hiện tại phải bị lọc',
+      );
     });
 
     // ────────────────────────────────────────────────
@@ -157,8 +163,11 @@ void main() {
         input: input,
       );
 
-      expect(result.any((r) => r.place.id == 'family1'), false,
-          reason: 'Family-only place không nên gợi ý cho solo traveler');
+      expect(
+        result.any((r) => r.place.id == 'family1'),
+        false,
+        reason: 'Family-only place không nên gợi ý cho solo traveler',
+      );
       expect(result.any((r) => r.place.id == 'solo1'), true);
     });
 
@@ -169,17 +178,17 @@ void main() {
         entryFeeMax: 400000, // 200% của 200k budget
       );
 
-      final input = RecommendInput(
-        travelStyle: [],
-        budgetPerPerson: 200000,
-      );
+      final input = RecommendInput(travelStyle: [], budgetPerPerson: 200000);
       final result = PlaceRecommender.recommend(
         candidates: [veryExpensive],
         input: input,
       );
 
-      expect(result.first.breakdown.budgetScore, 0.0,
-          reason: 'Giá 400k vượt 150% budget 200k → budgetScore = 0.0');
+      expect(
+        result.first.breakdown.budgetScore,
+        0.0,
+        reason: 'Giá 400k vượt 150% budget 200k → budgetScore = 0.0',
+      );
     });
 
     // ────────────────────────────────────────────────
@@ -211,10 +220,7 @@ void main() {
         travelStyle: ['beach'],
         budgetPerPerson: 500000,
       );
-      final result = PlaceRecommender.recommend(
-        candidates: [],
-        input: input,
-      );
+      final result = PlaceRecommender.recommend(candidates: [], input: input);
       expect(result, isEmpty);
     });
 
@@ -225,10 +231,7 @@ void main() {
         (i) => _makePlace(id: 'p$i', ratingAvg: 4.0 + i * 0.01),
       );
 
-      final input = RecommendInput(
-        travelStyle: [],
-        budgetPerPerson: 500000,
-      );
+      final input = RecommendInput(travelStyle: [], budgetPerPerson: 500000);
       final result = PlaceRecommender.recommend(
         candidates: places,
         input: input,

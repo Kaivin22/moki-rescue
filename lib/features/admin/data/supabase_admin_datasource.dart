@@ -41,29 +41,25 @@ class SupabaseAdminDataSource {
     ]);
 
     return AdminStats(
-      totalPlaces:      results[0],
-      totalUsers:       results[1],
-      openTickets:      results[2],
-      vipUsers:         results[3],
-      totalReviews:     results[4],
+      totalPlaces: results[0],
+      totalUsers: results[1],
+      openTickets: results[2],
+      vipUsers: results[3],
+      totalReviews: results[4],
       totalItineraries: results[5],
     );
   }
 
   Future<int> _countTable(String table) async {
     try {
-      final r = await _client
-          .from(table)
-          .select()
-          .count(CountOption.exact);
+      final r = await _client.from(table).select().count(CountOption.exact);
       return r.count;
     } catch (_) {
       return 0;
     }
   }
 
-  Future<int> _countTableWhere(
-      String table, String col, String val) async {
+  Future<int> _countTableWhere(String table, String col, String val) async {
     try {
       final r = await _client
           .from(table)
@@ -107,13 +103,16 @@ class SupabaseAdminDataSource {
   }
 
   Future<void> updateUserVip(String userId, String vipStatus) async {
-    await _client.from('profiles').update({
-      'vip_status': vipStatus,
-      if (vipStatus == 'vip')
-        'vip_granted_until': DateTime.now()
-            .add(const Duration(days: 30))
-            .toIso8601String(),
-    }).eq('id', userId);
+    await _client
+        .from('profiles')
+        .update({
+          'vip_status': vipStatus,
+          if (vipStatus == 'vip')
+            'vip_granted_until': DateTime.now()
+                .add(const Duration(days: 30))
+                .toIso8601String(),
+        })
+        .eq('id', userId);
   }
 
   // ── Tickets ──────────────────────────────────────────────
@@ -144,19 +143,25 @@ class SupabaseAdminDataSource {
     required String ticketId,
     required String reply,
   }) async {
-    await _client.from('support_tickets').update({
-      'admin_reply': reply,
-      'status': 'resolved',
-      'resolved_at': DateTime.now().toIso8601String(),
-    }).eq('id', ticketId);
+    await _client
+        .from('support_tickets')
+        .update({
+          'admin_reply': reply,
+          'status': 'resolved',
+          'resolved_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', ticketId);
   }
 
   Future<void> updateTicketStatus(String ticketId, String status) async {
-    await _client.from('support_tickets').update({
-      'status': status,
-      if (status == 'resolved')
-        'resolved_at': DateTime.now().toIso8601String(),
-    }).eq('id', ticketId);
+    await _client
+        .from('support_tickets')
+        .update({
+          'status': status,
+          if (status == 'resolved')
+            'resolved_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', ticketId);
   }
 
   // ── Sync (mock) ──────────────────────────────────────────

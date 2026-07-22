@@ -92,10 +92,7 @@ class _ReviewCardState extends State<ReviewCard> {
               Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: SagePalette.sage300,
-                    width: 2,
-                  ),
+                  border: Border.all(color: SagePalette.sage300, width: 2),
                 ),
                 child: CircleAvatar(
                   radius: 18,
@@ -146,10 +143,7 @@ class _ReviewCardState extends State<ReviewCard> {
           const SizedBox(height: AppSpacing.space3),
 
           // ── Stars ──
-          StarRating(
-            rating: widget.rating.toDouble(),
-            size: StarSize.sm,
-          ),
+          StarRating(rating: widget.rating.toDouble(), size: StarSize.sm),
 
           // ── Visit info chips ──
           if (widget.visitType != null || widget.visitMonth != null) ...[
@@ -183,10 +177,10 @@ class _ReviewCardState extends State<ReviewCard> {
               spacing: AppSpacing.space2,
               runSpacing: AppSpacing.space1,
               children: widget.highlights!
-                  .map((h) => TagChip(
-                        label: h,
-                        variant: TagChipVariant.displayOnly,
-                      ))
+                  .map(
+                    (h) =>
+                        TagChip(label: h, variant: TagChipVariant.displayOnly),
+                  )
                   .toList(),
             ),
           ],

@@ -14,10 +14,7 @@ import '../../../core/theme/tokens/app_borders.dart';
 
 /// Shimmer wrapper chuẩn — dùng chung cho mọi skeleton
 class ShimmerWrapper extends StatelessWidget {
-  const ShimmerWrapper({
-    super.key,
-    required this.child,
-  });
+  const ShimmerWrapper({super.key, required this.child});
 
   final Widget child;
 
@@ -222,8 +219,7 @@ class LoadingShimmerList extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
           itemCount: itemCount,
-          separatorBuilder: (_, _) =>
-              const SizedBox(width: AppSpacing.space3),
+          separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.space3),
           itemBuilder: (_, _) => const PlaceCardSkeleton(),
         ),
       );
@@ -234,8 +230,7 @@ class LoadingShimmerList extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
       itemCount: itemCount,
-      separatorBuilder: (_, _) =>
-          const SizedBox(height: AppSpacing.space3),
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.space3),
       itemBuilder: (_, _) => switch (variant) {
         ShimmerVariant.listTile => const ListTileSkeleton(),
         ShimmerVariant.itineraryCard => const ItineraryCardSkeleton(),

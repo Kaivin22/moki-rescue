@@ -13,8 +13,10 @@ final reviewDatasourceProvider = Provider<SupabaseReviewDataSource>((ref) {
 });
 
 /// Reviews cho 1 địa điểm (family provider by placeId)
-final reviewsByPlaceProvider =
-    FutureProvider.family<List<Review>, String>((ref, placeId) async {
+final reviewsByPlaceProvider = FutureProvider.family<List<Review>, String>((
+  ref,
+  placeId,
+) async {
   final ds = ref.watch(reviewDatasourceProvider);
   final (reviews, failure) = await ds.getReviewsByPlace(placeId: placeId);
   if (failure != null) throw failure;
@@ -22,13 +24,14 @@ final reviewsByPlaceProvider =
 });
 
 /// Rating distribution cho 1 place
-final ratingDistributionProvider =
-    FutureProvider.family<Map<int, int>, String>((ref, placeId) async {
-  final ds = ref.watch(reviewDatasourceProvider);
-  final (dist, failure) = await ds.getRatingDistribution(placeId);
-  if (failure != null) throw failure;
-  return dist;
-});
+final ratingDistributionProvider = FutureProvider.family<Map<int, int>, String>(
+  (ref, placeId) async {
+    final ds = ref.watch(reviewDatasourceProvider);
+    final (dist, failure) = await ds.getRatingDistribution(placeId);
+    if (failure != null) throw failure;
+    return dist;
+  },
+);
 
 /// ═══════════════════════════════════════════════════════
 /// WriteReviewNotifier — tạo review mới
@@ -97,5 +100,5 @@ class WriteReviewNotifier extends StateNotifier<WriteReviewState> {
 
 final writeReviewProvider =
     StateNotifierProvider<WriteReviewNotifier, WriteReviewState>((ref) {
-  return WriteReviewNotifier(ref);
-});
+      return WriteReviewNotifier(ref);
+    });

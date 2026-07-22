@@ -30,15 +30,12 @@ class SupabasePlaceDataSource {
   /// Lấy danh sách địa điểm (phân trang, lọc tùy chọn)
   Future<(List<Place>, Failure?)> getPlaces({
     PlaceFilter filter = const PlaceFilter(),
-    String sortBy = 'rating_avg',    // 'rating_avg' | 'name' | 'entry_fee_min'
+    String sortBy = 'rating_avg', // 'rating_avg' | 'name' | 'entry_fee_min'
     bool ascending = false,
     int page = 0,
   }) async {
     try {
-      var query = _client
-          .from('places')
-          .select()
-          .eq('is_active', true);
+      var query = _client.from('places').select().eq('is_active', true);
 
       // ── Filters ──
       if (filter.category != null) {
@@ -102,18 +99,11 @@ class SupabasePlaceDataSource {
           .from('places')
           .select()
           .eq('is_active', true)
-          .textSearch(
-            'ts_search_vector',
-            query.trim(),
-            config: 'vietnamese',
-          )
+          .textSearch('ts_search_vector', query.trim(), config: 'vietnamese')
           .order('rating_avg', ascending: false)
           .range(page * _pageSize, (page + 1) * _pageSize - 1);
 
-      return (
-        (data as List).map((e) => Place.fromJson(e)).toList(),
-        null,
-      );
+      return ((data as List).map((e) => Place.fromJson(e)).toList(), null);
     } catch (_) {
       // Fallback: ILIKE search nếu ts_vector chưa setup
       return _ilikeFallback(query, page);
@@ -121,8 +111,7 @@ class SupabasePlaceDataSource {
   }
 
   /// Fallback search bằng ILIKE khi full-text search chưa sẵn sàng
-  Future<(List<Place>, Failure?)> _ilikeFallback(
-      String query, int page) async {
+  Future<(List<Place>, Failure?)> _ilikeFallback(String query, int page) async {
     try {
       final data = await _client
           .from('places')
@@ -132,10 +121,7 @@ class SupabasePlaceDataSource {
           .order('rating_avg', ascending: false)
           .range(page * _pageSize, (page + 1) * _pageSize - 1);
 
-      return (
-        (data as List).map((e) => Place.fromJson(e)).toList(),
-        null,
-      );
+      return ((data as List).map((e) => Place.fromJson(e)).toList(), null);
     } catch (e) {
       return (<Place>[], ExceptionMapper.map(e));
     }
@@ -148,11 +134,7 @@ class SupabasePlaceDataSource {
   /// Lấy chi tiết một địa điểm theo ID
   Future<(Place?, Failure?)> getPlaceById(String id) async {
     try {
-      final data = await _client
-          .from('places')
-          .select()
-          .eq('id', id)
-          .single();
+      final data = await _client.from('places').select().eq('id', id).single();
       return (Place.fromJson(data), null);
     } catch (e) {
       return (null, ExceptionMapper.map(e));
@@ -163,14 +145,8 @@ class SupabasePlaceDataSource {
   Future<(List<Place>, Failure?)> getPlacesByIds(List<String> ids) async {
     if (ids.isEmpty) return (<Place>[], null);
     try {
-      final data = await _client
-          .from('places')
-          .select()
-          .inFilter('id', ids);
-      return (
-        (data as List).map((e) => Place.fromJson(e)).toList(),
-        null,
-      );
+      final data = await _client.from('places').select().inFilter('id', ids);
+      return ((data as List).map((e) => Place.fromJson(e)).toList(), null);
     } catch (e) {
       return (<Place>[], ExceptionMapper.map(e));
     }
@@ -243,10 +219,7 @@ class SupabasePlaceDataSource {
           .eq('is_active', true)
           .order('rating_avg', ascending: false)
           .limit(limit);
-      return (
-        (data as List).map((e) => Place.fromJson(e)).toList(),
-        null,
-      );
+      return ((data as List).map((e) => Place.fromJson(e)).toList(), null);
     } catch (e) {
       return (<Place>[], ExceptionMapper.map(e));
     }
@@ -265,10 +238,7 @@ class SupabasePlaceDataSource {
           .eq('category', category)
           .order('rating_avg', ascending: false)
           .limit(limit);
-      return (
-        (data as List).map((e) => Place.fromJson(e)).toList(),
-        null,
-      );
+      return ((data as List).map((e) => Place.fromJson(e)).toList(), null);
     } catch (e) {
       return (<Place>[], ExceptionMapper.map(e));
     }

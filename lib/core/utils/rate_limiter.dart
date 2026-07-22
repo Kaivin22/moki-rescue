@@ -5,10 +5,7 @@
 /// Ví dụ: maxRequests=5, window=1 phút → tối đa 5 tin nhắn/phút.
 /// ═══════════════════════════════════════════════════════
 class RateLimiter {
-  RateLimiter({
-    required this.maxRequests,
-    required this.window,
-  });
+  RateLimiter({required this.maxRequests, required this.window});
 
   /// Số request tối đa trong khoảng [window]
   final int maxRequests;

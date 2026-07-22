@@ -92,10 +92,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             right: 0,
             child: Opacity(
               opacity: 0.05,
-              child: Container(
-                height: 200,
-                color: NeutralPalette.neutral900,
-              ),
+              child: Container(height: 200, color: NeutralPalette.neutral900),
             ),
           ),
 
@@ -190,9 +187,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             right: 0,
             child: Text(
               'v1.0.0',
-              style: AppTextStyles.caption.copyWith(
-                color: SagePalette.sage500,
-              ),
+              style: AppTextStyles.caption.copyWith(color: SagePalette.sage500),
               textAlign: TextAlign.center,
             ),
           ),

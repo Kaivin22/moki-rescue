@@ -20,18 +20,12 @@ class ChatMessage {
 }
 
 class AiChatState {
-  const AiChatState({
-    this.messages = const [],
-    this.isTyping = false,
-  });
+  const AiChatState({this.messages = const [], this.isTyping = false});
 
   final List<ChatMessage> messages;
   final bool isTyping;
 
-  AiChatState copyWith({
-    List<ChatMessage>? messages,
-    bool? isTyping,
-  }) =>
+  AiChatState copyWith({List<ChatMessage>? messages, bool? isTyping}) =>
       AiChatState(
         messages: messages ?? this.messages,
         isTyping: isTyping ?? this.isTyping,
@@ -40,17 +34,20 @@ class AiChatState {
 
 class AiChatNotifier extends StateNotifier<AiChatState> {
   AiChatNotifier(this._service)
-      : super(AiChatState(
+    : super(
+        AiChatState(
           messages: [
             const ChatMessage(
-              text: 'Xin chào! Tôi là trợ lý AI du lịch của bạn. '
+              text:
+                  'Xin chào! Tôi là trợ lý AI du lịch của bạn. '
                   'Tôi có thể giúp bạn lên lịch trình, gợi ý địa điểm '
                   'và ẩm thực cho Đà Nẵng và Hội An. '
                   'Bạn muốn khám phá gì hôm nay? 🌊',
               isUser: false,
             ),
           ],
-        ));
+        ),
+      );
 
   final AiTravelService _service;
 
@@ -59,7 +56,10 @@ class AiChatNotifier extends StateNotifier<AiChatState> {
 
     // Add user message
     state = state.copyWith(
-      messages: [...state.messages, ChatMessage(text: text.trim(), isUser: true)],
+      messages: [
+        ...state.messages,
+        ChatMessage(text: text.trim(), isUser: true),
+      ],
       isTyping: true,
     );
 
@@ -87,8 +87,9 @@ class AiChatNotifier extends StateNotifier<AiChatState> {
   }
 }
 
-final aiChatProvider =
-    StateNotifierProvider<AiChatNotifier, AiChatState>((ref) {
+final aiChatProvider = StateNotifierProvider<AiChatNotifier, AiChatState>((
+  ref,
+) {
   final service = ref.watch(aiTravelServiceProvider);
   return AiChatNotifier(service);
 });
@@ -121,16 +122,15 @@ class BudgetState {
     String? foodStyle,
     bool? includeActivities,
     BudgetEstimate? estimate,
-  }) =>
-      BudgetState(
-        numDays: numDays ?? this.numDays,
-        numPeople: numPeople ?? this.numPeople,
-        accommodation: accommodation ?? this.accommodation,
-        transport: transport ?? this.transport,
-        foodStyle: foodStyle ?? this.foodStyle,
-        includeActivities: includeActivities ?? this.includeActivities,
-        estimate: estimate ?? this.estimate,
-      );
+  }) => BudgetState(
+    numDays: numDays ?? this.numDays,
+    numPeople: numPeople ?? this.numPeople,
+    accommodation: accommodation ?? this.accommodation,
+    transport: transport ?? this.transport,
+    foodStyle: foodStyle ?? this.foodStyle,
+    includeActivities: includeActivities ?? this.includeActivities,
+    estimate: estimate ?? this.estimate,
+  );
 }
 
 class BudgetNotifier extends StateNotifier<BudgetState> {
@@ -183,8 +183,9 @@ class BudgetNotifier extends StateNotifier<BudgetState> {
   }
 }
 
-final budgetProvider =
-    StateNotifierProvider<BudgetNotifier, BudgetState>((ref) {
+final budgetProvider = StateNotifierProvider<BudgetNotifier, BudgetState>((
+  ref,
+) {
   final service = ref.watch(aiTravelServiceProvider);
   return BudgetNotifier(service);
 });
@@ -195,8 +196,10 @@ final weatherServiceProvider = Provider<WeatherService>((_) {
   return const WeatherService();
 });
 
-final weatherProvider =
-    FutureProvider.family<CityWeather, String>((ref, cityId) {
+final weatherProvider = FutureProvider.family<CityWeather, String>((
+  ref,
+  cityId,
+) {
   final service = ref.watch(weatherServiceProvider);
   return service.getWeather(cityId);
 });

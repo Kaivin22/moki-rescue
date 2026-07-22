@@ -224,10 +224,7 @@ class PlaceTimelineTile extends StatelessWidget {
 
 /// Vẽ đường đứt nét (dashed line) dọc
 class _DashedLinePainter extends CustomPainter {
-  const _DashedLinePainter({
-    required this.color,
-    required this.strokeWidth,
-  });
+  const _DashedLinePainter({required this.color, required this.strokeWidth});
 
   final Color color;
   final double strokeWidth;

@@ -40,7 +40,6 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
     (id: 'nearme', label: '📍 Gần đây'),
   ];
 
-
   @override
   void initState() {
     super.initState();
@@ -63,17 +62,19 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Cộng đồng',
-            style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Cộng đồng',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
         actions: [
+          IconButton(icon: const Icon(Icons.search_rounded), onPressed: () {}),
           IconButton(
-              icon: const Icon(Icons.search_rounded), onPressed: () {}),
-          IconButton(
-              icon: const Icon(Icons.leaderboard_rounded),
-              tooltip: 'Bảng xếp hạng',
-              onPressed: () => context.push(AppRoutes.leaderboard)),
+            icon: const Icon(Icons.leaderboard_rounded),
+            tooltip: 'Bảng xếp hạng',
+            onPressed: () => context.push(AppRoutes.leaderboard),
+          ),
         ],
       ),
       body: Column(
@@ -84,13 +85,14 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.layoutSm, vertical: 4),
+                horizontal: AppSpacing.layoutSm,
+                vertical: 4,
+              ),
               itemCount: _filters.length,
               itemBuilder: (_, i) {
                 final f = _filters[i];
                 return Padding(
-                  padding:
-                      const EdgeInsets.only(right: AppSpacing.space2),
+                  padding: const EdgeInsets.only(right: AppSpacing.space2),
                   child: TagChip(
                     label: f.label,
                     isSelected: _filter == f.id,
@@ -109,14 +111,12 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                 variant: ShimmerVariant.itineraryCard,
                 itemCount: 3,
               ),
-              error: (e, _) =>
-                  EmptyState(type: EmptyStateType.noTrips),
+              error: (e, _) => EmptyState(type: EmptyStateType.noTrips),
               data: (items) => items.isEmpty
                   ? EmptyState(type: EmptyStateType.noTrips)
                   : ListView.separated(
                       controller: _scrollController,
-                      padding:
-                          const EdgeInsets.all(AppSpacing.layoutSm),
+                      padding: const EdgeInsets.all(AppSpacing.layoutSm),
                       itemCount: items.length,
                       separatorBuilder: (_, index) =>
                           const SizedBox(height: AppSpacing.space4),
@@ -145,7 +145,10 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
               curve: Curves.easeOut,
             ),
             backgroundColor: AppColors.actionPrimary,
-            child: const Icon(Icons.keyboard_arrow_up_rounded, color: Colors.white),
+            child: const Icon(
+              Icons.keyboard_arrow_up_rounded,
+              color: Colors.white,
+            ),
           ),
         ),
       ),
@@ -185,8 +188,8 @@ class _FeedItem {
     final timeAgo = ago.inDays > 0
         ? '${ago.inDays} ngày trước'
         : ago.inHours > 0
-            ? '${ago.inHours} giờ trước'
-            : '${ago.inMinutes} phút trước';
+        ? '${ago.inHours} giờ trước'
+        : '${ago.inMinutes} phút trước';
 
     return _FeedItem(
       id: it.id,
@@ -238,19 +241,34 @@ class _FeedCardState extends State<_FeedCard> {
                 CircleAvatar(
                   radius: 18,
                   backgroundColor: SagePalette.sage200,
-                  backgroundImage: CachedNetworkImageProvider(item.authorAvatar),
+                  backgroundImage: CachedNetworkImageProvider(
+                    item.authorAvatar,
+                  ),
                 ),
                 const SizedBox(width: AppSpacing.space2),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item.authorName, style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600)),
-                      Text(item.timeAgo, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                      Text(
+                        item.authorName,
+                        style: AppTextStyles.bodyMd.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        item.timeAgo,
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                IconButton(icon: const Icon(Icons.more_horiz_rounded, size: 20), onPressed: () {}),
+                IconButton(
+                  icon: const Icon(Icons.more_horiz_rounded, size: 20),
+                  onPressed: () {},
+                ),
               ],
             ),
           ),
@@ -258,14 +276,18 @@ class _FeedCardState extends State<_FeedCard> {
           // ── Cover image ──
           ClipRRect(
             borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(0), topRight: Radius.circular(0)),
+              topLeft: Radius.circular(0),
+              topRight: Radius.circular(0),
+            ),
             child: CachedNetworkImage(
               imageUrl: item.itineraryImage,
               height: 180,
               width: double.infinity,
               fit: BoxFit.cover,
-              placeholder: (_, _) => Container(height: 180, color: SagePalette.sage200),
-              errorWidget: (_, _, _) => Container(height: 180, color: SagePalette.sage300),
+              placeholder: (_, _) =>
+                  Container(height: 180, color: SagePalette.sage200),
+              errorWidget: (_, _, _) =>
+                  Container(height: 180, color: SagePalette.sage300),
             ),
           ),
 
@@ -277,18 +299,39 @@ class _FeedCardState extends State<_FeedCard> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.calendar_today_rounded, size: 13, color: AppColors.textSecondary),
+                    const Icon(
+                      Icons.calendar_today_rounded,
+                      size: 13,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 4),
-                    Text('${item.numDays} ngày', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                    Text(
+                      '${item.numDays} ngày',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.space1),
-                Text(item.itineraryTitle, style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text(
+                  item.itineraryTitle,
+                  style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: AppSpacing.space2),
                 Wrap(
                   spacing: AppSpacing.space2,
                   runSpacing: AppSpacing.space1,
-                  children: item.tags.map((t) => TagChip(label: t, variant: TagChipVariant.displayOnly)).toList(),
+                  children: item.tags
+                      .map(
+                        (t) => TagChip(
+                          label: t,
+                          variant: TagChipVariant.displayOnly,
+                        ),
+                      )
+                      .toList(),
                 ),
               ],
             ),
@@ -296,20 +339,37 @@ class _FeedCardState extends State<_FeedCard> {
 
           // ── Actions ──
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.space2, 0, AppSpacing.space2, AppSpacing.space2),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space2,
+              0,
+              AppSpacing.space2,
+              AppSpacing.space2,
+            ),
             child: Row(
               children: [
                 _ActionBtn(
-                  icon: _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  icon: _liked
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
                   label: '${item.likes + (_liked ? 1 : 0)}',
-                  color: _liked ? AppColors.statusError : AppColors.textSecondary,
+                  color: _liked
+                      ? AppColors.statusError
+                      : AppColors.textSecondary,
                   onTap: () => setState(() => _liked = !_liked),
                 ),
-                _ActionBtn(icon: Icons.chat_bubble_outline_rounded, label: '${item.comments}', onTap: () {}),
                 _ActionBtn(
-                  icon: _saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                  icon: Icons.chat_bubble_outline_rounded,
+                  label: '${item.comments}',
+                  onTap: () {},
+                ),
+                _ActionBtn(
+                  icon: _saved
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
                   label: '${item.saves + (_saved ? 1 : 0)}',
-                  color: _saved ? AppColors.actionPrimary : AppColors.textSecondary,
+                  color: _saved
+                      ? AppColors.actionPrimary
+                      : AppColors.textSecondary,
                   onTap: () => setState(() => _saved = !_saved),
                 ),
                 const Spacer(),
@@ -324,7 +384,12 @@ class _FeedCardState extends State<_FeedCard> {
 }
 
 class _ActionBtn extends StatelessWidget {
-  const _ActionBtn({required this.icon, required this.label, required this.onTap, this.color});
+  const _ActionBtn({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.color,
+  });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -332,19 +397,28 @@ class _ActionBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space2, vertical: AppSpacing.space2),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 20, color: color ?? AppColors.textSecondary),
-              if (label.isNotEmpty) ...[
-                const SizedBox(width: 4),
-                Text(label, style: AppTextStyles.caption.copyWith(color: color ?? AppColors.textSecondary, fontWeight: FontWeight.w500)),
-              ],
-            ],
-          ),
-        ),
-      );
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space2,
+        vertical: AppSpacing.space2,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 20, color: color ?? AppColors.textSecondary),
+          if (label.isNotEmpty) ...[
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: AppTextStyles.caption.copyWith(
+                color: color ?? AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
 }

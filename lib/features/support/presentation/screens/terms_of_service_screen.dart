@@ -80,7 +80,10 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Điều khoản sử dụng', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Điều khoản sử dụng',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
       ),
@@ -100,12 +103,17 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.description_outlined, color: AppColors.actionPrimary),
+                      const Icon(
+                        Icons.description_outlined,
+                        color: AppColors.actionPrimary,
+                      ),
                       const SizedBox(width: AppSpacing.space3),
                       Expanded(
                         child: Text(
                           'Có hiệu lực từ: 01/07/2025 · Phiên bản 1.0',
-                          style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ],
@@ -116,7 +124,10 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
 
                 Text(
                   'Vui lòng đọc kỹ các điều khoản dưới đây trước khi sử dụng dịch vụ.',
-                  style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary, height: 1.5),
+                  style: AppTextStyles.bodyMd.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.5,
+                  ),
                 ),
 
                 const SizedBox(height: AppSpacing.layoutSm),
@@ -135,7 +146,9 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
                         color: AppColors.backgroundCard,
                         borderRadius: AppRadius.cardBorder,
                         border: Border.all(
-                          color: isExpanded ? AppColors.actionPrimary : AppColors.borderDefault,
+                          color: isExpanded
+                              ? AppColors.actionPrimary
+                              : AppColors.borderDefault,
                         ),
                       ),
                       child: InkWell(
@@ -158,15 +171,20 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
                                       term.title,
                                       style: AppTextStyles.bodyMd.copyWith(
                                         fontWeight: FontWeight.w600,
-                                        color: isExpanded ? AppColors.actionPrimary : AppColors.textPrimary,
+                                        color: isExpanded
+                                            ? AppColors.actionPrimary
+                                            : AppColors.textPrimary,
                                       ),
                                     ),
                                   ),
                                   AnimatedRotation(
                                     turns: isExpanded ? 0.5 : 0,
                                     duration: const Duration(milliseconds: 200),
-                                    child: const Icon(Icons.keyboard_arrow_down_rounded,
-                                        size: 20, color: AppColors.textSecondary),
+                                    child: const Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      size: 20,
+                                      color: AppColors.textSecondary,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -174,7 +192,11 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
                             if (isExpanded)
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(
-                                  AppSpacing.space3, 0, AppSpacing.space3, AppSpacing.space3),
+                                  AppSpacing.space3,
+                                  0,
+                                  AppSpacing.space3,
+                                  AppSpacing.space3,
+                                ),
                                 child: Text(
                                   term.content,
                                   style: AppTextStyles.bodyMd.copyWith(
@@ -201,16 +223,21 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
                     children: [
                       Checkbox(
                         value: _accepted,
-                        onChanged: (v) => setState(() => _accepted = v ?? false),
+                        onChanged: (v) =>
+                            setState(() => _accepted = v ?? false),
                         activeColor: AppColors.actionPrimary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
                       ),
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.only(top: 12),
                           child: Text(
                             'Tôi đã đọc và đồng ý với Điều khoản Dịch vụ và Chính sách Bảo mật',
-                            style: AppTextStyles.bodyMd.copyWith(color: AppColors.textPrimary),
+                            style: AppTextStyles.bodyMd.copyWith(
+                              color: AppColors.textPrimary,
+                            ),
                           ),
                         ),
                       ),
@@ -221,7 +248,9 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
                 const SizedBox(height: AppSpacing.layoutSm),
                 AppButton(
                   label: 'Đồng ý và Tiếp tục',
-                  onPressed: _accepted ? () => Navigator.maybePop(context) : null,
+                  onPressed: _accepted
+                      ? () => Navigator.maybePop(context)
+                      : null,
                 ),
                 const SizedBox(height: AppSpacing.layoutXl),
               ],

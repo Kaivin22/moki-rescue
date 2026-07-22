@@ -25,8 +25,10 @@ final featuredPlacesProvider = FutureProvider<List<Place>>((ref) async {
 });
 
 // ── Places by Category ───────────────────────────────
-final placesByCategoryProvider =
-    FutureProvider.family<List<Place>, String>((ref, category) async {
+final placesByCategoryProvider = FutureProvider.family<List<Place>, String>((
+  ref,
+  category,
+) async {
   final ds = ref.watch(placeDatasourceProvider);
   final (places, failure) = await ds.getPlacesByCategory(category, limit: 10);
   if (failure != null) throw failure;
@@ -34,8 +36,10 @@ final placesByCategoryProvider =
 });
 
 // ── Place Detail ─────────────────────────────────────
-final placeDetailProvider =
-    FutureProvider.family<Place, String>((ref, placeId) async {
+final placeDetailProvider = FutureProvider.family<Place, String>((
+  ref,
+  placeId,
+) async {
   final ds = ref.watch(placeDatasourceProvider);
   final (place, failure) = await ds.getPlaceById(placeId);
   if (failure != null) throw failure;
@@ -44,8 +48,9 @@ final placeDetailProvider =
 });
 
 // ── Filter State ─────────────────────────────────────
-final placeFilterProvider =
-    StateProvider<PlaceFilter>((ref) => const PlaceFilter());
+final placeFilterProvider = StateProvider<PlaceFilter>(
+  (ref) => const PlaceFilter(),
+);
 
 // ── Search Query ─────────────────────────────────────
 final searchQueryProvider = StateProvider<String>((ref) => '');
@@ -150,8 +155,8 @@ class SavePlaceNotifier extends StateNotifier<Set<String>> {
 
 final savePlaceNotifierProvider =
     StateNotifierProvider<SavePlaceNotifier, Set<String>>((ref) {
-  return SavePlaceNotifier(ref);
-});
+      return SavePlaceNotifier(ref);
+    });
 
 // ── Admin / Editor helpers ────────────────────────────
 
@@ -164,8 +169,10 @@ final allPlacesProvider = FutureProvider<List<Place>>((ref) async {
 });
 
 /// Tìm kiếm địa điểm theo query — dùng cho Admin/Editor search
-final searchPlacesProvider =
-    FutureProvider.family<List<Place>, String>((ref, query) async {
+final searchPlacesProvider = FutureProvider.family<List<Place>, String>((
+  ref,
+  query,
+) async {
   final ds = ref.watch(placeDatasourceProvider);
   final (places, failure) = await ds.searchPlaces(query: query);
   if (failure != null) throw failure;
@@ -173,8 +180,10 @@ final searchPlacesProvider =
 });
 
 /// Lấy profile của bất kỳ user theo userId — dùng cho AdminUserDetail
-final userProfileProvider =
-    FutureProvider.family<UserProfile?, String>((ref, userId) async {
+final userProfileProvider = FutureProvider.family<UserProfile?, String>((
+  ref,
+  userId,
+) async {
   final ds = ref.watch(placeDatasourceProvider);
   // Dùng trực tiếp Supabase để fetch profile theo userId
   final response = await ds.fetchUserById(userId);

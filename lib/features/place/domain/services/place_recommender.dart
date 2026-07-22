@@ -56,13 +56,16 @@ class ScoreBreakdown {
     required this.popularityScore,
   });
 
-  final double styleMatch;       // [0.0 – 1.0]
-  final double ratingScore;      // [0.0 – 1.0]
-  final double budgetScore;      // 0.0 | 0.5 | 1.0
-  final double popularityScore;  // [0.0 – 1.0]
+  final double styleMatch; // [0.0 – 1.0]
+  final double ratingScore; // [0.0 – 1.0]
+  final double budgetScore; // 0.0 | 0.5 | 1.0
+  final double popularityScore; // [0.0 – 1.0]
 
   double get total =>
-      styleMatch * 40 + ratingScore * 25 + budgetScore * 20 + popularityScore * 15;
+      styleMatch * 40 +
+      ratingScore * 25 +
+      budgetScore * 20 +
+      popularityScore * 15;
 }
 
 /// ═══════════════════════════════════════════════════════
@@ -133,8 +136,9 @@ abstract final class PlaceRecommender {
     final styleMatch = input.travelStyle.isEmpty
         ? 0.5 // neutral nếu user không chọn style
         : () {
-            final matches =
-                input.travelStyle.where((s) => p.tags.contains(s)).length;
+            final matches = input.travelStyle
+                .where((s) => p.tags.contains(s))
+                .length;
             return matches / input.travelStyle.length;
           }();
 

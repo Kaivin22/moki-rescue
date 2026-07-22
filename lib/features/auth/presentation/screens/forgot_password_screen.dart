@@ -38,8 +38,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     if (email.isEmpty) return;
 
     setState(() => _isLoading = true);
-    final success =
-        await ref.read(authNotifierProvider.notifier).resetPassword(email);
+    final success = await ref
+        .read(authNotifierProvider.notifier)
+        .resetPassword(email);
     if (!mounted) return;
     setState(() => _isLoading = false);
 
@@ -49,7 +50,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Không thể gửi email. Vui lòng kiểm tra lại địa chỉ email.'),
+          content: Text(
+            'Không thể gửi email. Vui lòng kiểm tra lại địa chỉ email.',
+          ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -65,7 +68,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: AppColors.textPrimary,
+          ),
           onPressed: () => context.pop(),
         ),
       ),
@@ -103,8 +109,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             const SizedBox(height: AppSpacing.space3),
 
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppSpacing.space8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space8,
+              ),
               child: Text(
                 'Nhập email của bạn và chúng tôi sẽ gửi link để đặt lại mật khẩu.',
                 style: AppTextStyles.bodyMd.copyWith(

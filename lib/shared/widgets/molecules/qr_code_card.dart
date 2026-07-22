@@ -72,7 +72,8 @@ class QRCodeCard extends StatelessWidget {
           SizedBox(
             width: 200,
             height: 200,
-            child: qrWidget ??
+            child:
+                qrWidget ??
                 Container(
                   decoration: BoxDecoration(
                     color: AppColors.backgroundSecondary,

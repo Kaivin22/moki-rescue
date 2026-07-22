@@ -15,12 +15,7 @@ class SearchNoResultsScreen extends StatelessWidget {
   const SearchNoResultsScreen({
     super.key,
     required this.query,
-    this.suggestions = const [
-      'Bãi biển',
-      'Ẩm thực',
-      'Hội An',
-      'Cầu Rồng',
-    ],
+    this.suggestions = const ['Bãi biển', 'Ẩm thực', 'Hội An', 'Cầu Rồng'],
     this.onSuggestionTap,
     this.onViewAll,
   });

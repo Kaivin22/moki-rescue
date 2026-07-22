@@ -16,8 +16,10 @@ final myTicketsProvider = StreamProvider<List<SupportTicket>>((ref) {
 });
 
 // ── Chi tiết 1 ticket ──
-final ticketDetailProvider =
-    FutureProvider.family<SupportTicket?, String>((ref, ticketId) {
+final ticketDetailProvider = FutureProvider.family<SupportTicket?, String>((
+  ref,
+  ticketId,
+) {
   final ds = ref.watch(supportDataSourceProvider);
   return ds.getTicketById(ticketId);
 });
@@ -34,11 +36,7 @@ class CreateTicketState {
   final bool success;
   final String? error;
 
-  CreateTicketState copyWith({
-    bool? isLoading,
-    bool? success,
-    String? error,
-  }) =>
+  CreateTicketState copyWith({bool? isLoading, bool? success, String? error}) =>
       CreateTicketState(
         isLoading: isLoading ?? this.isLoading,
         success: success ?? this.success,
@@ -76,8 +74,9 @@ class CreateTicketNotifier extends StateNotifier<CreateTicketState> {
 }
 
 final createTicketProvider =
-    StateNotifierProvider.autoDispose<CreateTicketNotifier, CreateTicketState>(
-        (ref) {
-  final ds = ref.watch(supportDataSourceProvider);
-  return CreateTicketNotifier(ds);
-});
+    StateNotifierProvider.autoDispose<CreateTicketNotifier, CreateTicketState>((
+      ref,
+    ) {
+      final ds = ref.watch(supportDataSourceProvider);
+      return CreateTicketNotifier(ds);
+    });

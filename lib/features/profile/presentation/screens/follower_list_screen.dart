@@ -36,23 +36,83 @@ class _FollowerListScreenState extends State<FollowerListScreen>
   final _searchController = TextEditingController();
 
   static final _followers = [
-    _UserRecord(id: 'u1', name: 'Trần Lan Anh', username: '@lan.anh', avatarUrl: 'https://picsum.photos/seed/u1/80/80', isFollowing: true, trips: 5),
-    _UserRecord(id: 'u2', name: 'Lê Bảo Long', username: '@baolong', avatarUrl: 'https://picsum.photos/seed/u2/80/80', isFollowing: false, trips: 12),
-    _UserRecord(id: 'u3', name: 'Phạm Thu Hà', username: '@thuha.travel', avatarUrl: 'https://picsum.photos/seed/u3/80/80', isFollowing: true, trips: 3),
-    _UserRecord(id: 'u4', name: 'Nguyễn Quang Vinh', username: '@qvinh', avatarUrl: 'https://picsum.photos/seed/u4/80/80', isFollowing: false, trips: 7),
-    _UserRecord(id: 'u5', name: 'Đinh Thị Mai', username: '@mai.dng', avatarUrl: 'https://picsum.photos/seed/u5/80/80', isFollowing: true, trips: 15),
+    _UserRecord(
+      id: 'u1',
+      name: 'Trần Lan Anh',
+      username: '@lan.anh',
+      avatarUrl: 'https://picsum.photos/seed/u1/80/80',
+      isFollowing: true,
+      trips: 5,
+    ),
+    _UserRecord(
+      id: 'u2',
+      name: 'Lê Bảo Long',
+      username: '@baolong',
+      avatarUrl: 'https://picsum.photos/seed/u2/80/80',
+      isFollowing: false,
+      trips: 12,
+    ),
+    _UserRecord(
+      id: 'u3',
+      name: 'Phạm Thu Hà',
+      username: '@thuha.travel',
+      avatarUrl: 'https://picsum.photos/seed/u3/80/80',
+      isFollowing: true,
+      trips: 3,
+    ),
+    _UserRecord(
+      id: 'u4',
+      name: 'Nguyễn Quang Vinh',
+      username: '@qvinh',
+      avatarUrl: 'https://picsum.photos/seed/u4/80/80',
+      isFollowing: false,
+      trips: 7,
+    ),
+    _UserRecord(
+      id: 'u5',
+      name: 'Đinh Thị Mai',
+      username: '@mai.dng',
+      avatarUrl: 'https://picsum.photos/seed/u5/80/80',
+      isFollowing: true,
+      trips: 15,
+    ),
   ];
 
   static final _following = [
-    _UserRecord(id: 'u6', name: 'TravelVlog Vietnam', username: '@travelvn', avatarUrl: 'https://picsum.photos/seed/u6/80/80', isFollowing: true, trips: 48),
-    _UserRecord(id: 'u7', name: 'Hội An Local Guide', username: '@hoianguide', avatarUrl: 'https://picsum.photos/seed/u7/80/80', isFollowing: true, trips: 31),
-    _UserRecord(id: 'u1', name: 'Trần Lan Anh', username: '@lan.anh', avatarUrl: 'https://picsum.photos/seed/u1/80/80', isFollowing: true, trips: 5),
+    _UserRecord(
+      id: 'u6',
+      name: 'TravelVlog Vietnam',
+      username: '@travelvn',
+      avatarUrl: 'https://picsum.photos/seed/u6/80/80',
+      isFollowing: true,
+      trips: 48,
+    ),
+    _UserRecord(
+      id: 'u7',
+      name: 'Hội An Local Guide',
+      username: '@hoianguide',
+      avatarUrl: 'https://picsum.photos/seed/u7/80/80',
+      isFollowing: true,
+      trips: 31,
+    ),
+    _UserRecord(
+      id: 'u1',
+      name: 'Trần Lan Anh',
+      username: '@lan.anh',
+      avatarUrl: 'https://picsum.photos/seed/u1/80/80',
+      isFollowing: true,
+      trips: 5,
+    ),
   ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTab);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialTab,
+    );
   }
 
   @override
@@ -67,7 +127,10 @@ class _FollowerListScreenState extends State<FollowerListScreen>
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text(widget.displayName, style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          widget.displayName,
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
         bottom: TabBar(
@@ -76,7 +139,9 @@ class _FollowerListScreenState extends State<FollowerListScreen>
           unselectedLabelColor: AppColors.textSecondary,
           indicatorColor: AppColors.actionPrimary,
           indicatorWeight: 2,
-          labelStyle: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600),
+          labelStyle: AppTextStyles.bodyMd.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
           tabs: [
             Tab(text: 'Người theo dõi · ${_followers.length}'),
             Tab(text: 'Đang theo dõi · ${_following.length}'),
@@ -93,14 +158,27 @@ class _FollowerListScreenState extends State<FollowerListScreen>
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 hintText: 'Tìm người dùng...',
-                hintStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.textPlaceholder),
-                prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary),
+                hintStyle: AppTextStyles.bodyMd.copyWith(
+                  color: AppColors.textPlaceholder,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: AppColors.textSecondary,
+                ),
                 filled: true,
                 fillColor: AppColors.backgroundSecondary,
-                border: OutlineInputBorder(borderRadius: AppRadius.inputBorder, borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.space3, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: AppRadius.inputBorder,
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space3,
+                  vertical: 12,
+                ),
               ),
-              style: AppTextStyles.bodyMd.copyWith(color: AppColors.textPrimary),
+              style: AppTextStyles.bodyMd.copyWith(
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
           Expanded(
@@ -120,8 +198,13 @@ class _FollowerListScreenState extends State<FollowerListScreen>
   List<_UserRecord> _applySearch(List<_UserRecord> list) {
     final q = _searchController.text.toLowerCase();
     if (q.isEmpty) return list;
-    return list.where((u) =>
-        u.name.toLowerCase().contains(q) || u.username.toLowerCase().contains(q)).toList();
+    return list
+        .where(
+          (u) =>
+              u.name.toLowerCase().contains(q) ||
+              u.username.toLowerCase().contains(q),
+        )
+        .toList();
   }
 }
 
@@ -179,18 +262,36 @@ class _UserListState extends State<_UserList> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(user.name, style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600)),
-                    Text(user.username, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
-                    Text('${user.trips} lịch trình', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                    Text(
+                      user.name,
+                      style: AppTextStyles.bodyMd.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      user.username,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      '${user.trips} lịch trình',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
               ),
               // Follow / Unfollow
               AppButton(
                 label: user.isFollowing ? 'Đang theo dõi' : 'Theo dõi',
-                variant: user.isFollowing ? AppButtonVariant.secondary : AppButtonVariant.primary,
+                variant: user.isFollowing
+                    ? AppButtonVariant.secondary
+                    : AppButtonVariant.primary,
                 isExpanded: false,
-                onPressed: () => setState(() => user.isFollowing = !user.isFollowing),
+                onPressed: () =>
+                    setState(() => user.isFollowing = !user.isFollowing),
               ),
             ],
           ),

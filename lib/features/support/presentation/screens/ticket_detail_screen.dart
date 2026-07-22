@@ -23,8 +23,10 @@ class TicketDetailScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Chi tiết yêu cầu',
-            style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Chi tiết yêu cầu',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
       ),
@@ -51,100 +53,101 @@ class _TicketDetailBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.layoutMd),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    padding: const EdgeInsets.all(AppSpacing.layoutMd),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Status + category row ──
+        Row(
           children: [
-            // ── Status + category row ──
-            Row(
+            _StatusChip(ticket.status, ticket.statusLabel),
+            const SizedBox(width: AppSpacing.space2),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundSecondary,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.borderDefault),
+              ),
+              child: Text(
+                ticket.categoryLabel,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: AppSpacing.layoutSm),
+
+        // ── Title ──
+        Text(
+          ticket.title,
+          style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
+        ),
+
+        const SizedBox(height: AppSpacing.space2),
+
+        Text(
+          _formatDate(ticket.createdAt),
+          style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+        ),
+
+        const SizedBox(height: AppSpacing.layoutMd),
+
+        // ── User message ──
+        _MessageBubble(
+          text: ticket.description,
+          isUser: true,
+          time: _formatDate(ticket.createdAt),
+        ),
+
+        // ── Admin reply (nếu có) ──
+        if (ticket.adminReply != null) ...[
+          const SizedBox(height: AppSpacing.layoutSm),
+          _MessageBubble(
+            text: ticket.adminReply!,
+            isUser: false,
+            time: ticket.resolvedAt != null
+                ? _formatDate(ticket.resolvedAt!)
+                : '',
+          ),
+        ] else if (ticket.isOpen) ...[
+          const SizedBox(height: AppSpacing.layoutMd),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.space4),
+            decoration: BoxDecoration(
+              color: AppColors.backgroundSecondary,
+              borderRadius: AppRadius.cardBorder,
+              border: Border.all(color: AppColors.borderDefault),
+            ),
+            child: Row(
               children: [
-                _StatusChip(ticket.status, ticket.statusLabel),
+                const Icon(
+                  Icons.schedule_rounded,
+                  color: AppColors.statusWarning,
+                  size: 20,
+                ),
                 const SizedBox(width: AppSpacing.space2),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundSecondary,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.borderDefault),
-                  ),
+                Expanded(
                   child: Text(
-                    ticket.categoryLabel,
-                    style: AppTextStyles.caption
-                        .copyWith(color: AppColors.textSecondary),
+                    'Đội ngũ hỗ trợ đang xem xét yêu cầu của bạn.\nThường phản hồi trong 24 giờ làm việc.',
+                    style: AppTextStyles.bodySm.copyWith(
+                      color: AppColors.textSecondary,
+                      height: 1.5,
+                    ),
                   ),
                 ),
               ],
             ),
+          ),
+        ],
 
-            const SizedBox(height: AppSpacing.layoutSm),
-
-            // ── Title ──
-            Text(
-              ticket.title,
-              style:
-                  AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
-            ),
-
-            const SizedBox(height: AppSpacing.space2),
-
-            Text(
-              _formatDate(ticket.createdAt),
-              style: AppTextStyles.caption
-                  .copyWith(color: AppColors.textSecondary),
-            ),
-
-            const SizedBox(height: AppSpacing.layoutMd),
-
-            // ── User message ──
-            _MessageBubble(
-              text: ticket.description,
-              isUser: true,
-              time: _formatDate(ticket.createdAt),
-            ),
-
-            // ── Admin reply (nếu có) ──
-            if (ticket.adminReply != null) ...[
-              const SizedBox(height: AppSpacing.layoutSm),
-              _MessageBubble(
-                text: ticket.adminReply!,
-                isUser: false,
-                time: ticket.resolvedAt != null
-                    ? _formatDate(ticket.resolvedAt!)
-                    : '',
-              ),
-            ] else if (ticket.isOpen) ...[
-              const SizedBox(height: AppSpacing.layoutMd),
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.space4),
-                decoration: BoxDecoration(
-                  color: AppColors.backgroundSecondary,
-                  borderRadius: AppRadius.cardBorder,
-                  border:
-                      Border.all(color: AppColors.borderDefault),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.schedule_rounded,
-                        color: AppColors.statusWarning, size: 20),
-                    const SizedBox(width: AppSpacing.space2),
-                    Expanded(
-                      child: Text(
-                        'Đội ngũ hỗ trợ đang xem xét yêu cầu của bạn.\nThường phản hồi trong 24 giờ làm việc.',
-                        style: AppTextStyles.bodySm.copyWith(
-                            color: AppColors.textSecondary,
-                            height: 1.5),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
-            const SizedBox(height: AppSpacing.layoutXl),
-          ],
-        ),
-      );
+        const SizedBox(height: AppSpacing.layoutXl),
+      ],
+    ),
+  );
 
   String _formatDate(DateTime dt) {
     final now = DateTime.now();
@@ -162,28 +165,33 @@ class _StatusChip extends StatelessWidget {
 
   Color get _color {
     switch (status) {
-      case 'open': return AppColors.statusWarning;
-      case 'in_progress': return AppColors.actionPrimary;
-      case 'resolved': return AppColors.statusSuccess;
-      default: return AppColors.textSecondary;
+      case 'open':
+        return AppColors.statusWarning;
+      case 'in_progress':
+        return AppColors.actionPrimary;
+      case 'resolved':
+        return AppColors.statusSuccess;
+      default:
+        return AppColors.textSecondary;
     }
   }
 
   @override
   Widget build(BuildContext context) => Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: _color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _color.withValues(alpha: 0.3)),
-        ),
-        child: Text(
-          label,
-          style: AppTextStyles.caption
-              .copyWith(color: _color, fontWeight: FontWeight.w600),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color: _color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: _color.withValues(alpha: 0.3)),
+    ),
+    child: Text(
+      label,
+      style: AppTextStyles.caption.copyWith(
+        color: _color,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 }
 
 class _MessageBubble extends StatelessWidget {
@@ -199,67 +207,72 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment:
-            isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+    crossAxisAlignment: isUser
+        ? CrossAxisAlignment.end
+        : CrossAxisAlignment.start,
+    children: [
+      Row(
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment:
-                isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-            children: [
-              if (!isUser) ...[
-                CircleAvatar(
-                  radius: 14,
-                  backgroundColor:
-                      AppColors.actionPrimary.withValues(alpha: 0.15),
-                  child: const Icon(Icons.support_agent_rounded,
-                      size: 16, color: AppColors.actionPrimary),
-                ),
-                const SizedBox(width: AppSpacing.space2),
-              ],
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.all(AppSpacing.space3),
-                  decoration: BoxDecoration(
-                    color: isUser
-                        ? AppColors.actionPrimary
-                        : AppColors.backgroundCard,
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(16),
-                      topRight: const Radius.circular(16),
-                      bottomLeft: Radius.circular(isUser ? 16 : 4),
-                      bottomRight: Radius.circular(isUser ? 4 : 16),
-                    ),
-                    border: isUser
-                        ? null
-                        : Border.all(color: AppColors.borderDefault),
-                  ),
-                  child: Text(
-                    text,
-                    style: AppTextStyles.bodyMd.copyWith(
-                      color: isUser
-                          ? AppColors.textOnPrimary
-                          : AppColors.textPrimary,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-              if (isUser) const SizedBox(width: AppSpacing.space2),
-            ],
-          ),
-          if (time.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.only(
-                top: 4,
-                left: isUser ? 0 : 34,
-                right: isUser ? AppSpacing.space2 : 0,
-              ),
-              child: Text(
-                time,
-                style: AppTextStyles.caption
-                    .copyWith(color: AppColors.textSecondary),
+          if (!isUser) ...[
+            CircleAvatar(
+              radius: 14,
+              backgroundColor: AppColors.actionPrimary.withValues(alpha: 0.15),
+              child: const Icon(
+                Icons.support_agent_rounded,
+                size: 16,
+                color: AppColors.actionPrimary,
               ),
             ),
+            const SizedBox(width: AppSpacing.space2),
+          ],
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.space3),
+              decoration: BoxDecoration(
+                color: isUser
+                    ? AppColors.actionPrimary
+                    : AppColors.backgroundCard,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isUser ? 16 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 16),
+                ),
+                border: isUser
+                    ? null
+                    : Border.all(color: AppColors.borderDefault),
+              ),
+              child: Text(
+                text,
+                style: AppTextStyles.bodyMd.copyWith(
+                  color: isUser
+                      ? AppColors.textOnPrimary
+                      : AppColors.textPrimary,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ),
+          if (isUser) const SizedBox(width: AppSpacing.space2),
         ],
-      );
+      ),
+      if (time.isNotEmpty)
+        Padding(
+          padding: EdgeInsets.only(
+            top: 4,
+            left: isUser ? 0 : 34,
+            right: isUser ? AppSpacing.space2 : 0,
+          ),
+          child: Text(
+            time,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+    ],
+  );
 }

@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -110,7 +109,11 @@ String? _routeGuard(GoRouterState state) {
   final path = state.matchedLocation;
 
   // Redirect user đã đăng nhập khỏi trang auth về home
-  final authOnlyPaths = [AppRoutes.login, AppRoutes.register, AppRoutes.onboarding];
+  final authOnlyPaths = [
+    AppRoutes.login,
+    AppRoutes.register,
+    AppRoutes.onboarding,
+  ];
   if (isAuthenticated && authOnlyPaths.contains(path)) {
     return AppRoutes.home;
   }
@@ -150,7 +153,6 @@ final appRouter = GoRouter(
   refreshListenable: authNotifier,
 
   routes: [
-
     // ── Auth / Onboarding ──────────────────────────────
     GoRoute(
       path: AppRoutes.splash,
@@ -174,9 +176,8 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.emailSent,
-      builder: (context, state) => EmailSentScreen(
-        email: state.uri.queryParameters['email'] ?? '',
-      ),
+      builder: (context, state) =>
+          EmailSentScreen(email: state.uri.queryParameters['email'] ?? ''),
     ),
     GoRoute(
       path: AppRoutes.googleSignInLoading,
@@ -188,12 +189,21 @@ final appRouter = GoRouter(
     ),
 
     // ── Main bottom-nav tabs (no ShellRoute — each tab navigates independently) ─
-    GoRoute(path: AppRoutes.home,           builder: (c, s) => const HomeScreen()),
-    GoRoute(path: AppRoutes.homeAnonymous,  builder: (c, s) => const HomeScreenAnonymous()),
-    GoRoute(path: AppRoutes.explore,        builder: (c, s) => const ExploreScreen()),
-    GoRoute(path: AppRoutes.myItineraries,  builder: (c, s) => const MyItinerariesScreen()),
-    GoRoute(path: AppRoutes.communityFeed,  builder: (c, s) => const CommunityFeedScreen()),
-    GoRoute(path: AppRoutes.profile,        builder: (c, s) => const ProfileScreen()),
+    GoRoute(path: AppRoutes.home, builder: (c, s) => const HomeScreen()),
+    GoRoute(
+      path: AppRoutes.homeAnonymous,
+      builder: (c, s) => const HomeScreenAnonymous(),
+    ),
+    GoRoute(path: AppRoutes.explore, builder: (c, s) => const ExploreScreen()),
+    GoRoute(
+      path: AppRoutes.myItineraries,
+      builder: (c, s) => const MyItinerariesScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.communityFeed,
+      builder: (c, s) => const CommunityFeedScreen(),
+    ),
+    GoRoute(path: AppRoutes.profile, builder: (c, s) => const ProfileScreen()),
 
     // ── Discover / Search ─────────────────────────────
     GoRoute(
@@ -210,9 +220,8 @@ final appRouter = GoRouter(
     // ── Place Detail ──────────────────────────────────
     GoRoute(
       path: '${AppRoutes.placeDetail}/:placeId',
-      builder: (context, state) => PlaceDetailScreen(
-        placeId: state.pathParameters['placeId']!,
-      ),
+      builder: (context, state) =>
+          PlaceDetailScreen(placeId: state.pathParameters['placeId']!),
     ),
     GoRoute(
       path: '${AppRoutes.placePhotos}/:placeId',
@@ -223,9 +232,8 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '${AppRoutes.reviewList}/:placeId',
-      builder: (context, state) => ReviewListScreen(
-        placeId: state.pathParameters['placeId'],
-      ),
+      builder: (context, state) =>
+          ReviewListScreen(placeId: state.pathParameters['placeId']),
     ),
     GoRoute(
       path: '${AppRoutes.writeReview}/:placeId',
@@ -302,17 +310,15 @@ final appRouter = GoRouter(
     // ── Map ───────────────────────────────────────────
     GoRoute(
       path: AppRoutes.map,
-      builder: (context, state) => MapScreen(
-        initialPlaceId: state.uri.queryParameters['placeId'],
-      ),
+      builder: (context, state) =>
+          MapScreen(initialPlaceId: state.uri.queryParameters['placeId']),
     ),
 
     // ── AI ────────────────────────────────────────────
     GoRoute(
       path: AppRoutes.aiChat,
-      builder: (context, state) => AIChatScreen(
-        initialPrompt: state.uri.queryParameters['prompt'],
-      ),
+      builder: (context, state) =>
+          AIChatScreen(initialPrompt: state.uri.queryParameters['prompt']),
     ),
     GoRoute(
       path: AppRoutes.budgetCalculator,
@@ -366,47 +372,78 @@ final appRouter = GoRouter(
         type: _parseNotifType(state.pathParameters['type']),
         title: state.uri.queryParameters['title'] ?? '',
         body: state.uri.queryParameters['body'] ?? '',
-        timestamp: DateTime.tryParse(state.uri.queryParameters['ts'] ?? '') ?? DateTime.now(),
+        timestamp:
+            DateTime.tryParse(state.uri.queryParameters['ts'] ?? '') ??
+            DateTime.now(),
         imageUrl: state.uri.queryParameters['img'],
         actionLabel: state.uri.queryParameters['action'],
       ),
     ),
 
     // ── Support ───────────────────────────────────────
-    GoRoute(path: AppRoutes.helpCenter,     builder: (c, s) => const HelpCenterScreen()),
-    GoRoute(path: AppRoutes.feedback,       builder: (c, s) => const FeedbackScreen()),
-    GoRoute(path: AppRoutes.privacyPolicy,  builder: (c, s) => const PrivacyPolicyScreen()),
-    GoRoute(path: AppRoutes.termsOfService, builder: (c, s) => const TermsOfServiceScreen()),
+    GoRoute(
+      path: AppRoutes.helpCenter,
+      builder: (c, s) => const HelpCenterScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.feedback,
+      builder: (c, s) => const FeedbackScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.privacyPolicy,
+      builder: (c, s) => const PrivacyPolicyScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.termsOfService,
+      builder: (c, s) => const TermsOfServiceScreen(),
+    ),
 
     // ── VIP + Payment ─────────────────────────────────────────────────
-    GoRoute(path: AppRoutes.vip,           builder: (c, s) => const VipScreen()),
-    GoRoute(path: AppRoutes.payment,       builder: (c, s) => const PaymentScreen()),
-    GoRoute(path: AppRoutes.paymentSuccess, builder: (c, s) => const PaymentSuccessScreen()),
-    GoRoute(path: AppRoutes.paymentFailed,  builder: (c, s) => const PaymentFailedScreen()),
+    GoRoute(path: AppRoutes.vip, builder: (c, s) => const VipScreen()),
+    GoRoute(path: AppRoutes.payment, builder: (c, s) => const PaymentScreen()),
+    GoRoute(
+      path: AppRoutes.paymentSuccess,
+      builder: (c, s) => const PaymentSuccessScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.paymentFailed,
+      builder: (c, s) => const PaymentFailedScreen(),
+    ),
 
     // ── Support Tickets ──────────────────────────────────────────────
-    GoRoute(path: AppRoutes.support,       builder: (c, s) => const SupportScreen()),
-    GoRoute(path: AppRoutes.newTicket,     builder: (c, s) => const NewTicketScreen()),
+    GoRoute(path: AppRoutes.support, builder: (c, s) => const SupportScreen()),
+    GoRoute(
+      path: AppRoutes.newTicket,
+      builder: (c, s) => const NewTicketScreen(),
+    ),
     GoRoute(
       path: '${AppRoutes.ticketDetail}/:id',
-      builder: (c, s) => TicketDetailScreen(
-        ticketId: s.pathParameters['id']!,
-      ),
+      builder: (c, s) => TicketDetailScreen(ticketId: s.pathParameters['id']!),
     ),
 
     // ── Profile Polish ──────────────────────────────────────────────
-    GoRoute(path: AppRoutes.travelPreferences, builder: (c, s) => const TravelPreferencesScreen()),
+    GoRoute(
+      path: AppRoutes.travelPreferences,
+      builder: (c, s) => const TravelPreferencesScreen(),
+    ),
 
     // ── Admin ───────────────────────────────────────────────────
-    GoRoute(path: AppRoutes.admin,           builder: (c, s) => const AdminDashboardScreen()),
-    GoRoute(path: AppRoutes.adminPlaces,     builder: (c, s) => const AdminPlacesScreen()),
+    GoRoute(
+      path: AppRoutes.admin,
+      builder: (c, s) => const AdminDashboardScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.adminPlaces,
+      builder: (c, s) => const AdminPlacesScreen(),
+    ),
     GoRoute(
       path: '${AppRoutes.adminPlaces}/:id/edit',
-      builder: (c, s) => AdminEditPlaceScreen(
-        placeId: s.pathParameters['id']!,
-      ),
+      builder: (c, s) => AdminEditPlaceScreen(placeId: s.pathParameters['id']!),
     ),
-    GoRoute(path: AppRoutes.adminUsers,      builder: (c, s) => const AdminUsersScreen()),
+    GoRoute(
+      path: AppRoutes.adminUsers,
+      builder: (c, s) => const AdminUsersScreen(),
+    ),
     GoRoute(
       path: '${AppRoutes.adminUsers}/:userId',
       builder: (c, s) => AdminUserDetailScreen(
@@ -414,127 +451,143 @@ final appRouter = GoRouter(
         displayName: s.uri.queryParameters['name'] ?? '',
       ),
     ),
-    GoRoute(path: AppRoutes.adminTickets,    builder: (c, s) => const AdminTicketsScreen()),
+    GoRoute(
+      path: AppRoutes.adminTickets,
+      builder: (c, s) => const AdminTicketsScreen(),
+    ),
     GoRoute(
       path: '${AppRoutes.adminTickets}/:id',
-      builder: (c, s) => AdminTicketDetailScreen(
-        ticketId: s.pathParameters['id']!,
-      ),
+      builder: (c, s) =>
+          AdminTicketDetailScreen(ticketId: s.pathParameters['id']!),
     ),
-    GoRoute(path: AppRoutes.adminAnalytics,  builder: (c, s) => const AdminAnalyticsScreen()),
-    GoRoute(path: AppRoutes.adminSync,       builder: (c, s) => const AdminSyncScreen()),
+    GoRoute(
+      path: AppRoutes.adminAnalytics,
+      builder: (c, s) => const AdminAnalyticsScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.adminSync,
+      builder: (c, s) => const AdminSyncScreen(),
+    ),
 
     // ── Editor ────────────────────────────────────────────────
-    GoRoute(path: AppRoutes.editor,          builder: (c, s) => const EditorDashboardScreen()),
-    GoRoute(path: AppRoutes.editorPlaces,    builder: (c, s) => const EditorPlacesScreen()),
+    GoRoute(
+      path: AppRoutes.editor,
+      builder: (c, s) => const EditorDashboardScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.editorPlaces,
+      builder: (c, s) => const EditorPlacesScreen(),
+    ),
     GoRoute(
       path: '${AppRoutes.editorPlaces}/:id/edit',
-      builder: (c, s) => EditorEditPlaceScreen(
-        placeId: s.pathParameters['id']!,
-      ),
+      builder: (c, s) =>
+          EditorEditPlaceScreen(placeId: s.pathParameters['id']!),
     ),
-    GoRoute(path: AppRoutes.editorPlacesNew, builder: (c, s) => const AddNewPlaceScreen()),
+    GoRoute(
+      path: AppRoutes.editorPlacesNew,
+      builder: (c, s) => const AddNewPlaceScreen(),
+    ),
   ],
 );
 
 NotifType _parseNotifType(String? s) => switch (s) {
-  'trip'      => NotifType.trip,
-  'review'    => NotifType.review,
-  'follow'    => NotifType.follow,
+  'trip' => NotifType.trip,
+  'review' => NotifType.review,
+  'follow' => NotifType.follow,
   'promotion' => NotifType.promotion,
-  _           => NotifType.system,
+  _ => NotifType.system,
 };
 
 // ── Route path constants ──────────────────────────────
 abstract final class AppRoutes {
   // Auth
-  static const splash            = '/';
-  static const onboarding        = '/onboarding';
-  static const login             = '/login';
-  static const register          = '/register';
-  static const forgotPassword    = '/forgot-password';
-  static const emailSent         = '/email-sent';
+  static const splash = '/';
+  static const onboarding = '/onboarding';
+  static const login = '/login';
+  static const register = '/register';
+  static const forgotPassword = '/forgot-password';
+  static const emailSent = '/email-sent';
   static const googleSignInLoading = '/google-signin';
-  static const profileSetup      = '/profile-setup';
+  static const profileSetup = '/profile-setup';
 
   // Main tabs
-  static const home              = '/home';
-  static const homeAnonymous     = '/home-guest';
-  static const explore           = '/explore';
-  static const myItineraries     = '/my-itineraries';
-  static const communityFeed     = '/community';
-  static const profile           = '/profile';
+  static const home = '/home';
+  static const homeAnonymous = '/home-guest';
+  static const explore = '/explore';
+  static const myItineraries = '/my-itineraries';
+  static const communityFeed = '/community';
+  static const profile = '/profile';
 
   // Discover / Search
-  static const discover          = '/discover';
-  static const searchResult      = '/search';
+  static const discover = '/discover';
+  static const searchResult = '/search';
 
   // Place
-  static const placeDetail       = '/place';
-  static const placePhotos       = '/place-photos';
-  static const reviewList        = '/reviews';
-  static const writeReview       = '/write-review';
-  static const reportPlace       = '/report-place';
+  static const placeDetail = '/place';
+  static const placePhotos = '/place-photos';
+  static const reviewList = '/reviews';
+  static const writeReview = '/write-review';
+  static const reportPlace = '/report-place';
 
   // Itinerary
-  static const createItinerary   = '/create-itinerary';
-  static const addPlaces         = '/add-places';
-  static const arrangeSchedule   = '/arrange-schedule';
-  static const itineraryDetail   = '/itinerary';
-  static const editSchedule      = '/edit-schedule';
-  static const publicItinerary   = '/shared-itinerary';
-  static const shareItinerary    = '/share-itinerary';
-  static const tripHistory       = '/trip-history';
+  static const createItinerary = '/create-itinerary';
+  static const addPlaces = '/add-places';
+  static const arrangeSchedule = '/arrange-schedule';
+  static const itineraryDetail = '/itinerary';
+  static const editSchedule = '/edit-schedule';
+  static const publicItinerary = '/shared-itinerary';
+  static const shareItinerary = '/share-itinerary';
+  static const tripHistory = '/trip-history';
 
   // Map
-  static const map               = '/map';
+  static const map = '/map';
 
   // AI
-  static const aiChat            = '/ai-chat';
-  static const budgetCalculator  = '/budget';
-  static const weather           = '/weather';
+  static const aiChat = '/ai-chat';
+  static const budgetCalculator = '/budget';
+  static const weather = '/weather';
 
   // Profile
-  static const editProfile       = '/edit-profile';
-  static const settings          = '/settings';
-  static const savedPlaces       = '/saved';
-  static const followers         = '/followers';
-  static const userProfile       = '/user';
+  static const editProfile = '/edit-profile';
+  static const settings = '/settings';
+  static const savedPlaces = '/saved';
+  static const followers = '/followers';
+  static const userProfile = '/user';
 
   // Community
-  static const leaderboard       = '/leaderboard';
+  static const leaderboard = '/leaderboard';
 
   // Notifications
   static const notificationDetail = '/notification';
 
   // Support
-  static const helpCenter        = '/help';
-  static const feedback          = '/feedback';
-  static const privacyPolicy     = '/privacy';
-  static const termsOfService    = '/terms';
-  static const support           = '/support';
-  static const newTicket         = '/support/new';
-  static const ticketDetail      = '/support/ticket';
+  static const helpCenter = '/help';
+  static const feedback = '/feedback';
+  static const privacyPolicy = '/privacy';
+  static const termsOfService = '/terms';
+  static const support = '/support';
+  static const newTicket = '/support/new';
+  static const ticketDetail = '/support/ticket';
 
   // VIP + Payment
-  static const vip               = '/vip';
-  static const payment           = '/payment';
-  static const paymentSuccess    = '/payment/success';
-  static const paymentFailed     = '/payment/failed';
+  static const vip = '/vip';
+  static const payment = '/payment';
+  static const paymentSuccess = '/payment/success';
+  static const paymentFailed = '/payment/failed';
 
   // Profile Polish
   static const travelPreferences = '/travel-preferences';
 
   // Admin Panel
-  static const admin             = '/admin';
-  static const adminPlaces       = '/admin/places';
-  static const adminUsers        = '/admin/users';
-  static const adminTickets      = '/admin/tickets';
-  static const adminAnalytics    = '/admin/analytics';
-  static const adminSync         = '/admin/sync';
+  static const admin = '/admin';
+  static const adminPlaces = '/admin/places';
+  static const adminUsers = '/admin/users';
+  static const adminTickets = '/admin/tickets';
+  static const adminAnalytics = '/admin/analytics';
+  static const adminSync = '/admin/sync';
 
   // Editor Panel
-  static const editor            = '/editor';
-  static const editorPlaces      = '/editor/places';
-  static const editorPlacesNew   = '/editor/places/new';
+  static const editor = '/editor';
+  static const editorPlaces = '/editor/places';
+  static const editorPlacesNew = '/editor/places/new';
 }

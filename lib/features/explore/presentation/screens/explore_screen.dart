@@ -61,8 +61,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
           controller: _tabController,
           isScrollable: true,
           tabAlignment: TabAlignment.start,
-          labelStyle:
-              AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w700),
+          labelStyle: AppTextStyles.bodyMd.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
           unselectedLabelStyle: AppTextStyles.bodyMd,
           labelColor: AppColors.actionPrimary,
           unselectedLabelColor: AppColors.textSecondary,
@@ -73,30 +74,29 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: _tabs.map((_) => feedAsync.when(
-          loading: () => const LoadingShimmerList(
-            variant: ShimmerVariant.itineraryCard,
-            itemCount: 4,
-          ),
-          error: (e, _) => EmptyState(type: EmptyStateType.noTrips),
-          data: (items) => _ItineraryTabView(
-            itineraries: items,
-            onTap: (id) => context.push(
-              AppRoutes.publicItinerary,
-              extra: id,
-            ),
-          ),
-        )).toList(),
+        children: _tabs
+            .map(
+              (_) => feedAsync.when(
+                loading: () => const LoadingShimmerList(
+                  variant: ShimmerVariant.itineraryCard,
+                  itemCount: 4,
+                ),
+                error: (e, _) => EmptyState(type: EmptyStateType.noTrips),
+                data: (items) => _ItineraryTabView(
+                  itineraries: items,
+                  onTap: (id) =>
+                      context.push(AppRoutes.publicItinerary, extra: id),
+                ),
+              ),
+            )
+            .toList(),
       ),
     );
   }
 }
 
 class _ItineraryTabView extends StatefulWidget {
-  const _ItineraryTabView({
-    required this.itineraries,
-    required this.onTap,
-  });
+  const _ItineraryTabView({required this.itineraries, required this.onTap});
 
   final List<Itinerary> itineraries;
   final ValueChanged<String> onTap;

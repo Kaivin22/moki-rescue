@@ -129,10 +129,7 @@ class SupabaseAuthDataSource {
     try {
       final updated = await _client
           .from('profiles')
-          .update({
-            ...data,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
+          .update({...data, 'updated_at': DateTime.now().toIso8601String()})
           .eq('id', userId)
           .select()
           .single();
@@ -152,7 +149,9 @@ class SupabaseAuthDataSource {
       final ext = mimeType.contains('png') ? 'png' : 'jpg';
       final path = 'avatars/$userId/avatar.$ext';
 
-      await _client.storage.from('profiles').uploadBinary(
+      await _client.storage
+          .from('profiles')
+          .uploadBinary(
             path,
             fileBytes,
             fileOptions: FileOptions(contentType: mimeType, upsert: true),

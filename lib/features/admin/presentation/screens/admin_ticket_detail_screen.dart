@@ -38,8 +38,10 @@ class _AdminTicketDetailScreenState
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Xử lý ticket',
-            style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Xử lý ticket',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
       ),
@@ -49,8 +51,8 @@ class _AdminTicketDetailScreenState
         data: (ticket) {
           if (ticket == null) {
             return Center(
-                child: Text('Không tìm thấy ticket',
-                    style: AppTextStyles.bodyMd));
+              child: Text('Không tìm thấy ticket', style: AppTextStyles.bodyMd),
+            );
           }
 
           return Column(
@@ -62,13 +64,19 @@ class _AdminTicketDetailScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // ── Ticket info ──
-                      Text(ticket.title,
-                          style: AppTextStyles.h4
-                              .copyWith(fontWeight: FontWeight.w700)),
+                      Text(
+                        ticket.title,
+                        style: AppTextStyles.h4.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const SizedBox(height: AppSpacing.space2),
                       Row(
                         children: [
-                          _Chip(ticket.statusLabel, _statusColor(ticket.status)),
+                          _Chip(
+                            ticket.statusLabel,
+                            _statusColor(ticket.status),
+                          ),
                           const SizedBox(width: AppSpacing.space2),
                           _Chip(ticket.categoryLabel, AppColors.textSecondary),
                         ],
@@ -99,9 +107,12 @@ class _AdminTicketDetailScreenState
 
                       // ── Status actions ──
                       if (ticket.isOpen) ...[
-                        Text('Thay đổi trạng thái:',
-                            style: AppTextStyles.bodyMd
-                                .copyWith(fontWeight: FontWeight.w600)),
+                        Text(
+                          'Thay đổi trạng thái:',
+                          style: AppTextStyles.bodyMd.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         const SizedBox(height: AppSpacing.space2),
                         Row(
                           children: [
@@ -109,16 +120,14 @@ class _AdminTicketDetailScreenState
                               label: 'Đang xử lý',
                               onTap: () => ref
                                   .read(adminTicketReplyProvider.notifier)
-                                  .updateStatus(
-                                      widget.ticketId, 'in_progress'),
+                                  .updateStatus(widget.ticketId, 'in_progress'),
                             ),
                             const SizedBox(width: AppSpacing.space2),
                             _StatusBtn(
                               label: 'Đóng',
                               onTap: () => ref
                                   .read(adminTicketReplyProvider.notifier)
-                                  .updateStatus(
-                                      widget.ticketId, 'closed'),
+                                  .updateStatus(widget.ticketId, 'closed'),
                               color: AppColors.statusError,
                             ),
                           ],
@@ -136,38 +145,49 @@ class _AdminTicketDetailScreenState
                   decoration: BoxDecoration(
                     color: AppColors.backgroundCard,
                     border: Border(
-                        top: BorderSide(color: AppColors.borderDefault)),
+                      top: BorderSide(color: AppColors.borderDefault),
+                    ),
                   ),
                   child: Column(
                     children: [
                       if (replyState.success)
                         Padding(
                           padding: const EdgeInsets.only(
-                              bottom: AppSpacing.space2),
-                          child: Text('✅ Đã gửi phản hồi!',
-                              style: AppTextStyles.bodyMd.copyWith(
-                                  color: AppColors.statusSuccess)),
+                            bottom: AppSpacing.space2,
+                          ),
+                          child: Text(
+                            '✅ Đã gửi phản hồi!',
+                            style: AppTextStyles.bodyMd.copyWith(
+                              color: AppColors.statusSuccess,
+                            ),
+                          ),
                         ),
                       TextFormField(
                         controller: _replyCtrl,
                         maxLines: 3,
                         decoration: InputDecoration(
                           hintText: 'Nhập phản hồi cho người dùng...',
-                          hintStyle: AppTextStyles.bodyMd
-                              .copyWith(color: AppColors.textPlaceholder),
+                          hintStyle: AppTextStyles.bodyMd.copyWith(
+                            color: AppColors.textPlaceholder,
+                          ),
                           filled: true,
                           fillColor: AppColors.backgroundSecondary,
                           border: OutlineInputBorder(
-                              borderRadius: AppRadius.inputBorder,
-                              borderSide: BorderSide(
-                                  color: AppColors.borderDefault)),
+                            borderRadius: AppRadius.inputBorder,
+                            borderSide: BorderSide(
+                              color: AppColors.borderDefault,
+                            ),
+                          ),
                           enabledBorder: OutlineInputBorder(
-                              borderRadius: AppRadius.inputBorder,
-                              borderSide: BorderSide(
-                                  color: AppColors.borderDefault)),
+                            borderRadius: AppRadius.inputBorder,
+                            borderSide: BorderSide(
+                              color: AppColors.borderDefault,
+                            ),
+                          ),
                         ),
-                        style: AppTextStyles.bodyMd
-                            .copyWith(color: AppColors.textPrimary),
+                        style: AppTextStyles.bodyMd.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.space3),
                       AppButton(
@@ -177,9 +197,8 @@ class _AdminTicketDetailScreenState
                         onPressed: replyState.isLoading
                             ? null
                             : () => ref
-                                .read(adminTicketReplyProvider.notifier)
-                                .reply(widget.ticketId,
-                                    _replyCtrl.text),
+                                  .read(adminTicketReplyProvider.notifier)
+                                  .reply(widget.ticketId, _replyCtrl.text),
                       ),
                     ],
                   ),
@@ -192,11 +211,11 @@ class _AdminTicketDetailScreenState
   }
 
   Color _statusColor(String s) => switch (s) {
-        'open' => AppColors.statusWarning,
-        'in_progress' => AppColors.actionPrimary,
-        'resolved' => AppColors.statusSuccess,
-        _ => AppColors.textSecondary,
-      };
+    'open' => AppColors.statusWarning,
+    'in_progress' => AppColors.actionPrimary,
+    'resolved' => AppColors.statusSuccess,
+    _ => AppColors.textSecondary,
+  };
 
   String _fmt(DateTime dt) =>
       '${dt.day}/${dt.month}/${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
@@ -209,15 +228,14 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Text(label,
-            style: AppTextStyles.caption.copyWith(color: color)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: color.withValues(alpha: 0.3)),
+    ),
+    child: Text(label, style: AppTextStyles.caption.copyWith(color: color)),
+  );
 }
 
 class _MessageCard extends StatelessWidget {
@@ -235,48 +253,46 @@ class _MessageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(AppSpacing.space4),
-        decoration: BoxDecoration(
-          color: isAdmin
-              ? AppColors.actionPrimary.withValues(alpha: 0.05)
-              : AppColors.backgroundCard,
-          borderRadius: AppRadius.cardBorder,
-          border: Border.all(
-            color: isAdmin
-                ? AppColors.actionPrimary.withValues(alpha: 0.2)
-                : AppColors.borderDefault,
+    padding: const EdgeInsets.all(AppSpacing.space4),
+    decoration: BoxDecoration(
+      color: isAdmin
+          ? AppColors.actionPrimary.withValues(alpha: 0.05)
+          : AppColors.backgroundCard,
+      borderRadius: AppRadius.cardBorder,
+      border: Border.all(
+        color: isAdmin
+            ? AppColors.actionPrimary.withValues(alpha: 0.2)
+            : AppColors.borderDefault,
+      ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          sender,
+          style: AppTextStyles.bodySm.copyWith(
+            fontWeight: FontWeight.w700,
+            color: isAdmin ? AppColors.actionPrimary : AppColors.textSecondary,
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(sender,
-                style: AppTextStyles.bodySm.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: isAdmin
-                        ? AppColors.actionPrimary
-                        : AppColors.textSecondary)),
-            const SizedBox(height: AppSpacing.space2),
-            Text(text,
-                style: AppTextStyles.bodyMd
-                    .copyWith(height: 1.5)),
-            if (time.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.space2),
-              Text(time,
-                  style: AppTextStyles.caption
-                      .copyWith(color: AppColors.textSecondary)),
-            ],
-          ],
-        ),
-      );
+        const SizedBox(height: AppSpacing.space2),
+        Text(text, style: AppTextStyles.bodyMd.copyWith(height: 1.5)),
+        if (time.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.space2),
+          Text(
+            time,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
 }
 
 class _StatusBtn extends StatelessWidget {
-  const _StatusBtn({
-    required this.label,
-    required this.onTap,
-    this.color,
-  });
+  const _StatusBtn({required this.label, required this.onTap, this.color});
 
   final String label;
   final VoidCallback onTap;
@@ -284,11 +300,11 @@ class _StatusBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => OutlinedButton(
-        onPressed: onTap,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: color ?? AppColors.actionPrimary,
-          side: BorderSide(color: color ?? AppColors.actionPrimary),
-        ),
-        child: Text(label),
-      );
+    onPressed: onTap,
+    style: OutlinedButton.styleFrom(
+      foregroundColor: color ?? AppColors.actionPrimary,
+      side: BorderSide(color: color ?? AppColors.actionPrimary),
+    ),
+    child: Text(label),
+  );
 }

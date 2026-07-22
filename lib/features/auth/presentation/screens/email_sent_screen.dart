@@ -14,10 +14,7 @@ import '../../../../shared/widgets/atoms/app_button.dart';
 /// ═══════════════════════════════════════════════════════
 
 class EmailSentScreen extends StatefulWidget {
-  const EmailSentScreen({
-    super.key,
-    required this.email,
-  });
+  const EmailSentScreen({super.key, required this.email});
 
   final String email;
 
@@ -47,9 +44,11 @@ class _EmailSentScreenState extends State<EmailSentScreen>
       curve: Curves.elasticOut,
     );
 
-    final reduceMotion =
-        WidgetsBinding.instance.platformDispatcher.accessibilityFeatures
-            .reduceMotion;
+    final reduceMotion = WidgetsBinding
+        .instance
+        .platformDispatcher
+        .accessibilityFeatures
+        .reduceMotion;
     if (reduceMotion) {
       _scaleController.value = 1;
     } else {

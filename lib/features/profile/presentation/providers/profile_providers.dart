@@ -12,8 +12,10 @@ import '../../../../features/community/presentation/providers/community_provider
 /// ═══════════════════════════════════════════════════════
 
 /// Profile chi tiết cho user khác (public profile)
-final userProfileProvider =
-    FutureProvider.family<UserProfile?, String>((ref, userId) async {
+final userProfileProvider = FutureProvider.family<UserProfile?, String>((
+  ref,
+  userId,
+) async {
   final ds = SupabaseAuthDataSource();
   final (profile, failure) = await ds.fetchProfile(userId);
   if (failure != null) throw failure;
@@ -81,7 +83,8 @@ class EditProfileNotifier extends StateNotifier<EditProfileState> {
     if (phone != null) updates['phone'] = phone;
     if (travelStyle != null) updates['travel_style'] = travelStyle;
     if (vipStatus != null) updates['vip_status'] = vipStatus;
-    if (preferredTransport != null) updates['preferred_transport'] = preferredTransport;
+    if (preferredTransport != null)
+      updates['preferred_transport'] = preferredTransport;
     if (travelWith != null) updates['travel_with'] = travelWith;
     if (homeCity != null) updates['home_city'] = homeCity;
 
@@ -91,9 +94,7 @@ class EditProfileNotifier extends StateNotifier<EditProfileState> {
     );
 
     if (failure != null || updated == null) {
-      state = EditProfileState(
-        error: failure?.message ?? 'Không thể cập nhật',
-      );
+      state = EditProfileState(error: failure?.message ?? 'Không thể cập nhật');
       return;
     }
 
@@ -108,8 +109,8 @@ class EditProfileNotifier extends StateNotifier<EditProfileState> {
 
 final editProfileProvider =
     StateNotifierProvider<EditProfileNotifier, EditProfileState>((ref) {
-  return EditProfileNotifier(ref);
-});
+      return EditProfileNotifier(ref);
+    });
 
 /// Follower + following counts
 final followerCountProvider = FutureProvider<int>((ref) async {

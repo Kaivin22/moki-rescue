@@ -36,10 +36,7 @@ class AppDivider extends StatelessWidget {
 
 /// Divider với text ở giữa — "── Hoặc ──"
 class AppTextDivider extends StatelessWidget {
-  const AppTextDivider({
-    super.key,
-    this.text = 'hoặc',
-  });
+  const AppTextDivider({super.key, this.text = 'hoặc'});
 
   /// Text hiển thị giữa 2 đường kẻ
   final String text;
@@ -50,16 +47,11 @@ class AppTextDivider extends StatelessWidget {
       children: [
         // Đường kẻ trái
         const Expanded(
-          child: Divider(
-            thickness: 1,
-            color: SagePalette.sage200,
-          ),
+          child: Divider(thickness: 1, color: SagePalette.sage200),
         ),
         // Text ở giữa
         Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.space4,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
           child: Text(
             text,
             style: AppTextStyles.bodyMd.copyWith(
@@ -69,10 +61,7 @@ class AppTextDivider extends StatelessWidget {
         ),
         // Đường kẻ phải
         const Expanded(
-          child: Divider(
-            thickness: 1,
-            color: SagePalette.sage200,
-          ),
+          child: Divider(thickness: 1, color: SagePalette.sage200),
         ),
       ],
     );

@@ -23,8 +23,10 @@ class SupportScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Hỗ trợ',
-            style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Hỗ trợ',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
       ),
@@ -41,10 +43,10 @@ class SupportScreen extends ConsumerWidget {
         data: (tickets) {
           if (tickets.isEmpty) {
             return EmptyState(
-            type: EmptyStateType.noTickets,
-            actionLabel: 'Tạo yêu cầu hỗ trợ',
-            onAction: () => context.push(AppRoutes.newTicket),
-          );
+              type: EmptyStateType.noTickets,
+              actionLabel: 'Tạo yêu cầu hỗ trợ',
+              onAction: () => context.push(AppRoutes.newTicket),
+            );
           }
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(myTicketsProvider),
@@ -64,8 +66,10 @@ class SupportScreen extends ConsumerWidget {
         backgroundColor: AppColors.actionPrimary,
         foregroundColor: AppColors.textOnPrimary,
         icon: const Icon(Icons.add_rounded),
-        label: Text('Tạo yêu cầu',
-            style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600)),
+        label: Text(
+          'Tạo yêu cầu',
+          style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
@@ -77,53 +81,55 @@ class _TicketTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: () => context.push(
-          AppRoutes.ticketDetail.replaceAll(':id', ticket.id),
-        ),
+    onTap: () =>
+        context.push(AppRoutes.ticketDetail.replaceAll(':id', ticket.id)),
+    borderRadius: AppRadius.cardBorder,
+    child: Container(
+      padding: const EdgeInsets.all(AppSpacing.space4),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundCard,
         borderRadius: AppRadius.cardBorder,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.space4),
-          decoration: BoxDecoration(
-            color: AppColors.backgroundCard,
-            borderRadius: AppRadius.cardBorder,
-            border: Border.all(color: AppColors.borderDefault),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        border: Border.all(color: AppColors.borderDefault),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      ticket.title,
-                      style: AppTextStyles.bodyMd
-                          .copyWith(fontWeight: FontWeight.w600),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+              Expanded(
+                child: Text(
+                  ticket.title,
+                  style: AppTextStyles.bodyMd.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(width: AppSpacing.space2),
-                  _StatusBadge(status: ticket.status),
-                ],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              const SizedBox(height: AppSpacing.space2),
-              Text(
-                ticket.categoryLabel,
-                style: AppTextStyles.caption
-                    .copyWith(color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: AppSpacing.space1),
-              Text(
-                ticket.description,
-                style: AppTextStyles.bodySm
-                    .copyWith(color: AppColors.textSecondary),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+              const SizedBox(width: AppSpacing.space2),
+              _StatusBadge(status: ticket.status),
             ],
           ),
-        ),
-      );
+          const SizedBox(height: AppSpacing.space2),
+          Text(
+            ticket.categoryLabel,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space1),
+          Text(
+            ticket.description,
+            style: AppTextStyles.bodySm.copyWith(
+              color: AppColors.textSecondary,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _StatusBadge extends StatelessWidget {
@@ -132,18 +138,27 @@ class _StatusBadge extends StatelessWidget {
 
   Color get _color {
     switch (status) {
-      case 'open': return AppColors.statusWarning;
-      case 'in_progress': return AppColors.actionPrimary;
-      case 'resolved': return AppColors.statusSuccess;
-      default: return AppColors.textSecondary;
+      case 'open':
+        return AppColors.statusWarning;
+      case 'in_progress':
+        return AppColors.actionPrimary;
+      case 'resolved':
+        return AppColors.statusSuccess;
+      default:
+        return AppColors.textSecondary;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final ticket = SupportTicket(
-      id: '', userId: '', title: '', description: '',
-      category: '', status: status, createdAt: DateTime.now(),
+      id: '',
+      userId: '',
+      title: '',
+      description: '',
+      category: '',
+      status: status,
+      createdAt: DateTime.now(),
     );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -155,7 +170,9 @@ class _StatusBadge extends StatelessWidget {
       child: Text(
         ticket.statusLabel,
         style: AppTextStyles.caption.copyWith(
-            color: _color, fontWeight: FontWeight.w600),
+          color: _color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/tokens/app_colors.dart';
@@ -27,8 +27,7 @@ class WriteReviewScreen extends ConsumerStatefulWidget {
   final String placeName;
 
   @override
-  ConsumerState<WriteReviewScreen> createState() =>
-      _WriteReviewScreenState();
+  ConsumerState<WriteReviewScreen> createState() => _WriteReviewScreenState();
 }
 
 class _WriteReviewScreenState extends ConsumerState<WriteReviewScreen> {
@@ -52,7 +51,14 @@ class _WriteReviewScreenState extends ConsumerState<WriteReviewScreen> {
     ('🎉', 'Vui vẻ'),
   ];
 
-  static const _ratingLabels = ['', 'Tệ', 'Tạm ổn', 'Bình thường', 'Tốt', 'Tuyệt vời!'];
+  static const _ratingLabels = [
+    '',
+    'Tệ',
+    'Tạm ổn',
+    'Bình thường',
+    'Tốt',
+    'Tuyệt vời!',
+  ];
 
   bool get _canSubmit =>
       _rating > 0 && _textController.text.trim().length >= 20;
@@ -65,7 +71,9 @@ class _WriteReviewScreenState extends ConsumerState<WriteReviewScreen> {
 
   Future<void> _submit() async {
     if (!_canSubmit) return;
-    await ref.read(writeReviewProvider.notifier).submit(
+    await ref
+        .read(writeReviewProvider.notifier)
+        .submit(
           placeId: widget.placeId,
           rating: _rating,
           content: _textController.text.trim(),
@@ -141,7 +149,9 @@ class _WriteReviewScreenState extends ConsumerState<WriteReviewScreen> {
                     duration: const Duration(milliseconds: 150),
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: Icon(
-                      star <= _rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                      star <= _rating
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
                       color: AppColors.actionPrimary,
                       size: 44,
                     ),
@@ -175,14 +185,18 @@ class _WriteReviewScreenState extends ConsumerState<WriteReviewScreen> {
             Wrap(
               spacing: AppSpacing.space2,
               runSpacing: AppSpacing.space2,
-              children: _companions.map((c) => TagChip(
-                    label: c,
-                    isSelected: _companion == c,
-                    variant: TagChipVariant.filter,
-                    onTap: () => setState(
-                      () => _companion = _companion == c ? null : c,
+              children: _companions
+                  .map(
+                    (c) => TagChip(
+                      label: c,
+                      isSelected: _companion == c,
+                      variant: TagChipVariant.filter,
+                      onTap: () => setState(
+                        () => _companion = _companion == c ? null : c,
+                      ),
                     ),
-                  )).toList(),
+                  )
+                  .toList(),
             ),
 
             const SizedBox(height: AppSpacing.layoutSm),
@@ -220,7 +234,8 @@ class _WriteReviewScreenState extends ConsumerState<WriteReviewScreen> {
               maxLength: 500,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                hintText: 'Chia sẻ trải nghiệm thực tế của bạn (tối thiểu 20 ký tự)...',
+                hintText:
+                    'Chia sẻ trải nghiệm thực tế của bạn (tối thiểu 20 ký tự)...',
                 hintStyle: AppTextStyles.bodyMd.copyWith(
                   color: AppColors.textPlaceholder,
                 ),
@@ -236,11 +251,16 @@ class _WriteReviewScreenState extends ConsumerState<WriteReviewScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: AppRadius.inputBorder,
-                  borderSide: BorderSide(color: AppColors.borderFocus, width: 1.5),
+                  borderSide: BorderSide(
+                    color: AppColors.borderFocus,
+                    width: 1.5,
+                  ),
                 ),
                 contentPadding: const EdgeInsets.all(AppSpacing.space4),
               ),
-              style: AppTextStyles.bodyMd.copyWith(color: AppColors.textPrimary),
+              style: AppTextStyles.bodyMd.copyWith(
+                color: AppColors.textPrimary,
+              ),
             ),
 
             const SizedBox(height: AppSpacing.layoutSm),
@@ -265,14 +285,18 @@ class _WriteReviewScreenState extends ConsumerState<WriteReviewScreen> {
                   children: [
                     Icon(
                       Icons.add_photo_alternate_outlined,
-                      color: _hasPhotos ? AppColors.actionPrimary : AppColors.textSecondary,
+                      color: _hasPhotos
+                          ? AppColors.actionPrimary
+                          : AppColors.textSecondary,
                       size: 24,
                     ),
                     const SizedBox(width: AppSpacing.space2),
                     Text(
                       _hasPhotos ? '1 ảnh đã chọn' : 'Thêm ảnh (tùy chọn)',
                       style: AppTextStyles.bodyMd.copyWith(
-                        color: _hasPhotos ? AppColors.actionPrimary : AppColors.textSecondary,
+                        color: _hasPhotos
+                            ? AppColors.actionPrimary
+                            : AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -310,11 +334,10 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        text,
-        style: AppTextStyles.h4.copyWith(
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-      );
+    text,
+    style: AppTextStyles.h4.copyWith(
+      fontWeight: FontWeight.w600,
+      color: AppColors.textPrimary,
+    ),
+  );
 }
-

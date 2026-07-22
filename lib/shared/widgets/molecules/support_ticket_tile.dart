@@ -64,11 +64,7 @@ class SupportTicketTile extends StatelessWidget {
                 color: _categoryColor.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                _categoryIcon,
-                size: 20,
-                color: _categoryColor,
-              ),
+              child: Icon(_categoryIcon, size: 20, color: _categoryColor),
             ),
 
             const SizedBox(width: AppSpacing.space3),

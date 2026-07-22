@@ -59,10 +59,9 @@ class _TravelPreferencesScreenState
   }
 
   Future<void> _save() async {
-    await ref.read(editProfileProvider.notifier).updateProfile(
-          travelWith: _travelWith,
-          travelStyle: _travelStyle,
-        );
+    await ref
+        .read(editProfileProvider.notifier)
+        .updateProfile(travelWith: _travelWith, travelStyle: _travelStyle);
 
     final state = ref.read(editProfileProvider);
     if (state.success && mounted) {
@@ -87,8 +86,10 @@ class _TravelPreferencesScreenState
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Sở thích du lịch',
-            style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Sở thích du lịch',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
       ),
@@ -159,8 +160,6 @@ class _Label extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Text(
-        text,
-        style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
-      );
+  Widget build(BuildContext context) =>
+      Text(text, style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600));
 }

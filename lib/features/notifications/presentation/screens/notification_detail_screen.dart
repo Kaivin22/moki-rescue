@@ -37,7 +37,10 @@ class NotificationDetailScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Chi tiết thông báo', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Chi tiết thông báo',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
         actions: [
@@ -62,7 +65,11 @@ class NotificationDetailScreen extends StatelessWidget {
                 errorBuilder: (_, _, _) => Container(
                   height: 200,
                   color: SagePalette.sage200,
-                  child: const Icon(Icons.image_outlined, size: 64, color: SagePalette.sage400),
+                  child: const Icon(
+                    Icons.image_outlined,
+                    size: 64,
+                    color: SagePalette.sage400,
+                  ),
                 ),
               ),
 
@@ -78,7 +85,9 @@ class NotificationDetailScreen extends StatelessWidget {
                       const Spacer(),
                       Text(
                         _formatTime(timestamp),
-                        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -88,7 +97,9 @@ class NotificationDetailScreen extends StatelessWidget {
                   // ── Title ──
                   Text(
                     title,
-                    style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
+                    style: AppTextStyles.h3.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
 
                   const SizedBox(height: AppSpacing.space3),
@@ -108,10 +119,7 @@ class NotificationDetailScreen extends StatelessWidget {
 
                   // ── Action button ──
                   if (actionLabel != null)
-                    AppButton(
-                      label: actionLabel!,
-                      onPressed: onAction,
-                    ),
+                    AppButton(label: actionLabel!, onPressed: onAction),
 
                   const SizedBox(height: AppSpacing.layoutSm),
 
@@ -147,15 +155,34 @@ class _TypeBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color, icon) = switch (type) {
-      NotifType.trip => ('Lịch trình', AppColors.actionPrimary, Icons.map_rounded),
+      NotifType.trip => (
+        'Lịch trình',
+        AppColors.actionPrimary,
+        Icons.map_rounded,
+      ),
       NotifType.review => ('Đánh giá', SagePalette.sage500, Icons.star_rounded),
-      NotifType.follow => ('Người theo dõi', AppColors.actionSecondary, Icons.person_add_rounded),
-      NotifType.system => ('Hệ thống', AppColors.textSecondary, Icons.info_rounded),
-      NotifType.promotion => ('Khuyến mãi', AppColors.statusWarning, Icons.local_offer_rounded),
+      NotifType.follow => (
+        'Người theo dõi',
+        AppColors.actionSecondary,
+        Icons.person_add_rounded,
+      ),
+      NotifType.system => (
+        'Hệ thống',
+        AppColors.textSecondary,
+        Icons.info_rounded,
+      ),
+      NotifType.promotion => (
+        'Khuyến mãi',
+        AppColors.statusWarning,
+        Icons.local_offer_rounded,
+      ),
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space3, vertical: AppSpacing.space1),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space3,
+        vertical: AppSpacing.space1,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
@@ -166,7 +193,13 @@ class _TypeBadge extends StatelessWidget {
         children: [
           Icon(icon, size: 12, color: color),
           const SizedBox(width: 4),
-          Text(label, style: AppTextStyles.caption.copyWith(color: color, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

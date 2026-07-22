@@ -9,9 +9,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,
-        home: const Scaffold(
-          body: Center(child: Text('DaNang Itinerary')),
-        ),
+        home: const Scaffold(body: Center(child: Text('DaNang Itinerary'))),
       ),
     );
     expect(find.byType(MaterialApp), findsOneWidget);

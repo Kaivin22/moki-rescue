@@ -34,7 +34,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   ];
 
   bool get _canSubmit =>
-      _rating > 0 && _category.isNotEmpty && _feedbackController.text.trim().length >= 10;
+      _rating > 0 &&
+      _category.isNotEmpty &&
+      _feedbackController.text.trim().length >= 10;
 
   @override
   void dispose() {
@@ -54,12 +56,16 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isSubmitted) return _SuccessView(onDone: () => Navigator.maybePop(context));
+    if (_isSubmitted)
+      return _SuccessView(onDone: () => Navigator.maybePop(context));
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Phản hồi & Đánh giá', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Phản hồi & Đánh giá',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
       ),
@@ -72,9 +78,13 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             Center(
               child: Column(
                 children: [
-                  Text('Bạn đánh giá ứng dụng như thế nào?',
-                      style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
-                      textAlign: TextAlign.center),
+                  Text(
+                    'Bạn đánh giá ứng dụng như thế nào?',
+                    style: AppTextStyles.h4.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: AppSpacing.layoutSm),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -87,9 +97,13 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             child: Icon(
-                              _rating >= i + 1 ? Icons.star_rounded : Icons.star_border_rounded,
+                              _rating >= i + 1
+                                  ? Icons.star_rounded
+                                  : Icons.star_border_rounded,
                               size: 44,
-                              color: _rating >= i + 1 ? AmberPalette.amber400 : AppColors.textPlaceholder,
+                              color: _rating >= i + 1
+                                  ? AmberPalette.amber400
+                                  : AppColors.textPlaceholder,
                             ),
                           ),
                         ),
@@ -100,7 +114,14 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: AppSpacing.space2),
                       child: Text(
-                        ['', 'Rất tệ', 'Tệ', 'Bình thường', 'Tốt', 'Xuất sắc'][_rating],
+                        [
+                          '',
+                          'Rất tệ',
+                          'Tệ',
+                          'Bình thường',
+                          'Tốt',
+                          'Xuất sắc',
+                        ][_rating],
                         style: AppTextStyles.bodyMd.copyWith(
                           color: AppColors.actionPrimary,
                           fontWeight: FontWeight.w600,
@@ -114,7 +135,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             const SizedBox(height: AppSpacing.layoutMd),
 
             // ── Category ──
-            Text('Chủ đề phản hồi', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600)),
+            Text(
+              'Chủ đề phản hồi',
+              style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: AppSpacing.space3),
             Wrap(
               spacing: AppSpacing.space2,
@@ -125,19 +149,28 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   onTap: () => setState(() => _category = c.id),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space3, vertical: AppSpacing.space2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space3,
+                      vertical: AppSpacing.space2,
+                    ),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.actionPrimary.withValues(alpha: 0.12) : AppColors.backgroundSecondary,
+                      color: isSelected
+                          ? AppColors.actionPrimary.withValues(alpha: 0.12)
+                          : AppColors.backgroundSecondary,
                       borderRadius: AppRadius.chipBorder,
                       border: Border.all(
-                        color: isSelected ? AppColors.actionPrimary : AppColors.borderDefault,
+                        color: isSelected
+                            ? AppColors.actionPrimary
+                            : AppColors.borderDefault,
                         width: isSelected ? 1.5 : 1,
                       ),
                     ),
                     child: Text(
                       c.label,
                       style: AppTextStyles.bodySm.copyWith(
-                        color: isSelected ? AppColors.actionPrimary : AppColors.textPrimary,
+                        color: isSelected
+                            ? AppColors.actionPrimary
+                            : AppColors.textPrimary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -149,7 +182,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             const SizedBox(height: AppSpacing.layoutMd),
 
             // ── Text area ──
-            Text('Mô tả chi tiết', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600)),
+            Text(
+              'Mô tả chi tiết',
+              style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: AppSpacing.space3),
             TextField(
               controller: _feedbackController,
@@ -157,17 +193,36 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               maxLength: 500,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                hintText: 'Hãy chia sẻ trải nghiệm của bạn hoặc mô tả lỗi gặp phải...',
-                hintStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.textPlaceholder),
+                hintText:
+                    'Hãy chia sẻ trải nghiệm của bạn hoặc mô tả lỗi gặp phải...',
+                hintStyle: AppTextStyles.bodyMd.copyWith(
+                  color: AppColors.textPlaceholder,
+                ),
                 filled: true,
                 fillColor: AppColors.backgroundSecondary,
-                border: OutlineInputBorder(borderRadius: AppRadius.cardBorder, borderSide: BorderSide(color: AppColors.borderDefault)),
-                enabledBorder: OutlineInputBorder(borderRadius: AppRadius.cardBorder, borderSide: BorderSide(color: AppColors.borderDefault)),
-                focusedBorder: OutlineInputBorder(borderRadius: AppRadius.cardBorder, borderSide: BorderSide(color: AppColors.borderFocus, width: 1.5)),
+                border: OutlineInputBorder(
+                  borderRadius: AppRadius.cardBorder,
+                  borderSide: BorderSide(color: AppColors.borderDefault),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: AppRadius.cardBorder,
+                  borderSide: BorderSide(color: AppColors.borderDefault),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: AppRadius.cardBorder,
+                  borderSide: BorderSide(
+                    color: AppColors.borderFocus,
+                    width: 1.5,
+                  ),
+                ),
                 contentPadding: const EdgeInsets.all(AppSpacing.space3),
-                counterStyle: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                counterStyle: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
-              style: AppTextStyles.bodyMd.copyWith(color: AppColors.textPrimary),
+              style: AppTextStyles.bodyMd.copyWith(
+                color: AppColors.textPrimary,
+              ),
             ),
 
             const SizedBox(height: AppSpacing.layoutSm),
@@ -175,9 +230,18 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             // ── Attach screenshot hint ──
             Row(
               children: [
-                Icon(Icons.attach_file_rounded, size: 18, color: AppColors.textSecondary),
+                Icon(
+                  Icons.attach_file_rounded,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
                 const SizedBox(width: AppSpacing.space1),
-                Text('Đính kèm ảnh chụp màn hình', style: AppTextStyles.caption.copyWith(color: AppColors.actionPrimary)),
+                Text(
+                  'Đính kèm ảnh chụp màn hình',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.actionPrimary,
+                  ),
+                ),
               ],
             ),
 
@@ -194,7 +258,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             Center(
               child: Text(
                 'Phản hồi của bạn giúp chúng tôi cải thiện ứng dụng tốt hơn mỗi ngày 💚',
-                style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -211,34 +277,43 @@ class _SuccessView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: AppColors.backgroundPrimary,
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.layoutXl),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 100, height: 100,
-                  decoration: BoxDecoration(
-                    color: AppColors.statusSuccess.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(child: Text('✅', style: TextStyle(fontSize: 48))),
-                ),
-                const SizedBox(height: AppSpacing.layoutMd),
-                Text('Cảm ơn bạn!', style: AppTextStyles.h2.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: AppSpacing.space3),
-                Text(
-                  'Phản hồi của bạn đã được gửi thành công. Chúng tôi sẽ xem xét và phản hồi sớm nhất có thể.',
-                  style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary, height: 1.5),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSpacing.layoutLg),
-                AppButton(label: 'Về trang chủ', onPressed: onDone),
-              ],
+    backgroundColor: AppColors.backgroundPrimary,
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.layoutXl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: AppColors.statusSuccess.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text('✅', style: TextStyle(fontSize: 48)),
+              ),
             ),
-          ),
+            const SizedBox(height: AppSpacing.layoutMd),
+            Text(
+              'Cảm ơn bạn!',
+              style: AppTextStyles.h2.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: AppSpacing.space3),
+            Text(
+              'Phản hồi của bạn đã được gửi thành công. Chúng tôi sẽ xem xét và phản hồi sớm nhất có thể.',
+              style: AppTextStyles.bodyMd.copyWith(
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.layoutLg),
+            AppButton(label: 'Về trang chủ', onPressed: onDone),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }

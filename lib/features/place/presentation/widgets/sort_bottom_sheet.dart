@@ -22,10 +22,7 @@ enum SortOption {
 }
 
 class SortBottomSheet extends StatefulWidget {
-  const SortBottomSheet({
-    super.key,
-    this.initialOption = SortOption.popular,
-  });
+  const SortBottomSheet({super.key, this.initialOption = SortOption.popular});
 
   final SortOption initialOption;
 
@@ -82,7 +79,9 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
           const SizedBox(height: AppSpacing.space4),
 
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutMd),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.layoutMd,
+            ),
             child: Text(
               'Sắp xếp theo',
               style: AppTextStyles.h4.copyWith(
@@ -95,62 +94,66 @@ class _SortBottomSheetState extends State<SortBottomSheet> {
           const SizedBox(height: AppSpacing.space3),
 
           // Sort options — dùng ListTile + Radio thủ công (tránh RadioListTile deprecated)
-          ...SortOption.values.map((opt) => InkWell(
-                onTap: () => setState(() => _selected = opt),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.layoutMd,
-                    vertical: AppSpacing.space1,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          opt.label,
-                          style: AppTextStyles.bodyMd.copyWith(
-                            color: AppColors.textPrimary,
-                            fontWeight: _selected == opt
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: _selected == opt
-                                  ? AppColors.actionPrimary
-                                  : AppColors.borderDefault,
-                              width: 2,
-                            ),
-                          ),
-                          child: _selected == opt
-                              ? Center(
-                                  child: Container(
-                                    width: 12,
-                                    height: 12,
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.actionPrimary,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                )
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ),
+          ...SortOption.values.map(
+            (opt) => InkWell(
+              onTap: () => setState(() => _selected = opt),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.layoutMd,
+                  vertical: AppSpacing.space1,
                 ),
-              )),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        opt.label,
+                        style: AppTextStyles.bodyMd.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: _selected == opt
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: _selected == opt
+                                ? AppColors.actionPrimary
+                                : AppColors.borderDefault,
+                            width: 2,
+                          ),
+                        ),
+                        child: _selected == opt
+                            ? Center(
+                                child: Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.actionPrimary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              )
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
 
           const SizedBox(height: AppSpacing.space3),
 
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutMd),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.layoutMd,
+            ),
             child: AppButton(
               label: 'Áp dụng',
               onPressed: () => Navigator.pop(context, _selected),

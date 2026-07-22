@@ -36,17 +36,37 @@ class _PublicItineraryScreenState extends State<PublicItineraryScreen> {
   static const _numDays = 3;
   static const _daySchedules = [
     [
-      (name: 'Bãi biển Mỹ Khê', emoji: '🏖', timeStart: '07:00', durationMin: 120),
+      (
+        name: 'Bãi biển Mỹ Khê',
+        emoji: '🏖',
+        timeStart: '07:00',
+        durationMin: 120,
+      ),
       (name: 'Ngũ Hành Sơn', emoji: '⛰', timeStart: '10:00', durationMin: 90),
-      (name: 'Mì Quảng Bà Mua', emoji: '🍜', timeStart: '12:30', durationMin: 60),
-      (name: 'Phố cổ Hội An', emoji: '🏮', timeStart: '14:30', durationMin: 180),
+      (
+        name: 'Mì Quảng Bà Mua',
+        emoji: '🍜',
+        timeStart: '12:30',
+        durationMin: 60,
+      ),
+      (
+        name: 'Phố cổ Hội An',
+        emoji: '🏮',
+        timeStart: '14:30',
+        durationMin: 180,
+      ),
     ],
     [
       (name: 'Bà Nà Hills', emoji: '🎡', timeStart: '07:30', durationMin: 360),
       (name: 'Cầu Vàng', emoji: '🌉', timeStart: '09:00', durationMin: 60),
     ],
     [
-      (name: 'Bán đảo Sơn Trà', emoji: '🌿', timeStart: '06:30', durationMin: 180),
+      (
+        name: 'Bán đảo Sơn Trà',
+        emoji: '🌿',
+        timeStart: '06:30',
+        durationMin: 180,
+      ),
       (name: 'Cầu Rồng', emoji: '🐉', timeStart: '11:00', durationMin: 45),
       (name: 'Chợ Hàn', emoji: '🏪', timeStart: '14:00', durationMin: 120),
     ],
@@ -71,8 +91,15 @@ class _PublicItineraryScreenState extends State<PublicItineraryScreen> {
             leading: IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color: Colors.black45, shape: BoxShape.circle),
-                child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+                decoration: BoxDecoration(
+                  color: Colors.black45,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
               onPressed: () => Navigator.maybePop(context),
             ),
@@ -80,17 +107,29 @@ class _PublicItineraryScreenState extends State<PublicItineraryScreen> {
               IconButton(
                 icon: Container(
                   padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(color: Colors.black45, shape: BoxShape.circle),
-                  child: const Icon(Icons.share_outlined, color: Colors.white, size: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.black45,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.share_outlined,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
                 onPressed: () {},
               ),
               IconButton(
                 icon: Container(
                   padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(color: Colors.black45, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: Colors.black45,
+                    shape: BoxShape.circle,
+                  ),
                   child: Icon(
-                    _isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                    _isSaved
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_border_rounded,
                     color: _isSaved ? AppColors.actionPrimary : Colors.white,
                     size: 20,
                   ),
@@ -120,29 +159,65 @@ class _PublicItineraryScreenState extends State<PublicItineraryScreen> {
                     children: [
                       Text(
                         '3 ngày Đà Nẵng - Hội An trọn vẹn',
-                        style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
+                        style: AppTextStyles.h3.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.space2),
                       Row(
                         children: [
-                          Icon(Icons.calendar_today_rounded, size: 13, color: AppColors.textSecondary),
+                          Icon(
+                            Icons.calendar_today_rounded,
+                            size: 13,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 4),
-                          Text('$_numDays ngày', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                          Text(
+                            '$_numDays ngày',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
                           const SizedBox(width: AppSpacing.space3),
-                          Icon(Icons.place_rounded, size: 13, color: AppColors.textSecondary),
+                          Icon(
+                            Icons.place_rounded,
+                            size: 13,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 4),
-                          Text('9 địa điểm', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                          Text(
+                            '9 địa điểm',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
                           const SizedBox(width: AppSpacing.space3),
-                          Icon(Icons.favorite_rounded, size: 13, color: AppColors.statusError),
+                          Icon(
+                            Icons.favorite_rounded,
+                            size: 13,
+                            color: AppColors.statusError,
+                          ),
                           const SizedBox(width: 4),
-                          Text('127 lượt lưu', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                          Text(
+                            '127 lượt lưu',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.space3),
                       // Tags
                       Wrap(
                         spacing: AppSpacing.space2,
-                        children: _tags.map((t) => TagChip(label: t, variant: TagChipVariant.displayOnly)).toList(),
+                        children: _tags
+                            .map(
+                              (t) => TagChip(
+                                label: t,
+                                variant: TagChipVariant.displayOnly,
+                              ),
+                            )
+                            .toList(),
                       ),
                     ],
                   ),
@@ -150,7 +225,9 @@ class _PublicItineraryScreenState extends State<PublicItineraryScreen> {
 
                 // ── Author card ──
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.layoutSm,
+                  ),
                   child: Container(
                     padding: const EdgeInsets.all(AppSpacing.space3),
                     decoration: BoxDecoration(
@@ -164,17 +241,26 @@ class _PublicItineraryScreenState extends State<PublicItineraryScreen> {
                           radius: 22,
                           backgroundColor: SagePalette.sage200,
                           backgroundImage: const CachedNetworkImageProvider(
-                              'https://picsum.photos/seed/u6/80/80'),
+                            'https://picsum.photos/seed/u6/80/80',
+                          ),
                         ),
                         const SizedBox(width: AppSpacing.space3),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('TravelVlog Vietnam',
-                                  style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600)),
-                              Text('48 lịch trình · 1.2K người theo dõi',
-                                  style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                              Text(
+                                'TravelVlog Vietnam',
+                                style: AppTextStyles.bodyMd.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                '48 lịch trình · 1.2K người theo dõi',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -195,7 +281,10 @@ class _PublicItineraryScreenState extends State<PublicItineraryScreen> {
                   height: 44,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.layoutSm,
+                      vertical: 4,
+                    ),
                     itemCount: _numDays,
                     itemBuilder: (_, i) {
                       final isActive = _selectedDay == i;
@@ -206,17 +295,23 @@ class _PublicItineraryScreenState extends State<PublicItineraryScreen> {
                           margin: const EdgeInsets.only(right: 8),
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           decoration: BoxDecoration(
-                            color: isActive ? AppColors.actionPrimary : AppColors.backgroundSecondary,
+                            color: isActive
+                                ? AppColors.actionPrimary
+                                : AppColors.backgroundSecondary,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: isActive ? AppColors.actionPrimary : AppColors.borderDefault,
+                              color: isActive
+                                  ? AppColors.actionPrimary
+                                  : AppColors.borderDefault,
                             ),
                           ),
                           child: Center(
                             child: Text(
                               'Ngày ${i + 1}',
                               style: AppTextStyles.bodySm.copyWith(
-                                color: isActive ? AppColors.textOnPrimary : AppColors.textPrimary,
+                                color: isActive
+                                    ? AppColors.textOnPrimary
+                                    : AppColors.textPrimary,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),

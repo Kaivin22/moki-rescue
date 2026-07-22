@@ -31,11 +31,46 @@ class _ArrangeScheduleScreenState extends State<ArrangeScheduleScreen> {
   late List<List<_SchedulePlace>> _dayPlaces;
 
   static const _allPlaces = [
-    _SchedulePlace(id: 'p1', name: 'Bãi biển Mỹ Khê', emoji: '🏖', timeStart: '07:00', durationMin: 120, category: 'beach'),
-    _SchedulePlace(id: 'p2', name: 'Ngũ Hành Sơn', emoji: '⛰', timeStart: '10:00', durationMin: 90, category: 'mountain'),
-    _SchedulePlace(id: 'p3', name: 'Phố cổ Hội An', emoji: '🏮', timeStart: '14:00', durationMin: 180, category: 'historical'),
-    _SchedulePlace(id: 'p4', name: 'Bà Nà Hills', emoji: '🎡', timeStart: '08:00', durationMin: 360, category: 'entertainment'),
-    _SchedulePlace(id: 'p5', name: 'Cầu Vàng', emoji: '🌉', timeStart: '09:00', durationMin: 60, category: 'viewpoint'),
+    _SchedulePlace(
+      id: 'p1',
+      name: 'Bãi biển Mỹ Khê',
+      emoji: '🏖',
+      timeStart: '07:00',
+      durationMin: 120,
+      category: 'beach',
+    ),
+    _SchedulePlace(
+      id: 'p2',
+      name: 'Ngũ Hành Sơn',
+      emoji: '⛰',
+      timeStart: '10:00',
+      durationMin: 90,
+      category: 'mountain',
+    ),
+    _SchedulePlace(
+      id: 'p3',
+      name: 'Phố cổ Hội An',
+      emoji: '🏮',
+      timeStart: '14:00',
+      durationMin: 180,
+      category: 'historical',
+    ),
+    _SchedulePlace(
+      id: 'p4',
+      name: 'Bà Nà Hills',
+      emoji: '🎡',
+      timeStart: '08:00',
+      durationMin: 360,
+      category: 'entertainment',
+    ),
+    _SchedulePlace(
+      id: 'p5',
+      name: 'Cầu Vàng',
+      emoji: '🌉',
+      timeStart: '09:00',
+      durationMin: 60,
+      category: 'viewpoint',
+    ),
   ];
 
   @override
@@ -43,7 +78,9 @@ class _ArrangeScheduleScreenState extends State<ArrangeScheduleScreen> {
     super.initState();
     // Distribute places across days evenly
     _dayPlaces = List.generate(widget.numDays, (d) {
-      return _allPlaces.where((p) => widget.placeIds.contains(p.id)).toList()
+      return _allPlaces
+          .where((p) => widget.placeIds.contains(p.id))
+          .toList()
           .asMap()
           .entries
           .where((e) => e.key % widget.numDays == d)
@@ -73,8 +110,16 @@ class _ArrangeScheduleScreenState extends State<ArrangeScheduleScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Sắp xếp lịch trình', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
-            Text('Bước 3 / 3 · ${widget.numDays} ngày', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+            Text(
+              'Sắp xếp lịch trình',
+              style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+            ),
+            Text(
+              'Bước 3 / 3 · ${widget.numDays} ngày',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
           ],
         ),
         backgroundColor: AppColors.backgroundPrimary,
@@ -87,7 +132,9 @@ class _ArrangeScheduleScreenState extends State<ArrangeScheduleScreen> {
             height: 48,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.layoutSm,
+              ),
               itemCount: widget.numDays,
               itemBuilder: (_, i) {
                 final isActive = _selectedDay == i;
@@ -96,13 +143,23 @@ class _ArrangeScheduleScreenState extends State<ArrangeScheduleScreen> {
                   onTap: () => setState(() => _selectedDay = i),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    margin: const EdgeInsets.only(right: AppSpacing.space2, top: 4, bottom: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
+                    margin: const EdgeInsets.only(
+                      right: AppSpacing.space2,
+                      top: 4,
+                      bottom: 4,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space4,
+                    ),
                     decoration: BoxDecoration(
-                      color: isActive ? AppColors.actionPrimary : AppColors.backgroundSecondary,
+                      color: isActive
+                          ? AppColors.actionPrimary
+                          : AppColors.backgroundSecondary,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isActive ? AppColors.actionPrimary : AppColors.borderDefault,
+                        color: isActive
+                            ? AppColors.actionPrimary
+                            : AppColors.borderDefault,
                       ),
                     ),
                     child: Row(
@@ -111,24 +168,33 @@ class _ArrangeScheduleScreenState extends State<ArrangeScheduleScreen> {
                         Text(
                           'Ngày ${i + 1}',
                           style: AppTextStyles.bodySm.copyWith(
-                            color: isActive ? AppColors.textOnPrimary : AppColors.textPrimary,
+                            color: isActive
+                                ? AppColors.textOnPrimary
+                                : AppColors.textPrimary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         if (count > 0) ...[
                           const SizedBox(width: AppSpacing.space1),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 1,
+                            ),
                             decoration: BoxDecoration(
                               color: isActive
                                   ? Colors.white.withValues(alpha: 0.3)
-                                  : AppColors.actionPrimary.withValues(alpha: 0.15),
+                                  : AppColors.actionPrimary.withValues(
+                                      alpha: 0.15,
+                                    ),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               '$count',
                               style: AppTextStyles.caption.copyWith(
-                                color: isActive ? Colors.white : AppColors.actionPrimary,
+                                color: isActive
+                                    ? Colors.white
+                                    : AppColors.actionPrimary,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 10,
                               ),
@@ -151,11 +217,15 @@ class _ArrangeScheduleScreenState extends State<ArrangeScheduleScreen> {
                 ? Center(
                     child: Text(
                       'Kéo thả địa điểm vào đây',
-                      style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary),
+                      style: AppTextStyles.bodyMd.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   )
                 : ReorderableListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.layoutSm,
+                    ),
                     itemCount: currentPlaces.length,
                     onReorder: (old, fresh) {
                       setState(() {
@@ -170,7 +240,9 @@ class _ArrangeScheduleScreenState extends State<ArrangeScheduleScreen> {
                       final place = currentPlaces[i];
                       return Padding(
                         key: ValueKey(place.id + _selectedDay.toString()),
-                        padding: const EdgeInsets.only(bottom: AppSpacing.space3),
+                        padding: const EdgeInsets.only(
+                          bottom: AppSpacing.space3,
+                        ),
                         child: PlaceTimelineTile(
                           placeName: '${place.emoji} ${place.name}',
                           arrivalTime: place.timeStart,
@@ -186,11 +258,13 @@ class _ArrangeScheduleScreenState extends State<ArrangeScheduleScreen> {
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.layoutMd, 0, AppSpacing.layoutMd, AppSpacing.layoutSm),
-          child: AppButton(
-            label: 'Tạo lịch trình ✓',
-            onPressed: () {},
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.layoutMd,
+            0,
+            AppSpacing.layoutMd,
+            AppSpacing.layoutSm,
           ),
+          child: AppButton(label: 'Tạo lịch trình ✓', onPressed: () {}),
         ),
       ),
     );

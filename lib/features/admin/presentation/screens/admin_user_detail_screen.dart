@@ -26,8 +26,7 @@ class AdminUserDetailScreen extends ConsumerStatefulWidget {
       _AdminUserDetailScreenState();
 }
 
-class _AdminUserDetailScreenState
-    extends ConsumerState<AdminUserDetailScreen> {
+class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   String? _selectedRole;
   bool _vipToggle = false;
   bool _initialized = false;
@@ -36,29 +35,28 @@ class _AdminUserDetailScreenState
 
   @override
   Widget build(BuildContext context) {
-    final userAsync =
-        ref.watch(userProfileProvider(widget.userId));
+    final userAsync = ref.watch(userProfileProvider(widget.userId));
     final actionState = ref.watch(adminUserActionProvider);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text(widget.displayName,
-            style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          widget.displayName,
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
       ),
       body: userAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
-          child: Text('Không thể tải thông tin',
-              style: AppTextStyles.bodyMd),
+          child: Text('Không thể tải thông tin', style: AppTextStyles.bodyMd),
         ),
         data: (user) {
           if (user == null) {
             return Center(
-              child: Text('Không tìm thấy user',
-                  style: AppTextStyles.bodyMd),
+              child: Text('Không tìm thấy user', style: AppTextStyles.bodyMd),
             );
           }
 
@@ -85,30 +83,35 @@ class _AdminUserDetailScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Vai trò hiện tại: ',
-                          style: AppTextStyles.bodySm.copyWith(
-                              color: AppColors.textSecondary)),
+                      Text(
+                        'Vai trò hiện tại: ',
+                        style: AppTextStyles.bodySm.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                       const SizedBox(height: AppSpacing.space2),
                       Row(
                         children: _roles.map((role) {
                           final isSelected = _selectedRole == role;
                           return Padding(
                             padding: const EdgeInsets.only(
-                                right: AppSpacing.space2),
+                              right: AppSpacing.space2,
+                            ),
                             child: ChoiceChip(
-                              label: Text(role.toUpperCase(),
-                                  style: AppTextStyles.caption.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : AppColors.textPrimary,
-                                  )),
+                              label: Text(
+                                role.toUpperCase(),
+                                style: AppTextStyles.caption.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : AppColors.textPrimary,
+                                ),
+                              ),
                               selected: isSelected,
                               selectedColor: AppColors.actionPrimary,
-                              backgroundColor:
-                                  AppColors.backgroundSecondary,
-                              onSelected: (_) => setState(
-                                  () => _selectedRole = role),
+                              backgroundColor: AppColors.backgroundSecondary,
+                              onSelected: (_) =>
+                                  setState(() => _selectedRole = role),
                             ),
                           );
                         }).toList(),
@@ -143,23 +146,23 @@ class _AdminUserDetailScreenState
 
                 if (actionState.error != null)
                   Padding(
-                    padding:
-                        const EdgeInsets.only(bottom: AppSpacing.space3),
+                    padding: const EdgeInsets.only(bottom: AppSpacing.space3),
                     child: Text(
                       actionState.error!,
-                      style: AppTextStyles.bodyMd
-                          .copyWith(color: AppColors.statusError),
+                      style: AppTextStyles.bodyMd.copyWith(
+                        color: AppColors.statusError,
+                      ),
                     ),
                   ),
 
                 if (actionState.success)
                   Padding(
-                    padding:
-                        const EdgeInsets.only(bottom: AppSpacing.space3),
+                    padding: const EdgeInsets.only(bottom: AppSpacing.space3),
                     child: Text(
                       '✅ Đã cập nhật thành công!',
-                      style: AppTextStyles.bodyMd
-                          .copyWith(color: AppColors.statusSuccess),
+                      style: AppTextStyles.bodyMd.copyWith(
+                        color: AppColors.statusSuccess,
+                      ),
                     ),
                   ),
 
@@ -168,16 +171,20 @@ class _AdminUserDetailScreenState
                   onPressed: actionState.isLoading
                       ? null
                       : () async {
-                          final notifier = ref
-                              .read(adminUserActionProvider.notifier);
+                          final notifier = ref.read(
+                            adminUserActionProvider.notifier,
+                          );
                           if (_selectedRole != user.role) {
                             await notifier.updateRole(
-                                widget.userId, _selectedRole!);
+                              widget.userId,
+                              _selectedRole!,
+                            );
                           }
                           if (_vipToggle != user.isVip) {
                             await notifier.updateVip(
-                                widget.userId,
-                                _vipToggle ? 'vip' : 'free');
+                              widget.userId,
+                              _vipToggle ? 'vip' : 'free',
+                            );
                           }
                         },
                 ),
@@ -196,65 +203,69 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(AppSpacing.layoutMd),
-        decoration: BoxDecoration(
-          color: AppColors.backgroundCard,
-          borderRadius: AppRadius.cardBorder,
-          border: Border.all(color: AppColors.borderDefault),
+    padding: const EdgeInsets.all(AppSpacing.layoutMd),
+    decoration: BoxDecoration(
+      color: AppColors.backgroundCard,
+      borderRadius: AppRadius.cardBorder,
+      border: Border.all(color: AppColors.borderDefault),
+    ),
+    child: Row(
+      children: [
+        CircleAvatar(
+          radius: 30,
+          backgroundColor: AppColors.actionPrimary.withValues(alpha: 0.15),
+          backgroundImage: user.avatarUrl != null
+              ? NetworkImage(user.avatarUrl!)
+              : null,
+          child: user.avatarUrl == null
+              ? Text(
+                  user.displayName.isNotEmpty
+                      ? user.displayName[0].toUpperCase()
+                      : '?',
+                  style: AppTextStyles.h4.copyWith(
+                    color: AppColors.actionPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                )
+              : null,
         ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor:
-                  AppColors.actionPrimary.withValues(alpha: 0.15),
-              backgroundImage: user.avatarUrl != null
-                  ? NetworkImage(user.avatarUrl!)
-                  : null,
-              child: user.avatarUrl == null
-                  ? Text(
-                      user.displayName.isNotEmpty
-                          ? user.displayName[0].toUpperCase()
-                          : '?',
-                      style: AppTextStyles.h4.copyWith(
-                          color: AppColors.actionPrimary,
-                          fontWeight: FontWeight.w700),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: AppSpacing.space3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        const SizedBox(width: AppSpacing.space3),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Text(user.displayName,
-                          style: AppTextStyles.h4.copyWith(
-                              fontWeight: FontWeight.w700)),
-                      if (user.isVip) ...[
-                        const SizedBox(width: AppSpacing.space1),
-                        const Text('👑',
-                            style: TextStyle(fontSize: 14)),
-                      ],
-                    ],
-                  ),
                   Text(
-                    'Tham gia: ${_fmt(user.createdAt)}',
-                    style: AppTextStyles.caption
-                        .copyWith(color: AppColors.textSecondary),
+                    user.displayName,
+                    style: AppTextStyles.h4.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  Text(
-                    '${user.followersCount} followers · ${user.followingCount} following',
-                    style: AppTextStyles.caption
-                        .copyWith(color: AppColors.textSecondary),
-                  ),
+                  if (user.isVip) ...[
+                    const SizedBox(width: AppSpacing.space1),
+                    const Text('👑', style: TextStyle(fontSize: 14)),
+                  ],
                 ],
               ),
-            ),
-          ],
+              Text(
+                'Tham gia: ${_fmt(user.createdAt)}',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              Text(
+                '${user.followersCount} followers · ${user.followingCount} following',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 
   String _fmt(DateTime dt) =>
       '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
@@ -267,22 +278,23 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppSpacing.space4),
-        decoration: BoxDecoration(
-          color: AppColors.backgroundCard,
-          borderRadius: AppRadius.cardBorder,
-          border: Border.all(color: AppColors.borderDefault),
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppSpacing.space4),
+    decoration: BoxDecoration(
+      color: AppColors.backgroundCard,
+      borderRadius: AppRadius.cardBorder,
+      border: Border.all(color: AppColors.borderDefault),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w700),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title,
-                style: AppTextStyles.bodyMd
-                    .copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: AppSpacing.space3),
-            child,
-          ],
-        ),
-      );
+        const SizedBox(height: AppSpacing.space3),
+        child,
+      ],
+    ),
+  );
 }

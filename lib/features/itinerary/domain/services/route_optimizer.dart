@@ -165,14 +165,16 @@ abstract final class RouteOptimizer {
         currentMinutes += travelMin + breakMinutes;
       }
 
-      result.add(OptimizedWaypoint(
-        waypoint: wp,
-        orderIndex: i,
-        startTime: _formatTime(currentMinutes),
-        travelTimeFromPrev: travelMin,
-        distanceFromPrevKm: distKm,
-        transportMode: mode,
-      ));
+      result.add(
+        OptimizedWaypoint(
+          waypoint: wp,
+          orderIndex: i,
+          startTime: _formatTime(currentMinutes),
+          travelTimeFromPrev: travelMin,
+          distanceFromPrevKm: distKm,
+          transportMode: mode,
+        ),
+      );
 
       // Cộng thời gian tham quan
       currentMinutes += wp.durationMin;
@@ -183,13 +185,13 @@ abstract final class RouteOptimizer {
 
   /// Tính tổng quãng đường (km) và thời gian (phút) của route
   static ({double totalKm, int totalMin}) routeStats(
-      List<OptimizedWaypoint> route) {
-    final totalKm =
-        route.fold(0.0, (sum, wp) => sum + wp.distanceFromPrevKm);
+    List<OptimizedWaypoint> route,
+  ) {
+    final totalKm = route.fold(0.0, (sum, wp) => sum + wp.distanceFromPrevKm);
     final totalMin = route.fold(
-        0,
-        (sum, wp) =>
-            sum + wp.waypoint.durationMin + wp.travelTimeFromPrev);
+      0,
+      (sum, wp) => sum + wp.waypoint.durationMin + wp.travelTimeFromPrev,
+    );
     return (totalKm: totalKm, totalMin: totalMin);
   }
 

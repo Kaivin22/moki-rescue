@@ -7,10 +7,7 @@ void main() {
 
     setUp(() {
       // 3 request / 1 phút
-      limiter = RateLimiter(
-        maxRequests: 3,
-        window: const Duration(minutes: 1),
-      );
+      limiter = RateLimiter(maxRequests: 3, window: const Duration(minutes: 1));
     });
 
     // ── tryAcquire ──────────────────────────────────────
@@ -35,8 +32,9 @@ void main() {
       limiter.tryAcquire(now: t0.add(const Duration(seconds: 10)));
       limiter.tryAcquire(now: t0.add(const Duration(seconds: 20)));
       expect(
-          limiter.tryAcquire(now: t0.add(const Duration(seconds: 30))),
-          isFalse);
+        limiter.tryAcquire(now: t0.add(const Duration(seconds: 30))),
+        isFalse,
+      );
 
       // Sau 61 giây kể từ t0 → request đầu tiên hết hạn
       final t1 = t0.add(const Duration(seconds: 61));
@@ -67,7 +65,8 @@ void main() {
 
       // Tại t0 + 30s: phải chờ thêm 30s (window = 60s, oldest = t0)
       final waitAt30 = limiter.waitTime(
-          now: t0.add(const Duration(seconds: 30)));
+        now: t0.add(const Duration(seconds: 30)),
+      );
       expect(waitAt30.inSeconds, closeTo(30, 1));
     });
 
@@ -100,15 +99,26 @@ void main() {
         window: const Duration(seconds: 30),
       );
 
-      singleWindow.tryAcquire(now: t0);               // slot 1
-      singleWindow.tryAcquire(now: t0.add(const Duration(seconds: 15))); // slot 2
-      expect(singleWindow.tryAcquire(now: t0.add(const Duration(seconds: 20))), isFalse);
+      singleWindow.tryAcquire(now: t0); // slot 1
+      singleWindow.tryAcquire(
+        now: t0.add(const Duration(seconds: 15)),
+      ); // slot 2
+      expect(
+        singleWindow.tryAcquire(now: t0.add(const Duration(seconds: 20))),
+        isFalse,
+      );
 
       // t0+31s → slot 1 hết hạn, slot 2 vẫn còn
-      expect(singleWindow.tryAcquire(now: t0.add(const Duration(seconds: 31))), isTrue);
+      expect(
+        singleWindow.tryAcquire(now: t0.add(const Duration(seconds: 31))),
+        isTrue,
+      );
 
       // t0+46s → slot 2 hết hạn, có thể request
-      expect(singleWindow.tryAcquire(now: t0.add(const Duration(seconds: 46))), isTrue);
+      expect(
+        singleWindow.tryAcquire(now: t0.add(const Duration(seconds: 46))),
+        isTrue,
+      );
     });
   });
 }

@@ -51,7 +51,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!_canSubmit) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    await ref.read(authNotifierProvider.notifier).signUpWithEmail(
+    await ref
+        .read(authNotifierProvider.notifier)
+        .signUpWithEmail(
           email: _emailController.text,
           password: _passwordController.text,
           displayName: _nameController.text,
@@ -68,8 +70,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         context.go(AppRoutes.home);
       } else if (next is AuthUnauthenticated && prev is AuthLoading) {
         // Cần xác nhận email → EmailSentScreen
-        context.push(AppRoutes.emailSent,
-            extra: _emailController.text.trim());
+        context.push(AppRoutes.emailSent, extra: _emailController.text.trim());
       } else if (next is AuthError) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -117,8 +118,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.actionPrimary
-                                  .withValues(alpha: 0.3),
+                              color: AppColors.actionPrimary.withValues(
+                                alpha: 0.3,
+                              ),
                               blurRadius: 16,
                             ),
                           ],
@@ -259,7 +261,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                       color: AppColors.actionSecondary,
                                       fontWeight: FontWeight.w600,
                                       decoration: TextDecoration.underline,
-                                      decorationColor: AppColors.actionSecondary,
+                                      decorationColor:
+                                          AppColors.actionSecondary,
                                     ),
                                   ),
                                 ),
@@ -274,7 +277,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       // Tạo tài khoản button
                       AppButton(
                         label: 'Tạo tài khoản',
-                        onPressed: (_canSubmit && !isLoading) ? _onRegister : null,
+                        onPressed: (_canSubmit && !isLoading)
+                            ? _onRegister
+                            : null,
                         isLoading: isLoading,
                       ),
 

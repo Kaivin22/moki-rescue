@@ -158,21 +158,21 @@ class _GroupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.layoutSm,
-          AppSpacing.layoutSm,
-          AppSpacing.layoutSm,
-          AppSpacing.space2,
-        ),
-        child: Text(
-          label.toUpperCase(),
-          style: AppTextStyles.caption.copyWith(
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.8,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(
+      AppSpacing.layoutSm,
+      AppSpacing.layoutSm,
+      AppSpacing.layoutSm,
+      AppSpacing.space2,
+    ),
+    child: Text(
+      label.toUpperCase(),
+      style: AppTextStyles.caption.copyWith(
+        color: AppColors.textSecondary,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.8,
+      ),
+    ),
+  );
 }
 
 class _NotifTile extends StatelessWidget {
@@ -182,9 +182,7 @@ class _NotifTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: item.isRead
-          ? AppColors.backgroundPrimary
-          : SagePalette.sage100,
+      color: item.isRead ? AppColors.backgroundPrimary : SagePalette.sage100,
       child: ListTile(
         leading: Container(
           width: 44,
@@ -206,9 +204,7 @@ class _NotifTile extends StatelessWidget {
         ),
         subtitle: Text(
           item.subtitle,
-          style: AppTextStyles.caption.copyWith(
-            color: AppColors.textSecondary,
-          ),
+          style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),

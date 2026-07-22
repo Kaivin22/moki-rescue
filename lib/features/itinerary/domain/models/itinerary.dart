@@ -46,8 +46,7 @@ class ItinerarySlot {
   // ── Derived ─────────────────────────────────────────
   String get endTime {
     final parts = startTime.split(':');
-    final startMinutes =
-        int.parse(parts[0]) * 60 + int.parse(parts[1]);
+    final startMinutes = int.parse(parts[0]) * 60 + int.parse(parts[1]);
     final endMinutes = startMinutes + durationMin;
     final h = endMinutes ~/ 60;
     final m = endMinutes % 60;
@@ -55,32 +54,32 @@ class ItinerarySlot {
   }
 
   factory ItinerarySlot.fromJson(Map<String, dynamic> json) => ItinerarySlot(
-        id: json['id'] as String,
-        placeId: json['place_id'] as String,
-        placeName: json['place_name'] as String? ?? '',
-        placeImageUrl: json['place_image_url'] as String?,
-        placeCategory: json['place_category'] as String?,
-        orderIndex: json['order_index'] as int? ?? 0,
-        startTime: json['start_time'] as String? ?? '08:00',
-        durationMin: json['duration_min'] as int? ?? 60,
-        transportMode: json['transport_mode'] as String?,
-        travelTimeMin: json['travel_time_min'] as int?,
-        note: json['note'] as String?,
-      );
+    id: json['id'] as String,
+    placeId: json['place_id'] as String,
+    placeName: json['place_name'] as String? ?? '',
+    placeImageUrl: json['place_image_url'] as String?,
+    placeCategory: json['place_category'] as String?,
+    orderIndex: json['order_index'] as int? ?? 0,
+    startTime: json['start_time'] as String? ?? '08:00',
+    durationMin: json['duration_min'] as int? ?? 60,
+    transportMode: json['transport_mode'] as String?,
+    travelTimeMin: json['travel_time_min'] as int?,
+    note: json['note'] as String?,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'place_id': placeId,
-        'place_name': placeName,
-        if (placeImageUrl != null) 'place_image_url': placeImageUrl,
-        if (placeCategory != null) 'place_category': placeCategory,
-        'order_index': orderIndex,
-        'start_time': startTime,
-        'duration_min': durationMin,
-        if (transportMode != null) 'transport_mode': transportMode,
-        if (travelTimeMin != null) 'travel_time_min': travelTimeMin,
-        if (note != null) 'note': note,
-      };
+    'id': id,
+    'place_id': placeId,
+    'place_name': placeName,
+    if (placeImageUrl != null) 'place_image_url': placeImageUrl,
+    if (placeCategory != null) 'place_category': placeCategory,
+    'order_index': orderIndex,
+    'start_time': startTime,
+    'duration_min': durationMin,
+    if (transportMode != null) 'transport_mode': transportMode,
+    if (travelTimeMin != null) 'travel_time_min': travelTimeMin,
+    if (note != null) 'note': note,
+  };
 
   ItinerarySlot copyWith({
     String? startTime,
@@ -89,20 +88,19 @@ class ItinerarySlot {
     int? travelTimeMin,
     String? note,
     int? orderIndex,
-  }) =>
-      ItinerarySlot(
-        id: id,
-        placeId: placeId,
-        placeName: placeName,
-        placeImageUrl: placeImageUrl,
-        placeCategory: placeCategory,
-        orderIndex: orderIndex ?? this.orderIndex,
-        startTime: startTime ?? this.startTime,
-        durationMin: durationMin ?? this.durationMin,
-        transportMode: transportMode ?? this.transportMode,
-        travelTimeMin: travelTimeMin ?? this.travelTimeMin,
-        note: note ?? this.note,
-      );
+  }) => ItinerarySlot(
+    id: id,
+    placeId: placeId,
+    placeName: placeName,
+    placeImageUrl: placeImageUrl,
+    placeCategory: placeCategory,
+    orderIndex: orderIndex ?? this.orderIndex,
+    startTime: startTime ?? this.startTime,
+    durationMin: durationMin ?? this.durationMin,
+    transportMode: transportMode ?? this.transportMode,
+    travelTimeMin: travelTimeMin ?? this.travelTimeMin,
+    note: note ?? this.note,
+  );
 }
 
 /// Một ngày trong lịch trình
@@ -127,8 +125,7 @@ class ItineraryDay {
   final List<ItinerarySlot> slots;
 
   // ── Derived ─────────────────────────────────────────
-  int get totalDurationMin =>
-      slots.fold(0, (sum, s) => sum + s.durationMin);
+  int get totalDurationMin => slots.fold(0, (sum, s) => sum + s.durationMin);
 
   int get totalTravelMin =>
       slots.fold(0, (sum, s) => sum + (s.travelTimeMin ?? 0));
@@ -136,9 +133,10 @@ class ItineraryDay {
   String get dayLabel => 'Ngày ${dayIndex + 1}';
 
   factory ItineraryDay.fromJson(Map<String, dynamic> json) {
-    final slotsList = (json['slots'] as List<dynamic>?)
-        ?.map((e) => ItinerarySlot.fromJson(e as Map<String, dynamic>))
-        .toList() ??
+    final slotsList =
+        (json['slots'] as List<dynamic>?)
+            ?.map((e) => ItinerarySlot.fromJson(e as Map<String, dynamic>))
+            .toList() ??
         [];
     slotsList.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
 
@@ -152,17 +150,14 @@ class ItineraryDay {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'day_index': dayIndex,
-        'date': date.toIso8601String().substring(0, 10),
-        if (title != null) 'title': title,
-        'slots': slots.map((s) => s.toJson()).toList(),
-      };
+    'id': id,
+    'day_index': dayIndex,
+    'date': date.toIso8601String().substring(0, 10),
+    if (title != null) 'title': title,
+    'slots': slots.map((s) => s.toJson()).toList(),
+  };
 
-  ItineraryDay copyWith({
-    String? title,
-    List<ItinerarySlot>? slots,
-  }) =>
+  ItineraryDay copyWith({String? title, List<ItinerarySlot>? slots}) =>
       ItineraryDay(
         id: id,
         dayIndex: dayIndex,
@@ -227,19 +222,18 @@ class Itinerary {
   // ── Derived ─────────────────────────────────────────
   int get numDays => endDate.difference(startDate).inDays + 1;
 
-  int get totalPlaces =>
-      days.fold(0, (sum, d) => sum + d.slots.length);
+  int get totalPlaces => days.fold(0, (sum, d) => sum + d.slots.length);
 
   bool get isPublic => visibility == 'public';
 
   String? get thumbnailUrl =>
-      coverImageUrl ??
-      days.expand((d) => d.slots).firstOrNull?.placeImageUrl;
+      coverImageUrl ?? days.expand((d) => d.slots).firstOrNull?.placeImageUrl;
 
   factory Itinerary.fromJson(Map<String, dynamic> json) {
-    final daysList = (json['days'] as List<dynamic>?)
-        ?.map((e) => ItineraryDay.fromJson(e as Map<String, dynamic>))
-        .toList() ??
+    final daysList =
+        (json['days'] as List<dynamic>?)
+            ?.map((e) => ItineraryDay.fromJson(e as Map<String, dynamic>))
+            .toList() ??
         [];
     daysList.sort((a, b) => a.dayIndex.compareTo(b.dayIndex));
 
@@ -266,16 +260,16 @@ class Itinerary {
   }
 
   Map<String, dynamic> toCreateJson() => {
-        'user_id': userId,
-        'title': title,
-        'start_date': startDate.toIso8601String().substring(0, 10),
-        'end_date': endDate.toIso8601String().substring(0, 10),
-        if (coverImageUrl != null) 'cover_image_url': coverImageUrl,
-        if (description != null) 'description': description,
-        if (companion != null) 'companion': companion,
-        if (budgetTier != null) 'budget_tier': budgetTier,
-        'visibility': visibility,
-      };
+    'user_id': userId,
+    'title': title,
+    'start_date': startDate.toIso8601String().substring(0, 10),
+    'end_date': endDate.toIso8601String().substring(0, 10),
+    if (coverImageUrl != null) 'cover_image_url': coverImageUrl,
+    if (description != null) 'description': description,
+    if (companion != null) 'companion': companion,
+    if (budgetTier != null) 'budget_tier': budgetTier,
+    'visibility': visibility,
+  };
 
   Itinerary copyWith({
     String? title,
@@ -287,25 +281,24 @@ class Itinerary {
     List<ItineraryDay>? days,
     int? likeCount,
     bool? isLiked,
-  }) =>
-      Itinerary(
-        id: id,
-        userId: userId,
-        title: title ?? this.title,
-        startDate: startDate,
-        endDate: endDate,
-        coverImageUrl: coverImageUrl ?? this.coverImageUrl,
-        description: description ?? this.description,
-        companion: companion ?? this.companion,
-        budgetTier: budgetTier ?? this.budgetTier,
-        visibility: visibility ?? this.visibility,
-        days: days ?? this.days,
-        likeCount: likeCount ?? this.likeCount,
-        cloneCount: cloneCount,
-        isLiked: isLiked ?? this.isLiked,
-        createdAt: createdAt,
-        updatedAt: DateTime.now(),
-        authorName: authorName,
-        authorAvatarUrl: authorAvatarUrl,
-      );
+  }) => Itinerary(
+    id: id,
+    userId: userId,
+    title: title ?? this.title,
+    startDate: startDate,
+    endDate: endDate,
+    coverImageUrl: coverImageUrl ?? this.coverImageUrl,
+    description: description ?? this.description,
+    companion: companion ?? this.companion,
+    budgetTier: budgetTier ?? this.budgetTier,
+    visibility: visibility ?? this.visibility,
+    days: days ?? this.days,
+    likeCount: likeCount ?? this.likeCount,
+    cloneCount: cloneCount,
+    isLiked: isLiked ?? this.isLiked,
+    createdAt: createdAt,
+    updatedAt: DateTime.now(),
+    authorName: authorName,
+    authorAvatarUrl: authorAvatarUrl,
+  );
 }

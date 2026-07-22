@@ -25,7 +25,8 @@ abstract final class GeoUtils {
     final sinDLat = sin(dLat / 2);
     final sinDLng = sin(dLng / 2);
 
-    final a = sinDLat * sinDLat +
+    final a =
+        sinDLat * sinDLat +
         cos(_toRad(lat1)) * cos(_toRad(lat2)) * sinDLng * sinDLng;
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
 
@@ -59,8 +60,10 @@ abstract final class GeoUtils {
     List<({double lat, double lng})> points,
   ) {
     if (points.isEmpty) return (lat: 16.047, lng: 108.206); // Trung tâm Đà Nẵng
-    final avgLat = points.map((p) => p.lat).reduce((a, b) => a + b) / points.length;
-    final avgLng = points.map((p) => p.lng).reduce((a, b) => a + b) / points.length;
+    final avgLat =
+        points.map((p) => p.lat).reduce((a, b) => a + b) / points.length;
+    final avgLng =
+        points.map((p) => p.lng).reduce((a, b) => a + b) / points.length;
     return (lat: avgLat, lng: avgLng);
   }
 

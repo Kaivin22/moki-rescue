@@ -2,8 +2,6 @@ library;
 
 // int / double / num extensions cho dự án DaNang Itinerary
 
-
-
 extension IntX on int {
   /// Format VND: "150.000 ₫" hoặc "1.200.000 ₫"
   String get vnd {

@@ -18,16 +18,16 @@ abstract final class AppTheme {
 
     // ── Color Scheme ──
     colorScheme: const ColorScheme.light(
-      primary:         AppColors.actionPrimary,        // amber.400
-      onPrimary:       AppColors.textOnPrimary,        // neutral.900 — WCAG 7:1
-      secondary:       AppColors.actionSecondary,      // olive.400
-      onSecondary:     AppColors.textPrimary,          // neutral.900
-      surface:         AppColors.backgroundPrimary,    // neutral.50
-      onSurface:       AppColors.textPrimary,          // neutral.900
+      primary: AppColors.actionPrimary, // amber.400
+      onPrimary: AppColors.textOnPrimary, // neutral.900 — WCAG 7:1
+      secondary: AppColors.actionSecondary, // olive.400
+      onSecondary: AppColors.textPrimary, // neutral.900
+      surface: AppColors.backgroundPrimary, // neutral.50
+      onSurface: AppColors.textPrimary, // neutral.900
       surfaceContainerHighest: AppColors.backgroundTinted, // sage.300
-      error:           AppColors.statusError,          // red.500
-      onError:         AppColors.textOnDark,           // white
-      outline:         AppColors.borderDefault,        // sage.300
+      error: AppColors.statusError, // red.500
+      onError: AppColors.textOnDark, // white
+      outline: AppColors.borderDefault, // sage.300
     ),
 
     // ── Font ──
@@ -43,9 +43,7 @@ abstract final class AppTheme {
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
-      titleTextStyle: AppTextStyles.h3.copyWith(
-        color: AppColors.textPrimary,
-      ),
+      titleTextStyle: AppTextStyles.h3.copyWith(color: AppColors.textPrimary),
     ),
 
     // ── Card ──
@@ -54,10 +52,7 @@ abstract final class AppTheme {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: AppRadius.cardBorder,
-        side: BorderSide(
-          color: CardTokens.border,
-          width: AppBorderWidth.thin,
-        ),
+        side: BorderSide(color: CardTokens.border, width: AppBorderWidth.thin),
       ),
       margin: EdgeInsets.zero,
     ),
@@ -71,9 +66,7 @@ abstract final class AppTheme {
         disabledForegroundColor: ButtonTokens.disabledText,
         minimumSize: const Size(double.infinity, AppSizes.buttonHeight),
         shape: const StadiumBorder(),
-        textStyle: AppTextStyles.bodyMd.copyWith(
-          fontWeight: FontWeight.w700,
-        ),
+        textStyle: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w700),
         elevation: 0,
       ),
     ),
@@ -88,9 +81,7 @@ abstract final class AppTheme {
           color: ButtonTokens.secondaryBorder,
           width: AppBorderWidth.medium,
         ),
-        textStyle: AppTextStyles.bodyMd.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
+        textStyle: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600),
       ),
     ),
 
@@ -98,9 +89,7 @@ abstract final class AppTheme {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: AppColors.textLink,
-        textStyle: AppTextStyles.bodyMd.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
+        textStyle: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600),
       ),
     ),
 
@@ -150,12 +139,8 @@ abstract final class AppTheme {
       hintStyle: AppTextStyles.bodyMd.copyWith(
         color: AppColors.textPlaceholder,
       ),
-      labelStyle: AppTextStyles.bodyMd.copyWith(
-        color: AppColors.textSecondary,
-      ),
-      errorStyle: AppTextStyles.caption.copyWith(
-        color: AppColors.statusError,
-      ),
+      labelStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary),
+      errorStyle: AppTextStyles.caption.copyWith(color: AppColors.statusError),
     ),
 
     // ── Chip ──
@@ -204,9 +189,7 @@ abstract final class AppTheme {
             fontWeight: FontWeight.w600,
           );
         }
-        return AppTextStyles.caption.copyWith(
-          color: NavTokens.inactiveColor,
-        );
+        return AppTextStyles.caption.copyWith(color: NavTokens.inactiveColor);
       }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
@@ -222,9 +205,7 @@ abstract final class AppTheme {
       unselectedLabelColor: AppColors.textSecondary,
       indicatorColor: AppColors.actionPrimary,
       indicatorSize: TabBarIndicatorSize.label,
-      labelStyle: AppTextStyles.bodyMd.copyWith(
-        fontWeight: FontWeight.w700,
-      ),
+      labelStyle: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w700),
       unselectedLabelStyle: AppTextStyles.bodyMd,
     ),
 
@@ -282,9 +263,7 @@ abstract final class AppTheme {
     // ── Bottom Sheet ──
     bottomSheetTheme: const BottomSheetThemeData(
       backgroundColor: AppColors.backgroundCard,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppRadius.sheetBorder,
-      ),
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.sheetBorder),
       showDragHandle: true,
       dragHandleColor: SagePalette.sage300,
     ),
@@ -292,12 +271,8 @@ abstract final class AppTheme {
     // ── Dialog ──
     dialogTheme: DialogThemeData(
       backgroundColor: AppColors.backgroundCard,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppRadius.cardBorder,
-      ),
-      titleTextStyle: AppTextStyles.h3.copyWith(
-        color: AppColors.textPrimary,
-      ),
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.cardBorder),
+      titleTextStyle: AppTextStyles.h3.copyWith(color: AppColors.textPrimary),
       contentTextStyle: AppTextStyles.bodyMd.copyWith(
         color: AppColors.textSecondary,
       ),

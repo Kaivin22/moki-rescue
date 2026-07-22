@@ -82,10 +82,10 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
   ];
 
   List<_TripRecord> get _filtered => _trips.where((t) {
-        final matchYear = t.dateStart.year.toString() == _selectedYear;
-        final matchStatus = _selectedStatus == 'all' || t.status == _selectedStatus;
-        return matchYear && matchStatus;
-      }).toList();
+    final matchYear = t.dateStart.year.toString() == _selectedYear;
+    final matchStatus = _selectedStatus == 'all' || t.status == _selectedStatus;
+    return matchYear && matchStatus;
+  }).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +94,10 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Lịch sử chuyến đi', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Lịch sử chuyến đi',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
       ),
@@ -105,7 +108,10 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
             height: 44,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm, vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.layoutSm,
+                vertical: 4,
+              ),
               itemCount: _years.length,
               itemBuilder: (_, i) {
                 final year = _years[i];
@@ -116,16 +122,27 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
                     onTap: () => setState(() => _selectedYear = year),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.actionPrimary : AppColors.backgroundSecondary,
+                        color: isSelected
+                            ? AppColors.actionPrimary
+                            : AppColors.backgroundSecondary,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: isSelected ? AppColors.actionPrimary : AppColors.borderDefault),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.actionPrimary
+                              : AppColors.borderDefault,
+                        ),
                       ),
                       child: Text(
                         year,
                         style: AppTextStyles.bodyMd.copyWith(
-                          color: isSelected ? AppColors.textOnPrimary : AppColors.textPrimary,
+                          color: isSelected
+                              ? AppColors.textOnPrimary
+                              : AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -141,7 +158,9 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
             height: 36,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.layoutSm,
+              ),
               itemCount: _statuses.length,
               itemBuilder: (_, i) {
                 final s = _statuses[i];
@@ -162,7 +181,9 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
 
           // ── Summary card ──
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.layoutSm,
+            ),
             child: Container(
               padding: const EdgeInsets.all(AppSpacing.space3),
               decoration: BoxDecoration(
@@ -172,11 +193,23 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
               ),
               child: Row(
                 children: [
-                  _SummaryChip(icon: '🗺', label: '${_trips.where((t) => t.status == 'completed').length} chuyến đi'),
+                  _SummaryChip(
+                    icon: '🗺',
+                    label:
+                        '${_trips.where((t) => t.status == 'completed').length} chuyến đi',
+                  ),
                   const SizedBox(width: AppSpacing.layoutSm),
-                  _SummaryChip(icon: '📍', label: '${_trips.fold(0, (s, t) => s + t.numPlaces)} địa điểm'),
+                  _SummaryChip(
+                    icon: '📍',
+                    label:
+                        '${_trips.fold(0, (s, t) => s + t.numPlaces)} địa điểm',
+                  ),
                   const SizedBox(width: AppSpacing.layoutSm),
-                  _SummaryChip(icon: '💰', label: '${(_trips.fold(0, (s, t) => s + t.totalBudget) / 1000000).toStringAsFixed(1)}tr đ'),
+                  _SummaryChip(
+                    icon: '💰',
+                    label:
+                        '${(_trips.fold(0, (s, t) => s + t.totalBudget) / 1000000).toStringAsFixed(1)}tr đ',
+                  ),
                 ],
               ),
             ),
@@ -189,9 +222,12 @@ class _TripHistoryScreenState extends State<TripHistoryScreen> {
             child: filtered.isEmpty
                 ? EmptyState(type: EmptyStateType.noTrips)
                 : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.layoutSm,
+                    ),
                     itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.space3),
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpacing.space3),
                     itemBuilder: (_, i) => _TripCard(trip: filtered[i]),
                   ),
           ),
@@ -248,76 +284,119 @@ class _TripCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          color: AppColors.backgroundCard,
-          borderRadius: AppRadius.cardBorder,
-          border: Border.all(color: AppColors.borderDefault),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              child: Stack(
-                children: [
-                  CachedNetworkImage(
-                    imageUrl: trip.imageUrl,
-                    height: 140,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (_, _) => Container(height: 140, color: SagePalette.sage200),
-                    errorWidget: (_, _, _) => Container(height: 140, color: SagePalette.sage300),
-                  ),
-                  if (trip.status == 'cancelled')
-                    Container(
-                      height: 140,
-                      color: Colors.black54,
-                      child: const Center(
-                        child: Text('Đã huỷ', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+    decoration: BoxDecoration(
+      color: AppColors.backgroundCard,
+      borderRadius: AppRadius.cardBorder,
+      border: Border.all(color: AppColors.borderDefault),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Image
+        ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+          child: Stack(
+            children: [
+              CachedNetworkImage(
+                imageUrl: trip.imageUrl,
+                height: 140,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                placeholder: (_, _) =>
+                    Container(height: 140, color: SagePalette.sage200),
+                errorWidget: (_, _, _) =>
+                    Container(height: 140, color: SagePalette.sage300),
+              ),
+              if (trip.status == 'cancelled')
+                Container(
+                  height: 140,
+                  color: Colors.black54,
+                  child: const Center(
+                    child: Text(
+                      'Đã huỷ',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  Positioned(
-                    top: 8, right: 8,
-                    child: StatusBadge(type: _statusType),
                   ),
-                ],
+                ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: StatusBadge(type: _statusType),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.space3),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(trip.title, style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: AppSpacing.space2),
-                  Row(
-                    children: [
-                      Icon(Icons.calendar_today_rounded, size: 13, color: AppColors.textSecondary),
-                      const SizedBox(width: 4),
-                      Text(_dateRange, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
-                      const SizedBox(width: AppSpacing.space3),
-                      Icon(Icons.place_rounded, size: 13, color: AppColors.textSecondary),
-                      const SizedBox(width: 4),
-                      Text('${trip.numPlaces} điểm', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
-                      const Spacer(),
-                      Text(_formatBudget(trip.totalBudget),
-                          style: AppTextStyles.caption.copyWith(color: AppColors.actionPrimary, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                  if (trip.tags.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.space2),
-                    Wrap(
-                      spacing: AppSpacing.space2,
-                      children: trip.tags.map((t) => TagChip(label: t, variant: TagChipVariant.displayOnly)).toList(),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      );
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.space3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                trip.title,
+                style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: AppSpacing.space2),
+              Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today_rounded,
+                    size: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _dateRange,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.space3),
+                  Icon(
+                    Icons.place_rounded,
+                    size: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${trip.numPlaces} điểm',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    _formatBudget(trip.totalBudget),
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.actionPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              if (trip.tags.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space2),
+                Wrap(
+                  spacing: AppSpacing.space2,
+                  children: trip.tags
+                      .map(
+                        (t) => TagChip(
+                          label: t,
+                          variant: TagChipVariant.displayOnly,
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SummaryChip extends StatelessWidget {
@@ -327,13 +406,19 @@ class _SummaryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 18)),
-            const SizedBox(width: 4),
-            Expanded(child: Text(label, style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
-          ],
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            label,
+            style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }

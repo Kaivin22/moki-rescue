@@ -2,7 +2,6 @@ library;
 
 // DateTime extensions cho dự án DaNang Itinerary
 
-
 extension DateTimeX on DateTime {
   /// Format hiển thị ngắn: "07/07/2025"
   String get ddMMyyyy =>
@@ -11,8 +10,14 @@ extension DateTimeX on DateTime {
   /// Format hiển thị dài: "Thứ Hai, 07 tháng 7 năm 2025"
   String get fullVietnamese {
     const weekdays = [
-      '', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư',
-      'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật',
+      '',
+      'Thứ Hai',
+      'Thứ Ba',
+      'Thứ Tư',
+      'Thứ Năm',
+      'Thứ Sáu',
+      'Thứ Bảy',
+      'Chủ Nhật',
     ];
     return '${weekdays[weekday]}, $day tháng $month năm $year';
   }
@@ -33,7 +38,9 @@ extension DateTimeX on DateTime {
   /// Kiểm tra có phải hôm qua không
   bool get isYesterday {
     final yesterday = DateTime.now().subtract(const Duration(days: 1));
-    return year == yesterday.year && month == yesterday.month && day == yesterday.day;
+    return year == yesterday.year &&
+        month == yesterday.month &&
+        day == yesterday.day;
   }
 
   /// Thời gian tương đối: "2 giờ trước", "3 ngày trước"...

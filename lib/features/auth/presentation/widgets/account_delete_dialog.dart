@@ -10,10 +10,7 @@ import '../../../../core/theme/tokens/app_spacing.dart';
 /// ═══════════════════════════════════════════════════════
 
 class AccountDeleteConfirmDialog extends StatelessWidget {
-  const AccountDeleteConfirmDialog({
-    super.key,
-    required this.onConfirm,
-  });
+  const AccountDeleteConfirmDialog({super.key, required this.onConfirm});
 
   final VoidCallback onConfirm;
 
@@ -31,9 +28,7 @@ class AccountDeleteConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: AppColors.backgroundCard,
       icon: Container(
         width: 56,
@@ -58,9 +53,7 @@ class AccountDeleteConfirmDialog extends StatelessWidget {
       ),
       content: Text(
         'Hành động này không thể hoàn tác. Tất cả dữ liệu của bạn bao gồm lịch trình, đánh giá và thông tin cá nhân sẽ bị xóa vĩnh viễn.',
-        style: AppTextStyles.bodyMd.copyWith(
-          color: AppColors.textSecondary,
-        ),
+        style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary),
         textAlign: TextAlign.center,
       ),
       actionsAlignment: MainAxisAlignment.spaceEvenly,
@@ -75,9 +68,7 @@ class AccountDeleteConfirmDialog extends StatelessWidget {
             ),
             child: Text(
               'Hủy',
-              style: AppTextStyles.bodyMd.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
         ),

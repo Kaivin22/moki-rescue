@@ -28,7 +28,8 @@ class UserPublicProfileScreen extends StatefulWidget {
   final String? avatarUrl;
 
   @override
-  State<UserPublicProfileScreen> createState() => _UserPublicProfileScreenState();
+  State<UserPublicProfileScreen> createState() =>
+      _UserPublicProfileScreenState();
 }
 
 class _UserPublicProfileScreenState extends State<UserPublicProfileScreen>
@@ -94,7 +95,10 @@ class _UserPublicProfileScreenState extends State<UserPublicProfileScreen>
             pinned: true,
             backgroundColor: AppColors.backgroundPrimary,
             actions: [
-              IconButton(icon: const Icon(Icons.more_vert_rounded), onPressed: () {}),
+              IconButton(
+                icon: const Icon(Icons.more_vert_rounded),
+                onPressed: () {},
+              ),
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: CachedNetworkImage(
@@ -122,7 +126,8 @@ class _UserPublicProfileScreenState extends State<UserPublicProfileScreen>
                           radius: 36,
                           backgroundColor: SagePalette.sage200,
                           backgroundImage: CachedNetworkImageProvider(
-                            widget.avatarUrl ?? 'https://picsum.photos/seed/u6/80/80',
+                            widget.avatarUrl ??
+                                'https://picsum.photos/seed/u6/80/80',
                           ),
                         ),
                         const SizedBox(width: AppSpacing.space3),
@@ -130,29 +135,47 @@ class _UserPublicProfileScreenState extends State<UserPublicProfileScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(widget.displayName, style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700)),
-                              Text('@${widget.userId}', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                              Text(
+                                widget.displayName,
+                                style: AppTextStyles.h3.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                '@${widget.userId}',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
                             ],
                           ),
                         ),
                         AppButton(
                           label: _isFollowing ? 'Đang theo dõi' : 'Theo dõi',
-                          variant: _isFollowing ? AppButtonVariant.secondary : AppButtonVariant.primary,
+                          variant: _isFollowing
+                              ? AppButtonVariant.secondary
+                              : AppButtonVariant.primary,
                           isExpanded: false,
-                          onPressed: () => setState(() => _isFollowing = !_isFollowing),
+                          onPressed: () =>
+                              setState(() => _isFollowing = !_isFollowing),
                         ),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.space3),
                     Text(
                       'Yêu thích khám phá biển và núi. Đã đi 12 tỉnh 🗺',
-                      style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary),
+                      style: AppTextStyles.bodyMd.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.layoutSm),
                     // Stats
                     Row(
                       children: [
-                        _MiniStat(value: '${_mockItineraries.length}', label: 'Lịch trình'),
+                        _MiniStat(
+                          value: '${_mockItineraries.length}',
+                          label: 'Lịch trình',
+                        ),
                         const SizedBox(width: AppSpacing.layoutMd),
                         _MiniStat(value: '342', label: 'Người theo dõi'),
                         const SizedBox(width: AppSpacing.layoutMd),
@@ -170,7 +193,9 @@ class _UserPublicProfileScreenState extends State<UserPublicProfileScreen>
                 unselectedLabelColor: AppColors.textSecondary,
                 indicatorColor: AppColors.actionPrimary,
                 indicatorWeight: 2,
-                labelStyle: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600),
+                labelStyle: AppTextStyles.bodyMd.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
                 tabs: const [
                   Tab(text: 'Lịch trình'),
                   Tab(text: 'Đánh giá'),
@@ -188,12 +213,13 @@ class _UserPublicProfileScreenState extends State<UserPublicProfileScreen>
                         ? EmptyState(type: EmptyStateType.noTrips)
                         : GridView.builder(
                             padding: const EdgeInsets.all(AppSpacing.layoutSm),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: AppSpacing.space3,
-                              mainAxisSpacing: AppSpacing.space3,
-                              childAspectRatio: 0.72,
-                            ),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: AppSpacing.space3,
+                                  mainAxisSpacing: AppSpacing.space3,
+                                  childAspectRatio: 0.72,
+                                ),
                             physics: const NeverScrollableScrollPhysics(),
                             shrinkWrap: true,
                             itemCount: _mockItineraries.length,
@@ -232,10 +258,19 @@ class _MiniStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(value, style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700, color: AppColors.actionPrimary)),
-          Text(label, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        value,
+        style: AppTextStyles.h4.copyWith(
+          fontWeight: FontWeight.w700,
+          color: AppColors.actionPrimary,
+        ),
+      ),
+      Text(
+        label,
+        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+      ),
+    ],
+  );
 }

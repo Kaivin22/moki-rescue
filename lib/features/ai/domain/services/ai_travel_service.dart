@@ -128,8 +128,9 @@ class AiTravelService {
     final transportTotal =
         (transportCosts[transport] ?? 0) * numDays * numPeople;
     final foodTotal = (foodCosts[foodStyle] ?? 0) * numDays * numPeople;
-    final activityTotal =
-        includeActivities ? activityCostPerDay * numDays * numPeople : 0;
+    final activityTotal = includeActivities
+        ? activityCostPerDay * numDays * numPeople
+        : 0;
 
     return BudgetEstimate(
       accommodation: accomTotal,
@@ -157,9 +158,9 @@ class BudgetEstimate {
   final int total;
 
   Map<String, int> get breakdown => {
-        'Lưu trú': accommodation,
-        'Di chuyển': transport,
-        'Ăn uống': food,
-        if (activities > 0) 'Tham quan': activities,
-      };
+    'Lưu trú': accommodation,
+    'Di chuyển': transport,
+    'Ăn uống': food,
+    if (activities > 0) 'Tham quan': activities,
+  };
 }

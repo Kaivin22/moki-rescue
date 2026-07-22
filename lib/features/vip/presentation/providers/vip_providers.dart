@@ -11,8 +11,7 @@ final isVipProvider = Provider<bool>((ref) {
 });
 
 // ── Selected plan for payment ──
-final selectedPlanProvider =
-    StateProvider<VipPlan?>((ref) => null);
+final selectedPlanProvider = StateProvider<VipPlan?>((ref) => null);
 
 // ── Payment state ──
 enum PaymentStatus { idle, loading, success, failed }
@@ -36,12 +35,11 @@ class PaymentState {
     PaymentStatus? status,
     String? errorMessage,
     VipPlan? plan,
-  }) =>
-      PaymentState(
-        status: status ?? this.status,
-        errorMessage: errorMessage ?? this.errorMessage,
-        plan: plan ?? this.plan,
-      );
+  }) => PaymentState(
+    status: status ?? this.status,
+    errorMessage: errorMessage ?? this.errorMessage,
+    plan: plan ?? this.plan,
+  );
 }
 
 class PaymentNotifier extends StateNotifier<PaymentState> {
@@ -59,9 +57,9 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
     // Mock: luôn thành công trong demo
     // Thực tế: gọi VNPay SDK → nhận callback → update Supabase
     try {
-      await _ref.read(editProfileProvider.notifier).updateProfile(
-            vipStatus: 'vip',
-          );
+      await _ref
+          .read(editProfileProvider.notifier)
+          .updateProfile(vipStatus: 'vip');
       state = state.copyWith(status: PaymentStatus.success);
     } catch (e) {
       state = state.copyWith(
@@ -74,7 +72,8 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
   void reset() => state = const PaymentState();
 }
 
-final paymentProvider =
-    StateNotifierProvider<PaymentNotifier, PaymentState>((ref) {
+final paymentProvider = StateNotifierProvider<PaymentNotifier, PaymentState>((
+  ref,
+) {
   return PaymentNotifier(ref);
 });

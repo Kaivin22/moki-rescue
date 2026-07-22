@@ -39,7 +39,9 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    await ref.read(createTicketProvider.notifier).submit(
+    await ref
+        .read(createTicketProvider.notifier)
+        .submit(
           title: _titleController.text.trim(),
           description: _descController.text.trim(),
           category: _selectedCategory,
@@ -68,8 +70,10 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Tạo yêu cầu hỗ trợ',
-            style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Tạo yêu cầu hỗ trợ',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
       ),
@@ -81,9 +85,10 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Category ──
-              Text('Loại yêu cầu',
-                  style: AppTextStyles.h4
-                      .copyWith(fontWeight: FontWeight.w600)),
+              Text(
+                'Loại yêu cầu',
+                style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: AppSpacing.space3),
               Wrap(
                 spacing: AppSpacing.space2,
@@ -91,16 +96,16 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
                 children: _categories.map((c) {
                   final isSelected = _selectedCategory == c.id;
                   return GestureDetector(
-                    onTap: () =>
-                        setState(() => _selectedCategory = c.id),
+                    onTap: () => setState(() => _selectedCategory = c.id),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? AppColors.actionPrimary
-                                .withValues(alpha: 0.1)
+                            ? AppColors.actionPrimary.withValues(alpha: 0.1)
                             : AppColors.backgroundSecondary,
                         borderRadius: AppRadius.chipBorder,
                         border: Border.all(
@@ -129,33 +134,39 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
               const SizedBox(height: AppSpacing.layoutMd),
 
               // ── Title ──
-              Text('Tiêu đề',
-                  style: AppTextStyles.h4
-                      .copyWith(fontWeight: FontWeight.w600)),
+              Text(
+                'Tiêu đề',
+                style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: AppSpacing.space2),
               TextFormField(
                 controller: _titleController,
                 maxLength: 100,
                 decoration: InputDecoration(
                   hintText: 'Mô tả ngắn vấn đề của bạn',
-                  hintStyle: AppTextStyles.bodyMd
-                      .copyWith(color: AppColors.textPlaceholder),
+                  hintStyle: AppTextStyles.bodyMd.copyWith(
+                    color: AppColors.textPlaceholder,
+                  ),
                   filled: true,
                   fillColor: AppColors.backgroundSecondary,
                   border: OutlineInputBorder(
-                      borderRadius: AppRadius.inputBorder,
-                      borderSide:
-                          BorderSide(color: AppColors.borderDefault)),
+                    borderRadius: AppRadius.inputBorder,
+                    borderSide: BorderSide(color: AppColors.borderDefault),
+                  ),
                   enabledBorder: OutlineInputBorder(
-                      borderRadius: AppRadius.inputBorder,
-                      borderSide:
-                          BorderSide(color: AppColors.borderDefault)),
+                    borderRadius: AppRadius.inputBorder,
+                    borderSide: BorderSide(color: AppColors.borderDefault),
+                  ),
                   focusedBorder: OutlineInputBorder(
-                      borderRadius: AppRadius.inputBorder,
-                      borderSide: BorderSide(
-                          color: AppColors.borderFocus, width: 1.5)),
-                  counterStyle: AppTextStyles.caption
-                      .copyWith(color: AppColors.textSecondary),
+                    borderRadius: AppRadius.inputBorder,
+                    borderSide: BorderSide(
+                      color: AppColors.borderFocus,
+                      width: 1.5,
+                    ),
+                  ),
+                  counterStyle: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) {
@@ -171,34 +182,41 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
               const SizedBox(height: AppSpacing.layoutSm),
 
               // ── Description ──
-              Text('Mô tả chi tiết',
-                  style: AppTextStyles.h4
-                      .copyWith(fontWeight: FontWeight.w600)),
+              Text(
+                'Mô tả chi tiết',
+                style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: AppSpacing.space2),
               TextFormField(
                 controller: _descController,
                 maxLines: 6,
                 maxLength: 1000,
                 decoration: InputDecoration(
-                  hintText: 'Mô tả chi tiết vấn đề, bao gồm các bước tái hiện lỗi (nếu có)...',
-                  hintStyle: AppTextStyles.bodyMd
-                      .copyWith(color: AppColors.textPlaceholder),
+                  hintText:
+                      'Mô tả chi tiết vấn đề, bao gồm các bước tái hiện lỗi (nếu có)...',
+                  hintStyle: AppTextStyles.bodyMd.copyWith(
+                    color: AppColors.textPlaceholder,
+                  ),
                   filled: true,
                   fillColor: AppColors.backgroundSecondary,
                   border: OutlineInputBorder(
-                      borderRadius: AppRadius.inputBorder,
-                      borderSide:
-                          BorderSide(color: AppColors.borderDefault)),
+                    borderRadius: AppRadius.inputBorder,
+                    borderSide: BorderSide(color: AppColors.borderDefault),
+                  ),
                   enabledBorder: OutlineInputBorder(
-                      borderRadius: AppRadius.inputBorder,
-                      borderSide:
-                          BorderSide(color: AppColors.borderDefault)),
+                    borderRadius: AppRadius.inputBorder,
+                    borderSide: BorderSide(color: AppColors.borderDefault),
+                  ),
                   focusedBorder: OutlineInputBorder(
-                      borderRadius: AppRadius.inputBorder,
-                      borderSide: BorderSide(
-                          color: AppColors.borderFocus, width: 1.5)),
-                  counterStyle: AppTextStyles.caption
-                      .copyWith(color: AppColors.textSecondary),
+                    borderRadius: AppRadius.inputBorder,
+                    borderSide: BorderSide(
+                      color: AppColors.borderFocus,
+                      width: 1.5,
+                    ),
+                  ),
+                  counterStyle: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                   alignLabelWithHint: true,
                 ),
                 validator: (v) {

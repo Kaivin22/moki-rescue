@@ -38,8 +38,9 @@ class ChatBubble extends StatelessWidget {
         bottom: AppSpacing.space2,
       ),
       child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // AI Avatar
@@ -90,8 +91,9 @@ class ChatBubble extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     _formatTime(timestamp!),
-                    style: AppTextStyles.caption
-                        .copyWith(color: AppColors.textSecondary),
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ],
@@ -115,30 +117,27 @@ class ChatBubble extends StatelessWidget {
 class _AiAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          color: AppColors.actionPrimary.withValues(alpha: 0.15),
-          shape: BoxShape.circle,
-        ),
-        child: const Center(
-          child: Text('🤖', style: TextStyle(fontSize: 14)),
-        ),
-      );
+    width: 28,
+    height: 28,
+    decoration: BoxDecoration(
+      color: AppColors.actionPrimary.withValues(alpha: 0.15),
+      shape: BoxShape.circle,
+    ),
+    child: const Center(child: Text('🤖', style: TextStyle(fontSize: 14))),
+  );
 }
 
 class _UserAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
-        width: 28,
-        height: 28,
-        decoration: const BoxDecoration(
-          color: AppColors.actionPrimary,
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(Icons.person_rounded,
-            color: Colors.white, size: 16),
-      );
+    width: 28,
+    height: 28,
+    decoration: const BoxDecoration(
+      color: AppColors.actionPrimary,
+      shape: BoxShape.circle,
+    ),
+    child: const Icon(Icons.person_rounded, color: Colors.white, size: 16),
+  );
 }
 
 /// Hiển thị 3 chấm nhảy khi AI đang xử lý
@@ -170,28 +169,28 @@ class _LoadingDotsState extends State<_LoadingDots>
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-        animation: _controller,
-        builder: (ctx, child) {
-          final phase = (_controller.value * 3).floor();
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(3, (i) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: i == phase
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              );
-            }),
+    animation: _controller,
+    builder: (ctx, child) {
+      final phase = (_controller.value * 3).floor();
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(3, (i) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: i == phase
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+                shape: BoxShape.circle,
+              ),
+            ),
           );
-        },
+        }),
       );
+    },
+  );
 }

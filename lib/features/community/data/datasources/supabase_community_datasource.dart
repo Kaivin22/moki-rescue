@@ -70,7 +70,8 @@ class SupabaseCommunityDataSource {
 
   /// Danh sách followers
   Future<(List<Map<String, dynamic>>, Failure?)> getFollowers(
-      String userId) async {
+    String userId,
+  ) async {
     try {
       final data = await _client
           .from('follows')
@@ -90,7 +91,8 @@ class SupabaseCommunityDataSource {
 
   /// Danh sách following
   Future<(List<Map<String, dynamic>>, Failure?)> getFollowing(
-      String userId) async {
+    String userId,
+  ) async {
     try {
       final data = await _client
           .from('follows')

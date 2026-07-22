@@ -34,39 +34,51 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
   static const _faqs = [
     _FaqItem(
       question: 'Làm sao để tạo lịch trình mới?',
-      answer: 'Vào tab "Lịch trình" → nhấn nút "+" → chọn điểm đến, ngày bắt đầu/kết thúc → thêm địa điểm vào từng ngày bằng cách kéo thả hoặc tìm kiếm.',
+      answer:
+          'Vào tab "Lịch trình" → nhấn nút "+" → chọn điểm đến, ngày bắt đầu/kết thúc → thêm địa điểm vào từng ngày bằng cách kéo thả hoặc tìm kiếm.',
     ),
     _FaqItem(
       question: 'Tôi có thể chia sẻ lịch trình không?',
-      answer: 'Có! Mở lịch trình bất kỳ → nhấn nút Chia sẻ (📤) → chọn chia sẻ qua link, QR code hoặc mạng xã hội. Người nhận có thể xem và sao chép lịch trình của bạn.',
+      answer:
+          'Có! Mở lịch trình bất kỳ → nhấn nút Chia sẻ (📤) → chọn chia sẻ qua link, QR code hoặc mạng xã hội. Người nhận có thể xem và sao chép lịch trình của bạn.',
     ),
     _FaqItem(
       question: 'Cách thêm địa điểm vào danh sách yêu thích?',
-      answer: 'Nhấn biểu tượng 🔖 trên bất kỳ thẻ địa điểm nào để lưu vào danh sách. Xem lại trong Hồ sơ → Đã lưu.',
+      answer:
+          'Nhấn biểu tượng 🔖 trên bất kỳ thẻ địa điểm nào để lưu vào danh sách. Xem lại trong Hồ sơ → Đã lưu.',
     ),
     _FaqItem(
       question: 'AI du lịch có thể làm gì?',
-      answer: 'AI có thể: gợi ý địa điểm phù hợp sở thích, tạo lịch trình tự động, trả lời câu hỏi về thời tiết, ẩm thực, văn hóa địa phương, và ước tính ngân sách chuyến đi.',
+      answer:
+          'AI có thể: gợi ý địa điểm phù hợp sở thích, tạo lịch trình tự động, trả lời câu hỏi về thời tiết, ẩm thực, văn hóa địa phương, và ước tính ngân sách chuyến đi.',
     ),
     _FaqItem(
       question: 'Làm thế nào để xoá tài khoản?',
-      answer: 'Vào Cài đặt → Vùng nguy hiểm → Xoá tài khoản. Lưu ý: mọi dữ liệu sẽ bị xoá vĩnh viễn sau 30 ngày. Bạn có thể huỷ yêu cầu trong thời gian này.',
+      answer:
+          'Vào Cài đặt → Vùng nguy hiểm → Xoá tài khoản. Lưu ý: mọi dữ liệu sẽ bị xoá vĩnh viễn sau 30 ngày. Bạn có thể huỷ yêu cầu trong thời gian này.',
     ),
     _FaqItem(
       question: 'Ứng dụng có hoạt động offline không?',
-      answer: 'Một số tính năng hoạt động offline: xem lịch trình đã tải, bản đồ đã cache, danh sách yêu thích. Tính năng AI Chat, tìm kiếm và cập nhật dữ liệu cần kết nối internet.',
+      answer:
+          'Một số tính năng hoạt động offline: xem lịch trình đã tải, bản đồ đã cache, danh sách yêu thích. Tính năng AI Chat, tìm kiếm và cập nhật dữ liệu cần kết nối internet.',
     ),
     _FaqItem(
       question: 'Sao tôi không nhận được thông báo?',
-      answer: 'Kiểm tra: 1) Cài đặt → Thông báo → bật Thông báo đẩy. 2) Cài đặt điện thoại → Ứng dụng → cho phép thông báo. 3) Kiểm tra không bị chặn trong chế độ Không làm phiền.',
+      answer:
+          'Kiểm tra: 1) Cài đặt → Thông báo → bật Thông báo đẩy. 2) Cài đặt điện thoại → Ứng dụng → cho phép thông báo. 3) Kiểm tra không bị chặn trong chế độ Không làm phiền.',
     ),
   ];
 
   List<_FaqItem> get _filtered {
     final q = _searchController.text.toLowerCase();
     if (q.isEmpty) return _faqs;
-    return _faqs.where((f) =>
-        f.question.toLowerCase().contains(q) || f.answer.toLowerCase().contains(q)).toList();
+    return _faqs
+        .where(
+          (f) =>
+              f.question.toLowerCase().contains(q) ||
+              f.answer.toLowerCase().contains(q),
+        )
+        .toList();
   }
 
   @override
@@ -82,7 +94,10 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Trung tâm trợ giúp', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Trung tâm trợ giúp',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
       ),
@@ -105,9 +120,14 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                 children: [
                   const Text('❓', style: TextStyle(fontSize: 40)),
                   const SizedBox(height: AppSpacing.space2),
-                  Text('Chúng tôi có thể\ngiúp gì cho bạn?',
-                      style: AppTextStyles.h3.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-                      textAlign: TextAlign.center),
+                  Text(
+                    'Chúng tôi có thể\ngiúp gì cho bạn?',
+                    style: AppTextStyles.h3.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: AppSpacing.layoutSm),
                   // Search
                   TextField(
@@ -115,14 +135,27 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
                       hintText: 'Tìm kiếm câu hỏi...',
-                      hintStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary),
-                      prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary),
+                      hintStyle: AppTextStyles.bodyMd.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: AppColors.textSecondary,
+                      ),
                       filled: true,
                       fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: AppRadius.inputBorder, borderSide: BorderSide.none),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.space3, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: AppRadius.inputBorder,
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.space3,
+                        vertical: 12,
+                      ),
                     ),
-                    style: AppTextStyles.bodyMd.copyWith(color: AppColors.textPrimary),
+                    style: AppTextStyles.bodyMd.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ],
               ),
@@ -132,25 +165,44 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           // ── Category chips ──
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.layoutSm,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Chủ đề', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    'Chủ đề',
+                    style: AppTextStyles.h4.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.space3),
                   Wrap(
                     spacing: AppSpacing.space2,
                     runSpacing: AppSpacing.space2,
-                    children: _categories.map((c) => ActionChip(
-                      label: Text('${c.emoji} ${c.label}'),
-                      labelStyle: AppTextStyles.caption.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w500),
-                      backgroundColor: AppColors.backgroundSecondary,
-                      side: BorderSide(color: AppColors.borderDefault),
-                      onPressed: () {},
-                    )).toList(),
+                    children: _categories
+                        .map(
+                          (c) => ActionChip(
+                            label: Text('${c.emoji} ${c.label}'),
+                            labelStyle: AppTextStyles.caption.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            backgroundColor: AppColors.backgroundSecondary,
+                            side: BorderSide(color: AppColors.borderDefault),
+                            onPressed: () {},
+                          ),
+                        )
+                        .toList(),
                   ),
                   const SizedBox(height: AppSpacing.layoutSm),
-                  Text('Câu hỏi thường gặp', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    'Câu hỏi thường gặp',
+                    style: AppTextStyles.h4.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.space2),
                 ],
               ),
@@ -159,7 +211,9 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
 
           // ── FAQ accordion ──
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.layoutSm,
+            ),
             sliver: SliverList.builder(
               itemCount: filtered.length,
               itemBuilder: (_, i) {
@@ -172,7 +226,9 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                     color: AppColors.backgroundCard,
                     borderRadius: AppRadius.cardBorder,
                     border: Border.all(
-                      color: isExpanded ? AppColors.actionPrimary : AppColors.borderDefault,
+                      color: isExpanded
+                          ? AppColors.actionPrimary
+                          : AppColors.borderDefault,
                     ),
                   ),
                   child: InkWell(
@@ -191,12 +247,21 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                           child: Row(
                             children: [
                               Expanded(
-                                child: Text(faq.question, style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600)),
+                                child: Text(
+                                  faq.question,
+                                  style: AppTextStyles.bodyMd.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
                               AnimatedRotation(
                                 duration: const Duration(milliseconds: 200),
                                 turns: isExpanded ? 0.5 : 0,
-                                child: const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: AppColors.textSecondary),
+                                child: const Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  size: 20,
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
                             ],
                           ),
@@ -204,10 +269,17 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                         if (isExpanded)
                           Padding(
                             padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.space3, 0, AppSpacing.space3, AppSpacing.space3),
+                              AppSpacing.space3,
+                              0,
+                              AppSpacing.space3,
+                              AppSpacing.space3,
+                            ),
                             child: Text(
                               faq.answer,
-                              style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary, height: 1.5),
+                              style: AppTextStyles.bodyMd.copyWith(
+                                color: AppColors.textSecondary,
+                                height: 1.5,
+                              ),
                             ),
                           ),
                       ],
@@ -224,16 +296,28 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               padding: const EdgeInsets.all(AppSpacing.layoutMd),
               child: Column(
                 children: [
-                  Text('Không tìm thấy câu trả lời?',
-                      style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    'Không tìm thấy câu trả lời?',
+                    style: AppTextStyles.h4.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.space2),
-                  Text('Đội ngũ hỗ trợ của chúng tôi luôn sẵn sàng giúp bạn.',
-                      style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary),
-                      textAlign: TextAlign.center),
+                  Text(
+                    'Đội ngũ hỗ trợ của chúng tôi luôn sẵn sàng giúp bạn.',
+                    style: AppTextStyles.bodyMd.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: AppSpacing.layoutSm),
                   AppButton(label: '💬 Chat với hỗ trợ', onPressed: () {}),
                   const SizedBox(height: AppSpacing.space3),
-                  AppButton(label: '📧 Gửi email hỗ trợ', variant: AppButtonVariant.secondary, onPressed: () {}),
+                  AppButton(
+                    label: '📧 Gửi email hỗ trợ',
+                    variant: AppButtonVariant.secondary,
+                    onPressed: () {},
+                  ),
                   const SizedBox(height: AppSpacing.layoutXl),
                 ],
               ),

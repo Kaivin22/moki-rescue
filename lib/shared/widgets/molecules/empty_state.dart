@@ -68,10 +68,7 @@ class EmptyState extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Center(
-                child: Text(
-                  _emoji,
-                  style: const TextStyle(fontSize: 48),
-                ),
+                child: Text(_emoji, style: const TextStyle(fontSize: 48)),
               ),
             ),
 
@@ -91,7 +88,9 @@ class EmptyState extends StatelessWidget {
 
             // ── Subtitle ──
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space8,
+              ),
               child: Text(
                 customSubtitle ?? _defaultSubtitle,
                 style: AppTextStyles.bodyMd.copyWith(
@@ -118,10 +117,7 @@ class EmptyState extends StatelessWidget {
               const SizedBox(height: AppSpacing.layoutMd),
               SizedBox(
                 width: 240,
-                child: AppButton(
-                  label: actionLabel!,
-                  onPressed: onAction,
-                ),
+                child: AppButton(label: actionLabel!, onPressed: onAction),
               ),
             ],
           ],
@@ -132,34 +128,36 @@ class EmptyState extends StatelessWidget {
 
   /// Emoji placeholder cho illustration (sẽ thay bằng SVG sau)
   String get _emoji => switch (type) {
-    EmptyStateType.noTrips    => '🧳',
-    EmptyStateType.noSaved    => '💛',
-    EmptyStateType.noResults  => '🔍',
+    EmptyStateType.noTrips => '🧳',
+    EmptyStateType.noSaved => '💛',
+    EmptyStateType.noResults => '🔍',
     EmptyStateType.noInternet => '📡',
-    EmptyStateType.noReviews  => '⭐',
-    EmptyStateType.noChat     => '🤖',
-    EmptyStateType.noTickets  => '🎧',
+    EmptyStateType.noReviews => '⭐',
+    EmptyStateType.noChat => '🤖',
+    EmptyStateType.noTickets => '🎧',
   };
 
   /// Title mặc định
   String get _defaultTitle => switch (type) {
-    EmptyStateType.noTrips    => 'Chưa có lịch trình nào',
-    EmptyStateType.noSaved    => 'Chưa lưu địa điểm nào',
-    EmptyStateType.noResults  => 'Không tìm thấy kết quả',
+    EmptyStateType.noTrips => 'Chưa có lịch trình nào',
+    EmptyStateType.noSaved => 'Chưa lưu địa điểm nào',
+    EmptyStateType.noResults => 'Không tìm thấy kết quả',
     EmptyStateType.noInternet => 'Không có kết nối',
-    EmptyStateType.noReviews  => 'Chưa có đánh giá nào',
-    EmptyStateType.noChat     => 'Bắt đầu hỏi đáp',
-    EmptyStateType.noTickets  => 'Chưa có yêu cầu nào',
+    EmptyStateType.noReviews => 'Chưa có đánh giá nào',
+    EmptyStateType.noChat => 'Bắt đầu hỏi đáp',
+    EmptyStateType.noTickets => 'Chưa có yêu cầu nào',
   };
 
   /// Subtitle mặc định
   String get _defaultSubtitle => switch (type) {
-    EmptyStateType.noTrips    => 'Tạo lịch trình đầu tiên và khám phá Đà Nẵng theo cách của bạn!',
-    EmptyStateType.noSaved    => 'Tap vào ♥ để lưu các địa điểm yêu thích.',
-    EmptyStateType.noResults  => 'Thử tìm với từ khóa khác hoặc bỏ bớt bộ lọc.',
+    EmptyStateType.noTrips =>
+      'Tạo lịch trình đầu tiên và khám phá Đà Nẵng theo cách của bạn!',
+    EmptyStateType.noSaved => 'Tap vào ♥ để lưu các địa điểm yêu thích.',
+    EmptyStateType.noResults => 'Thử tìm với từ khóa khác hoặc bỏ bớt bộ lọc.',
     EmptyStateType.noInternet => 'Kiểm tra lại kết nối mạng và thử lại.',
-    EmptyStateType.noReviews  => 'Hãy là người đầu tiên chia sẻ trải nghiệm!',
-    EmptyStateType.noChat     => 'Hỏi về địa điểm, ẩm thực, di chuyển — AI sẽ tư vấn cho bạn.',
-    EmptyStateType.noTickets  => 'Bạn chưa gửi yêu cầu hỗ trợ nào.',
+    EmptyStateType.noReviews => 'Hãy là người đầu tiên chia sẻ trải nghiệm!',
+    EmptyStateType.noChat =>
+      'Hỏi về địa điểm, ẩm thực, di chuyển — AI sẽ tư vấn cho bạn.',
+    EmptyStateType.noTickets => 'Bạn chưa gửi yêu cầu hỗ trợ nào.',
   };
 }

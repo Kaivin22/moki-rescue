@@ -12,12 +12,13 @@ abstract final class AppValidator {
   /// Không được để trống
   static FormFieldValidator<String> required(String fieldName) =>
       (value) => (value == null || value.trim().isEmpty)
-          ? '$fieldName không được để trống.'
-          : null;
+      ? '$fieldName không được để trống.'
+      : null;
 
   /// Email hợp lệ
   static String? email(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Email không được để trống.';
+    if (value == null || value.trim().isEmpty)
+      return 'Email không được để trống.';
     final regex = RegExp(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$');
     if (!regex.hasMatch(value.trim())) return 'Email không hợp lệ.';
     return null;
@@ -36,9 +37,11 @@ abstract final class AppValidator {
 
   /// Tên hiển thị: 2–50 ký tự
   static String? displayName(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Tên hiển thị không được để trống.';
+    if (value == null || value.trim().isEmpty)
+      return 'Tên hiển thị không được để trống.';
     if (value.trim().length < 2) return 'Tên hiển thị phải có ít nhất 2 ký tự.';
-    if (value.trim().length > 50) return 'Tên hiển thị không được vượt quá 50 ký tự.';
+    if (value.trim().length > 50)
+      return 'Tên hiển thị không được vượt quá 50 ký tự.';
     return null;
   }
 
@@ -53,20 +56,22 @@ abstract final class AppValidator {
   }
 
   /// Tiêu đề không vượt quá [maxLength] ký tự
-  static FormFieldValidator<String> maxLength(int maxLength, [String? fieldName]) =>
+  static FormFieldValidator<String> maxLength(
+    int maxLength, [
+    String? fieldName,
+  ]) =>
       (value) => (value != null && value.length > maxLength)
-          ? '${fieldName ?? 'Nội dung'} không được vượt quá $maxLength ký tự.'
-          : null;
+      ? '${fieldName ?? 'Nội dung'} không được vượt quá $maxLength ký tự.'
+      : null;
 
   /// Kết hợp nhiều validator, trả lỗi đầu tiên phát hiện được
   static FormFieldValidator<String> compose(
     List<FormFieldValidator<String>> validators,
-  ) =>
-      (value) {
-        for (final v in validators) {
-          final error = v(value);
-          if (error != null) return error;
-        }
-        return null;
-      };
+  ) => (value) {
+    for (final v in validators) {
+      final error = v(value);
+      if (error != null) return error;
+    }
+    return null;
+  };
 }

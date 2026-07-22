@@ -31,7 +31,6 @@ class _MyItinerariesScreenState extends ConsumerState<MyItinerariesScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
-
   @override
   void initState() {
     super.initState();
@@ -51,8 +50,10 @@ class _MyItinerariesScreenState extends ConsumerState<MyItinerariesScreen>
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Lịch trình của tôi',
-            style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Lịch trình của tôi',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
         actions: [
@@ -68,8 +69,9 @@ class _MyItinerariesScreenState extends ConsumerState<MyItinerariesScreen>
           unselectedLabelColor: AppColors.textSecondary,
           indicatorColor: AppColors.actionPrimary,
           indicatorWeight: 2,
-          labelStyle:
-              AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600),
+          labelStyle: AppTextStyles.bodyMd.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
           tabs: const [
             Tab(text: 'Của tôi'),
             Tab(text: 'Đã lưu'),
@@ -86,14 +88,10 @@ class _MyItinerariesScreenState extends ConsumerState<MyItinerariesScreen>
               variant: ShimmerVariant.itineraryCard,
               itemCount: 3,
             ),
-            error: (e, _) =>
-                EmptyState(type: EmptyStateType.noTrips),
+            error: (e, _) => EmptyState(type: EmptyStateType.noTrips),
             data: (list) => _MyTab(
               itineraries: list,
-              onTap: (id) => context.push(
-                AppRoutes.itineraryDetail,
-                extra: id,
-              ),
+              onTap: (id) => context.push(AppRoutes.itineraryDetail, extra: id),
             ),
           ),
           // ── Tab 1: Saved (placeholder) ──
@@ -108,8 +106,10 @@ class _MyItinerariesScreenState extends ConsumerState<MyItinerariesScreen>
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: Text(
           'Tạo mới',
-          style: AppTextStyles.bodyMd
-              .copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+          style: AppTextStyles.bodyMd.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
@@ -144,9 +144,7 @@ class _MyTab extends StatelessWidget {
               top: 10,
               left: 10,
               child: StatusBadge(
-                type: it.isPublic
-                    ? StatusType.published
-                    : StatusType.draft,
+                type: it.isPublic ? StatusType.published : StatusType.draft,
               ),
             ),
           ],
@@ -155,4 +153,3 @@ class _MyTab extends StatelessWidget {
     );
   }
 }
-

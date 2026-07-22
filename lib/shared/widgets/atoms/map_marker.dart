@@ -4,7 +4,6 @@ import '../../../core/theme/tokens/app_colors.dart';
 import '../../../core/theme/tokens/app_typography.dart';
 import '../../../core/theme/tokens/app_spacing.dart';
 
-
 /// ═══════════════════════════════════════════════════════
 /// MapMarker — Widget hiển thị pin địa điểm trên bản đồ
 ///
@@ -26,19 +25,16 @@ class MapMarker extends StatelessWidget {
     this.label,
   }) : number = null;
 
-  const MapMarker.selected({
-    super.key,
-    required this.category,
-    this.label,
-  })  : isSelected = true,
-        number = null;
+  const MapMarker.selected({super.key, required this.category, this.label})
+    : isSelected = true,
+      number = null;
 
   const MapMarker.numbered({
     super.key,
     required this.number,
     this.category = 'viewpoint',
-  })  : isSelected = false,
-        label = null;
+  }) : isSelected = false,
+       label = null;
 
   final String category;
   final bool isSelected;
@@ -121,33 +117,33 @@ class MapMarker extends StatelessWidget {
   }
 
   static Color _categoryColor(String category) => switch (category) {
-    'beach'         => const Color(0xFF1B9CE5),
-    'mountain'      => const Color(0xFF5B8C5A),
-    'temple'        => const Color(0xFFB07D39),
-    'museum'        => const Color(0xFF7B5EA7),
-    'food'          => const Color(0xFFE8604C),
-    'market'        => const Color(0xFFE89A3C),
+    'beach' => const Color(0xFF1B9CE5),
+    'mountain' => const Color(0xFF5B8C5A),
+    'temple' => const Color(0xFFB07D39),
+    'museum' => const Color(0xFF7B5EA7),
+    'food' => const Color(0xFFE8604C),
+    'market' => const Color(0xFFE89A3C),
     'entertainment' => const Color(0xFFD4567A),
-    'nature'        => const Color(0xFF4C9E52),
-    'historical'    => const Color(0xFF8B6914),
-    'viewpoint'     => const Color(0xFF2D7DD2),
-    'park'          => const Color(0xFF3DAA6B),
-    _               => AppColors.actionPrimary,
+    'nature' => const Color(0xFF4C9E52),
+    'historical' => const Color(0xFF8B6914),
+    'viewpoint' => const Color(0xFF2D7DD2),
+    'park' => const Color(0xFF3DAA6B),
+    _ => AppColors.actionPrimary,
   };
 
   static IconData _categoryIcon(String category) => switch (category) {
-    'beach'         => Icons.beach_access_rounded,
-    'mountain'      => Icons.landscape_rounded,
-    'temple'        => Icons.temple_buddhist_rounded,
-    'museum'        => Icons.museum_rounded,
-    'food'          => Icons.restaurant_rounded,
-    'market'        => Icons.storefront_rounded,
+    'beach' => Icons.beach_access_rounded,
+    'mountain' => Icons.landscape_rounded,
+    'temple' => Icons.temple_buddhist_rounded,
+    'museum' => Icons.museum_rounded,
+    'food' => Icons.restaurant_rounded,
+    'market' => Icons.storefront_rounded,
     'entertainment' => Icons.attractions_rounded,
-    'nature'        => Icons.park_rounded,
-    'historical'    => Icons.account_balance_rounded,
-    'viewpoint'     => Icons.visibility_rounded,
-    'park'          => Icons.local_florist_rounded,
-    _               => Icons.place_rounded,
+    'nature' => Icons.park_rounded,
+    'historical' => Icons.account_balance_rounded,
+    'viewpoint' => Icons.visibility_rounded,
+    'park' => Icons.local_florist_rounded,
+    _ => Icons.place_rounded,
   };
 }
 

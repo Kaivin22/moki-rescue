@@ -64,7 +64,9 @@ class MapOverlay extends StatelessWidget {
                       vertical: AppSpacing.space2,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.backgroundSecondary.withValues(alpha: 0.95),
+                      color: AppColors.backgroundSecondary.withValues(
+                        alpha: 0.95,
+                      ),
                       borderRadius: AppRadius.chipBorder,
                       boxShadow: AppShadows.sm,
                     ),

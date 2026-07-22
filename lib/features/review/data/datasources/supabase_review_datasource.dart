@@ -33,10 +33,7 @@ class SupabaseReviewDataSource {
           .order(sortBy, ascending: ascending)
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
-      return (
-        (data as List).map((e) => Review.fromJson(e)).toList(),
-        null,
-      );
+      return ((data as List).map((e) => Review.fromJson(e)).toList(), null);
     } catch (e) {
       return (<Review>[], ExceptionMapper.map(e));
     }
@@ -96,7 +93,8 @@ class SupabaseReviewDataSource {
 
   /// Thống kê rating tổng cho 1 place
   Future<(Map<int, int>, Failure?)> getRatingDistribution(
-      String placeId) async {
+    String placeId,
+  ) async {
     try {
       final data = await _client
           .from('reviews')

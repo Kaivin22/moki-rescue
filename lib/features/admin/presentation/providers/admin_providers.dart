@@ -17,8 +17,10 @@ final adminStatsProvider = FutureProvider<AdminStats>((ref) async {
 });
 
 // ── Users ──────────────────────────────────────────────
-final adminUsersProvider =
-    FutureProvider.family<List<UserProfile>, String>((ref, query) async {
+final adminUsersProvider = FutureProvider.family<List<UserProfile>, String>((
+  ref,
+  query,
+) async {
   final ds = ref.watch(adminDataSourceProvider);
   return ds.getAllUsers(query: query.isEmpty ? null : query);
 });
@@ -35,8 +37,7 @@ class AdminUserActionState {
   final String? error;
 }
 
-class AdminUserActionNotifier
-    extends StateNotifier<AdminUserActionState> {
+class AdminUserActionNotifier extends StateNotifier<AdminUserActionState> {
   AdminUserActionNotifier(this._ds) : super(const AdminUserActionState());
 
   final SupabaseAdminDataSource _ds;
@@ -64,17 +65,21 @@ class AdminUserActionNotifier
   void reset() => state = const AdminUserActionState();
 }
 
-final adminUserActionProvider = StateNotifierProvider.autoDispose<
-    AdminUserActionNotifier, AdminUserActionState>((ref) {
-  return AdminUserActionNotifier(ref.read(adminDataSourceProvider));
-});
+final adminUserActionProvider =
+    StateNotifierProvider.autoDispose<
+      AdminUserActionNotifier,
+      AdminUserActionState
+    >((ref) {
+      return AdminUserActionNotifier(ref.read(adminDataSourceProvider));
+    });
 
 // ── Tickets ──────────────────────────────────────────────
-final adminTicketsProvider =
-    FutureProvider.family<List<SupportTicket>, String>((ref, status) async {
-  final ds = ref.watch(adminDataSourceProvider);
-  return ds.getAllTickets(status: status == 'all' ? null : status);
-});
+final adminTicketsProvider = FutureProvider.family<List<SupportTicket>, String>(
+  (ref, status) async {
+    final ds = ref.watch(adminDataSourceProvider);
+    return ds.getAllTickets(status: status == 'all' ? null : status);
+  },
+);
 
 // Ticket reply notifier
 class AdminTicketReplyState {
@@ -88,10 +93,8 @@ class AdminTicketReplyState {
   final String? error;
 }
 
-class AdminTicketReplyNotifier
-    extends StateNotifier<AdminTicketReplyState> {
-  AdminTicketReplyNotifier(this._ds)
-      : super(const AdminTicketReplyState());
+class AdminTicketReplyNotifier extends StateNotifier<AdminTicketReplyState> {
+  AdminTicketReplyNotifier(this._ds) : super(const AdminTicketReplyState());
 
   final SupabaseAdminDataSource _ds;
 
@@ -119,18 +122,17 @@ class AdminTicketReplyNotifier
   void reset() => state = const AdminTicketReplyState();
 }
 
-final adminTicketReplyProvider = StateNotifierProvider.autoDispose<
-    AdminTicketReplyNotifier, AdminTicketReplyState>((ref) {
-  return AdminTicketReplyNotifier(ref.read(adminDataSourceProvider));
-});
+final adminTicketReplyProvider =
+    StateNotifierProvider.autoDispose<
+      AdminTicketReplyNotifier,
+      AdminTicketReplyState
+    >((ref) {
+      return AdminTicketReplyNotifier(ref.read(adminDataSourceProvider));
+    });
 
 // ── Sync ──────────────────────────────────────────────
 class AdminSyncState {
-  const AdminSyncState({
-    this.isLoading = false,
-    this.log,
-    this.error,
-  });
+  const AdminSyncState({this.isLoading = false, this.log, this.error});
   final bool isLoading;
   final String? log;
   final String? error;
@@ -153,7 +155,6 @@ class AdminSyncNotifier extends StateNotifier<AdminSyncState> {
 }
 
 final adminSyncProvider =
-    StateNotifierProvider.autoDispose<AdminSyncNotifier, AdminSyncState>(
-        (ref) {
-  return AdminSyncNotifier(ref.read(adminDataSourceProvider));
-});
+    StateNotifierProvider.autoDispose<AdminSyncNotifier, AdminSyncState>((ref) {
+      return AdminSyncNotifier(ref.read(adminDataSourceProvider));
+    });

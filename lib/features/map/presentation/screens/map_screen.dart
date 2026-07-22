@@ -1,8 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
-import 'package:apple_maps_flutter/apple_maps_flutter.dart'
-    as apple;
+import 'package:apple_maps_flutter/apple_maps_flutter.dart' as apple;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -74,10 +73,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ),
       );
     } else {
-      _flutterMapController.move(
-        ll.LatLng(place.lat, place.lng),
-        14.0,
-      );
+      _flutterMapController.move(ll.LatLng(place.lat, place.lng), 14.0);
     }
   }
 
@@ -125,7 +121,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       color: AppColors.backgroundCard,
                       shape: BoxShape.circle,
                       boxShadow: [
-                        BoxShadow(color: Colors.black26, blurRadius: 8)
+                        BoxShadow(color: Colors.black26, blurRadius: 8),
                       ],
                     ),
                     child: IconButton(
@@ -141,24 +137,30 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         color: AppColors.backgroundCard,
                         borderRadius: AppRadius.inputBorder,
                         boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 8)
+                          BoxShadow(color: Colors.black26, blurRadius: 8),
                         ],
                       ),
                       child: TextField(
                         controller: _searchController,
                         decoration: InputDecoration(
                           hintText: 'Tìm trên bản đồ...',
-                          hintStyle: AppTextStyles.bodyMd
-                              .copyWith(color: AppColors.textPlaceholder),
+                          hintStyle: AppTextStyles.bodyMd.copyWith(
+                            color: AppColors.textPlaceholder,
+                          ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.space3, vertical: 12),
-                          prefixIcon: const Icon(Icons.search_rounded,
-                              size: 18,
-                              color: AppColors.textSecondary),
+                            horizontal: AppSpacing.space3,
+                            vertical: 12,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search_rounded,
+                            size: 18,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                        style: AppTextStyles.bodyMd
-                            .copyWith(color: AppColors.textPrimary),
+                        style: AppTextStyles.bodyMd.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
                   ),
@@ -171,15 +173,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.only(
-                  top: 72, left: AppSpacing.layoutSm),
+                top: 72,
+                left: AppSpacing.layoutSm,
+              ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: _categories.map((c) {
                     final isSelected = _selectedCategory == c.id;
                     return Padding(
-                      padding:
-                          const EdgeInsets.only(right: AppSpacing.space2),
+                      padding: const EdgeInsets.only(right: AppSpacing.space2),
                       child: GestureDetector(
                         onTap: () {
                           setState(() {
@@ -190,15 +193,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 150),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? AppColors.actionPrimary
                                 : AppColors.backgroundCard,
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: const [
-                              BoxShadow(
-                                  color: Colors.black26, blurRadius: 4)
+                              BoxShadow(color: Colors.black26, blurRadius: 4),
                             ],
                           ),
                           child: Text(
@@ -250,7 +254,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   onTap: () {
                     if (Platform.isIOS) {
                       _appleController?.animateCamera(
-                          apple.CameraUpdate.zoomIn());
+                        apple.CameraUpdate.zoomIn(),
+                      );
                     } else {
                       _flutterMapController.move(
                         _flutterMapController.camera.center,
@@ -265,7 +270,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   onTap: () {
                     if (Platform.isIOS) {
                       _appleController?.animateCamera(
-                          apple.CameraUpdate.zoomOut());
+                        apple.CameraUpdate.zoomOut(),
+                      );
                     } else {
                       _flutterMapController.move(
                         _flutterMapController.camera.center,
@@ -286,8 +292,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             builder: (_, scrollController) => Container(
               decoration: const BoxDecoration(
                 color: AppColors.backgroundCard,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Column(
                 children: [
@@ -302,16 +307,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.layoutSm),
+                      horizontal: AppSpacing.layoutSm,
+                    ),
                     child: Row(
                       children: [
-                        Text('${filtered.length} địa điểm',
-                            style: AppTextStyles.h4
-                                .copyWith(fontWeight: FontWeight.w700)),
+                        Text(
+                          '${filtered.length} địa điểm',
+                          style: AppTextStyles.h4.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         const Spacer(),
-                        Text('Xem danh sách',
-                            style: AppTextStyles.caption.copyWith(
-                                color: AppColors.actionSecondary)),
+                        Text(
+                          'Xem danh sách',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.actionSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -321,13 +333,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       controller: scrollController,
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.layoutSm),
+                        horizontal: AppSpacing.layoutSm,
+                      ),
                       itemCount: filtered.length,
                       itemBuilder: (_, i) {
                         final place = filtered[i];
                         return Padding(
                           padding: const EdgeInsets.only(
-                              right: AppSpacing.space3),
+                            right: AppSpacing.space3,
+                          ),
                           child: PlaceCard(
                             name: place.name,
                             imageUrl: place.imageUrls.firstOrNull ?? '',
@@ -337,8 +351,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               setState(() => _selectedMarkerIndex = i);
                               _animateToPlace(place);
                               context.push(
-                                AppRoutes.placeDetail
-                                    .replaceAll(':id', place.id),
+                                AppRoutes.placeDetail.replaceAll(
+                                  ':id',
+                                  place.id,
+                                ),
                               );
                             },
                             onSave: () {},
@@ -392,7 +408,8 @@ class _AppleMapViewState extends State<_AppleMapView> {
         ),
         icon: isSelected
             ? apple.BitmapDescriptor.defaultAnnotationWithHue(
-                apple.BitmapDescriptor.hueOrange)
+                apple.BitmapDescriptor.hueOrange,
+              )
             : apple.BitmapDescriptor.defaultAnnotation,
         onTap: () => widget.onMarkerTap(idx),
       );
@@ -401,15 +418,15 @@ class _AppleMapViewState extends State<_AppleMapView> {
 
   @override
   Widget build(BuildContext context) => apple.AppleMap(
-        initialCameraPosition: const apple.CameraPosition(
-          target: apple.LatLng(_kDanangLat, _kDanangLng),
-          zoom: _kInitialZoom,
-        ),
-        annotations: _annotations,
-        onMapCreated: widget.onControllerCreated,
-        myLocationEnabled: true,
-        myLocationButtonEnabled: false,
-      );
+    initialCameraPosition: const apple.CameraPosition(
+      target: apple.LatLng(_kDanangLat, _kDanangLng),
+      zoom: _kInitialZoom,
+    ),
+    annotations: _annotations,
+    onMapCreated: widget.onControllerCreated,
+    myLocationEnabled: true,
+    myLocationButtonEnabled: false,
+  );
 }
 
 /// ═══════════════════════════════════════════════════════
@@ -430,73 +447,69 @@ class _FlutterMapView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => FlutterMap(
-        mapController: controller,
-        options: const MapOptions(
-          initialCenter: ll.LatLng(_kDanangLat, _kDanangLng),
-          initialZoom: _kInitialZoom,
-          minZoom: 5,
-          maxZoom: 18,
-        ),
-        children: [
-          // ── OSM Tile Layer ──
-          TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'com.danang.itinerary',
-            // Giới hạn zoom để tránh lỗi tile không tồn tại
-            maxZoom: 19,
-          ),
+    mapController: controller,
+    options: const MapOptions(
+      initialCenter: ll.LatLng(_kDanangLat, _kDanangLng),
+      initialZoom: _kInitialZoom,
+      minZoom: 5,
+      maxZoom: 18,
+    ),
+    children: [
+      // ── OSM Tile Layer ──
+      TileLayer(
+        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        userAgentPackageName: 'com.danang.itinerary',
+        // Giới hạn zoom để tránh lỗi tile không tồn tại
+        maxZoom: 19,
+      ),
 
-          // ── Markers ──
-          MarkerLayer(
-            markers: places.asMap().entries.map((entry) {
-              final idx = entry.key;
-              final place = entry.value;
-              final isSelected = selectedIndex == idx;
+      // ── Markers ──
+      MarkerLayer(
+        markers: places.asMap().entries.map((entry) {
+          final idx = entry.key;
+          final place = entry.value;
+          final isSelected = selectedIndex == idx;
 
-              return Marker(
-                point: ll.LatLng(place.lat, place.lng),
-                width: isSelected ? 44 : 36,
-                height: isSelected ? 44 : 36,
-                child: GestureDetector(
-                  onTap: () => onMarkerTap(idx),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.actionPrimary
-                          : AppColors.backgroundCard,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isSelected
-                            ? AppColors.actionPrimary
-                            : AppColors.borderDefault,
-                        width: 2,
-                      ),
-                      boxShadow: const [
-                        BoxShadow(color: Colors.black26, blurRadius: 6)
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.place_rounded,
-                      size: isSelected ? 24 : 18,
-                      color: isSelected
-                          ? Colors.white
-                          : AppColors.actionPrimary,
-                    ),
+          return Marker(
+            point: ll.LatLng(place.lat, place.lng),
+            width: isSelected ? 44 : 36,
+            height: isSelected ? 44 : 36,
+            child: GestureDetector(
+              onTap: () => onMarkerTap(idx),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.actionPrimary
+                      : AppColors.backgroundCard,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.actionPrimary
+                        : AppColors.borderDefault,
+                    width: 2,
                   ),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black26, blurRadius: 6),
+                  ],
                 ),
-              );
-            }).toList(),
-          ),
+                child: Icon(
+                  Icons.place_rounded,
+                  size: isSelected ? 24 : 18,
+                  color: isSelected ? Colors.white : AppColors.actionPrimary,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
 
-          // ── Attribution (bắt buộc theo OSM license) ──
-          const RichAttributionWidget(
-            attributions: [
-              TextSourceAttribution('OpenStreetMap contributors'),
-            ],
-          ),
-        ],
-      );
+      // ── Attribution (bắt buộc theo OSM license) ──
+      const RichAttributionWidget(
+        attributions: [TextSourceAttribution('OpenStreetMap contributors')],
+      ),
+    ],
+  );
 }
 
 /// ═══════════════════════════════════════════════════════
@@ -509,16 +522,16 @@ class _MapFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: const BoxDecoration(
-            color: AppColors.backgroundCard,
-            shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
-          ),
-          child: Icon(icon, color: AppColors.textPrimary, size: 20),
-        ),
-      );
+    onTap: onTap,
+    child: Container(
+      width: 44,
+      height: 44,
+      decoration: const BoxDecoration(
+        color: AppColors.backgroundCard,
+        shape: BoxShape.circle,
+        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
+      ),
+      child: Icon(icon, color: AppColors.textPrimary, size: 20),
+    ),
+  );
 }

@@ -43,12 +43,12 @@ class Review {
   // ── Derived ─────────────────────────────────────────
   bool get hasImages => imageUrls.isNotEmpty;
   String get ratingEmoji => switch (rating) {
-        5 => '🤩',
-        4 => '😊',
-        3 => '😐',
-        2 => '😕',
-        _ => '😞',
-      };
+    5 => '🤩',
+    4 => '😊',
+    3 => '😐',
+    2 => '😕',
+    _ => '😞',
+  };
 
   factory Review.fromJson(Map<String, dynamic> json) {
     final authorData = json['author'] as Map<String, dynamic>?;
@@ -59,7 +59,8 @@ class Review {
       rating: json['rating'] as int,
       title: json['title'] as String?,
       content: json['content'] as String?,
-      imageUrls: (json['image_urls'] as List<dynamic>?)
+      imageUrls:
+          (json['image_urls'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
@@ -69,23 +70,25 @@ class Review {
       helpfulCount: json['helpful_count'] as int? ?? 0,
       isHelpful: json['is_helpful'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
-      authorName: authorData?['display_name'] as String? ??
+      authorName:
+          authorData?['display_name'] as String? ??
           json['author_name'] as String?,
-      authorAvatarUrl: authorData?['avatar_url'] as String? ??
+      authorAvatarUrl:
+          authorData?['avatar_url'] as String? ??
           json['author_avatar_url'] as String?,
     );
   }
 
   Map<String, dynamic> toCreateJson() => {
-        'user_id': userId,
-        'place_id': placeId,
-        'rating': rating,
-        if (title != null) 'title': title,
-        if (content != null) 'content': content,
-        'image_urls': imageUrls,
-        if (visitDate != null)
-          'visit_date': visitDate!.toIso8601String().substring(0, 10),
-      };
+    'user_id': userId,
+    'place_id': placeId,
+    'rating': rating,
+    if (title != null) 'title': title,
+    if (content != null) 'content': content,
+    'image_urls': imageUrls,
+    if (visitDate != null)
+      'visit_date': visitDate!.toIso8601String().substring(0, 10),
+  };
 
   @override
   bool operator ==(Object other) =>

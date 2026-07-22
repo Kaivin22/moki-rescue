@@ -88,8 +88,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (response?.user != null && response?.session != null) {
       // Session có ngay (email confirmation tắt trên dashboard)
       final userId = response!.user!.id;
-      final (profile, profileFailure) =
-          await _dataSource.fetchProfile(userId);
+      final (profile, profileFailure) = await _dataSource.fetchProfile(userId);
       if (profileFailure != null || profile == null) {
         state = const AuthUnauthenticated();
       } else {
@@ -206,8 +205,9 @@ final authDataSourceProvider = Provider<SupabaseAuthDataSource>((ref) {
 });
 
 /// AuthNotifier provider — dùng trên toàn app
-final authNotifierProvider =
-    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((
+  ref,
+) {
   return AuthNotifier(ref.watch(authDataSourceProvider));
 });
 

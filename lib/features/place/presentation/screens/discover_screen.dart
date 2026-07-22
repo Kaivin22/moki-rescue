@@ -29,11 +29,46 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   final bool _isLoading = false;
 
   static const _demoPlaces = [
-    (name: 'Bãi biển Mỹ Khê', category: 'beach', rating: 4.7, imageUrl: 'https://picsum.photos/seed/mykhe/160/160', distance: 2.1, address: 'Quận Sơn Trà, Đà Nẵng'),
-    (name: 'Ngũ Hành Sơn', category: 'mountain', rating: 4.5, imageUrl: 'https://picsum.photos/seed/ngu/160/160', distance: 8.5, address: 'Quận Ngũ Hành Sơn, Đà Nẵng'),
-    (name: 'Phố cổ Hội An', category: 'historical', rating: 4.9, imageUrl: 'https://picsum.photos/seed/hoian/160/160', distance: 28.0, address: 'Hội An, Quảng Nam'),
-    (name: 'Bà Nà Hills', category: 'entertainment', rating: 4.6, imageUrl: 'https://picsum.photos/seed/bana/160/160', distance: 45.0, address: 'Hòa Ninh, Đà Nẵng'),
-    (name: 'Cầu Vàng', category: 'viewpoint', rating: 4.8, imageUrl: 'https://picsum.photos/seed/golden/160/160', distance: 46.0, address: 'Bà Nà Hills, Đà Nẵng'),
+    (
+      name: 'Bãi biển Mỹ Khê',
+      category: 'beach',
+      rating: 4.7,
+      imageUrl: 'https://picsum.photos/seed/mykhe/160/160',
+      distance: 2.1,
+      address: 'Quận Sơn Trà, Đà Nẵng',
+    ),
+    (
+      name: 'Ngũ Hành Sơn',
+      category: 'mountain',
+      rating: 4.5,
+      imageUrl: 'https://picsum.photos/seed/ngu/160/160',
+      distance: 8.5,
+      address: 'Quận Ngũ Hành Sơn, Đà Nẵng',
+    ),
+    (
+      name: 'Phố cổ Hội An',
+      category: 'historical',
+      rating: 4.9,
+      imageUrl: 'https://picsum.photos/seed/hoian/160/160',
+      distance: 28.0,
+      address: 'Hội An, Quảng Nam',
+    ),
+    (
+      name: 'Bà Nà Hills',
+      category: 'entertainment',
+      rating: 4.6,
+      imageUrl: 'https://picsum.photos/seed/bana/160/160',
+      distance: 45.0,
+      address: 'Hòa Ninh, Đà Nẵng',
+    ),
+    (
+      name: 'Cầu Vàng',
+      category: 'viewpoint',
+      rating: 4.8,
+      imageUrl: 'https://picsum.photos/seed/golden/160/160',
+      distance: 46.0,
+      address: 'Bà Nà Hills, Đà Nẵng',
+    ),
   ];
 
   String get _query => _searchController.text.trim();
@@ -43,7 +78,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     return _demoPlaces
         .where((p) {
           final matchQ = q.isEmpty || p.name.toLowerCase().contains(q);
-          final matchCat = _selectedCategories.isEmpty ||
+          final matchCat =
+              _selectedCategories.isEmpty ||
               _selectedCategories.contains(p.category);
           return matchQ && matchCat;
         })
@@ -106,8 +142,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       itemCount: 5,
                     )
                   : hasQuery
-                      ? _SearchResultList(places: filtered, query: _query)
-                      : _SuggestionsView(places: _demoPlaces),
+                  ? _SearchResultList(places: filtered, query: _query)
+                  : _SuggestionsView(places: _demoPlaces),
             ),
           ],
         ),
@@ -177,47 +213,49 @@ class _SuggestionsView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionHeader(
-            title: 'Gợi ý cho bạn',
-            onViewAll: () {},
-          ),
+          SectionHeader(title: 'Gợi ý cho bạn', onViewAll: () {}),
           const SizedBox(height: AppSpacing.space3),
 
           // Top 3 places
-          ...places.take(3).map((p) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.space3),
-                child: PlaceListTile(
-                  name: p.name,
-                  address: p.address,
-                  category: p.category,
-                  rating: p.rating,
-                  imageUrl: p.imageUrl,
-                  distance: p.distance,
-                  onTap: () {},
-                  onSave: () {},
+          ...places
+              .take(3)
+              .map(
+                (p) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.space3),
+                  child: PlaceListTile(
+                    name: p.name,
+                    address: p.address,
+                    category: p.category,
+                    rating: p.rating,
+                    imageUrl: p.imageUrl,
+                    distance: p.distance,
+                    onTap: () {},
+                    onSave: () {},
+                  ),
                 ),
-              )),
+              ),
 
-          SectionHeader(
-            title: 'Phổ biến nhất',
-            onViewAll: () {},
-          ),
+          SectionHeader(title: 'Phổ biến nhất', onViewAll: () {}),
           const SizedBox(height: AppSpacing.space3),
 
           // Remaining places
-          ...places.skip(3).map((p) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.space3),
-                child: PlaceListTile(
-                  name: p.name,
-                  address: p.address,
-                  category: p.category,
-                  rating: p.rating,
-                  imageUrl: p.imageUrl,
-                  distance: p.distance,
-                  onTap: () {},
-                  onSave: () {},
+          ...places
+              .skip(3)
+              .map(
+                (p) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.space3),
+                  child: PlaceListTile(
+                    name: p.name,
+                    address: p.address,
+                    category: p.category,
+                    rating: p.rating,
+                    imageUrl: p.imageUrl,
+                    distance: p.distance,
+                    onTap: () {},
+                    onSave: () {},
+                  ),
                 ),
-              )),
+              ),
         ],
       ),
     );

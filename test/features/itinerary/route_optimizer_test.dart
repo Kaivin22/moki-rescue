@@ -1,4 +1,4 @@
-﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:danang_itinerary/features/itinerary/domain/services/route_optimizer.dart';
 
 void main() {
@@ -8,14 +8,13 @@ void main() {
     required double lat,
     required double lng,
     int durationMin = 60,
-  }) =>
-      RouteWaypoint(
-        id: id,
-        name: 'Place $id',
-        lat: lat,
-        lng: lng,
-        durationMin: durationMin,
-      );
+  }) => RouteWaypoint(
+    id: id,
+    name: 'Place $id',
+    lat: lat,
+    lng: lng,
+    durationMin: durationMin,
+  );
 
   group('RouteOptimizer', () {
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -51,8 +50,11 @@ void main() {
       );
 
       expect(result[0].waypoint.id, 'A');
-      expect(result[1].waypoint.id, 'B',
-          reason: 'B gáº§n A hÆ¡n C, pháº£i Ä‘Æ°á»£c chá»n trÆ°á»›c');
+      expect(
+        result[1].waypoint.id,
+        'B',
+        reason: 'B gáº§n A hÆ¡n C, pháº£i Ä‘Æ°á»£c chá»n trÆ°á»›c',
+      );
       expect(result[2].waypoint.id, 'C');
     });
 
@@ -100,10 +102,16 @@ void main() {
         breakMinutes: 0,
       );
 
-      expect(nearResult[1].transportMode, 'walking',
-          reason: '~0.5km pháº£i lÃ  walking');
-      expect(farResult[1].transportMode, 'driving',
-          reason: '~5km pháº£i lÃ  driving');
+      expect(
+        nearResult[1].transportMode,
+        'walking',
+        reason: '~0.5km pháº£i lÃ  walking',
+      );
+      expect(
+        farResult[1].transportMode,
+        'driving',
+        reason: '~5km pháº£i lÃ  driving',
+      );
     });
 
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -118,8 +126,11 @@ void main() {
       final stats = RouteOptimizer.routeStats(result);
 
       expect(stats.totalKm, greaterThan(0));
-      expect(stats.totalMin, greaterThan(150),
-          reason: '60 + 90 + travel â‰¥ 150');
+      expect(
+        stats.totalMin,
+        greaterThan(150),
+        reason: '60 + 90 + travel â‰¥ 150',
+      );
     });
 
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

@@ -29,12 +29,7 @@ Future<void> main() async {
     authNotifier.value = authState;
   });
 
-
-  runApp(
-    const ProviderScope(
-      child: DaNangItineraryApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: DaNangItineraryApp()));
 }
 
 /// Root widget của ứng dụng

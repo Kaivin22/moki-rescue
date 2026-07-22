@@ -21,8 +21,7 @@ class EditorEditPlaceScreen extends ConsumerStatefulWidget {
       _EditorEditPlaceScreenState();
 }
 
-class _EditorEditPlaceScreenState
-    extends ConsumerState<EditorEditPlaceScreen> {
+class _EditorEditPlaceScreenState extends ConsumerState<EditorEditPlaceScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
@@ -33,8 +32,14 @@ class _EditorEditPlaceScreenState
   bool _initialized = false;
 
   static const _categories = [
-    'beach', 'food', 'historical', 'nature',
-    'viewpoint', 'hotel', 'shopping', 'entertainment',
+    'beach',
+    'food',
+    'historical',
+    'nature',
+    'viewpoint',
+    'hotel',
+    'shopping',
+    'entertainment',
   ];
 
   @override
@@ -54,7 +59,9 @@ class _EditorEditPlaceScreenState
       loading: () => Scaffold(
         appBar: AppBar(title: const Text('Đang tải...')),
         body: const LoadingShimmerList(
-            variant: ShimmerVariant.listTile, itemCount: 6),
+          variant: ShimmerVariant.listTile,
+          itemCount: 6,
+        ),
       ),
       error: (e, _) => Scaffold(
         appBar: AppBar(title: const Text('Lỗi')),
@@ -73,9 +80,10 @@ class _EditorEditPlaceScreenState
         return Scaffold(
           backgroundColor: AppColors.backgroundPrimary,
           appBar: AppBar(
-            title: Text('Chỉnh sửa địa điểm',
-                style: AppTextStyles.h4
-                    .copyWith(fontWeight: FontWeight.w700)),
+            title: Text(
+              'Chỉnh sửa địa điểm',
+              style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+            ),
             backgroundColor: AppColors.backgroundPrimary,
             surfaceTintColor: Colors.transparent,
           ),
@@ -92,10 +100,11 @@ class _EditorEditPlaceScreenState
                   _FieldLabel('Tên địa điểm *'),
                   const SizedBox(height: AppSpacing.space2),
                   _FormField(
-                      controller: _nameCtrl,
-                      hint: 'VD: Bãi biển Mỹ Khê',
-                      validator: (v) =>
-                          (v == null || v.isEmpty) ? 'Bắt buộc' : null),
+                    controller: _nameCtrl,
+                    hint: 'VD: Bãi biển Mỹ Khê',
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'Bắt buộc' : null,
+                  ),
 
                   const SizedBox(height: AppSpacing.layoutSm),
 
@@ -112,18 +121,20 @@ class _EditorEditPlaceScreenState
                   _FieldLabel('Địa chỉ *'),
                   const SizedBox(height: AppSpacing.space2),
                   _FormField(
-                      controller: _addressCtrl,
-                      hint: 'VD: Sơn Trà, Đà Nẵng',
-                      validator: (v) =>
-                          (v == null || v.isEmpty) ? 'Bắt buộc' : null),
+                    controller: _addressCtrl,
+                    hint: 'VD: Sơn Trà, Đà Nẵng',
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'Bắt buộc' : null,
+                  ),
 
                   const SizedBox(height: AppSpacing.layoutSm),
 
                   _FieldLabel('URL hình ảnh'),
                   const SizedBox(height: AppSpacing.space2),
                   _FormField(
-                      controller: _imageCtrl,
-                      hint: 'https://example.com/image.jpg'),
+                    controller: _imageCtrl,
+                    hint: 'https://example.com/image.jpg',
+                  ),
 
                   const SizedBox(height: AppSpacing.layoutSm),
 
@@ -135,27 +146,29 @@ class _EditorEditPlaceScreenState
                       filled: true,
                       fillColor: AppColors.backgroundSecondary,
                       border: OutlineInputBorder(
-                          borderRadius: AppRadius.inputBorder,
-                          borderSide: BorderSide(
-                              color: AppColors.borderDefault)),
+                        borderRadius: AppRadius.inputBorder,
+                        borderSide: BorderSide(color: AppColors.borderDefault),
+                      ),
                       enabledBorder: OutlineInputBorder(
-                          borderRadius: AppRadius.inputBorder,
-                          borderSide: BorderSide(
-                              color: AppColors.borderDefault)),
+                        borderRadius: AppRadius.inputBorder,
+                        borderSide: BorderSide(color: AppColors.borderDefault),
+                      ),
                       focusedBorder: OutlineInputBorder(
-                          borderRadius: AppRadius.inputBorder,
-                          borderSide: BorderSide(
-                              color: AppColors.borderFocus,
-                              width: 1.5)),
+                        borderRadius: AppRadius.inputBorder,
+                        borderSide: BorderSide(
+                          color: AppColors.borderFocus,
+                          width: 1.5,
+                        ),
+                      ),
                     ),
                     items: _categories
-                        .map((c) => DropdownMenuItem(
-                            value: c, child: Text(c)))
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
                     onChanged: (v) =>
                         setState(() => _category = v ?? _category),
-                    style: AppTextStyles.bodyMd
-                        .copyWith(color: AppColors.textPrimary),
+                    style: AppTextStyles.bodyMd.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
                   ),
 
                   const SizedBox(height: AppSpacing.layoutXl),
@@ -199,8 +212,9 @@ class _EditorEditPlaceScreenState
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
-            content: Text('Lỗi: $e'),
-            backgroundColor: AppColors.statusError),
+          content: Text('Lỗi: $e'),
+          backgroundColor: AppColors.statusError,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -216,45 +230,58 @@ class _PreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(AppSpacing.space3),
-        decoration: BoxDecoration(
-          color: AppColors.backgroundCard,
-          borderRadius: AppRadius.cardBorder,
-          border: Border.all(color: AppColors.borderDefault),
-        ),
-        child: Row(
-          children: [
-            if (imageUrl != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(imageUrl!,
-                    width: 48, height: 48, fit: BoxFit.cover,
-                    errorBuilder: (ctx, err, stk) => const SizedBox(width: 48)),
-              ),
-            const SizedBox(width: AppSpacing.space3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Đang sửa:',
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.textSecondary)),
-                  Text(name,
-                      style: AppTextStyles.bodyMd
-                          .copyWith(fontWeight: FontWeight.w700),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  Text(address,
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.textSecondary),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                ],
-              ),
+    padding: const EdgeInsets.all(AppSpacing.space3),
+    decoration: BoxDecoration(
+      color: AppColors.backgroundCard,
+      borderRadius: AppRadius.cardBorder,
+      border: Border.all(color: AppColors.borderDefault),
+    ),
+    child: Row(
+      children: [
+        if (imageUrl != null)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              imageUrl!,
+              width: 48,
+              height: 48,
+              fit: BoxFit.cover,
+              errorBuilder: (ctx, err, stk) => const SizedBox(width: 48),
             ),
-          ],
+          ),
+        const SizedBox(width: AppSpacing.space3),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Đang sửa:',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              Text(
+                name,
+                style: AppTextStyles.bodyMd.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                address,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _FieldLabel extends StatelessWidget {
@@ -262,8 +289,10 @@ class _FieldLabel extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Text(text,
-      style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600));
+  Widget build(BuildContext context) => Text(
+    text,
+    style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600),
+  );
 }
 
 class _FormField extends StatelessWidget {
@@ -281,26 +310,29 @@ class _FormField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TextFormField(
-        controller: controller,
-        maxLines: maxLines,
-        validator: validator,
-        style: AppTextStyles.bodyMd.copyWith(color: AppColors.textPrimary),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: AppTextStyles.bodyMd
-              .copyWith(color: AppColors.textPlaceholder),
-          filled: true,
-          fillColor: AppColors.backgroundSecondary,
-          border: OutlineInputBorder(
-              borderRadius: AppRadius.inputBorder,
-              borderSide: BorderSide(color: AppColors.borderDefault)),
-          enabledBorder: OutlineInputBorder(
-              borderRadius: AppRadius.inputBorder,
-              borderSide: BorderSide(color: AppColors.borderDefault)),
-          focusedBorder: OutlineInputBorder(
-              borderRadius: AppRadius.inputBorder,
-              borderSide:
-                  BorderSide(color: AppColors.borderFocus, width: 1.5)),
-        ),
-      );
+    controller: controller,
+    maxLines: maxLines,
+    validator: validator,
+    style: AppTextStyles.bodyMd.copyWith(color: AppColors.textPrimary),
+    decoration: InputDecoration(
+      hintText: hint,
+      hintStyle: AppTextStyles.bodyMd.copyWith(
+        color: AppColors.textPlaceholder,
+      ),
+      filled: true,
+      fillColor: AppColors.backgroundSecondary,
+      border: OutlineInputBorder(
+        borderRadius: AppRadius.inputBorder,
+        borderSide: BorderSide(color: AppColors.borderDefault),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: AppRadius.inputBorder,
+        borderSide: BorderSide(color: AppColors.borderDefault),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: AppRadius.inputBorder,
+        borderSide: BorderSide(color: AppColors.borderFocus, width: 1.5),
+      ),
+    ),
+  );
 }

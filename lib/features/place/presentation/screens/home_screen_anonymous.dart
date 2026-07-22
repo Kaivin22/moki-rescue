@@ -172,7 +172,9 @@ class HomeScreenAnonymous extends StatelessWidget {
             ),
           ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.layoutXl)),
+          const SliverToBoxAdapter(
+            child: SizedBox(height: AppSpacing.layoutXl),
+          ),
         ],
       ),
     );
@@ -194,7 +196,11 @@ class _LoginPromptBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.key_rounded, color: AppColors.actionSecondary, size: 24),
+          const Icon(
+            Icons.key_rounded,
+            color: AppColors.actionSecondary,
+            size: 24,
+          ),
           const SizedBox(width: AppSpacing.space3),
           Expanded(
             child: Text(
@@ -211,7 +217,9 @@ class _LoginPromptBanner extends StatelessWidget {
               backgroundColor: AppColors.actionPrimary,
               foregroundColor: AppColors.textOnPrimary,
               minimumSize: const Size(0, 36),
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space3),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space3,
+              ),
               shape: const StadiumBorder(),
               elevation: 0,
             ),

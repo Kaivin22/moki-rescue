@@ -36,12 +36,66 @@ class _AddPlacesScreenState extends State<AddPlacesScreen> {
   final Set<String> _selectedIds = {};
 
   static const _demoPlaces = [
-    (id: 'p1', name: 'Bãi biển Mỹ Khê', address: 'Sơn Trà, Đà Nẵng', category: 'beach', rating: 4.7, imageUrl: 'https://picsum.photos/seed/mykhe/160/160', distance: 2.1, isSaved: false),
-    (id: 'p2', name: 'Ngũ Hành Sơn', address: 'Ngũ Hành Sơn, Đà Nẵng', category: 'mountain', rating: 4.5, imageUrl: 'https://picsum.photos/seed/ngu/160/160', distance: 8.5, isSaved: false),
-    (id: 'p3', name: 'Phố cổ Hội An', address: 'Hội An, Quảng Nam', category: 'historical', rating: 4.9, imageUrl: 'https://picsum.photos/seed/hoian/160/160', distance: 28.0, isSaved: true),
-    (id: 'p4', name: 'Bà Nà Hills', address: 'Hòa Ninh, Đà Nẵng', category: 'entertainment', rating: 4.6, imageUrl: 'https://picsum.photos/seed/bana/160/160', distance: 45.0, isSaved: false),
-    (id: 'p5', name: 'Cầu Vàng', address: 'Bà Nà Hills, Đà Nẵng', category: 'viewpoint', rating: 4.8, imageUrl: 'https://picsum.photos/seed/golden/160/160', distance: 46.0, isSaved: false),
-    (id: 'p6', name: 'Bán đảo Sơn Trà', address: 'Sơn Trà, Đà Nẵng', category: 'nature', rating: 4.6, imageUrl: 'https://picsum.photos/seed/sontra/160/160', distance: 9.0, isSaved: false),
+    (
+      id: 'p1',
+      name: 'Bãi biển Mỹ Khê',
+      address: 'Sơn Trà, Đà Nẵng',
+      category: 'beach',
+      rating: 4.7,
+      imageUrl: 'https://picsum.photos/seed/mykhe/160/160',
+      distance: 2.1,
+      isSaved: false,
+    ),
+    (
+      id: 'p2',
+      name: 'Ngũ Hành Sơn',
+      address: 'Ngũ Hành Sơn, Đà Nẵng',
+      category: 'mountain',
+      rating: 4.5,
+      imageUrl: 'https://picsum.photos/seed/ngu/160/160',
+      distance: 8.5,
+      isSaved: false,
+    ),
+    (
+      id: 'p3',
+      name: 'Phố cổ Hội An',
+      address: 'Hội An, Quảng Nam',
+      category: 'historical',
+      rating: 4.9,
+      imageUrl: 'https://picsum.photos/seed/hoian/160/160',
+      distance: 28.0,
+      isSaved: true,
+    ),
+    (
+      id: 'p4',
+      name: 'Bà Nà Hills',
+      address: 'Hòa Ninh, Đà Nẵng',
+      category: 'entertainment',
+      rating: 4.6,
+      imageUrl: 'https://picsum.photos/seed/bana/160/160',
+      distance: 45.0,
+      isSaved: false,
+    ),
+    (
+      id: 'p5',
+      name: 'Cầu Vàng',
+      address: 'Bà Nà Hills, Đà Nẵng',
+      category: 'viewpoint',
+      rating: 4.8,
+      imageUrl: 'https://picsum.photos/seed/golden/160/160',
+      distance: 46.0,
+      isSaved: false,
+    ),
+    (
+      id: 'p6',
+      name: 'Bán đảo Sơn Trà',
+      address: 'Sơn Trà, Đà Nẵng',
+      category: 'nature',
+      rating: 4.6,
+      imageUrl: 'https://picsum.photos/seed/sontra/160/160',
+      distance: 9.0,
+      isSaved: false,
+    ),
   ];
 
   @override
@@ -60,7 +114,9 @@ class _AddPlacesScreenState extends State<AddPlacesScreen> {
     final q = _searchController.text.toLowerCase();
     return _demoPlaces.where((p) {
       final matchQ = q.isEmpty || p.name.toLowerCase().contains(q);
-      final matchCat = _selectedCategories.isEmpty || _selectedCategories.contains(p.category);
+      final matchCat =
+          _selectedCategories.isEmpty ||
+          _selectedCategories.contains(p.category);
       return matchQ && matchCat;
     }).toList();
   }
@@ -76,8 +132,16 @@ class _AddPlacesScreenState extends State<AddPlacesScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Thêm địa điểm', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
-            Text('Bước 2 / 3 · ${widget.numDays} ngày', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+            Text(
+              'Thêm địa điểm',
+              style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+            ),
+            Text(
+              'Bước 2 / 3 · ${widget.numDays} ngày',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
           ],
         ),
         backgroundColor: AppColors.backgroundPrimary,
@@ -88,7 +152,11 @@ class _AddPlacesScreenState extends State<AddPlacesScreen> {
           // ── Search ──
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              AppSpacing.layoutSm, AppSpacing.space2, AppSpacing.layoutSm, AppSpacing.space2),
+              AppSpacing.layoutSm,
+              AppSpacing.space2,
+              AppSpacing.layoutSm,
+              AppSpacing.space2,
+            ),
             child: SearchBarWidget(
               hint: 'Tìm địa điểm...',
               controller: _searchController,
@@ -111,17 +179,25 @@ class _AddPlacesScreenState extends State<AddPlacesScreen> {
           // ── Place list with checkboxes ──
           Expanded(
             child: filtered.isEmpty
-                ? EmptyState(type: EmptyStateType.noResults, queryText: _searchController.text)
+                ? EmptyState(
+                    type: EmptyStateType.noResults,
+                    queryText: _searchController.text,
+                  )
                 : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.layoutSm,
+                    ),
                     itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.space2),
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpacing.space2),
                     itemBuilder: (_, i) {
                       final p = filtered[i];
                       final isSelected = _selectedIds.contains(p.id);
                       return GestureDetector(
                         onTap: () => setState(() {
-                          isSelected ? _selectedIds.remove(p.id) : _selectedIds.add(p.id);
+                          isSelected
+                              ? _selectedIds.remove(p.id)
+                              : _selectedIds.add(p.id);
                         }),
                         child: Stack(
                           children: [
@@ -133,7 +209,9 @@ class _AddPlacesScreenState extends State<AddPlacesScreen> {
                               imageUrl: p.imageUrl,
                               distance: p.distance,
                               onTap: () => setState(() {
-                                isSelected ? _selectedIds.remove(p.id) : _selectedIds.add(p.id);
+                                isSelected
+                                    ? _selectedIds.remove(p.id)
+                                    : _selectedIds.add(p.id);
                               }),
                             ),
                             Positioned(
@@ -144,15 +222,23 @@ class _AddPlacesScreenState extends State<AddPlacesScreen> {
                                 width: 24,
                                 height: 24,
                                 decoration: BoxDecoration(
-                                  color: isSelected ? AppColors.actionPrimary : Colors.white,
+                                  color: isSelected
+                                      ? AppColors.actionPrimary
+                                      : Colors.white,
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: isSelected ? AppColors.actionPrimary : AppColors.borderDefault,
+                                    color: isSelected
+                                        ? AppColors.actionPrimary
+                                        : AppColors.borderDefault,
                                     width: 2,
                                   ),
                                 ),
                                 child: isSelected
-                                    ? const Icon(Icons.check, color: Colors.white, size: 14)
+                                    ? const Icon(
+                                        Icons.check,
+                                        color: Colors.white,
+                                        size: 14,
+                                      )
                                     : null,
                               ),
                             ),
@@ -166,7 +252,12 @@ class _AddPlacesScreenState extends State<AddPlacesScreen> {
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.layoutMd, 0, AppSpacing.layoutMd, AppSpacing.layoutSm),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.layoutMd,
+            0,
+            AppSpacing.layoutMd,
+            AppSpacing.layoutSm,
+          ),
           child: Row(
             children: [
               if (_selectedIds.isNotEmpty)

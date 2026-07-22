@@ -157,16 +157,20 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   Wrap(
                     spacing: AppSpacing.space2,
                     runSpacing: AppSpacing.space2,
-                    children: _visitTypes.map((t) => TagChip(
-                          label: t,
-                          isSelected: _selectedVisitTypes.contains(t),
-                          variant: TagChipVariant.filter,
-                          onTap: () => setState(() {
-                            _selectedVisitTypes.contains(t)
-                                ? _selectedVisitTypes.remove(t)
-                                : _selectedVisitTypes.add(t);
-                          }),
-                        )).toList(),
+                    children: _visitTypes
+                        .map(
+                          (t) => TagChip(
+                            label: t,
+                            isSelected: _selectedVisitTypes.contains(t),
+                            variant: TagChipVariant.filter,
+                            onTap: () => setState(() {
+                              _selectedVisitTypes.contains(t)
+                                  ? _selectedVisitTypes.remove(t)
+                                  : _selectedVisitTypes.add(t);
+                            }),
+                          ),
+                        )
+                        .toList(),
                   ),
 
                   const SizedBox(height: AppSpacing.layoutSm),
@@ -203,16 +207,20 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   Wrap(
                     spacing: AppSpacing.space2,
                     runSpacing: AppSpacing.space2,
-                    children: _durations.map((d) => TagChip(
-                          label: d,
-                          isSelected: _selectedDurations.contains(d),
-                          variant: TagChipVariant.filter,
-                          onTap: () => setState(() {
-                            _selectedDurations.contains(d)
-                                ? _selectedDurations.remove(d)
-                                : _selectedDurations.add(d);
-                          }),
-                        )).toList(),
+                    children: _durations
+                        .map(
+                          (d) => TagChip(
+                            label: d,
+                            isSelected: _selectedDurations.contains(d),
+                            variant: TagChipVariant.filter,
+                            onTap: () => setState(() {
+                              _selectedDurations.contains(d)
+                                  ? _selectedDurations.remove(d)
+                                  : _selectedDurations.add(d);
+                            }),
+                          ),
+                        )
+                        .toList(),
                   ),
 
                   const SizedBox(height: AppSpacing.layoutSm),
@@ -233,18 +241,16 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.space2),
-                  StarRating(
-                    rating: _minRating.toDouble(),
-                    size: StarSize.lg,
-                  ),
+                  StarRating(rating: _minRating.toDouble(), size: StarSize.lg),
                   const SizedBox(height: AppSpacing.space2),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(5, (i) {
                       final star = i + 1;
                       return GestureDetector(
-                        onTap: () => setState(() =>
-                            _minRating = _minRating == star ? 0 : star),
+                        onTap: () => setState(
+                          () => _minRating = _minRating == star ? 0 : star,
+                        ),
                         child: Container(
                           width: 44,
                           height: 44,
@@ -292,10 +298,10 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        text,
-        style: AppTextStyles.h4.copyWith(
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-      );
+    text,
+    style: AppTextStyles.h4.copyWith(
+      fontWeight: FontWeight.w600,
+      color: AppColors.textPrimary,
+    ),
+  );
 }

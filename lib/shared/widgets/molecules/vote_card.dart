@@ -89,10 +89,7 @@ class VoteCard extends StatelessWidget {
             children: [
               // Medal rank
               if (rank != null) ...[
-                Text(
-                  _rankEmoji(rank!),
-                  style: const TextStyle(fontSize: 24),
-                ),
+                Text(_rankEmoji(rank!), style: const TextStyle(fontSize: 24)),
                 const SizedBox(width: AppSpacing.space2),
               ],
 
@@ -106,13 +103,18 @@ class VoteCard extends StatelessWidget {
                     height: 64,
                     fit: BoxFit.cover,
                     placeholder: (_, _) => Container(
-                      width: 64, height: 64,
+                      width: 64,
+                      height: 64,
                       color: SagePalette.sage200,
                     ),
                     errorWidget: (_, _, _) => Container(
-                      width: 64, height: 64,
+                      width: 64,
+                      height: 64,
                       color: SagePalette.sage200,
-                      child: const Icon(Icons.image, color: SagePalette.sage400),
+                      child: const Icon(
+                        Icons.image,
+                        color: SagePalette.sage400,
+                      ),
                     ),
                   ),
                 ),
@@ -167,7 +169,9 @@ class VoteCard extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: _upRatio,
                       minHeight: 8,
-                      backgroundColor: AppColors.statusError.withValues(alpha: 0.2),
+                      backgroundColor: AppColors.statusError.withValues(
+                        alpha: 0.2,
+                      ),
                       valueColor: const AlwaysStoppedAnimation<Color>(
                         AppColors.actionPrimary,
                       ),

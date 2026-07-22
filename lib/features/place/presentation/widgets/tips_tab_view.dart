@@ -49,7 +49,8 @@ class _TipsTabViewState extends State<TipsTabView> {
       color: AppColors.actionSecondary,
       tips: [
         _TipItem(
-          text: 'Thuê xe máy từ trung tâm thành phố ~15 phút, chi phí 120k/ngày.',
+          text:
+              'Thuê xe máy từ trung tâm thành phố ~15 phút, chi phí 120k/ngày.',
           tags: ['Xe máy'],
         ),
         _TipItem(
@@ -72,7 +73,8 @@ class _TipsTabViewState extends State<TipsTabView> {
           tags: ['Bún bò', 'Sáng sớm'],
         ),
         _TipItem(
-          text: 'Hải sản tươi sống: khu vực đường Hoàng Sa có nhiều nhà hàng tốt.',
+          text:
+              'Hải sản tươi sống: khu vực đường Hoàng Sa có nhiều nhà hàng tốt.',
           tags: ['Hải sản'],
         ),
       ],
@@ -105,7 +107,8 @@ class _TipsTabViewState extends State<TipsTabView> {
         : ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.layoutSm),
             itemCount: _sections.length,
-            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.space2),
+            separatorBuilder: (_, _) =>
+                const SizedBox(height: AppSpacing.space2),
             itemBuilder: (_, i) {
               final section = _sections[i];
               final isExpanded = _expandedSections.contains(i);
@@ -161,7 +164,9 @@ class _TipAccordion extends StatelessWidget {
         color: AppColors.backgroundCard,
         borderRadius: AppRadius.cardBorder,
         border: Border.all(
-          color: isExpanded ? section.color.withValues(alpha: 0.4) : AppColors.borderDefault,
+          color: isExpanded
+              ? section.color.withValues(alpha: 0.4)
+              : AppColors.borderDefault,
           width: isExpanded ? 1.5 : 1.0,
         ),
       ),
@@ -258,10 +263,12 @@ class _TipAccordion extends StatelessWidget {
                                 Wrap(
                                   spacing: AppSpacing.space1,
                                   children: tip.tags
-                                      .map((t) => TagChip(
-                                            label: t,
-                                            variant: TagChipVariant.displayOnly,
-                                          ))
+                                      .map(
+                                        (t) => TagChip(
+                                          label: t,
+                                          variant: TagChipVariant.displayOnly,
+                                        ),
+                                      )
                                       .toList(),
                                 ),
                               ],

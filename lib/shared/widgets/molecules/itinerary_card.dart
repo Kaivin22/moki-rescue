@@ -169,7 +169,9 @@ class ItineraryCard extends StatelessWidget {
                           child: Text(
                             authorName!,
                             style: AppTextStyles.caption.copyWith(
-                              color: AppColors.textOnDark.withValues(alpha: 0.8),
+                              color: AppColors.textOnDark.withValues(
+                                alpha: 0.8,
+                              ),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -201,9 +203,7 @@ class ItineraryCard extends StatelessWidget {
 
             // ── VIP lock overlay ──
             if (isVipLocked) ...[
-              Container(
-                color: Colors.black.withValues(alpha: 0.4),
-              ),
+              Container(color: Colors.black.withValues(alpha: 0.4)),
               Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -217,8 +217,11 @@ class ItineraryCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.lock_rounded, size: 16,
-                          color: AppColors.textOnPrimary),
+                      const Icon(
+                        Icons.lock_rounded,
+                        size: 16,
+                        color: AppColors.textOnPrimary,
+                      ),
                       const SizedBox(width: AppSpacing.space2),
                       Text(
                         'VIP',

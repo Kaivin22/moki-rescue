@@ -19,12 +19,10 @@ class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
 
   @override
-  ConsumerState<EditProfileScreen> createState() =>
-      _EditProfileScreenState();
+  ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-class _EditProfileScreenState
-    extends ConsumerState<EditProfileScreen> {
+class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _usernameController;
   late final TextEditingController _bioController;
@@ -37,11 +35,9 @@ class _EditProfileScreenState
     super.didChangeDependencies();
     if (!_initialized) {
       final profile = ref.read(currentProfileProvider);
-      _nameController =
-          TextEditingController(text: profile?.displayName ?? '');
+      _nameController = TextEditingController(text: profile?.displayName ?? '');
       _usernameController = TextEditingController();
-      _bioController =
-          TextEditingController(text: profile?.bio ?? '');
+      _bioController = TextEditingController(text: profile?.bio ?? '');
       _websiteController = TextEditingController();
       _initialized = true;
     }
@@ -63,15 +59,23 @@ class _EditProfileScreenState
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Chỉnh sửa hồ sơ', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Chỉnh sửa hồ sơ',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
         actions: [
           if (_hasChanges)
             TextButton(
               onPressed: _saveProfile,
-              child: Text('Lưu', style: AppTextStyles.bodyMd.copyWith(
-                color: AppColors.actionPrimary, fontWeight: FontWeight.w700)),
+              child: Text(
+                'Lưu',
+                style: AppTextStyles.bodyMd.copyWith(
+                  color: AppColors.actionPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
         ],
       ),
@@ -93,8 +97,10 @@ class _EditProfileScreenState
                     child: CachedNetworkImage(
                       imageUrl: 'https://picsum.photos/seed/cover/400/200',
                       fit: BoxFit.cover,
-                      placeholder: (_, _) => Container(color: SagePalette.sage200),
-                      errorWidget: (_, _, _) => Container(color: SagePalette.sage300),
+                      placeholder: (_, _) =>
+                          Container(color: SagePalette.sage200),
+                      errorWidget: (_, _, _) =>
+                          Container(color: SagePalette.sage300),
                     ),
                   ),
                 ),
@@ -112,17 +118,22 @@ class _EditProfileScreenState
                       Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.backgroundCard, width: 3),
+                          border: Border.all(
+                            color: AppColors.backgroundCard,
+                            width: 3,
+                          ),
                         ),
                         child: CircleAvatar(
                           radius: 40,
                           backgroundColor: SagePalette.sage200,
                           backgroundImage: const CachedNetworkImageProvider(
-                            'https://picsum.photos/seed/avatar/200/200'),
+                            'https://picsum.photos/seed/avatar/200/200',
+                          ),
                         ),
                       ),
                       Positioned(
-                        right: 0, bottom: 0,
+                        right: 0,
+                        bottom: 0,
                         child: _EditBadge(onTap: () {}, small: true),
                       ),
                     ],
@@ -176,13 +187,30 @@ class _EditProfileScreenState
                   const SizedBox(height: AppSpacing.layoutMd),
 
                   // ── Social links section ──
-                  Text('Mạng xã hội', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    'Mạng xã hội',
+                    style: AppTextStyles.h4.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.space3),
-                  _SocialTile(icon: Icons.facebook_rounded, label: 'Facebook', onTap: () {}),
+                  _SocialTile(
+                    icon: Icons.facebook_rounded,
+                    label: 'Facebook',
+                    onTap: () {},
+                  ),
                   const SizedBox(height: AppSpacing.space2),
-                  _SocialTile(icon: Icons.camera_alt_outlined, label: 'Instagram', onTap: () {}),
+                  _SocialTile(
+                    icon: Icons.camera_alt_outlined,
+                    label: 'Instagram',
+                    onTap: () {},
+                  ),
                   const SizedBox(height: AppSpacing.space2),
-                  _SocialTile(icon: Icons.tiktok, label: 'TikTok', onTap: () {}),
+                  _SocialTile(
+                    icon: Icons.tiktok,
+                    label: 'TikTok',
+                    onTap: () {},
+                  ),
 
                   const SizedBox(height: AppSpacing.layoutXl),
 
@@ -200,7 +228,9 @@ class _EditProfileScreenState
   }
 
   Future<void> _saveProfile() async {
-    await ref.read(editProfileProvider.notifier).updateProfile(
+    await ref
+        .read(editProfileProvider.notifier)
+        .updateProfile(
           displayName: _nameController.text.trim(),
           bio: _bioController.text.trim(),
         );
@@ -226,18 +256,22 @@ class _EditBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: small ? 26 : 32,
-          height: small ? 26 : 32,
-          decoration: BoxDecoration(
-            color: AppColors.actionPrimary,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2),
-          ),
-          child: Icon(Icons.camera_alt_rounded, color: Colors.white, size: small ? 12 : 16),
-        ),
-      );
+    onTap: onTap,
+    child: Container(
+      width: small ? 26 : 32,
+      height: small ? 26 : 32,
+      decoration: BoxDecoration(
+        color: AppColors.actionPrimary,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+      ),
+      child: Icon(
+        Icons.camera_alt_rounded,
+        color: Colors.white,
+        size: small ? 12 : 16,
+      ),
+    ),
+  );
 }
 
 class _FormField extends StatelessWidget {
@@ -263,61 +297,92 @@ class _FormField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: AppTextStyles.bodySm.copyWith(
-            fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-          const SizedBox(height: AppSpacing.space2),
-          TextField(
-            controller: controller,
-            onChanged: onChanged,
-            maxLines: maxLines,
-            maxLength: maxLength,
-            keyboardType: keyboardType,
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.textPlaceholder),
-              prefixText: prefix,
-              prefixStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary),
-              filled: true,
-              fillColor: AppColors.backgroundSecondary,
-              border: OutlineInputBorder(borderRadius: AppRadius.inputBorder, borderSide: BorderSide(color: AppColors.borderDefault)),
-              enabledBorder: OutlineInputBorder(borderRadius: AppRadius.inputBorder, borderSide: BorderSide(color: AppColors.borderDefault)),
-              focusedBorder: OutlineInputBorder(borderRadius: AppRadius.inputBorder, borderSide: BorderSide(color: AppColors.borderFocus, width: 1.5)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4, vertical: AppSpacing.space3),
-              counterStyle: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-            ),
-            style: AppTextStyles.bodyMd.copyWith(color: AppColors.textPrimary),
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: AppTextStyles.bodySm.copyWith(
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        ),
+      ),
+      const SizedBox(height: AppSpacing.space2),
+      TextField(
+        controller: controller,
+        onChanged: onChanged,
+        maxLines: maxLines,
+        maxLength: maxLength,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: AppTextStyles.bodyMd.copyWith(
+            color: AppColors.textPlaceholder,
           ),
-        ],
-      );
+          prefixText: prefix,
+          prefixStyle: AppTextStyles.bodyMd.copyWith(
+            color: AppColors.textSecondary,
+          ),
+          filled: true,
+          fillColor: AppColors.backgroundSecondary,
+          border: OutlineInputBorder(
+            borderRadius: AppRadius.inputBorder,
+            borderSide: BorderSide(color: AppColors.borderDefault),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: AppRadius.inputBorder,
+            borderSide: BorderSide(color: AppColors.borderDefault),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: AppRadius.inputBorder,
+            borderSide: BorderSide(color: AppColors.borderFocus, width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space4,
+            vertical: AppSpacing.space3,
+          ),
+          counterStyle: AppTextStyles.caption.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        style: AppTextStyles.bodyMd.copyWith(color: AppColors.textPrimary),
+      ),
+    ],
+  );
 }
 
 class _SocialTile extends StatelessWidget {
-  const _SocialTile({required this.icon, required this.label, required this.onTap});
+  const _SocialTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
+    onTap: onTap,
+    borderRadius: AppRadius.cardBorder,
+    child: Container(
+      padding: const EdgeInsets.all(AppSpacing.space3),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundSecondary,
         borderRadius: AppRadius.cardBorder,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.space3),
-          decoration: BoxDecoration(
-            color: AppColors.backgroundSecondary,
-            borderRadius: AppRadius.cardBorder,
-            border: Border.all(color: AppColors.borderDefault),
+        border: Border.all(color: AppColors.borderDefault),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 22, color: AppColors.textSecondary),
+          const SizedBox(width: AppSpacing.space3),
+          Expanded(child: Text(label, style: AppTextStyles.bodyMd)),
+          const Icon(
+            Icons.add_rounded,
+            color: AppColors.textSecondary,
+            size: 20,
           ),
-          child: Row(
-            children: [
-              Icon(icon, size: 22, color: AppColors.textSecondary),
-              const SizedBox(width: AppSpacing.space3),
-              Expanded(child: Text(label, style: AppTextStyles.bodyMd)),
-              const Icon(Icons.add_rounded, color: AppColors.textSecondary, size: 20),
-            ],
-          ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }

@@ -19,18 +19,13 @@ import '../../domain/models/review.dart';
 /// ═══════════════════════════════════════════════════════
 
 class ReviewListScreen extends ConsumerStatefulWidget {
-  const ReviewListScreen({
-    super.key,
-    this.placeId,
-    this.canReview = true,
-  });
+  const ReviewListScreen({super.key, this.placeId, this.canReview = true});
 
   final String? placeId;
   final bool canReview;
 
   @override
-  ConsumerState<ReviewListScreen> createState() =>
-      _ReviewListScreenState();
+  ConsumerState<ReviewListScreen> createState() => _ReviewListScreenState();
 }
 
 class _ReviewListScreenState extends ConsumerState<ReviewListScreen> {
@@ -67,7 +62,8 @@ class _ReviewListScreenState extends ConsumerState<ReviewListScreen> {
       avatarUrl: 'https://picsum.photos/seed/av3/80/80',
       rating: 5,
       createdAt: DateTime(2025, 3, 20),
-      comment: 'Cực kỳ thích bầu không khí nơi đây, rất thư giãn và trong lành.',
+      comment:
+          'Cực kỳ thích bầu không khí nơi đây, rất thư giãn và trong lành.',
       visitType: 'group',
       visitMonth: 3,
       highlights: ['Không khí', 'Thân thiện'],
@@ -109,15 +105,18 @@ class _ReviewListScreenState extends ConsumerState<ReviewListScreen> {
                       ),
                     ),
                     Row(
-                      children: List.generate(5, (i) => Icon(
-                        i < _avgRating.floor()
-                            ? Icons.star_rounded
-                            : (i < _avgRating
-                                ? Icons.star_half_rounded
-                                : Icons.star_outline_rounded),
-                        color: AppColors.actionPrimary,
-                        size: 16,
-                      )),
+                      children: List.generate(
+                        5,
+                        (i) => Icon(
+                          i < _avgRating.floor()
+                              ? Icons.star_rounded
+                              : (i < _avgRating
+                                    ? Icons.star_half_rounded
+                                    : Icons.star_outline_rounded),
+                          color: AppColors.actionPrimary,
+                          size: 16,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -204,7 +203,8 @@ class _ReviewListScreenState extends ConsumerState<ReviewListScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: _filterChips.map((f) {
-                final isSelected = _selectedFilters.contains(f) ||
+                final isSelected =
+                    _selectedFilters.contains(f) ||
                     (f == 'Tất cả' && _selectedFilters.isEmpty);
                 return Padding(
                   padding: const EdgeInsets.only(right: AppSpacing.space2),

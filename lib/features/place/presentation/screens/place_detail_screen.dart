@@ -82,7 +82,11 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen>
                   color: Colors.black.withValues(alpha: 0.4),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+                child: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
               onPressed: () => Navigator.maybePop(context),
             ),
@@ -95,7 +99,11 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen>
                     color: Colors.black.withValues(alpha: 0.4),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.share_outlined, color: Colors.white, size: 20),
+                  child: const Icon(
+                    Icons.share_outlined,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
                 onPressed: () {},
               ),
@@ -108,7 +116,9 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen>
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    _isSaved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                    _isSaved
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
                     color: _isSaved ? Colors.red : Colors.white,
                     size: 20,
                   ),
@@ -172,12 +182,12 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen>
                   // Category + verified badge
                   Row(
                     children: [
-                      CategoryIcon(category: 'beach', size: CategoryIconSize.sm),
-                      const SizedBox(width: AppSpacing.space2),
-                      StatusBadge(
-                        label: 'Đã xác minh',
-                        type: StatusType.open,
+                      CategoryIcon(
+                        category: 'beach',
+                        size: CategoryIconSize.sm,
                       ),
+                      const SizedBox(width: AppSpacing.space2),
+                      StatusBadge(label: 'Đã xác minh', type: StatusType.open),
                     ],
                   ),
 
@@ -210,9 +220,21 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen>
                     spacing: AppSpacing.space2,
                     runSpacing: AppSpacing.space2,
                     children: [
-                      _InfoChip(icon: '💰', label: 'Miễn phí', color: AppColors.actionPrimary),
-                      _InfoChip(icon: '⏱', label: '2-3 giờ', color: AppColors.textSecondary),
-                      _InfoChip(icon: '📍', label: 'Sơn Trà, Đà Nẵng', color: AppColors.textSecondary),
+                      _InfoChip(
+                        icon: '💰',
+                        label: 'Miễn phí',
+                        color: AppColors.actionPrimary,
+                      ),
+                      _InfoChip(
+                        icon: '⏱',
+                        label: '2-3 giờ',
+                        color: AppColors.textSecondary,
+                      ),
+                      _InfoChip(
+                        icon: '📍',
+                        label: 'Sơn Trà, Đà Nẵng',
+                        color: AppColors.textSecondary,
+                      ),
                     ],
                   ),
 
@@ -231,7 +253,10 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen>
                   _InfoRow(
                     icon: Icons.schedule_outlined,
                     text: '05:00 - 22:00',
-                    trailing: StatusBadge(label: 'Đang mở', type: StatusType.open),
+                    trailing: StatusBadge(
+                      label: 'Đang mở',
+                      type: StatusType.open,
+                    ),
                   ),
 
                   const SizedBox(height: AppSpacing.space3),
@@ -249,7 +274,9 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen>
               unselectedLabelColor: AppColors.textSecondary,
               indicatorColor: AppColors.actionPrimary,
               indicatorWeight: 2,
-              labelStyle: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600),
+              labelStyle: AppTextStyles.bodyMd.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
               tabs: const [
                 Tab(text: 'Tổng quan'),
                 Tab(text: 'Đánh giá'),
@@ -283,8 +310,12 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen>
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.layoutSm),
           child: AppButton(
-            label: _isAdded ? '✓ Đã thêm vào lịch trình' : 'Thêm vào lịch trình',
-            variant: _isAdded ? AppButtonVariant.secondary : AppButtonVariant.primary,
+            label: _isAdded
+                ? '✓ Đã thêm vào lịch trình'
+                : 'Thêm vào lịch trình',
+            variant: _isAdded
+                ? AppButtonVariant.secondary
+                : AppButtonVariant.primary,
             onPressed: () => setState(() => _isAdded = !_isAdded),
           ),
         ),
@@ -294,25 +325,40 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen>
 }
 
 class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.icon, required this.label, required this.color});
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
   final String icon;
   final String label;
   final Color color;
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: AppColors.backgroundSecondary,
-          borderRadius: AppRadius.chipBorder,
-          border: Border.all(color: AppColors.borderDefault),
-        ),
-        child: Text('$icon $label', style: AppTextStyles.caption.copyWith(color: color, fontWeight: FontWeight.w600)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    decoration: BoxDecoration(
+      color: AppColors.backgroundSecondary,
+      borderRadius: AppRadius.chipBorder,
+      border: Border.all(color: AppColors.borderDefault),
+    ),
+    child: Text(
+      '$icon $label',
+      style: AppTextStyles.caption.copyWith(
+        color: color,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.text, this.isLink = false, this.trailing});
+  const _InfoRow({
+    required this.icon,
+    required this.text,
+    this.isLink = false,
+    this.trailing,
+  });
   final IconData icon;
   final String text;
   final bool isLink;
@@ -320,22 +366,22 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          Icon(icon, size: 18, color: AppColors.textSecondary),
-          const SizedBox(width: AppSpacing.space2),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTextStyles.bodyMd.copyWith(
-                color: isLink ? AppColors.actionSecondary : AppColors.textPrimary,
-                decoration: isLink ? TextDecoration.underline : null,
-                decorationColor: isLink ? AppColors.actionSecondary : null,
-              ),
-            ),
+    children: [
+      Icon(icon, size: 18, color: AppColors.textSecondary),
+      const SizedBox(width: AppSpacing.space2),
+      Expanded(
+        child: Text(
+          text,
+          style: AppTextStyles.bodyMd.copyWith(
+            color: isLink ? AppColors.actionSecondary : AppColors.textPrimary,
+            decoration: isLink ? TextDecoration.underline : null,
+            decorationColor: isLink ? AppColors.actionSecondary : null,
           ),
-          ?trailing,
-        ],
-      );
+        ),
+      ),
+      ?trailing,
+    ],
+  );
 }
 
 class _OpeningDaysRow extends StatelessWidget {
@@ -346,30 +392,30 @@ class _OpeningDaysRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: List.generate(7, (i) {
-          final day = i + 1;
-          final isOpen = openDays.contains(day);
-          return Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              height: 32,
-              decoration: BoxDecoration(
-                color: isOpen ? AppColors.actionPrimary : SagePalette.sage200,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                _labels[i],
-                style: AppTextStyles.caption.copyWith(
-                  color: isOpen ? AppColors.textOnPrimary : AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 10,
-                ),
-              ),
+    children: List.generate(7, (i) {
+      final day = i + 1;
+      final isOpen = openDays.contains(day);
+      return Expanded(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          height: 32,
+          decoration: BoxDecoration(
+            color: isOpen ? AppColors.actionPrimary : SagePalette.sage200,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            _labels[i],
+            style: AppTextStyles.caption.copyWith(
+              color: isOpen ? AppColors.textOnPrimary : AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+              fontSize: 10,
             ),
-          );
-        }),
+          ),
+        ),
       );
+    }),
+  );
 }
 
 class _OverviewTab extends StatelessWidget {
@@ -385,52 +431,78 @@ class _OverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.layoutSm),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Mô tả',
-              style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: AppSpacing.space2),
-            Text(
-              'Bãi biển Mỹ Khê là một trong những bãi biển đẹp nhất Đà Nẵng với bờ cát trắng dài hơn 9km. Nước biển trong xanh, sóng nhỏ phù hợp cho tắm biển và các hoạt động thể thao nước.',
-              style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: AppSpacing.layoutSm),
-            Text('Phù hợp với', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: AppSpacing.space2),
-            Wrap(
-              spacing: AppSpacing.space2,
-              runSpacing: AppSpacing.space2,
-              children: suitableFor.map((s) => TagChip(label: s)).toList(),
-            ),
-            const SizedBox(height: AppSpacing.layoutSm),
-            Text('Tags', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: AppSpacing.space2),
-            Wrap(
-              spacing: AppSpacing.space2,
-              runSpacing: AppSpacing.space2,
-              children: tags.map((t) => TagChip(label: t, variant: TagChipVariant.displayOnly)).toList(),
-            ),
-            const SizedBox(height: AppSpacing.layoutSm),
-            Text('Tháng tốt nhất để đến', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: AppSpacing.space2),
-            Wrap(
-              spacing: AppSpacing.space2,
-              runSpacing: AppSpacing.space2,
-              children: bestMonths.map((m) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AmberPalette.amber100,
-                      borderRadius: AppRadius.chipBorder,
-                    ),
-                    child: Text('Tháng $m', style: AppTextStyles.caption.copyWith(color: AppColors.actionPrimary, fontWeight: FontWeight.w600)),
-                  )).toList(),
-            ),
-            const SizedBox(height: AppSpacing.layoutMd),
-          ],
+    padding: const EdgeInsets.all(AppSpacing.layoutSm),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Mô tả',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
         ),
-      );
+        const SizedBox(height: AppSpacing.space2),
+        Text(
+          'Bãi biển Mỹ Khê là một trong những bãi biển đẹp nhất Đà Nẵng với bờ cát trắng dài hơn 9km. Nước biển trong xanh, sóng nhỏ phù hợp cho tắm biển và các hoạt động thể thao nước.',
+          style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.layoutSm),
+        Text(
+          'Phù hợp với',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: AppSpacing.space2),
+        Wrap(
+          spacing: AppSpacing.space2,
+          runSpacing: AppSpacing.space2,
+          children: suitableFor.map((s) => TagChip(label: s)).toList(),
+        ),
+        const SizedBox(height: AppSpacing.layoutSm),
+        Text(
+          'Tags',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: AppSpacing.space2),
+        Wrap(
+          spacing: AppSpacing.space2,
+          runSpacing: AppSpacing.space2,
+          children: tags
+              .map(
+                (t) => TagChip(label: t, variant: TagChipVariant.displayOnly),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: AppSpacing.layoutSm),
+        Text(
+          'Tháng tốt nhất để đến',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: AppSpacing.space2),
+        Wrap(
+          spacing: AppSpacing.space2,
+          runSpacing: AppSpacing.space2,
+          children: bestMonths
+              .map(
+                (m) => Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AmberPalette.amber100,
+                    borderRadius: AppRadius.chipBorder,
+                  ),
+                  child: Text(
+                    'Tháng $m',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.actionPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: AppSpacing.layoutMd),
+      ],
+    ),
+  );
 }

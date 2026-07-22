@@ -35,7 +35,10 @@ class BudgetCalculatorScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: AppBar(
-        title: Text('Tính ngân sách', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Tính ngân sách',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppColors.backgroundPrimary,
         surfaceTintColor: Colors.transparent,
       ),
@@ -44,7 +47,6 @@ class BudgetCalculatorScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // ── Result card ──
             Container(
               width: double.infinity,
@@ -59,7 +61,10 @@ class BudgetCalculatorScreen extends ConsumerWidget {
               ),
               child: Column(
                 children: [
-                  Text('Ngân sách ước tính', style: AppTextStyles.bodyMd.copyWith(color: Colors.white70)),
+                  Text(
+                    'Ngân sách ước tính',
+                    style: AppTextStyles.bodyMd.copyWith(color: Colors.white70),
+                  ),
                   const SizedBox(height: AppSpacing.space2),
                   Text(
                     _formatVnd(total),
@@ -71,7 +76,9 @@ class BudgetCalculatorScreen extends ConsumerWidget {
                   ),
                   Text(
                     '${state.numDays} ngày · ${state.numPeople} người',
-                    style: AppTextStyles.caption.copyWith(color: Colors.white70),
+                    style: AppTextStyles.caption.copyWith(
+                      color: Colors.white70,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.layoutSm),
                   // Mini bar chart
@@ -83,7 +90,12 @@ class BudgetCalculatorScreen extends ConsumerWidget {
                         children: [
                           SizedBox(
                             width: 80,
-                            child: Text(e.key, style: AppTextStyles.caption.copyWith(color: Colors.white70)),
+                            child: Text(
+                              e.key,
+                              style: AppTextStyles.caption.copyWith(
+                                color: Colors.white70,
+                              ),
+                            ),
                           ),
                           Expanded(
                             child: ClipRRect(
@@ -91,13 +103,20 @@ class BudgetCalculatorScreen extends ConsumerWidget {
                               child: LinearProgressIndicator(
                                 value: pct,
                                 backgroundColor: Colors.white24,
-                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
                                 minHeight: 6,
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(_formatVnd(e.value), style: AppTextStyles.caption.copyWith(color: Colors.white)),
+                          Text(
+                            _formatVnd(e.value),
+                            style: AppTextStyles.caption.copyWith(
+                              color: Colors.white,
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -112,7 +131,8 @@ class BudgetCalculatorScreen extends ConsumerWidget {
             _SectionLabel('Số ngày'),
             _StepperRow(
               value: state.numDays,
-              min: 1, max: 14,
+              min: 1,
+              max: 14,
               onDecrement: () => notifier.setDays(state.numDays - 1),
               onIncrement: () => notifier.setDays(state.numDays + 1),
               suffix: 'ngày',
@@ -122,7 +142,8 @@ class BudgetCalculatorScreen extends ConsumerWidget {
             _SectionLabel('Số người'),
             _StepperRow(
               value: state.numPeople,
-              min: 1, max: 20,
+              min: 1,
+              max: 20,
               onDecrement: () => notifier.setPeople(state.numPeople - 1),
               onIncrement: () => notifier.setPeople(state.numPeople + 1),
               suffix: 'người',
@@ -183,8 +204,18 @@ class BudgetCalculatorScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Tham quan & Giải trí', style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600)),
-                        Text('~${_formatVnd(200000)}/người/ngày', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                        Text(
+                          'Tham quan & Giải trí',
+                          style: AppTextStyles.bodyMd.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          '~${_formatVnd(200000)}/người/ngày',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -216,9 +247,12 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.space2),
-        child: Text(text, style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600)),
-      );
+    padding: const EdgeInsets.only(bottom: AppSpacing.space2),
+    child: Text(
+      text,
+      style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
+    ),
+  );
 }
 
 class _StepperRow extends StatelessWidget {
@@ -239,65 +273,89 @@ class _StepperRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          IconButton(
-            onPressed: value > min ? onDecrement : null,
-            icon: const Icon(Icons.remove_circle_outline_rounded),
-            color: AppColors.actionPrimary,
-            disabledColor: AppColors.textPlaceholder,
+    children: [
+      IconButton(
+        onPressed: value > min ? onDecrement : null,
+        icon: const Icon(Icons.remove_circle_outline_rounded),
+        color: AppColors.actionPrimary,
+        disabledColor: AppColors.textPlaceholder,
+      ),
+      Expanded(
+        child: Center(
+          child: Text(
+            '$value $suffix',
+            style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
           ),
-          Expanded(
-            child: Center(
-              child: Text(
-                '$value $suffix',
-                style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: value < max ? onIncrement : null,
-            icon: const Icon(Icons.add_circle_outline_rounded),
-            color: AppColors.actionPrimary,
-            disabledColor: AppColors.textPlaceholder,
-          ),
-        ],
-      );
+        ),
+      ),
+      IconButton(
+        onPressed: value < max ? onIncrement : null,
+        icon: const Icon(Icons.add_circle_outline_rounded),
+        color: AppColors.actionPrimary,
+        disabledColor: AppColors.textPlaceholder,
+      ),
+    ],
+  );
 }
 
 class _ChoiceRow extends StatelessWidget {
-  const _ChoiceRow({required this.choices, required this.selected, required this.onSelect});
+  const _ChoiceRow({
+    required this.choices,
+    required this.selected,
+    required this.onSelect,
+  });
   final List<({String id, String label, String sub})> choices;
   final String selected;
   final ValueChanged<String> onSelect;
 
   @override
   Widget build(BuildContext context) => Wrap(
-        spacing: AppSpacing.space2,
-        runSpacing: AppSpacing.space2,
-        children: choices.map((c) {
-          final isSelected = selected == c.id;
-          return GestureDetector(
-            onTap: () => onSelect(c.id),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space3, vertical: AppSpacing.space2),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.actionPrimary.withValues(alpha: 0.1) : AppColors.backgroundSecondary,
-                borderRadius: AppRadius.cardBorder,
-                border: Border.all(
-                  color: isSelected ? AppColors.actionPrimary : AppColors.borderDefault,
-                  width: isSelected ? 1.5 : 1.0,
+    spacing: AppSpacing.space2,
+    runSpacing: AppSpacing.space2,
+    children: choices.map((c) {
+      final isSelected = selected == c.id;
+      return GestureDetector(
+        onTap: () => onSelect(c.id),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space3,
+            vertical: AppSpacing.space2,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.actionPrimary.withValues(alpha: 0.1)
+                : AppColors.backgroundSecondary,
+            borderRadius: AppRadius.cardBorder,
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.actionPrimary
+                  : AppColors.borderDefault,
+              width: isSelected ? 1.5 : 1.0,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                c.label,
+                style: AppTextStyles.bodySm.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: isSelected
+                      ? AppColors.actionPrimary
+                      : AppColors.textPrimary,
                 ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(c.label, style: AppTextStyles.bodySm.copyWith(fontWeight: FontWeight.w600, color: isSelected ? AppColors.actionPrimary : AppColors.textPrimary)),
-                  Text(c.sub, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
-                ],
+              Text(
+                c.sub,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
-            ),
-          );
-        }).toList(),
+            ],
+          ),
+        ),
       );
+    }).toList(),
+  );
 }

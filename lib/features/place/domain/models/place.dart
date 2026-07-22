@@ -99,44 +99,46 @@ class Place {
 
   // ── fromJson ────────────────────────────────────────────
   factory Place.fromJson(Map<String, dynamic> json) => Place(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        nameEn: json['name_en'] as String? ?? '',
-        category: json['category'] as String? ?? 'viewpoint',
-        region: json['region'] as String? ?? 'danang',
-        lat: (json['lat'] as num).toDouble(),
-        lng: (json['lng'] as num).toDouble(),
-        address: json['address'] as String? ?? '',
-        addressEn: json['address_en'] as String?,
-        description: json['description'] as String?,
-        descriptionEn: json['description_en'] as String?,
-        imageUrls: (json['image_urls'] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            [],
-        tags: (json['tags'] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            [],
-        openingHours: json['opening_hours'] as Map<String, dynamic>?,
-        entryFeeMin: json['entry_fee_min'] as int? ?? 0,
-        entryFeeMax: json['entry_fee_max'] as int? ?? 0,
-        durationMin: json['duration_min'] as int? ?? 60,
-        ratingAvg: (json['rating_avg'] as num?)?.toDouble() ?? 0.0,
-        ratingCount: json['rating_count'] as int? ?? 0,
-        bestMonths: (json['best_months'] as List<dynamic>?)
-                ?.map((e) => e as int)
-                .toList() ??
-            [],
-        suitableFor: (json['suitable_for'] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            [],
-        isActive: json['is_active'] as bool? ?? true,
-        createdAt: json['created_at'] != null
-            ? DateTime.parse(json['created_at'] as String)
-            : null,
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    nameEn: json['name_en'] as String? ?? '',
+    category: json['category'] as String? ?? 'viewpoint',
+    region: json['region'] as String? ?? 'danang',
+    lat: (json['lat'] as num).toDouble(),
+    lng: (json['lng'] as num).toDouble(),
+    address: json['address'] as String? ?? '',
+    addressEn: json['address_en'] as String?,
+    description: json['description'] as String?,
+    descriptionEn: json['description_en'] as String?,
+    imageUrls:
+        (json['image_urls'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [],
+    tags:
+        (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+        [],
+    openingHours: json['opening_hours'] as Map<String, dynamic>?,
+    entryFeeMin: json['entry_fee_min'] as int? ?? 0,
+    entryFeeMax: json['entry_fee_max'] as int? ?? 0,
+    durationMin: json['duration_min'] as int? ?? 60,
+    ratingAvg: (json['rating_avg'] as num?)?.toDouble() ?? 0.0,
+    ratingCount: json['rating_count'] as int? ?? 0,
+    bestMonths:
+        (json['best_months'] as List<dynamic>?)
+            ?.map((e) => e as int)
+            .toList() ??
+        [],
+    suitableFor:
+        (json['suitable_for'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [],
+    isActive: json['is_active'] as bool? ?? true,
+    createdAt: json['created_at'] != null
+        ? DateTime.parse(json['created_at'] as String)
+        : null,
+  );
 
   @override
   String toString() => 'Place(id: $id, name: $name, category: $category)';
@@ -190,17 +192,16 @@ class PlaceFilter {
     String? suitableFor,
     bool? onlyFree,
     bool? onlyInSeason,
-  }) =>
-      PlaceFilter(
-        category: category ?? this.category,
-        region: region ?? this.region,
-        minRating: minRating ?? this.minRating,
-        maxFee: maxFee ?? this.maxFee,
-        tags: tags ?? this.tags,
-        suitableFor: suitableFor ?? this.suitableFor,
-        onlyFree: onlyFree ?? this.onlyFree,
-        onlyInSeason: onlyInSeason ?? this.onlyInSeason,
-      );
+  }) => PlaceFilter(
+    category: category ?? this.category,
+    region: region ?? this.region,
+    minRating: minRating ?? this.minRating,
+    maxFee: maxFee ?? this.maxFee,
+    tags: tags ?? this.tags,
+    suitableFor: suitableFor ?? this.suitableFor,
+    onlyFree: onlyFree ?? this.onlyFree,
+    onlyInSeason: onlyInSeason ?? this.onlyInSeason,
+  );
 
   PlaceFilter clear() => const PlaceFilter();
 }

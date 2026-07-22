@@ -130,9 +130,7 @@ class _NavItem extends StatelessWidget {
             Icon(
               isActive ? activeIcon : icon,
               size: 24,
-              color: isActive
-                  ? NavTokens.activeColor
-                  : NavTokens.inactiveColor,
+              color: isActive ? NavTokens.activeColor : NavTokens.inactiveColor,
             ),
             const SizedBox(height: 2),
             Text(
@@ -165,10 +163,7 @@ class _NavItem extends StatelessWidget {
 
 /// Center FAB — amber circle 56px, ➕ icon
 class _CenterFab extends StatelessWidget {
-  const _CenterFab({
-    required this.isActive,
-    required this.onTap,
-  });
+  const _CenterFab({required this.isActive, required this.onTap});
 
   final bool isActive;
   final VoidCallback onTap;
@@ -198,9 +193,7 @@ class _CenterFab extends StatelessWidget {
           Text(
             'Lập lịch',
             style: AppTextStyles.caption.copyWith(
-              color: isActive
-                  ? NavTokens.activeColor
-                  : NavTokens.inactiveColor,
+              color: isActive ? NavTokens.activeColor : NavTokens.inactiveColor,
               fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
               fontSize: 10,
             ),

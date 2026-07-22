@@ -77,11 +77,11 @@ class CategoryFilterRow extends StatelessWidget {
         behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
-          padding: padding ??
+          padding:
+              padding ??
               const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
           itemCount: showAll ? cats.length + 1 : cats.length,
-          separatorBuilder: (_, _) =>
-              const SizedBox(width: AppSpacing.space2),
+          separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.space2),
           itemBuilder: (context, index) {
             // Chip "Tất cả" đầu tiên
             if (showAll && index == 0) {

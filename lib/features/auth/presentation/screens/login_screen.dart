@@ -40,7 +40,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _onLogin() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    await ref.read(authNotifierProvider.notifier).signInWithEmail(
+    await ref
+        .read(authNotifierProvider.notifier)
+        .signInWithEmail(
           email: _emailController.text,
           password: _passwordController.text,
         );
@@ -104,8 +106,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color:
-                                  AppColors.actionPrimary.withValues(alpha: 0.3),
+                              color: AppColors.actionPrimary.withValues(
+                                alpha: 0.3,
+                              ),
                               blurRadius: 16,
                               offset: const Offset(0, 4),
                             ),

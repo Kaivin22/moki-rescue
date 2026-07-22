@@ -153,11 +153,7 @@ class _OnboardingPage extends StatelessWidget {
                   color: slide.iconColor.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  slide.iconData,
-                  size: 80,
-                  color: slide.iconColor,
-                ),
+                child: Icon(slide.iconData, size: 80, color: slide.iconColor),
               ),
             ),
           ),

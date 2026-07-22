@@ -4,7 +4,6 @@ import '../../../../core/theme/tokens/app_colors.dart';
 import '../../../../core/theme/tokens/app_typography.dart';
 import '../../../../core/theme/tokens/app_spacing.dart';
 
-
 import '../../../../shared/widgets/molecules/place_timeline_tile.dart';
 
 /// ═══════════════════════════════════════════════════════
@@ -40,15 +39,43 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
     super.initState();
     _dayPlaces = [
       [
-        _EditablePlace(id: 'p1', name: 'Bãi biển Mỹ Khê', emoji: '🏖', timeStart: TimeOfDay(hour: 7, minute: 0), durationMin: 120, note: ''),
-        _EditablePlace(id: 'p2', name: 'Ngũ Hành Sơn', emoji: '⛰', timeStart: TimeOfDay(hour: 10, minute: 0), durationMin: 90, note: 'Mua vé trước'),
+        _EditablePlace(
+          id: 'p1',
+          name: 'Bãi biển Mỹ Khê',
+          emoji: '🏖',
+          timeStart: TimeOfDay(hour: 7, minute: 0),
+          durationMin: 120,
+          note: '',
+        ),
+        _EditablePlace(
+          id: 'p2',
+          name: 'Ngũ Hành Sơn',
+          emoji: '⛰',
+          timeStart: TimeOfDay(hour: 10, minute: 0),
+          durationMin: 90,
+          note: 'Mua vé trước',
+        ),
       ],
       [
-        _EditablePlace(id: 'p3', name: 'Bà Nà Hills', emoji: '🎡', timeStart: TimeOfDay(hour: 8, minute: 0), durationMin: 360, note: ''),
+        _EditablePlace(
+          id: 'p3',
+          name: 'Bà Nà Hills',
+          emoji: '🎡',
+          timeStart: TimeOfDay(hour: 8, minute: 0),
+          durationMin: 360,
+          note: '',
+        ),
       ],
       if (widget.numDays > 2)
         [
-          _EditablePlace(id: 'p4', name: 'Phố cổ Hội An', emoji: '🏮', timeStart: TimeOfDay(hour: 9, minute: 0), durationMin: 180, note: 'Thuê đèn lồng'),
+          _EditablePlace(
+            id: 'p4',
+            name: 'Phố cổ Hội An',
+            emoji: '🏮',
+            timeStart: TimeOfDay(hour: 9, minute: 0),
+            durationMin: 180,
+            note: 'Thuê đèn lồng',
+          ),
         ],
     ];
   }
@@ -65,7 +92,9 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
     );
     if (picked != null) {
       setState(() {
-        _dayPlaces[_selectedDay][placeIndex] = place.copyWith(timeStart: picked);
+        _dayPlaces[_selectedDay][placeIndex] = place.copyWith(
+          timeStart: picked,
+        );
         _hasChanges = true;
       });
     }
@@ -77,15 +106,26 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
     final result = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Ghi chú', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600)),
+        title: Text(
+          'Ghi chú',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w600),
+        ),
         content: TextField(
           controller: controller,
           maxLines: 3,
-          decoration: const InputDecoration(hintText: 'Thêm ghi chú cho địa điểm này...'),
+          decoration: const InputDecoration(
+            hintText: 'Thêm ghi chú cho địa điểm này...',
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Huỷ')),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('Lưu')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Huỷ'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Lưu'),
+          ),
         ],
       ),
     );
@@ -100,7 +140,9 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final current = _selectedDay < _dayPlaces.length ? _dayPlaces[_selectedDay] : <_EditablePlace>[];
+    final current = _selectedDay < _dayPlaces.length
+        ? _dayPlaces[_selectedDay]
+        : <_EditablePlace>[];
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -109,8 +151,17 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Chỉnh sửa', style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700)),
-            Text(widget.itineraryTitle, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary), overflow: TextOverflow.ellipsis),
+            Text(
+              'Chỉnh sửa',
+              style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+            ),
+            Text(
+              widget.itineraryTitle,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
         backgroundColor: AppColors.backgroundPrimary,
@@ -123,7 +174,13 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
                 // TODO: save
                 Navigator.pop(context);
               },
-              child: Text('Lưu', style: AppTextStyles.bodyMd.copyWith(color: AppColors.actionPrimary, fontWeight: FontWeight.w700)),
+              child: Text(
+                'Lưu',
+                style: AppTextStyles.bodyMd.copyWith(
+                  color: AppColors.actionPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
         ],
       ),
@@ -134,7 +191,9 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
             height: 48,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.layoutSm,
+              ),
               itemCount: widget.numDays,
               itemBuilder: (_, i) {
                 final isActive = _selectedDay == i;
@@ -142,20 +201,32 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
                   onTap: () => setState(() => _selectedDay = i),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    margin: const EdgeInsets.only(right: AppSpacing.space2, top: 4, bottom: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
+                    margin: const EdgeInsets.only(
+                      right: AppSpacing.space2,
+                      top: 4,
+                      bottom: 4,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space4,
+                    ),
                     decoration: BoxDecoration(
-                      color: isActive ? AppColors.actionPrimary : AppColors.backgroundSecondary,
+                      color: isActive
+                          ? AppColors.actionPrimary
+                          : AppColors.backgroundSecondary,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isActive ? AppColors.actionPrimary : AppColors.borderDefault,
+                        color: isActive
+                            ? AppColors.actionPrimary
+                            : AppColors.borderDefault,
                       ),
                     ),
                     child: Center(
                       child: Text(
                         'Ngày ${i + 1}',
                         style: AppTextStyles.bodySm.copyWith(
-                          color: isActive ? AppColors.textOnPrimary : AppColors.textPrimary,
+                          color: isActive
+                              ? AppColors.textOnPrimary
+                              : AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -169,16 +240,23 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
           // ── Editable timeline ──
           Expanded(
             child: ReorderableListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.layoutSm, vertical: AppSpacing.space2),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.layoutSm,
+                vertical: AppSpacing.space2,
+              ),
               itemCount: current.length,
               onReorder: (old, fresh) => setState(() {
                 final item = _dayPlaces[_selectedDay].removeAt(old);
-                _dayPlaces[_selectedDay].insert(fresh > old ? fresh - 1 : fresh, item);
+                _dayPlaces[_selectedDay].insert(
+                  fresh > old ? fresh - 1 : fresh,
+                  item,
+                );
                 _hasChanges = true;
               }),
               itemBuilder: (_, i) {
                 final place = current[i];
-                final time = '${place.timeStart.hour.toString().padLeft(2, '0')}:${place.timeStart.minute.toString().padLeft(2, '0')}';
+                final time =
+                    '${place.timeStart.hour.toString().padLeft(2, '0')}:${place.timeStart.minute.toString().padLeft(2, '0')}';
                 return Padding(
                   key: ValueKey(place.id + _selectedDay.toString()),
                   padding: const EdgeInsets.only(bottom: AppSpacing.space2),
@@ -207,7 +285,10 @@ class _EditScheduleScreenState extends State<EditScheduleScreen> {
         icon: const Icon(Icons.add_location_alt_rounded, color: Colors.white),
         label: Text(
           'Thêm địa điểm',
-          style: AppTextStyles.bodyMd.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+          style: AppTextStyles.bodyMd.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
@@ -235,13 +316,12 @@ class _EditablePlace {
     TimeOfDay? timeStart,
     String? note,
     int? durationMin,
-  }) =>
-      _EditablePlace(
-        id: id,
-        name: name,
-        emoji: emoji,
-        timeStart: timeStart ?? this.timeStart,
-        durationMin: durationMin ?? this.durationMin,
-        note: note ?? this.note,
-      );
+  }) => _EditablePlace(
+    id: id,
+    name: name,
+    emoji: emoji,
+    timeStart: timeStart ?? this.timeStart,
+    durationMin: durationMin ?? this.durationMin,
+    note: note ?? this.note,
+  );
 }
