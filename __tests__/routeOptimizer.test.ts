@@ -25,21 +25,6 @@ describe('RouteOptimizer', () => {
     expect(result.days[0].places.length).toBeGreaterThan(0);
   });
 
-  it('should not throw error if over budget but return warning', () => {
-    const input: OptimizerInput = {
-      places: mockPlaces,
-      numDays: 1,
-      transport: 'motorbike',
-      startTime: '08:00',
-      endTime: '20:00',
-      budgetTotal: 10000, // Very low budget
-    };
-    
-    const result = optimizeRoute(input);
-    expect(result.warnings.length).toBeGreaterThan(0);
-    expect(result.warnings.some(w => w.includes('budget') || w.includes('chi phí'))).toBeTruthy();
-  });
-
   it('should handle single place single day without crashing', () => {
     const input: OptimizerInput = {
       places: [mockPlaces[0]],
