@@ -1,4 +1,4 @@
-name: CI/CD — Analyze · Test · Build APK
+name: CI/CD — TypeScript · Test · Build
 
 on:
   push:
@@ -6,91 +6,83 @@ on:
   pull_request:
     branches: [main]
 
-# Giúp cancel workflow cũ khi có push mới trên cùng branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  FLUTTER_VERSION: "3.44.7"   # Dart 3.11.3 — khớp sdk: ^3.11.3 trong pubspec
-  JAVA_VERSION: "17"
+  NODE_VERSION: "20"
 
 jobs:
   # ─────────────────────────────────────────────────────────
-  # JOB 1: Analyze — static analysis
+  # JOB 1: Type-check & Lint
   # ─────────────────────────────────────────────────────────
-  analyze:
-    name: 🔍 Analyze
+  typecheck:
+    name: 🔍 TypeScript Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
 
-      - name: Get dependencies
-        run: flutter pub get
+      - name: Install dependencies
+        run: npm ci
 
       - name: Create .env từ secrets
         run: |
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
 
-      - name: Run flutter analyze
-        run: flutter analyze --no-pub --no-fatal-infos
-
-      - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib/ test/
+      - name: Run TypeScript type-check
+        run: npx tsc --noEmit
 
   # ─────────────────────────────────────────────────────────
-  # JOB 2: Test — unit + widget tests
+  # JOB 2: Unit Tests
   # ─────────────────────────────────────────────────────────
   test:
-    name: 🧪 Test
+    name: 🧪 Tests
     runs-on: ubuntu-latest
-    needs: analyze
+    needs: typecheck
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
 
-      - name: Get dependencies
-        run: flutter pub get
+      - name: Install dependencies
+        run: npm ci
 
       - name: Create .env từ secrets
         run: |
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
 
-      - name: Run unit tests
-        run: flutter test test/core/ test/features/ --no-pub
-
-      - name: Run widget tests
-        run: flutter test test/widgets/ --no-pub
+      - name: Run tests
+        run: npm test -- --passWithNoTests --ci
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: test/
+          path: __tests__/
 
   # ─────────────────────────────────────────────────────────
-  # JOB 3: Build APK Release (chỉ chạy trên push tới main)
+  # JOB 3: Build & Export (chỉ chạy trên push tới main)
   # ─────────────────────────────────────────────────────────
-  build-apk:
-    name: 🏗️ Build APK Release
+  build:
+    name: 🏗️ Expo Build (EAS)
     runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -98,50 +90,50 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-
-      - name: Get dependencies
-        run: flutter pub get
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Create .env từ secrets
         run: |
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> .env
+          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> .env
+          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> .env
 
       - name: Decode Keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
-          cat > android/key.properties <<EOF
-          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
-          storeFile=keystore.jks
-          EOF
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > danang-itinerary.jks
 
-      - name: Build APK (release)
-        run: flutter build apk --release --split-per-abi
+      - name: EAS Build (Android APK)
+        run: eas build --platform android --profile preview --non-interactive --local
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Upload APK artifacts
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: apk-release-${{ github.sha }}
-          path: build/app/outputs/flutter-apk/*.apk
+          name: apk-${{ github.sha }}
+          path: "*.apk"
           retention-days: 14
 
       - name: Create GitHub Release (tag push)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/*.apk
+          files: "*.apk"
           generate_release_notes: true

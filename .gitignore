@@ -1,58 +1,47 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-.env
-
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
-
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-
-# Signing keys — không push lên repo
-android/app/keystore.jks
-android/key.properties
-
-# Agent skills/config
+# ─── Agent / AI assistant skill files ────────────────────────────────────────
+AGENTS.md
+CLAUDE.md
+claude.json
+skills-lock.json
 .claude/
-.gemini/
 
+# ─── Dependencies ─────────────────────────────────────────────────────────────
+node_modules/
+
+# ─── Expo ─────────────────────────────────────────────────────────────────────
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# ─── Native build output ──────────────────────────────────────────────────────
+.kotlin/
+*.orig.*
 *.jks
-android/key.properties
+*.p8
+*.p12
+*.key
+*.mobileprovision
+/ios
+/android
+
+# ─── Metro bundler ────────────────────────────────────────────────────────────
+.metro-health-check*
+
+# ─── Logs & debug ─────────────────────────────────────────────────────────────
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# ─── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+*.pem
+
+# ─── Local environment ────────────────────────────────────────────────────────
+.env
+.env*.local
+
+# ─── TypeScript ───────────────────────────────────────────────────────────────
+*.tsbuildinfo
