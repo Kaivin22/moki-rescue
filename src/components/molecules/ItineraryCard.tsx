@@ -33,7 +33,7 @@ export function ItineraryCard({
       style={[styles.container, style]}
     >
       <Image
-        source={imageUrl ? { uri: imageUrl } : require('@/assets/images/danang_city_panorama.png')}
+        source={imageUrl ? { uri: imageUrl } : require('@/assets/images/danang_city_panorama.jpg')}
         style={styles.image}
         contentFit="cover"
         transition={200}

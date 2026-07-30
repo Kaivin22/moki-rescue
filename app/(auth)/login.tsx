@@ -43,7 +43,7 @@ export default function LoginScreen() {
         {/* Header 35% */}
         <AnimatedBackground 
           scene="beach"
-          source={require('../../assets/images/beach_panorama.png')} 
+          source={require('../../assets/images/beach_panorama.jpg')} 
           height={320}
           duration={35000}
         >

@@ -52,7 +52,7 @@ export default function DiscoverScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <AnimatedBackground 
-        source={require('../../assets/images/hoian_panorama.png')} 
+        source={require('../../assets/images/hoian_panorama.jpg')} 
         height={180}
         duration={35000}
       >

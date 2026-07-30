@@ -41,7 +41,7 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <AnimatedBackground 
           scene="city"
-          source={require('../../assets/images/bridges_night_panorama.png')} 
+          source={require('../../assets/images/bridges_night_panorama.jpg')} 
           height={220}
           duration={30000}
         >

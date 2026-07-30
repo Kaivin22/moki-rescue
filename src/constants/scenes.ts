@@ -15,39 +15,39 @@ export const Scenes: Record<SceneId, SceneConfig> = {
   mountain: {
     id: 'mountain',
     label: 'Bà Nà Hills',
-    source: require('../../assets/images/mountain_animation.png'),
+    source: require('../../assets/images/mountain_animation.jpg'),
     tint: Colors.sceneMountain,
     duration: 32000,
   },
   beach: {
     id: 'beach',
     label: 'Biển Mỹ Khê',
-    source: require('../../assets/images/beach_animation.png'),
+    source: require('../../assets/images/beach_animation.jpg'),
     tint: Colors.sceneBeach,
     duration: 28000,
   },
   hoian: {
     id: 'hoian',
     label: 'Phố cổ Hội An',
-    source: require('../../assets/images/hoian_animation.png'),
+    source: require('../../assets/images/hoian_animation.jpg'),
     tint: Colors.sceneHoiAn,
     duration: 30000,
   },
   bridge: {
     id: 'bridge',
     label: 'Cầu Đà Nẵng về đêm',
-    source: require('../../assets/images/danang_city_panorama.png'),
+    source: require('../../assets/images/danang_city_panorama.jpg'),
     tint: Colors.sceneBridge,
     duration: 34000,
   },
   city: {
     id: 'city',
     label: 'Thành phố Đà Nẵng',
-    source: require('../../assets/images/danang_city_panorama.png'),
+    source: require('../../assets/images/danang_city_panorama.jpg'),
     tint: Colors.sceneBridge,
     duration: 34000,
   },
 };
 
 /** Alternate wide panorama for mountain headers */
-export const MountainPanorama = require('../../assets/images/mountain_panorama.png');
+export const MountainPanorama = require('../../assets/images/mountain_panorama.jpg');
