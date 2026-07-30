@@ -99,41 +99,30 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
-          expo-version: latest
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+          distribution: 'temurin'
+          java-version: '17'
 
-      - name: Create .env từ secrets
+      - name: Prebuild Android
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build Android APK (Release)
         run: |
-          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
-          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
-          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> .env
-          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> .env
-          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> .env
-
-      - name: Decode Keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > danang-itinerary.jks
-
-      - name: EAS Build (Android APK)
-        run: eas build --platform android --profile preview --non-interactive --local
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          cd android
+          ./gradlew assembleRelease
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: apk-${{ github.sha }}
-          path: "*.apk"
+          path: android/app/build/outputs/apk/release/*.apk
           retention-days: 14
 
       - name: Create GitHub Release (tag push)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: "*.apk"
+          files: android/app/build/outputs/apk/release/*.apk
           generate_release_notes: true
