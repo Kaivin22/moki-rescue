@@ -22,7 +22,7 @@ export function useAdminStats(enabled = true) {
         supabase
           .from('support_tickets')
           .select('id', { count: 'exact', head: true })
-          .in('status', ['open', 'pending', 'in_progress']),
+          .in('status', ['open', 'in_progress']),
       ]);
 
       return {
@@ -50,22 +50,6 @@ export function usePlaceReviews(placeId?: string) {
 
       if (error) throw error;
       return data ?? [];
-    },
-  });
-}
-
-export function useSavedPlaces(userId?: string | null) {
-  return useQuery({
-    queryKey: ['saved-places', userId],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('saved_places')
-        .select('place_id, places(*)')
-        .eq('user_id', userId!);
-
-      if (error) throw error;
-      return (data ?? []).map((row: any) => row.places).filter(Boolean);
     },
   });
 }

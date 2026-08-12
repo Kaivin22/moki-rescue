@@ -1,10 +1,10 @@
 import { recommendPlaces, calculateScore } from '../src/features/itinerary/services/placeRecommender';
 import { Place } from '../src/types/place';
+import type { Profile } from '../src/types/profile';
 
 describe('placeRecommender', () => {
-  const mockProfile: any = {
+  const mockProfile: Pick<Profile, 'travel_style'> = {
     travel_style: ['beach', 'nature'],
-    budget_tier: 'mid',
   };
 
   const mockPlaces: Place[] = [
@@ -15,10 +15,8 @@ describe('placeRecommender', () => {
       tags: ['beach', 'relax'],
       rating_avg: 4.8,
       rating_count: 1000,
-      entry_fee_min: 0,
-      entry_fee_max: 0,
       is_active: true,
-    } as Place,
+    } as unknown as Place,
     {
       id: '2',
       name: 'Bà Nà Hills',
@@ -26,10 +24,8 @@ describe('placeRecommender', () => {
       tags: ['mountain', 'entertainment'],
       rating_avg: 4.5,
       rating_count: 500,
-      entry_fee_min: 900000,
-      entry_fee_max: 900000,
       is_active: true,
-    } as Place,
+    } as unknown as Place,
     {
       id: '3',
       name: 'Quán Ăn Nhỏ',
@@ -37,10 +33,8 @@ describe('placeRecommender', () => {
       tags: ['food'],
       rating_avg: 3.5,
       rating_count: 50,
-      entry_fee_min: 50000,
-      entry_fee_max: 100000,
       is_active: false,
-    } as Place,
+    } as unknown as Place,
   ];
 
   it('should filter out inactive places and visited places', () => {

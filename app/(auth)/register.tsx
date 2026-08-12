@@ -7,8 +7,13 @@ import { AppInput } from '@/src/components/atoms/AppInput';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { supabase } from '@/src/services/supabase';
 import { router } from 'expo-router';
+import { authErrorMessage } from '@/src/features/auth/authErrors';
+import { LEGAL_VERSION } from '@/src/features/legal/constants';
+import * as Linking from 'expo-linking';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function RegisterScreen() {
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,13 +22,21 @@ export default function RegisterScreen() {
   const [agreeTerms, setAgreeTerms] = useState(false);
 
   const handleRegister = async () => {
-    if (!name || !email || !password || !confirmPassword) {
+    const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanName || !cleanEmail || !password || !confirmPassword) {
       Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
       return;
     }
 
     if (password !== confirmPassword) {
       Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp');
+      return;
+    }
+
+    if (password.length < 8) {
+      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 8 ký tự');
       return;
     }
 
@@ -34,23 +47,28 @@ export default function RegisterScreen() {
 
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: cleanEmail,
       password,
       options: {
+        emailRedirectTo: Linking.createURL('/(auth)/profile-setup'),
         data: {
-          full_name: name,
+          full_name: cleanName,
+          terms_version: LEGAL_VERSION,
         }
       }
     });
     setLoading(false);
 
     if (error) {
-      Alert.alert('Đăng ký thất bại', error.message);
+      Alert.alert('Đăng ký thất bại', authErrorMessage(error, 'Không thể tạo tài khoản. Vui lòng thử lại.'));
+    } else if (data?.user?.identities && data.user.identities.length === 0) {
+      // Trường hợp email đã tồn tại trong Supabase nhưng không có session
+      Alert.alert('Đăng ký thất bại', 'Email này đã được sử dụng. Vui lòng thử đăng nhập hoặc dùng email khác.');
     } else {
       if (data.session) {
         router.replace('/(auth)/profile-setup');
       } else {
-        Alert.alert('Thành công', 'Vui lòng kiểm tra email để xác thực tài khoản');
+        Alert.alert('Thành công', 'Vui lòng kiểm tra email để xác thực tài khoản (hoặc đăng nhập nếu hệ thống đã tắt xác thực email)');
         router.push('/(auth)/login');
       }
     }
@@ -62,7 +80,7 @@ export default function RegisterScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
           <Ionicons name="compass" size={48} color={Colors.white} style={styles.headerIcon} />
           <Text style={[Typography.display, styles.headerTitle]}>Xin chào!</Text>
         </View>
@@ -111,10 +129,13 @@ export default function RegisterScreen() {
               size={24} 
               color={agreeTerms ? Colors.accent : Colors.secondary} 
             />
-            <Text style={[Typography.caption, styles.checkboxText]}>
-              Tôi đồng ý với <Text style={{ color: Colors.primary }}>Điều khoản sử dụng</Text>
-            </Text>
+            <Text style={[Typography.caption, styles.checkboxText]}>Tôi đồng ý với điều khoản và chính sách bên dưới.</Text>
           </TouchableOpacity>
+          <View style={styles.legalLinks}>
+            <TouchableOpacity onPress={() => router.push('/legal/terms')}><Text style={styles.legalLink}>Điều khoản sử dụng</Text></TouchableOpacity>
+            <Text style={styles.legalSeparator}>·</Text>
+            <TouchableOpacity onPress={() => router.push('/legal/privacy')}><Text style={styles.legalLink}>Quyền riêng tư</Text></TouchableOpacity>
+          </View>
           
           <AppButton
             title="Tạo tài khoản"
@@ -147,7 +168,6 @@ const styles = StyleSheet.create({
     height: '25%', // Ngắn hơn một chút so với Login
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: Spacing.xl,
   },
   headerIcon: {
     marginBottom: Spacing.sm,
@@ -176,6 +196,9 @@ const styles = StyleSheet.create({
     color: Colors.secondary,
     marginLeft: Spacing.sm,
   },
+  legalLinks: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: -Spacing.lg, marginBottom: Spacing.xl },
+  legalLink: { ...Typography.caption, color: Colors.primary, textDecorationLine: 'underline' },
+  legalSeparator: { ...Typography.caption, color: Colors.textMuted, marginHorizontal: Spacing.sm },
   registerBtn: {
     marginBottom: Spacing.lg,
   },

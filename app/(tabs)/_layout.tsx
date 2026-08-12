@@ -2,31 +2,42 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/src/constants/colors';
 import { View, StyleSheet } from 'react-native';
+import { useI18n } from '@/src/i18n';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+function TabIcon({ name, color, size }: { name: keyof typeof Ionicons.glyphMap; color: string; size: number }) {
+  return <Ionicons name={name} size={size} color={color} />;
+}
 
 export default function TabLayout() {
+  const { t } = useI18n();
+  const insets = useSafeAreaInsets();
+
   return (
-    <Tabs
+    <View style={{ flex: 1 }}>
+      <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.primary,
-          height: 72,
+          backgroundColor: Colors.primaryDark,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom,
           borderTopWidth: 0,
-          elevation: 10,
-          shadowColor: Colors.primary,
+          elevation: 12,
+          shadowColor: Colors.primaryDark,
           shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
+          shadowOpacity: 0.2,
+          shadowRadius: 10,
         },
         tabBarActiveTintColor: Colors.accent,
-        tabBarInactiveTintColor: Colors.secondary,
+        tabBarInactiveTintColor: 'rgba(201,233,241,0.5)',
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '700',
-          marginBottom: 8,
+          marginBottom: 6,
         },
         tabBarIconStyle: {
-          marginTop: 8,
+          marginTop: 6,
         },
       }}
     >
@@ -34,50 +45,57 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Trang chủ',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <TabIcon name="home" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="discover"
+        name="search"
         options={{
-          title: 'Khám phá',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search" size={size} color={color} />
-          ),
+          title: 'Tìm kiếm',
+          tabBarIcon: ({ color, size }) => <TabIcon name="search" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="create"
         options={{
           title: '',
+          tabBarLabel: () => null,
           tabBarIcon: ({ color }) => (
-            <View style={[styles.fabContainer, { backgroundColor: color === Colors.accent ? Colors.accent : Colors.white }]}>
-              <Ionicons name="add" size={32} color={Colors.primary} />
-            </View>
+            <CreateFab active={color === Colors.accent} />
           ),
         }}
       />
       <Tabs.Screen
         name="map"
         options={{
-          title: 'Bản đồ',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="map" size={size} color={color} />
-          ),
+          title: t('nav.map'),
+          tabBarIcon: ({ color, size }) => <TabIcon name="map" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Hồ sơ',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
-          ),
+          title: t('nav.profile'),
+          tabBarIcon: ({ color, size }) => <TabIcon name="person" size={size} color={color} />,
         }}
       />
-    </Tabs>
+      </Tabs>
+
+    </View>
+  );
+}
+
+/** Nút "+" giữa tab bar — trạng thái active được thể hiện bằng màu. */
+function CreateFab({ active }: { active: boolean }) {
+  return (
+    <View
+      style={[
+        styles.fabContainer,
+        { backgroundColor: active ? Colors.accent : Colors.accentSoft },
+      ]}
+    >
+      <Ionicons name="add" size={32} color={Colors.primaryDark} />
+    </View>
   );
 }
 
@@ -88,11 +106,11 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10,
-    shadowColor: Colors.accent,
+    marginTop: -14,
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 8,
   },
 });

@@ -1,10 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { Badge } from '../atoms/Badge';
+import { AnimatedPressable } from '../atoms/AnimatedPressable';
+import { Scale } from '@/src/constants/motion';
+import { useReduceMotion } from '@/src/hooks/useReduceMotion';
 
 interface ItineraryCardProps {
   title: string;
@@ -23,11 +26,12 @@ export function ItineraryCard({
   onPress,
   style,
 }: ItineraryCardProps) {
+  const reduceMotion = useReduceMotion();
   return (
-    <TouchableOpacity
-      activeOpacity={0.9}
+    <AnimatedPressable
       onPress={onPress}
       disabled={!onPress}
+      pressScale={Scale.pressCard}
       accessibilityRole="button"
       accessibilityLabel={title}
       style={[styles.container, style]}
@@ -36,7 +40,7 @@ export function ItineraryCard({
         source={imageUrl ? { uri: imageUrl } : require('@/assets/images/danang_city_panorama.jpg')}
         style={styles.image}
         contentFit="cover"
-        transition={200}
+        transition={reduceMotion ? 0 : 200}
       />
       <LinearGradient
         colors={['transparent', Colors.overlay]}
@@ -56,7 +60,7 @@ export function ItineraryCard({
           ) : null}
         </View>
       </View>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 

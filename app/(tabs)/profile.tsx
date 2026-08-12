@@ -1,139 +1,230 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert,
+  ActivityIndicator, View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router, type Href, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { useAuthStore } from '@/src/stores/authStore';
-import { AnimatedBackground } from '@/src/components/atoms/AnimatedBackground';
-import { useI18n, LANGUAGES } from '@/src/i18n';
+import { SceneBackground } from '@/src/components/atoms/SceneBackground';
+import { useI18n } from '@/src/i18n';
+import { Image } from 'expo-image';
+import { AppButton } from '@/src/components/atoms/AppButton';
+import type { ComponentProps } from 'react';
+import { isProfileVipActive } from '@/src/features/vip/api/subscriptions';
+import { useProfileStats } from '@/src/features/profile/api/profileStats';
+import { getAppVersionLabel } from '@/src/utils/appInfo';
+
+interface ProfileMenuItem {
+  title: string;
+  icon: ComponentProps<typeof Ionicons>['name'];
+  route: Href;
+  highlight?: boolean;
+  subtitle?: string;
+}
 
 export default function ProfileScreen() {
-  const { profile, signOut } = useAuthStore();
-  const { t, language, setLanguage } = useI18n();
+  const insets = useSafeAreaInsets();
+  const { user, profile, refreshProfile, isProfileLoading, error: profileError } = useAuthStore();
+  const { t } = useI18n();
 
-  const handleSignOut = async () => {
-    Alert.alert(t('profile.logout'), 'Bạn có chắc chắn muốn đăng xuất?', [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('profile.logout'),
-        style: 'destructive',
-        onPress: async () => {
-          await signOut();
-          router.replace('/(auth)/login');
-        },
-      },
-    ]);
-  };
+  const profileStats = useProfileStats(user?.id);
+  const refetchProfileStats = profileStats.refetch;
 
-  const menuItems: { icon: string; title: string; route: string; highlight?: boolean }[] = [
-    { icon: 'person', title: t('profile.edit'), route: '/profile/edit' },
-    { icon: 'bookmark', title: t('profile.saved'), route: '/profile/saved' },
-    { icon: 'time', title: t('profile.history'), route: '/profile/history' },
-    { icon: 'star', title: t('profile.vip'), route: '/vip/upgrade', highlight: true },
-    { icon: 'chatbubbles', title: t('profile.support'), route: '/support/ticket' },
-  ];
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        void refreshProfile();
+        void refetchProfileStats();
+      }
+    }, [refetchProfileStats, refreshProfile, user]),
+  );
 
-  if (profile?.role === 'admin' || profile?.role === 'editor') {
-    menuItems.push({ icon: 'settings', title: t('admin.dashboard'), route: '/admin/dashboard' });
-  }
+  const isVip = isProfileVipActive(profile);
+  const displayName = profile?.display_name
+    || user?.user_metadata?.full_name
+    || user?.email?.split('@')[0]
+    || 'Khách';
 
-  const isVip = profile?.vip_status === 'active' || profile?.vip_status === 'vip';
+  const renderMenuSection = (title: string, items: ProfileMenuItem[]) => (
+    <View style={styles.menuSection}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.menuCard}>
+        {items.map((item, idx) => (
+          <TouchableOpacity
+            key={idx}
+            style={[styles.menuItem, idx === items.length - 1 && { borderBottomWidth: 0 }]}
+            onPress={() => router.push(item.route)}
+          >
+            <View style={[styles.iconBox, item.highlight && { backgroundColor: Colors.accent + '20' }]}>
+              <Ionicons name={item.icon} size={20} color={item.highlight ? Colors.accent : Colors.primary} />
+            </View>
+            <View style={styles.menuTextContent}>
+              <Text style={[styles.menuTitle, item.highlight && { color: Colors.primary }]}>{item.title}</Text>
+              {item.subtitle ? <Text style={styles.menuSubtitle}>{item.subtitle}</Text> : null}
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.secondary} />
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Animated Header */}
-      <AnimatedBackground scene="beach" height={200}>
-        <View style={styles.header}>
+      <SceneBackground scene="beach" height={280}>
+        <View style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}>
+          {/* Settings shortcut */}
+          {user && <TouchableOpacity
+            style={[styles.editBtn, { top: insets.top + Spacing.sm }]}
+            onPress={() => router.push('/profile/settings')}
+            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Mở cài đặt"
+          >
+            <Ionicons name="settings-outline" size={20} color={Colors.white} />
+          </TouchableOpacity>}
+
           <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={44} color={Colors.white} />
+            {user && isProfileLoading && !profile ? (
+              <ActivityIndicator color={Colors.white} />
+            ) : profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} contentFit="cover" />
+            ) : (
+              <Ionicons name="person" size={44} color={Colors.white} />
+            )}
           </View>
-          <Text style={styles.displayName}>{profile?.display_name || 'Khách'}</Text>
-          {isVip ? (
-            <View style={styles.vipBadge}>
-              <Ionicons name="star" size={12} color={Colors.primary} />
-              <Text style={styles.vipBadgeText}>VIP Member</Text>
-            </View>
-          ) : (
-            <View style={styles.basicBadge}>
-              <Text style={styles.basicBadgeText}>Basic Member</Text>
-            </View>
+
+          <Text style={styles.displayName}>{user && isProfileLoading && !profile ? 'Đang tải hồ sơ…' : displayName}</Text>
+
+          {profile?.bio && (
+            <Text style={styles.bioText} numberOfLines={2}>{profile.bio}</Text>
           )}
-          {profile?.home_city && (
-            <View style={styles.locationRow}>
-              <Ionicons name="location-outline" size={13} color={Colors.surface} />
-              <Text style={styles.locationText}>{profile.home_city}</Text>
-            </View>
+
+          <View style={styles.badgesRow}>
+            {isVip ? (
+              <View style={styles.vipBadge}>
+                <Ionicons name="star" size={12} color={Colors.primaryDark} />
+                <Text style={styles.vipBadgeText}>VIP Member</Text>
+              </View>
+            ) : user ? (
+              <View style={styles.basicBadge}>
+                <Text style={styles.basicBadgeText}>Basic Member</Text>
+              </View>
+            ) : (
+              <View style={styles.basicBadge}>
+                <Text style={styles.basicBadgeText}>Chế độ khách</Text>
+              </View>
+            )}
+            {profile?.home_city && (
+              <View style={styles.locationBadge}>
+                <Ionicons name="location-outline" size={12} color={Colors.surface} />
+                <Text style={styles.basicBadgeText}>{profile.home_city}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Stats Row */}
+          <View style={styles.statsRow}>
+            <TouchableOpacity style={styles.statItem} onPress={() => user && router.push('/profile/history')} disabled={!user}>
+              <Text style={styles.statNumber}>{user && profileStats.isLoading ? '—' : profileStats.isError ? '!' : profileStats.data?.itineraryCount ?? 0}</Text>
+              <Text style={styles.statLabel}>Lịch trình</Text>
+            </TouchableOpacity>
+            <View style={styles.statDivider} />
+            <TouchableOpacity style={styles.statItem} onPress={() => user && router.push('/profile/saved')} disabled={!user}>
+              <Text style={styles.statNumber}>{user && profileStats.isLoading ? '—' : profileStats.isError ? '!' : profileStats.data?.savedPlaceCount ?? 0}</Text>
+              <Text style={styles.statLabel}>Đã lưu</Text>
+            </TouchableOpacity>
+          </View>
+          {user && profileStats.isError && (
+            <TouchableOpacity style={styles.statsRetry} onPress={() => profileStats.refetch()}>
+              <Ionicons name="refresh" size={12} color={Colors.white} />
+              <Text style={styles.statsRetryText}>Không tải được thống kê · Thử lại</Text>
+            </TouchableOpacity>
           )}
         </View>
-      </AnimatedBackground>
+      </SceneBackground>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
 
-        {/* Menu items */}
-        <View style={styles.menuCard}>
-          {menuItems.map((item, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={[styles.menuItem, idx === menuItems.length - 1 && { borderBottomWidth: 0 }]}
-              onPress={() => router.push(item.route as any)}
-            >
-              <View style={[styles.iconBox, item.highlight && { backgroundColor: Colors.accent + '20' }]}>
-                <Ionicons name={item.icon as any} size={20} color={item.highlight ? Colors.accent : Colors.primary} />
-              </View>
-              <Text style={[styles.menuTitle, item.highlight && { color: Colors.accent }]}>
-                {item.title}
-              </Text>
-              <Ionicons name="chevron-forward" size={18} color={Colors.secondary} />
+        {user && profileError ? (
+          <View style={styles.profileErrorCard}>
+            <Ionicons name="cloud-offline-outline" size={22} color={Colors.error} />
+            <View style={styles.profileErrorContent}>
+              <Text style={styles.profileErrorTitle}>Chưa thể làm mới hồ sơ</Text>
+              <Text style={styles.profileErrorText}>Thông tin đăng nhập vẫn được giữ. Hãy kiểm tra kết nối rồi thử lại.</Text>
+            </View>
+            <TouchableOpacity onPress={() => refreshProfile()} disabled={isProfileLoading} accessibilityRole="button" accessibilityLabel="Thử tải lại hồ sơ">
+              {isProfileLoading ? <ActivityIndicator size="small" color={Colors.primary} /> : <Ionicons name="refresh" size={22} color={Colors.primary} />}
             </TouchableOpacity>
-          ))}
-        </View>
+          </View>
+        ) : null}
 
-        {/* Language Settings */}
-        <View style={styles.sectionHeader}>
-          <Ionicons name="language" size={16} color={Colors.secondary} />
-          <Text style={styles.sectionTitle}>{t('profile.language')}</Text>
-        </View>
-        <View style={styles.langGrid}>
-          {LANGUAGES.map(lang => (
-            <TouchableOpacity
-              key={lang.code}
-              style={[styles.langChip, language === lang.code && styles.langChipActive]}
-              onPress={() => setLanguage(lang.code)}
-            >
-              <Text style={styles.langFlag}>{lang.flag}</Text>
-              <Text style={[styles.langName, language === lang.code && styles.langNameActive]}>
-                {lang.nativeName}
-              </Text>
-              {language === lang.code && (
-                <Ionicons name="checkmark-circle" size={14} color={Colors.accent} />
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
+        {!user ? (
+          <View style={styles.guestCard}>
+            <Text style={styles.guestTitle}>Đăng nhập để lưu hành trình</Text>
+            <Text style={styles.guestText}>Bạn vẫn có thể khám phá, xem bản đồ và tạo bản nháp khi chưa đăng nhập.</Text>
+            <AppButton title="Đăng nhập / Đăng ký" onPress={() => router.push('/(auth)/login')} />
+          </View>
+        ) : renderMenuSection('Tài khoản', [
+          { icon: 'person', title: t('profile.edit'), route: '/profile/edit' },
+          {
+            icon: 'star',
+            title: isVip ? 'Quyền lợi VIP' : 'Đăng ký thử nghiệm VIP',
+            subtitle: isVip
+              ? profile?.vip_expires_at
+                ? `Hiệu lực đến ${new Date(profile.vip_expires_at).toLocaleDateString('vi-VN')}`
+                : 'Đang hoạt động'
+              : 'Không phát sinh thanh toán',
+            route: '/vip/upgrade',
+            highlight: true,
+          },
+        ])}
 
-        {/* Sign Out */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleSignOut}>
-          <Ionicons name="log-out-outline" size={22} color={Colors.error} />
-          <Text style={styles.logoutText}>{t('profile.logout')}</Text>
-        </TouchableOpacity>
+        {user && renderMenuSection('Hoạt động', [
+          { icon: 'bookmark', title: t('profile.saved'), route: '/profile/saved' },
+          { icon: 'time', title: t('profile.history'), route: '/profile/history' },
+          { icon: 'star-outline', title: 'Đánh giá của tôi', route: '/profile/reviews' },
+        ])}
+
+        {renderMenuSection('Khám phá & Trợ giúp', [
+          { icon: 'chatbubbles', title: 'Trợ lý AI (Tư vấn du lịch)', route: '/ai/chat' },
+          { icon: 'headset', title: t('profile.support'), route: '/support' },
+        ])}
+
+        {(profile?.role === 'admin' || profile?.role === 'editor') && (
+          renderMenuSection('Quản trị', [
+            { icon: 'settings', title: t('admin.dashboard'), route: profile?.role === 'editor' ? '/admin/places' : '/admin/dashboard' },
+          ])
+        )}
 
         {/* Version */}
-        <Text style={styles.versionText}>Đà Nẵng Travel v1.0.0</Text>
+        <Text style={styles.versionText}>{getAppVersionLabel()}</Text>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: {
-    flex: 1, alignItems: 'center', justifyContent: 'flex-end',
-    paddingBottom: Spacing.xl, paddingTop: 60,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingBottom: Spacing.lg,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    position: 'relative',
+  },
+  editBtn: {
+    position: 'absolute',
+    right: Spacing.xl,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarCircle: {
     width: 84, height: 84, borderRadius: 42,
@@ -141,31 +232,98 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 3, borderColor: Colors.accent,
     marginBottom: Spacing.sm,
+    overflow: 'hidden',
   },
-  displayName: { ...Typography.h2, color: Colors.white, marginBottom: 6 },
+  avatarImage: {
+    width: '100%', height: '100%',
+  },
+  displayName: { ...Typography.h2, color: Colors.white, marginBottom: 4 },
+  bioText: {
+    ...Typography.body,
+    color: 'rgba(255,255,255,0.85)',
+    textAlign: 'center',
+    paddingHorizontal: Spacing.xxl,
+    marginBottom: Spacing.md,
+    fontSize: 13,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
   vipBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: Colors.lime,
     paddingHorizontal: 10, paddingVertical: 4,
     borderRadius: Radius.full,
   },
-  vipBadgeText: { ...Typography.caption, color: Colors.textOnLime, fontWeight: '800', fontSize: 11 },
+  vipBadgeText: { ...Typography.caption, color: Colors.textOnAccent, fontWeight: '800', fontSize: 11 },
   basicBadge: {
     backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 10, paddingVertical: 4,
     borderRadius: Radius.full,
   },
+  locationBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: Radius.full,
+  },
   basicBadgeText: { ...Typography.caption, color: Colors.white, fontSize: 11 },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-  locationText: { ...Typography.caption, color: Colors.surface },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: Radius.lg,
+  },
+  statItem: {
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  statNumber: {
+    ...Typography.h3,
+    color: Colors.white,
+    marginBottom: 2,
+  },
+  statLabel: {
+    ...Typography.caption,
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 10,
+    textTransform: 'uppercase',
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginHorizontal: Spacing.md,
+  },
+  statsRetry: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: Spacing.xs,
+  },
+  statsRetryText: { ...Typography.caption, color: Colors.white, fontSize: 10 },
 
   scroll: { flex: 1 },
   scrollContent: { padding: Spacing.md, paddingBottom: 40 },
 
+  menuSection: {
+    marginBottom: Spacing.lg,
+  },
+  sectionTitle: {
+    ...Typography.label,
+    color: Colors.secondary,
+    textTransform: 'uppercase',
+    fontSize: 11,
+    letterSpacing: 1,
+    marginBottom: Spacing.sm,
+    paddingLeft: Spacing.xs,
+  },
   menuCard: {
     backgroundColor: Colors.white, borderRadius: Radius.lg,
     borderWidth: 1, borderColor: Colors.divider,
-    marginBottom: Spacing.xl, overflow: 'hidden',
+    overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row', alignItems: 'center',
@@ -178,33 +336,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     justifyContent: 'center', alignItems: 'center',
   },
-  menuTitle: { ...Typography.bodyBold, color: Colors.textPrimary, flex: 1 },
+  menuTextContent: { flex: 1 },
+  menuTitle: { ...Typography.bodyBold, color: Colors.textPrimary },
+  menuSubtitle: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
 
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.sm },
-  sectionTitle: { ...Typography.label, color: Colors.secondary, textTransform: 'uppercase', fontSize: 11, letterSpacing: 1 },
-
-  langGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.xl },
-  langChip: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.white,
-    borderWidth: 1.5, borderColor: Colors.divider,
-  },
-  langChipActive: { borderColor: Colors.accent, backgroundColor: Colors.accent + '12' },
-  langFlag: { fontSize: 18 },
-  langName: { ...Typography.caption, color: Colors.textSecondary },
-  langNameActive: { color: Colors.primary, fontWeight: '700' },
-
-  logoutBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: Radius.lg,
-    borderWidth: 1.5, borderColor: Colors.error,
-    backgroundColor: '#FFF0F0',
-    marginBottom: Spacing.md,
-  },
-  logoutText: { ...Typography.bodyBold, color: Colors.error },
   versionText: { textAlign: 'center', ...Typography.caption, color: Colors.secondary },
+  guestCard: {
+    backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.lg,
+    borderWidth: 1, borderColor: Colors.divider, marginBottom: Spacing.lg, gap: Spacing.sm,
+  },
+  guestTitle: { ...Typography.h3, color: Colors.primary },
+  guestText: { ...Typography.body, color: Colors.textSecondary, marginBottom: Spacing.sm },
+  profileErrorCard: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md,
+    borderRadius: Radius.lg, backgroundColor: '#FFF0F0', borderWidth: 1, borderColor: Colors.error,
+    marginBottom: Spacing.lg,
+  },
+  profileErrorContent: { flex: 1 },
+  profileErrorTitle: { ...Typography.bodyBold, color: Colors.error },
+  profileErrorText: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
 });

@@ -1,128 +1,144 @@
-name: CI/CD — TypeScript · Test · Build
+name: CI — Security · Test · Expo bundle
 
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "20.19.x"
 
 jobs:
-  # ─────────────────────────────────────────────────────────
-  # JOB 1: Type-check & Lint
-  # ─────────────────────────────────────────────────────────
-  typecheck:
-    name: 🔍 TypeScript Check
+  backend-test:
+    name: Spring Boot tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-
-      - name: Create .env từ secrets
-        run: |
-          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
-          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
-
-      - name: Run TypeScript type-check
-        run: npx tsc --noEmit
-
-  # ─────────────────────────────────────────────────────────
-  # JOB 2: Unit Tests
-  # ─────────────────────────────────────────────────────────
-  test:
-    name: 🧪 Tests
-    runs-on: ubuntu-latest
-    needs: typecheck
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-
-      - name: Create .env từ secrets
-        run: |
-          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
-          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
-
-      - name: Run tests
-        run: npm test -- --passWithNoTests --ci
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: __tests__/
-
-  # ─────────────────────────────────────────────────────────
-  # JOB 3: Build & Export (chỉ chạy trên push tới main)
-  # ─────────────────────────────────────────────────────────
-  build:
-    name: 🏗️ Expo Build (EAS)
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-
+          persist-credentials: false
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Run backend tests
+        working-directory: backend
+        run: ./mvnw --batch-mode --no-transfer-progress test
 
-      - name: Prebuild Android
-        run: npx expo prebuild --platform android --clean
-
-      - name: Build Android APK (Release)
+  security:
+    name: Dependency and secret checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      # SDK 54 currently has known high advisories in its Metro build toolchain.
+      # Keep them visible, but block critical findings without forcing an SDK jump.
+      - name: Audit locked dependencies (critical gate)
+        run: npm audit --audit-level=critical
+      - name: Reject common committed secret formats
+        shell: bash
         run: |
-          cd android
-          ./gradlew assembleRelease
+          if git grep -n -I -E '(AIza[0-9A-Za-z_-]{30,}|sb_secret_[0-9A-Za-z_-]+|ghp_[0-9A-Za-z]{30,}|github_pat_[0-9A-Za-z_]+|sk-(proj-)?[0-9A-Za-z_-]{20,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' -- . ':(exclude)package-lock.json' ':(exclude).github/workflows/ci.yml'; then
+            echo 'Potential secret committed to the repository.'
+            exit 1
+          fi
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+  frontend:
+    name: Frontend quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          name: apk-${{ github.sha }}
-          path: android/app/build/outputs/apk/release/*.apk
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Run ESLint
+        run: npm run lint
+      - name: Run TypeScript type-check
+        run: npm run typecheck
+      - name: Run frontend tests
+        run: npm run test:ci
+      - name: Validate Expo public configuration
+        env:
+          APP_ENV: production
+          EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+          EXPO_PUBLIC_API_URL: https://api.example.com/api
+          EXPO_PUBLIC_WEATHER_API_URL: https://api.open-meteo.com
+          EXPO_PUBLIC_OSRM_CAR_BASE_URL: https://routing-car.example.com
+          EXPO_PUBLIC_OSRM_MOTORBIKE_BASE_URL: https://routing-motorbike.example.com
+          EXPO_PUBLIC_OSRM_WALK_BASE_URL: https://routing-walk.example.com
+          EXPO_PUBLIC_OSRM_BICYCLE_BASE_URL: https://routing-bicycle.example.com
+          GOOGLE_MAPS_KEY: ci-placeholder
+        run: npx expo config --type public
+      - name: Validate Expo SDK compatibility
+        run: npx --yes expo-doctor@1.20.1
+      - name: Validate Expo package versions
+        run: npx expo install --check
+
+  bundle:
+    name: Expo bundle validation
+    runs-on: ubuntu-latest
+    needs: [backend-test, security, frontend]
+    timeout-minutes: 20
+    env:
+      # Bundle validation must be reproducible on PRs and must not embed or
+      # require production credentials. Real values are injected only by EAS.
+      APP_ENV: production
+      EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+      EXPO_PUBLIC_API_URL: https://api.example.com/api
+      EXPO_PUBLIC_WEATHER_API_URL: https://api.open-meteo.com
+      EXPO_PUBLIC_OSRM_CAR_BASE_URL: https://routing-car.example.com
+      EXPO_PUBLIC_OSRM_MOTORBIKE_BASE_URL: https://routing-motorbike.example.com
+      EXPO_PUBLIC_OSRM_WALK_BASE_URL: https://routing-walk.example.com
+      EXPO_PUBLIC_OSRM_BICYCLE_BASE_URL: https://routing-bicycle.example.com
+      GOOGLE_MAPS_KEY: ci-placeholder
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Export Android, iOS and web bundles
+        run: npx expo export --platform all --output-dir dist
+      - name: Upload Expo export from main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: expo-export-${{ github.sha }}
+          path: dist
           retention-days: 14
-
-      - name: Create GitHub Release (tag push)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: android/app/build/outputs/apk/release/*.apk
-          generate_release_notes: true

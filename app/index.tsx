@@ -4,7 +4,7 @@ import { Colors } from '@/src/constants/colors';
 import { useAuthStore } from '@/src/stores/authStore';
 
 export default function IndexScreen() {
-  const { user, isLoading, isHydrated } = useAuthStore();
+  const { isLoading, isHydrated } = useAuthStore();
 
   if (!isHydrated || isLoading) {
     return (
@@ -14,11 +14,7 @@ export default function IndexScreen() {
     );
   }
 
-  if (user) {
-    return <Redirect href="/(tabs)" />;
-  }
-
-  return <Redirect href="/(auth)/login" />;
+  return <Redirect href="/(tabs)" />;
 }
 
 const styles = StyleSheet.create({

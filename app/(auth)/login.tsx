@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { Ionicons } from '@expo/vector-icons';
 import { AppInput } from '@/src/components/atoms/AppInput';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { supabase } from '@/src/services/supabase';
-import { router } from 'expo-router';
-import { AnimatedBackground } from '@/src/components/atoms/AnimatedBackground';
+import { router, useLocalSearchParams } from 'expo-router';
+import { SceneBackground } from '@/src/components/atoms/SceneBackground';
+import { authErrorMessage } from '@/src/features/auth/authErrors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LoginScreen() {
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,15 +26,18 @@ export default function LoginScreen() {
 
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim().toLowerCase(),
       password,
     });
     setLoading(false);
 
     if (error) {
-      Alert.alert('Đăng nhập thất bại', error.message);
+      Alert.alert('Đăng nhập thất bại', authErrorMessage(error, 'Không thể đăng nhập. Vui lòng thử lại.'));
     } else {
-      router.replace('/(tabs)');
+      const safeReturnTo = typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//')
+        ? returnTo
+        : '/(tabs)';
+      router.replace(safeReturnTo as never);
     }
   };
 
@@ -41,17 +48,15 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
         {/* Header 35% */}
-        <AnimatedBackground 
+        <SceneBackground
           scene="beach"
-          source={require('../../assets/images/beach_panorama.jpg')} 
           height={320}
-          duration={35000}
         >
-          <View style={styles.overlay}>
+          <View style={[styles.overlay, { paddingTop: insets.top + Spacing.md }]}>
             <Ionicons name="compass" size={48} color={Colors.white} style={styles.headerIcon} />
             <Text style={[Typography.display, styles.headerTitle]}>Xin chào!</Text>
           </View>
-        </AnimatedBackground>
+        </SceneBackground>
 
         {/* White Card Rising */}
         <View style={styles.card}>
@@ -85,25 +90,16 @@ export default function LoginScreen() {
             style={styles.loginBtn}
           />
           
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={[Typography.caption, styles.dividerText]}>hoặc</Text>
-            <View style={styles.dividerLine} />
-          </View>
-          
-          <AppButton
-            title="Tiếp tục với Google"
-            variant="secondary"
-            onPress={() => Alert.alert('Thông báo', 'Tính năng đang phát triển')}
-            style={styles.googleBtn}
-          />
-          
           <View style={styles.registerContainer}>
             <Text style={[Typography.body, { color: Colors.secondary }]}>Chưa có tài khoản? </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
               <Text style={[Typography.bodyBold, { color: Colors.accent }]}>Đăng ký</Text>
             </TouchableOpacity>
           </View>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={styles.guestButton}>
+            <Ionicons name="compass-outline" size={20} color={Colors.primary} />
+            <Text style={[Typography.bodyBold, { color: Colors.primary }]}>Tiếp tục với tư cách khách</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -125,7 +121,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: Spacing.xl,
     backgroundColor: 'rgba(20, 68, 37, 0.4)', // Colors.primary with opacity
   },
   headerIcon: {
@@ -174,5 +169,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 'auto',
     paddingBottom: Spacing.xl,
+  },
+  guestButton: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    marginTop: -Spacing.md,
   },
 });

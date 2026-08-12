@@ -1,15 +1,18 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { Ionicons } from '@expo/vector-icons';
 import { AppInput } from '@/src/components/atoms/AppInput';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { supabase } from '@/src/services/supabase';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import * as Linking from 'expo-linking';
+import { authErrorMessage } from '@/src/features/auth/authErrors';
 
 export default function ForgotPasswordScreen() {
+  const { linkError } = useLocalSearchParams<{ linkError?: string }>();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
@@ -21,11 +24,13 @@ export default function ForgotPasswordScreen() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: Linking.createURL('/(auth)/reset-password'),
+    });
     setLoading(false);
 
     if (error) {
-      Alert.alert('Lỗi', error.message);
+      Alert.alert('Không thể gửi email', authErrorMessage(error, 'Vui lòng kiểm tra email và thử lại sau.'));
     } else {
       setIsSent(true);
     }
@@ -62,13 +67,17 @@ export default function ForgotPasswordScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView style={styles.keyboardArea} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={Colors.primary} />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {linkError === '1' && (
+          <Text style={[Typography.caption, { color: Colors.error, textAlign: 'center', marginBottom: Spacing.md }]}>Liên kết không hợp lệ hoặc đã hết hạn. Hãy yêu cầu email mới.</Text>
+        )}
         <View style={styles.illustrationContainer}>
           <Ionicons name="mail-unread" size={80} color={Colors.accent} />
         </View>
@@ -99,7 +108,8 @@ export default function ForgotPasswordScreen() {
             ← Quay lại đăng nhập
           </Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -109,6 +119,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.white,
   },
+  keyboardArea: { flex: 1 },
   header: {
     padding: Spacing.md,
   },
@@ -116,7 +127,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xs,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     padding: Spacing.xl,
     justifyContent: 'center',
   },

@@ -1,53 +1,36 @@
-import { ImageSourcePropType } from 'react-native';
-import { Colors } from './colors';
-
 export type SceneId = 'mountain' | 'beach' | 'hoian' | 'bridge' | 'city';
 
 export interface SceneConfig {
   id: SceneId;
   label: string;
-  source: ImageSourcePropType;
-  tint: string;
-  duration: number;
+  /** Gradient nền (3 điểm: đỉnh → giữa → chân trời). */
+  sky: readonly [string, string, string];
 }
 
 export const Scenes: Record<SceneId, SceneConfig> = {
   mountain: {
     id: 'mountain',
     label: 'Bà Nà Hills',
-    source: require('../../assets/images/mountain_animation.jpg'),
-    tint: Colors.sceneMountain,
-    duration: 32000,
+    sky: ['#254A4A', '#3E6E63', '#6E9A7E'],
   },
   beach: {
     id: 'beach',
     label: 'Biển Mỹ Khê',
-    source: require('../../assets/images/beach_animation.jpg'),
-    tint: Colors.sceneBeach,
-    duration: 28000,
+    sky: ['#0D3A4A', '#1C726F', '#E8C24A'],
   },
   hoian: {
     id: 'hoian',
     label: 'Phố cổ Hội An',
-    source: require('../../assets/images/hoian_animation.jpg'),
-    tint: Colors.sceneHoiAn,
-    duration: 30000,
+    sky: ['#1A1206', '#3A2A10', '#6E4A1E'],
   },
   bridge: {
     id: 'bridge',
-    label: 'Cầu Đà Nẵng về đêm',
-    source: require('../../assets/images/danang_city_panorama.jpg'),
-    tint: Colors.sceneBridge,
-    duration: 34000,
+    label: 'Cầu Rồng Đà Nẵng về đêm',
+    sky: ['#050D1A', '#0A1A2E', '#173252'],
   },
   city: {
     id: 'city',
     label: 'Thành phố Đà Nẵng',
-    source: require('../../assets/images/danang_city_panorama.jpg'),
-    tint: Colors.sceneBridge,
-    duration: 34000,
+    sky: ['#050D1A', '#0A1A2E', '#173252'],
   },
 };
-
-/** Alternate wide panorama for mountain headers */
-export const MountainPanorama = require('../../assets/images/mountain_panorama.jpg');

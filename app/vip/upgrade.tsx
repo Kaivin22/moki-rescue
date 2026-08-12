@@ -7,26 +7,20 @@ import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { useAuthStore } from '@/src/stores/authStore';
-import { supabase } from '@/src/services/supabase';
-
-const VIP_PLANS = [
-  { id: '1_month', title: '1 Tháng', price: '49,000đ', popular: false },
-  { id: '6_month', title: '6 Tháng', price: '249,000đ', popular: true },
-  { id: '12_month', title: '1 Năm', price: '399,000đ', popular: false },
-];
+import { createSupportTicket } from '@/src/features/support/api/tickets';
+import { isProfileVipActive } from '@/src/features/vip/api/subscriptions';
 
 const VIP_FEATURES = [
-  'Tạo lịch trình không giới hạn',
-  'Chat với AI Mentor chuyên sâu',
-  'Mở khóa các địa điểm Ẩn (Hidden Gems)',
-  'Lưu trữ Offline',
-  'Không có quảng cáo',
+  'Xem tuyến đường chi tiết ngay trong lịch trình',
+  'Tối ưu thứ tự điểm đến bằng ma trận thời gian đường bộ',
+  'AI rà soát lại lịch trình sau khi thuật toán tối ưu',
+  'Cảnh báo thời tiết và thời lượng di chuyển theo từng ngày',
 ];
 
 export default function VIPUpgradeScreen() {
   const { user, profile } = useAuthStore();
-  const [selectedPlan, setSelectedPlan] = useState('6_month');
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const isVip = isProfileVipActive(profile);
 
   const handleUpgrade = async () => {
     if (!user) {
@@ -34,24 +28,20 @@ export default function VIPUpgradeScreen() {
       return;
     }
 
-    setLoading(true);
-    // Giả lập thanh toán thành công
-    setTimeout(async () => {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ vip_status: 'active' })
-        .eq('id', user.id);
-        
-      setLoading(false);
-      
-      if (!error) {
-        Alert.alert('Thành công', 'Chào mừng bạn đến với VIP Member!', [
-          { text: 'Khám phá ngay', onPress: () => router.replace('/(tabs)') }
-        ]);
-      } else {
-        Alert.alert('Lỗi', 'Có lỗi xảy ra khi cập nhật trạng thái');
-      }
-    }, 1500);
+    setSubmitting(true);
+    try {
+      await createSupportTicket({
+      userId: user.id,
+      category: 'vip_not_activated',
+      title: 'Yêu cầu tham gia chương trình VIP',
+      description: 'Người dùng yêu cầu quản trị viên liên hệ và xác nhận điều kiện VIP. Không có giao dịch thanh toán nào được tạo.',
+      });
+      Alert.alert('Đã gửi yêu cầu', 'Yêu cầu đã được ghi nhận trong hệ thống hỗ trợ. Quản trị viên sẽ phản hồi trên ticket.');
+    } catch (error: any) {
+      Alert.alert('Không thể gửi yêu cầu', error.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -65,9 +55,11 @@ export default function VIPUpgradeScreen() {
       <ScrollView contentContainerStyle={styles.content} bounces={false}>
         <View style={styles.heroSection}>
           <Ionicons name="star" size={64} color={Colors.accent} style={styles.heroIcon} />
-          <Text style={[Typography.display, styles.heroTitle]}>Nâng cấp VIP</Text>
+          <Text style={[Typography.display, styles.heroTitle]}>{isVip ? 'Quyền lợi VIP' : 'Trải nghiệm VIP'}</Text>
           <Text style={[Typography.body, styles.heroSubtitle]}>
-            Mở khóa toàn bộ trải nghiệm du lịch tuyệt vời nhất tại Đà Nẵng
+            {isVip
+              ? 'Tài khoản của bạn đang được sử dụng các tính năng tối ưu nâng cao.'
+              : 'Đăng ký chương trình thử nghiệm để mở các tính năng tối ưu nâng cao.'}
           </Text>
         </View>
 
@@ -80,61 +72,25 @@ export default function VIPUpgradeScreen() {
           ))}
         </View>
 
-        <View style={styles.plansSection}>
-          {VIP_PLANS.map(plan => (
-            <TouchableOpacity
-              key={plan.id}
-              style={[
-                styles.planCard,
-                selectedPlan === plan.id && styles.planCardActive
-              ]}
-              onPress={() => setSelectedPlan(plan.id)}
-            >
-              {plan.popular && (
-                <View style={styles.popularBadge}>
-                  <Text style={[Typography.caption, { color: Colors.primary, fontWeight: '700' }]}>
-                    Phổ biến nhất
-                  </Text>
-                </View>
-              )}
-              
-              <View style={styles.planInfo}>
-                <Text style={[
-                  Typography.h3, 
-                  selectedPlan === plan.id ? { color: Colors.primary } : { color: Colors.textPrimary }
-                ]}>
-                  {plan.title}
-                </Text>
-                <Text style={[
-                  Typography.display, 
-                  { fontSize: 24 },
-                  selectedPlan === plan.id ? { color: Colors.primary } : { color: Colors.textPrimary }
-                ]}>
-                  {plan.price}
-                </Text>
-              </View>
-              
-              <View style={[
-                styles.radioBtn,
-                selectedPlan === plan.id && styles.radioBtnActive
-              ]}>
-                {selectedPlan === plan.id && <View style={styles.radioInner} />}
-              </View>
-            </TouchableOpacity>
-          ))}
+        <View style={[styles.noticeCard, isVip && styles.activeCard]}>
+          <Ionicons name={isVip ? 'shield-checkmark' : 'information-circle-outline'} size={22} color={Colors.primary} />
+          <Text style={[Typography.body, styles.noticeText]}>
+            {isVip
+              ? profile?.vip_expires_at
+                ? `VIP đang hoạt động đến ${new Date(profile.vip_expires_at).toLocaleDateString('vi-VN')}.`
+                : 'VIP đang hoạt động và hiện không có ngày hết hạn.'
+              : 'Ứng dụng chưa bán gói hay thu tiền. Nút bên dưới chỉ tạo một ticket yêu cầu tham gia chương trình thử nghiệm.'}
+          </Text>
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      {!isVip && <View style={styles.footer}>
         <AppButton
-          title="Thanh toán ngay"
+          title="Đăng ký thử nghiệm VIP"
           onPress={handleUpgrade}
-          loading={loading}
+          loading={submitting}
         />
-        <Text style={[Typography.caption, styles.termsText]}>
-          Bằng việc thanh toán, bạn đồng ý với Điều khoản Dịch vụ và Chính sách Bảo mật của chúng tôi.
-        </Text>
-      </View>
+      </View>}
     </SafeAreaView>
   );
 }
@@ -185,6 +141,9 @@ const styles = StyleSheet.create({
   plansSection: {
     marginBottom: Spacing.xl,
   },
+  noticeCard: { flexDirection: 'row', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.md, backgroundColor: Colors.surface, marginBottom: Spacing.xl },
+  activeCard: { backgroundColor: Colors.accentSoft },
+  noticeText: { color: Colors.secondary, flex: 1 },
   planCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',

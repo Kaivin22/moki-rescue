@@ -1,3 +1,5 @@
+import type { PlaceCategory } from './domain';
+
 export interface Place {
   id: string;
   name: string;
@@ -6,25 +8,37 @@ export interface Place {
   city: string;
   lat: number;
   lng: number;
-  category: string;
+  category: PlaceCategory;
   tags: string[];
   suitable_for: string[];
-  entry_fee_min: number;
-  entry_fee_max: number;
   avg_duration_min: number;
   opening_time: string;
   closing_time: string;
   opening_days: number[];
   tips: string | null;
   best_time_of_day: string | null;
-  best_months: number[];
+  best_months: number[] | null;
   image_urls: string[];
   phone: string | null;
   website: string | null;
-  rating_avg: number;
+  source_name: string;
+  source_url: string;
+  rating_avg: number | null;
   rating_count: number;
   is_active: boolean;
+  content_status?: 'draft' | 'pending_review' | 'published' | 'rejected' | 'archived';
+  review_note?: string | null;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+  version?: number;
   score?: number; // Used for recommendation
+  distanceKm?: number; // Used for distance sorting
+
+  // ─── Weather-aware scheduling context (optional; suy luận từ category/tags nếu DB thiếu) ───
+  is_indoor?: boolean;           // true = bảo tàng/mall/cafe (ít bị ảnh hưởng mưa)
+  weather_sensitivity?: number;  // 0..1 — 1 = biển/leo núi (rất nhạy mưa), 0 = trong nhà
+  ideal_time_of_day?: 'morning' | 'noon' | 'afternoon' | 'evening' | 'any';
+  is_meal_venue?: boolean;       // điểm ăn uống — dùng để chèn vào khung bữa
 }
 
 export interface Review {
@@ -34,7 +48,7 @@ export interface Review {
   rating: number;
   visit_type: string | null;
   visit_month: number | null;
-  highlights: string[];
+  highlights: string[] | null;
   comment: string | null;
   helpful_count: number;
   created_at: string;
@@ -47,7 +61,6 @@ export interface Review {
 export interface FilterState {
   categories: string[];
   suitableFor: string[];
-  maxEntryFee: number | null;
   minDuration: number | null;
   minRating: number | null;
   openNow: boolean;

@@ -10,6 +10,11 @@ skills-lock.json
 # ─── Dependencies ─────────────────────────────────────────────────────────────
 node_modules/
 
+# ─── Backend build output ─────────────────────────────────────────────────────
+backend/target/
+backend/.m2repo/
+backend/.maven-home/
+
 # ─── Expo ─────────────────────────────────────────────────────────────────────
 .expo/
 dist/

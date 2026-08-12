@@ -25,6 +25,15 @@ export const Motion = {
   slow: 520,
   pan: 28000,
   ambient: 6000,
+  // ─── Scene atmosphere (SceneCanvas) ─────────────────────────────────────
+  kenBurns: 18000, // zoom/drift ảnh nền
+  mistDrift: 22000, // sương núi trôi ngang
+  waveRoll: 4200, // 1 nhịp sóng biển
+  lanternBob: 3600, // đèn lồng đung đưa
+  twinkle: 2400, // đèn thành phố / sao nhấp nháy
+  glint: 9000, // nắng lướt mặt biển
+  clock: 12000, // chu kỳ đồng hồ dùng chung của hệ hạt
+  parallaxMax: 40, // px dịch tối đa khi cuộn
 } as const;
 
 export const Fonts = {

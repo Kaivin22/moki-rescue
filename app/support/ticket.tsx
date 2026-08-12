@@ -8,12 +8,22 @@ import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
 import { useAuthStore } from '@/src/stores/authStore';
-import { supabase } from '@/src/services/supabase';
+import { createSupportTicket, TicketCategory } from '@/src/features/support/api/tickets';
+
+const TICKET_CATEGORIES = [
+  { value: 'app_bug', label: 'Lỗi ứng dụng' },
+  { value: 'data_error', label: 'Dữ liệu sai' },
+  { value: 'place_wrong_info', label: 'Thông tin địa điểm' },
+  { value: 'payment_error', label: 'Thanh toán' },
+  { value: 'suggestion', label: 'Góp ý' },
+  { value: 'other', label: 'Khác' },
+] as const;
 
 export default function SupportTicketScreen() {
   const { user } = useAuthStore();
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [category, setCategory] = useState<TicketCategory>('suggestion');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -29,21 +39,15 @@ export default function SupportTicketScreen() {
 
     setLoading(true);
     
-    const { error } = await supabase.from('support_tickets').insert({
-      user_id: user.id,
-      subject,
-      message,
-      status: 'open',
-    });
-
-    setLoading(false);
-
-    if (error) {
-      Alert.alert('Lỗi', 'Không thể gửi yêu cầu: ' + error.message);
-    } else {
+    try {
+      await createSupportTicket({ userId: user.id, category, title: subject, description: message });
       Alert.alert('Thành công', 'Yêu cầu của bạn đã được gửi. Chúng tôi sẽ phản hồi sớm nhất có thể.', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'Xem yêu cầu', onPress: () => router.replace('/support') }
       ]);
+    } catch (error: any) {
+      Alert.alert('Lỗi', 'Không thể gửi yêu cầu: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -67,6 +71,14 @@ export default function SupportTicketScreen() {
             <Text style={[Typography.body, styles.infoText]}>
               Chúng tôi luôn lắng nghe ý kiến của bạn để cải thiện ứng dụng tốt hơn.
             </Text>
+          </View>
+          <Text style={[Typography.bodyBold, { color: Colors.textPrimary, marginBottom: Spacing.sm }]}>Loại yêu cầu</Text>
+          <View style={styles.categoryList}>
+            {TICKET_CATEGORIES.map(item => (
+              <TouchableOpacity key={item.value} style={[styles.categoryChip, category === item.value && styles.categoryChipActive]} onPress={() => setCategory(item.value)}>
+                <Text style={[Typography.caption, styles.categoryText, category === item.value && styles.categoryTextActive]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           <AppInput
@@ -138,6 +150,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
     marginTop: Spacing.md,
   },
+  categoryList: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
+  categoryChip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.divider, backgroundColor: Colors.surface },
+  categoryChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  categoryText: { color: Colors.secondary },
+  categoryTextActive: { color: Colors.white, fontWeight: '700' },
   textAreaContainer: {
     // AppInput will render its own container, we just ensure proper height
   },

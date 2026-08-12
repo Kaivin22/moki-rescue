@@ -1,55 +1,84 @@
 import { create } from 'zustand';
 import { Place } from '../types/place';
 import { OptimizerResult, OptimizerInput, optimizeRoute } from '../features/itinerary/services/routeOptimizer';
+import { PLANNING_RULES } from '../features/itinerary/config/planningRules';
+import type { ItineraryDraft } from '../types/itinerary';
+import { normalizeItineraryDraft, PLANNING_LIMITS } from '../features/itinerary/config/planningPolicy';
 
-export interface ItineraryDraft {
-  title: string;
-  numDays: number;
-  startDate: string; // YYYY-MM-DD
-  numPeople: number;
-  budgetTier: 'low' | 'mid' | 'high';
-  transport: 'motorbike' | 'car' | 'walk' | 'bicycle';
-  travelStyles: string[];
-  selectedPlaces: Place[];
-}
-
-const defaultDraft: ItineraryDraft = {
+const createDefaultDraft = (): ItineraryDraft => ({
   title: '',
-  numDays: 3,
-  startDate: new Date().toISOString().split('T')[0],
+  numDays: 1,
+  startDate: '',
   numPeople: 2,
-  budgetTier: 'mid',
   transport: 'motorbike',
   travelStyles: [],
   selectedPlaces: [],
-};
+});
 
 interface ItineraryStore {
   draft: ItineraryDraft;
   result: OptimizerResult | null;
-  myItineraries: any[];
   isOptimizing: boolean;
+  editId?: string;
+  expectedUpdatedAt?: string;
+  preloadedDayPlans?: Place[][];
+  preloadedSlotOverrides?: Record<string, { startTime: string; durationMin: number }>;
+  draftSessionId: number;
   setDraftField: <K extends keyof ItineraryDraft>(field: K, value: ItineraryDraft[K]) => void;
   addPlaceToDraft: (place: Place) => void;
   removePlaceFromDraft: (placeId: string) => void;
+  reorderPlaces: (places: Place[]) => void;
   optimize: () => Promise<void>;
   reset: () => void;
+  setEditId: (id: string | undefined) => void;
+  prefillDraft: (
+    draft: ItineraryDraft,
+    dayPlans: Place[][],
+    options?: {
+      editId?: string;
+      expectedUpdatedAt?: string;
+      slotOverrides?: Record<string, { startTime: string; durationMin: number }>;
+    }
+  ) => void;
 }
 
 export const useItineraryStore = create<ItineraryStore>((set, get) => ({
-  draft: { ...defaultDraft },
+  draft: createDefaultDraft(),
   result: null,
-  myItineraries: [],
   isOptimizing: false,
+  editId: undefined,
+  expectedUpdatedAt: undefined,
+  preloadedDayPlans: undefined,
+  preloadedSlotOverrides: undefined,
+  draftSessionId: 0,
   
-  setDraftField: (field, value) => 
-    set((state) => ({ draft: { ...state.draft, [field]: value } })),
+  setEditId: (id) => set({ editId: id }),
+  prefillDraft: (draft, dayPlans, options) => set((state) => ({
+    draft: normalizeItineraryDraft(draft),
+    preloadedDayPlans: dayPlans,
+    editId: options?.editId,
+    expectedUpdatedAt: options?.expectedUpdatedAt,
+    preloadedSlotOverrides: options?.slotOverrides,
+    draftSessionId: state.draftSessionId + 1,
+  })),
+
+  setDraftField: (field, value) =>
+    set((state) => {
+      let normalizedValue = value;
+      if (field === 'numDays') {
+        normalizedValue = Math.min(PLANNING_LIMITS.maxDays, Math.max(PLANNING_LIMITS.minDays, Math.round(Number(value)))) as ItineraryDraft[typeof field];
+      } else if (field === 'numPeople') {
+        normalizedValue = Math.min(PLANNING_LIMITS.maxPeople, Math.max(PLANNING_LIMITS.minPeople, Math.round(Number(value)))) as ItineraryDraft[typeof field];
+      }
+      return { draft: { ...state.draft, [field]: normalizedValue } };
+    }),
     
   addPlaceToDraft: (place) => 
     set((state) => ({
       draft: {
         ...state.draft,
         selectedPlaces: state.draft.selectedPlaces.some(p => p.id === place.id)
+          || state.draft.selectedPlaces.length >= PLANNING_LIMITS.maxSelectedPlaces
           ? state.draft.selectedPlaces
           : [...state.draft.selectedPlaces, place]
       }
@@ -63,11 +92,16 @@ export const useItineraryStore = create<ItineraryStore>((set, get) => ({
       }
     })),
 
+  reorderPlaces: (places) =>
+    set((state) => ({
+      draft: {
+        ...state.draft,
+        selectedPlaces: places.filter((place, index) => places.findIndex((item) => item.id === place.id) === index),
+      },
+    })),
+
   optimize: async () => {
     set({ isOptimizing: true });
-    
-    // Simulate API delay for UX (as shown in Optimizing Loading screen)
-    await new Promise(resolve => setTimeout(resolve, 2000));
     
     const draft = get().draft;
     
@@ -75,10 +109,8 @@ export const useItineraryStore = create<ItineraryStore>((set, get) => ({
       places: draft.selectedPlaces,
       numDays: draft.numDays,
       transport: draft.transport,
-      startTime: '08:00', // Default
-      endTime: '21:00',   // Default
-      budgetTotal: draft.budgetTier === 'low' ? 500000 * draft.numDays : 
-                   draft.budgetTier === 'mid' ? 1500000 * draft.numDays : 5000000 * draft.numDays,
+      startTime: PLANNING_RULES.defaultDayStart,
+      endTime: PLANNING_RULES.defaultDayEnd,
     };
     
     const result = optimizeRoute(input);
@@ -86,5 +118,9 @@ export const useItineraryStore = create<ItineraryStore>((set, get) => ({
     set({ result, isOptimizing: false });
   },
   
-  reset: () => set({ draft: { ...defaultDraft }, result: null }),
+  reset: () => set((state) => ({
+    draft: createDefaultDraft(), result: null, editId: undefined,
+    expectedUpdatedAt: undefined, preloadedDayPlans: undefined, preloadedSlotOverrides: undefined,
+    draftSessionId: state.draftSessionId + 1,
+  })),
 }));

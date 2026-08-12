@@ -1,0 +1,81 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    versioning-strategy: increase-if-necessary
+    groups:
+      expo-sdk-54-patches:
+        patterns:
+          - expo
+          - expo-*
+          - "@expo/*"
+          - react
+          - react-dom
+          - react-native
+          - react-native-*
+          - "@react-native*"
+        update-types:
+          - patch
+      frontend-minor-patches:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - expo
+          - expo-*
+          - "@expo/*"
+          - react
+          - react-dom
+          - react-native
+          - react-native-*
+          - "@react-native*"
+        update-types:
+          - minor
+          - patch
+    # Expo/React Native minor and major upgrades are coordinated SDK migrations.
+    # Security updates remain eligible and every Dependabot PR still runs CI.
+    ignore:
+      - dependency-name: expo
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: expo-*
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: "@expo/*"
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: react
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: react-dom
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: react-native
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: react-native-*
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: "@react-native*"
+        update-types: [version-update:semver-minor, version-update:semver-major]
+
+  - package-ecosystem: maven
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      backend-minor-patches:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      github-actions:
+        patterns:
+          - "*"

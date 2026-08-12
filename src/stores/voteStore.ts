@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
 
 interface VoteCounts {
@@ -8,66 +7,49 @@ interface VoteCounts {
 }
 
 interface VoteState {
+  currentShareToken: string | null;
   myVotes: Record<string, 'up' | 'down' | null>;
   counts: Record<string, VoteCounts>;
+  participants: string[];
   loading: boolean;
-  voterToken: string | null;
-  ensureVoterToken: () => Promise<string>;
-  castVote: (itineraryId: string, placeId: string, type: 'up' | 'down') => Promise<void>;
-  fetchVotes: (itineraryId: string) => Promise<void>;
+  error: string | null;
+  castVote: (shareToken: string, placeId: string, type: 'up' | 'down') => Promise<void>;
+  fetchVotes: (shareToken: string) => Promise<void>;
 }
 
-const TOKEN_KEY = 'danang_voter_token';
-
 export const useVoteStore = create<VoteState>((set, get) => ({
+  currentShareToken: null,
   myVotes: {},
   counts: {},
+  participants: [],
   loading: false,
-  voterToken: null,
-
-  ensureVoterToken: async () => {
-    const existing = get().voterToken;
-    if (existing) return existing;
-
-    let token = await AsyncStorage.getItem(TOKEN_KEY);
-    if (!token) {
-      token = `v_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-      await AsyncStorage.setItem(TOKEN_KEY, token);
-    }
-    set({ voterToken: token });
-    return token;
-  },
-
-  fetchVotes: async (itineraryId) => {
-    set({ loading: true });
-    const token = await get().ensureVoterToken();
-
-    const { data, error } = await supabase
-      .from('group_votes')
-      .select('place_id, vote, voter_token')
-      .eq('itinerary_id', itineraryId);
+  error: null,
+  fetchVotes: async (shareToken) => {
+    set((state) => state.currentShareToken === shareToken
+      ? { loading: true, error: null }
+      : { currentShareToken: shareToken, myVotes: {}, counts: {}, participants: [], loading: true, error: null });
+    const { data, error } = await supabase.rpc('get_shared_votes', {
+      p_share_token: shareToken,
+    });
 
     if (!error && data) {
       const counts: Record<string, VoteCounts> = {};
       const myVotes: Record<string, 'up' | 'down' | null> = {};
-
-      data.forEach((row) => {
-        if (!counts[row.place_id]) counts[row.place_id] = { up: 0, down: 0 };
-        if (row.vote === 'up') counts[row.place_id].up += 1;
-        if (row.vote === 'down') counts[row.place_id].down += 1;
-        if (row.voter_token === token) {
-          myVotes[row.place_id] = row.vote as 'up' | 'down';
-        }
+      const rows = data as { place_id: string; up: number; down: number; my_vote: 'up' | 'down' | null }[];
+      rows.forEach((row) => {
+        counts[row.place_id] = { up: row.up, down: row.down };
+        if (row.my_vote) myVotes[row.place_id] = row.my_vote;
       });
 
-      set({ counts, myVotes, loading: false });
+      set({ counts, myVotes, participants: [], loading: false, error: null });
     } else {
-      set({ loading: false });
+      set({ loading: false, error: error?.message ?? 'Không thể tải dữ liệu bình chọn.' });
     }
   },
 
-  castVote: async (itineraryId, placeId, type) => {
-    const token = await get().ensureVoterToken();
+  castVote: async (shareToken, placeId, type) => {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error('Bạn cần đăng nhập để bình chọn.');
     const prevVote = get().myVotes[placeId];
     const prevCounts = { ...(get().counts[placeId] || { up: 0, down: 0 }) };
 
@@ -83,25 +65,18 @@ export const useVoteStore = create<VoteState>((set, get) => ({
       counts: { ...get().counts, [placeId]: nextCounts },
     });
 
-    const { data: userData } = await supabase.auth.getUser();
-    const voterName = userData.user?.email?.split('@')[0] || 'Khách';
-
-    const { error } = await supabase.from('group_votes').upsert(
-      {
-        itinerary_id: itineraryId,
-        place_id: placeId,
-        voter_token: token,
-        voter_name: voterName,
-        vote: type,
-      },
-      { onConflict: 'itinerary_id,place_id,voter_token' }
-    );
+    const { error } = await supabase.rpc('vote_shared_itinerary', {
+      p_share_token: shareToken,
+      p_place_id: placeId,
+      p_vote: type,
+    });
 
     if (error) {
       set({
         myVotes: { ...get().myVotes, [placeId]: prevVote ?? null },
         counts: { ...get().counts, [placeId]: prevCounts },
       });
+      throw error;
     }
   },
 }));

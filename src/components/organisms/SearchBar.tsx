@@ -19,17 +19,17 @@ export function SearchBar({
   ...props
 }: SearchBarProps) {
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, style as any]}>
       <View style={styles.inputContainer}>
         <Ionicons name="search" size={20} color={Colors.secondary} style={styles.searchIcon} />
-        
+
         <TextInput
           style={[styles.input, Typography.body]}
           placeholderTextColor={Colors.secondary}
           value={value}
           {...props}
         />
-        
+
         {value ? (
           <TouchableOpacity onPress={onClear} style={styles.iconButton}>
             <Ionicons name="close-circle" size={20} color={Colors.secondary} />

@@ -1,39 +1,38 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator } from 'react-native';
+import { MapView, Marker, PROVIDER_GOOGLE } from '@/src/components/MapWrapper';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { usePlaces } from '@/src/hooks/usePlaces';
 import { PlaceCard } from '@/src/components/molecules/PlaceCard';
-import { router } from 'expo-router';
-import BottomSheet from '@gorhom/bottom-sheet'; // You might need to install this later, or use a custom view
+import { router, useLocalSearchParams } from 'expo-router';
+import { useCurrentLocation } from '@/src/features/location/hooks/useCurrentLocation';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { Place } from '@/src/types/place';
+import { categoryLabel } from '@/src/utils/format';
+import { DA_NANG_INITIAL_REGION } from '@/src/features/location/config/danang';
+import { AppButton } from '@/src/components/atoms/AppButton';
 
 const { width, height } = Dimensions.get('window');
 
-const DANANG_REGION = {
-  latitude: 16.0544,
-  longitude: 108.2022,
-  latitudeDelta: 0.0922,
-  longitudeDelta: 0.0421,
-};
-
-const getCategoryIcon = (category: string) => {
-  switch (category) {
-    case 'beach': return 'water';
-    case 'mountain': return 'image';
-    case 'food': return 'restaurant';
-    case 'temple': return 'home';
-    default: return 'location';
-  }
-};
-
 export default function MapScreen() {
-  const { data: places } = usePlaces();
-  const [selectedPlace, setSelectedPlace] = useState<any>(null);
+  const insets = useSafeAreaInsets();
+  const { data: places, isLoading, isError, refetch, isRefetching } = usePlaces();
+  const { placeId } = useLocalSearchParams<{ placeId?: string }>();
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [category, setCategory] = useState<string>('all');
   const mapRef = useRef<MapView>(null);
+  const { coordinate, requestLocation, status } = useCurrentLocation();
+  const categories = useMemo(() => ['all', ...new Set((places ?? []).flatMap(place => place.category ? [place.category] : []))], [places]);
+  const visiblePlaces = category === 'all' ? places : places?.filter(place => place.category === category);
 
-  const handleMarkerPress = (place: any) => {
+  useEffect(() => {
+    const target = places?.find(place => place.id === placeId);
+    if (target) handleMarkerPress(target);
+  }, [placeId, places]);
+
+  const handleMarkerPress = (place: Place) => {
     setSelectedPlace(place);
     mapRef.current?.animateToRegion({
       latitude: place.lat,
@@ -48,42 +47,84 @@ export default function MapScreen() {
       <MapView
         ref={mapRef}
         style={styles.map}
-        initialRegion={DANANG_REGION}
         provider={PROVIDER_GOOGLE}
-        showsUserLocation
+        initialRegion={DA_NANG_INITIAL_REGION}
+        showsUserLocation={false}
         showsMyLocationButton={false}
+        onPress={() => setSelectedPlace(null)}
       >
-        {places?.map((place) => (
+        {visiblePlaces?.map((place) => (
           <Marker
             key={place.id}
             coordinate={{ latitude: place.lat, longitude: place.lng }}
-            onPress={() => handleMarkerPress(place)}
+            onPress={(e: any) => {
+              if (e && e.stopPropagation) e.stopPropagation();
+              setSelectedPlace(place);
+
+              // Center map on selected marker
+              mapRef.current?.animateToRegion({
+                latitude: place.lat,
+                longitude: place.lng,
+                latitudeDelta: 0.05,
+                longitudeDelta: 0.05,
+              }, 500);
+            }}
           >
-            <View style={[styles.markerContainer, selectedPlace?.id === place.id && styles.selectedMarker]}>
-              <Ionicons 
-                name={getCategoryIcon(place.category) as any} 
-                size={16} 
-                color={selectedPlace?.id === place.id ? Colors.white : Colors.primary} 
+            <View style={[
+              styles.markerContainer,
+              selectedPlace?.id === place.id && styles.selectedMarker
+            ]}>
+              <Ionicons
+                name="location"
+                size={selectedPlace?.id === place.id ? 32 : 24}
+                color={selectedPlace?.id === place.id ? Colors.primary : Colors.accent}
               />
             </View>
           </Marker>
         ))}
       </MapView>
 
-      <View style={styles.topOverlay}>
+      <View pointerEvents="none" style={[styles.statusBarScrim, { height: insets.top }]} />
+
+      {isLoading && (
+        <View style={styles.stateOverlay}><ActivityIndicator size="large" color={Colors.primary} /><Text style={styles.stateText}>Đang tải địa điểm…</Text></View>
+      )}
+      {isError && (
+        <View style={styles.stateOverlay}><Ionicons name="cloud-offline-outline" size={40} color={Colors.error} /><Text style={styles.stateText}>Không thể tải địa điểm trên bản đồ.</Text><AppButton title="Thử lại" onPress={() => refetch()} loading={isRefetching} /></View>
+      )}
+      {!isLoading && !isError && places?.length === 0 && (
+        <View style={styles.stateOverlay}><Ionicons name="location-outline" size={40} color={Colors.textMuted} /><Text style={styles.stateText}>Chưa có địa điểm đã xuất bản.</Text></View>
+      )}
+
+      <View style={[styles.topOverlay, { top: insets.top + Spacing.sm }]}>
         <View style={styles.chip}>
-          <Text style={[Typography.bodyBold, { color: Colors.white }]}>📍 Đà Nẵng & Hội An</Text>
+          <Text style={[Typography.bodyBold, { color: Colors.white }]}>📍 {category === 'all' ? 'Tất cả địa điểm' : categoryLabel(category)}</Text>
         </View>
-        <TouchableOpacity style={styles.filterBtn}>
+        <TouchableOpacity
+          accessibilityLabel="Lọc địa điểm theo danh mục"
+          style={styles.filterBtn}
+          onPress={() => {
+            const currentIndex = categories.indexOf(category);
+            setCategory(categories[(currentIndex + 1) % categories.length] ?? 'all');
+            setSelectedPlace(null);
+          }}
+        >
           <Ionicons name="options" size={24} color={Colors.primary} />
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.myLocationBtn, { bottom: selectedPlace ? 280 : 100 }]}
-        onPress={() => {
-          // Add location tracking logic later
-          mapRef.current?.animateToRegion(DANANG_REGION);
+        onPress={async () => {
+          const location = coordinate ?? await requestLocation();
+          if (!location) {
+            Alert.alert(
+              status === 'denied' ? 'Chưa có quyền vị trí' : 'Không lấy được vị trí',
+              'Bạn có thể tiếp tục xem bản đồ tổng quan Đà Nẵng hoặc cấp quyền vị trí trong cài đặt.'
+            );
+            return;
+          }
+          mapRef.current?.animateToRegion({ ...location, latitudeDelta: 0.02, longitudeDelta: 0.02 });
         }}
       >
         <Ionicons name="navigate" size={24} color={Colors.accent} />
@@ -138,7 +179,6 @@ const styles = StyleSheet.create({
   },
   topOverlay: {
     position: 'absolute',
-    top: 50,
     left: Spacing.md,
     right: Spacing.md,
     flexDirection: 'row',
@@ -193,7 +233,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: Radius.xxl,
     borderTopRightRadius: Radius.xxl,
     padding: Spacing.md,
-    paddingBottom: 90, // Account for bottom tab bar
+    paddingBottom: Spacing.md,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
@@ -214,4 +254,10 @@ const styles = StyleSheet.create({
     height: 200,
     marginBottom: 0,
   },
+  stateOverlay: { position: 'absolute', alignSelf: 'center', top: '38%', maxWidth: 300, alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.white, padding: Spacing.lg, borderRadius: Radius.lg, shadowColor: Colors.primaryDark, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6 },
+  statusBarScrim: {
+    position: 'absolute', top: 0, left: 0, right: 0,
+    backgroundColor: 'rgba(255,255,255,0.82)', zIndex: 20, elevation: 20,
+  },
+  stateText: { ...Typography.body, color: Colors.textSecondary, textAlign: 'center' },
 });

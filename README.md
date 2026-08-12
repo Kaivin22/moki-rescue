@@ -1,177 +1,87 @@
-# 🗺️ DaNang Itinerary — Ứng dụng lập lịch trình du lịch thông minh
+# Đi Đà Nẵng – Trip Planner
 
-Ứng dụng **React Native (Expo)** giúp khách du lịch khám phá, lên kế hoạch và chia sẻ hành trình tại **Đà Nẵng** và vùng lân cận.
+Ứng dụng Expo giúp khám phá địa điểm thật tại Đà Nẵng, lập lịch trình, chia sẻ theo liên kết và nhận hỗ trợ. Dữ liệu nghiệp vụ đến từ Supabase; dự án không đóng gói seed địa điểm, rating, ảnh hay lịch trình giả.
 
----
+## Phạm vi sản phẩm
 
-## ✨ Tính năng
+- Supabase Auth: đăng ký, đăng nhập, khôi phục mật khẩu, hoàn thiện hồ sơ và xóa tài khoản.
+- Địa điểm: tìm kiếm/phân trang/lọc, bản đồ, lưu, review, helpful vote và báo cáo sai thông tin.
+- Lịch trình: tạo, sửa, clone, tối ưu theo ma trận đường của từng phương tiện, đổi giờ có kiểm tra xung đột, dự báo đúng ngày, chia sẻ/revoke/vote bằng token.
+- AI: chat và nhận xét lịch trình qua Spring Boot; JWT, quota, VIP và trạng thái khóa đều được kiểm tra phía server.
+- Hỗ trợ: ticket, phản hồi và xử lý trạng thái atomic.
+- Editor/admin: quy trình nháp–duyệt địa điểm, kiểm duyệt review/report, phân trang tài khoản và audit thao tác đặc quyền.
+- Thanh toán không thuộc phạm vi hoàn thiện hiện tại; không bật thu tiền chỉ dựa trên schema VIP.
 
-| Module | Mô tả |
-|--------|-------|
-| 🔐 Auth | Email/Password đăng ký & đăng nhập qua Supabase |
-| 🏖 Khám phá | Danh sách địa điểm, bộ lọc, tìm kiếm, xem chi tiết |
-| 📅 Lập lịch | Chọn địa điểm → sắp xếp thứ tự → lưu & xem lịch trình |
-| ⚡ VIP Optimizer | Tối ưu lộ trình thông minh theo **thời tiết thực tế** & khoảng cách |
-| 🗺 Bản đồ | Google Maps, marker địa điểm, tuyến đường |
-| 🤖 AI Chat | Trợ lý du lịch AI (Google Gemini API) |
-| 🌤 Thời tiết | Dự báo thời tiết từ Open-Meteo (miễn phí, không cần key) |
-| ⭐ Review | Đánh giá địa điểm, gắn ảnh |
-| 🔖 Lưu địa điểm | Bookmark các địa điểm yêu thích |
-| 🎫 VIP | Gói VIP nâng cao (tối ưu lộ trình thông minh) |
-| 🎧 Hỗ trợ | Gửi ticket hỗ trợ |
-| 👤 Hồ sơ | Chỉnh sửa thông tin, đổi ngôn ngữ (6 ngôn ngữ) |
-| 🌐 Đa ngôn ngữ | Tiếng Việt · English · 中文 · 한국어 · 日本語 · Français |
-| 🔧 Admin | Dashboard 4 section: Người dùng, Nội dung, Hỗ trợ, Vận hành |
-| ✏️ Editor | Thêm & cập nhật dữ liệu địa điểm |
+Khách chưa đăng nhập chỉ đọc địa điểm đã xuất bản và lịch trình được chia sẻ bằng token còn hạn. Không có public itinerary feed trong MVP.
 
----
+## Kiến trúc
 
-## 🔑 Phân quyền người dùng
-
-| Role | Quyền |
-|------|-------|
-| `anonymous` | Xem địa điểm, lịch trình công khai |
-| `user` | Tạo lịch trình, AI Chat, viết review |
-| `editor` | Nhập / cập nhật dữ liệu địa điểm |
-| `admin` | Toàn quyền — quản lý người dùng, nội dung, hỗ trợ, vận hành |
-
----
-
-## 🏗️ Architecture
-
-```
-danang_itinerary/
-├── app/                  # Expo Router (file-based routing)
-│   ├── (auth)/           # Login, Register
-│   ├── (tabs)/           # Tab bar: Home, Map, Create, Profile
-│   ├── admin/            # Admin Dashboard
-│   ├── itinerary/        # Chi tiết & Share lịch trình
-│   ├── place/            # Chi tiết địa điểm
-│   ├── profile/          # Edit, Saved, History
-│   ├── vip/              # Upgrade VIP
-│   └── support/          # Support tickets
-├── src/
-│   ├── components/       # atoms / molecules / organisms
-│   ├── constants/        # Colors, spacing, scenes, i18n
-│   ├── features/         # Business logic (routeOptimizer, AI)
-│   ├── hooks/            # React Query hooks
-│   ├── i18n/             # Đa ngôn ngữ (6 ngôn ngữ)
-│   ├── services/         # Supabase, weatherService
-│   ├── stores/           # Zustand stores
-│   └── types/            # TypeScript interfaces
-├── assets/               # Ảnh nền panorama, icons, fonts
-└── scripts/              # SQL schema & seed data
+```text
+app/                 Expo Router routes/layouts
+src/components/      UI dùng chung
+src/features/        API, component và nghiệp vụ theo miền
+src/services/        Supabase, weather và adapter hạ tầng
+src/stores/          Auth và draft xuyên màn hình
+src/types/           Hợp đồng domain dùng chung
+backend/             Spring Boot API cho AI/routing/quota
+scripts/             Supabase baseline + RLS verification
+__tests__/           Unit/static contract tests
 ```
 
-- **Framework**: Expo SDK 54 · React Native 0.81
-- **Navigation**: Expo Router (file-based, tab + stack)
-- **State**: Zustand + React Query (@tanstack/react-query)
-- **Backend**: Supabase (Auth · PostgreSQL · RLS · Realtime)
-- **AI**: Google Gemini API
-- **Weather**: Open-Meteo (free, no key needed)
-- **Language**: TypeScript strict
+- Expo SDK 54, React Native 0.81, React 19.1.
+- Zustand + TanStack Query.
+- Supabase Auth/PostgreSQL/Storage với RLS.
+- Spring Boot 3, Java 21, Supabase JWT/JWKS, Gemini và OSRM.
+- Open-Meteo cho dự báo thời tiết.
 
----
+Xem ranh giới phụ thuộc tại [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-## 🚀 Cài đặt & Chạy
+## Cài đặt
 
-### Yêu cầu
-- Node.js 20+
-- npm 10+
-- Expo CLI (`npm install -g expo-cli`)
-- Supabase project (free tier đủ dùng)
+Yêu cầu Node `>=20.19.0`, npm và JDK 21 nếu chạy backend.
 
-### Setup
+```powershell
+npm ci
+Copy-Item .env.example .env
+```
 
-```bash
-# Clone repo
-git clone https://github.com/Kaivin22/danang-itinerary.git
-cd danang-itinerary
+Điền biến môi trường thật theo [DEPLOYMENT.md](./DEPLOYMENT.md). Với Supabase mới hoàn toàn, cài `scripts/01_schema.sql`; chỉ dùng `scripts/00_reset.sql` khi thật sự muốn xóa môi trường local/staging. Không có bước seed dữ liệu giả.
 
-# Cài dependencies
-npm install
-
-# Tạo .env từ template
-cp .env.example .env
-# → Điền SUPABASE_URL, SUPABASE_ANON_KEY, GEMINI_API_KEY vào .env
-
-# Tạo bảng & dữ liệu mẫu trong Supabase SQL Editor
-# Chạy lần lượt:
-#   scripts/01_schema_setup.sql
-#   scripts/02_seed_data.sql
-
-# Chạy app
+```powershell
 npm start
 ```
 
-### Chạy theo nền tảng
-```bash
-npm run ios       # iOS Simulator
-npm run android   # Android Emulator
-npm run web       # Trình duyệt
+Expo Go trên store được dùng với SDK 54. Khi nâng SDK, ưu tiên development build để không phụ thuộc phiên bản Expo Go trên App Store/Play Store.
+
+## Kiểm tra
+
+```powershell
+npm run check
+cd backend
+.\mvnw.cmd test
 ```
 
----
+`npm run check` chạy lint, TypeScript, Jest, kiểm tra phiên bản package Expo và public config. Trạng thái xác minh thực tế và các bước bắt buộc trên staging/thiết bị nằm trong [RELEASE_READINESS.md](./RELEASE_READINESS.md).
 
-## 🧪 Tests
+## CI/CD
 
-```bash
-# Kiểm tra TypeScript
-npx tsc --noEmit
+GitHub Actions chạy backend test, secret/dependency gate, lint, typecheck, Jest, Expo Doctor cố định phiên bản, package compatibility và export Android/iOS/web trên cả pull request lẫn push. Bundle CI dùng placeholder công khai, không phụ thuộc production secret. Binary ký để phát hành phải tạo bằng EAS profile `production` sau khi cấu hình project và credential:
 
-# Chạy unit tests
-npm test
+```powershell
+npx eas-cli build --platform android --profile production
+npx eas-cli build --platform ios --profile production
 ```
 
-**Test coverage**: RouteOptimizer · PlaceRecommender · Auth logic
+CD EAS chưa tự chạy khi push `main`: cần hoàn tất build Android/iOS đầu tiên trên máy tin cậy, tạo EAS `projectId`/credential rồi mới cấp `EXPO_TOKEN` qua GitHub Environment có reviewer. Secret backend được quản lý ở môi trường deploy backend, không đưa vào Expo config.
 
----
+## Cấp admin đầu tiên
 
-## 🔄 CI/CD
-
-GitHub Actions tự động khi push lên `main` hoặc `develop`:
-
-1. **🔍 TypeScript Check** — `tsc --noEmit`
-2. **🧪 Test** — Jest unit tests
-3. **🏗️ EAS Build** — Android APK (chỉ trên `main`, cần `EXPO_TOKEN`)
-
-### GitHub Secrets cần thiết
-
-| Secret | Mô tả |
-|--------|-------|
-| `SUPABASE_URL` | Project URL từ Supabase dashboard |
-| `SUPABASE_ANON_KEY` | Anonymous API key |
-| `GEMINI_API_KEY` | Google AI Studio API key |
-| `EXPO_TOKEN` | Token từ expo.dev (cho EAS Build) |
-| `KEYSTORE_BASE64` | File keystore Android (base64) |
-| `KEYSTORE_PASSWORD` | Mật khẩu keystore |
-| `KEY_ALIAS` | Key alias |
-| `KEY_PASSWORD` | Key password |
-
----
-
-## 🔐 Cấp quyền Admin
-
-1. Đăng ký tài khoản bình thường qua App
-2. Vào **Supabase → SQL Editor**, chạy:
+Tạo user bằng Supabase Auth, rồi chạy một lần trong SQL Editor bằng tài khoản chủ dự án:
 
 ```sql
 UPDATE public.profiles
-SET role = 'admin', vip_status = 'vip'
+SET role = 'admin'
 WHERE id = (SELECT id FROM auth.users WHERE email = 'your@email.com');
 ```
 
----
-
-## 🎨 Bảng màu
-
-| Token | Hex | Dùng cho |
-|-------|-----|----------|
-| Background | `#F7FBFD` | Nền toàn app |
-| Primary / Text | `#282E30` | Tiêu đề, thanh điều hướng |
-| Accent / CTA | `#92C5FD` | Nút chính, highlight |
-| Highlight / VIP | `#DDF186` | Badge VIP, accent phụ |
-
----
-
-Made with ❤️ · Expo + React Native + Supabase · Đà Nẵng 🌊
+Không cấp VIP thủ công trong câu lệnh này. Sau bootstrap, quản lý role/khóa tài khoản qua giao diện admin để dùng RPC có guard và audit.

@@ -1,25 +1,35 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Alert, type StyleProp, type ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { StarRating } from '../atoms/StarRating';
 import { Badge } from '../atoms/Badge';
 import { categoryLabel } from '@/src/utils/format';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '@/src/stores/authStore';
+import { useIsPlaceSaved, useToggleSavePlace } from '@/src/hooks/usePlaces';
+import { AnimatedPressable } from '../atoms/AnimatedPressable';
+import { Spring, Scale } from '@/src/constants/motion';
+import { useReduceMotion } from '@/src/hooks/useReduceMotion';
+import { router } from 'expo-router';
 
 interface PlaceCardProps {
+  id?: string;
   title: string;
   imageUrl?: string;
-  rating: number;
+  rating: number | null;
   ratingCount: number;
   category: string;
   distance?: string;
   onPress?: () => void;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
   compact?: boolean;
+  isSaved?: boolean;
 }
 
-export function PlaceCard({
+export const PlaceCard = React.memo(function PlaceCard({
+  id,
   title,
   imageUrl,
   rating,
@@ -29,12 +39,51 @@ export function PlaceCard({
   onPress,
   style,
   compact = false,
+  isSaved: isSavedProp,
 }: PlaceCardProps) {
+  const userId = useAuthStore((state) => state.user?.id);
+
+  // Tránh fetch thừa nếu isSavedProp đã được truyền từ cha (giải quyết N+1)
+  const { data: isSavedQuery } = useIsPlaceSaved(isSavedProp === undefined ? userId : null, id);
+  const isSaved = isSavedProp !== undefined ? isSavedProp : isSavedQuery;
+
+  const toggleSave = useToggleSavePlace();
+  const reduceMotion = useReduceMotion();
+  const heartScale = useRef(new Animated.Value(1)).current;
+
+  const handleToggleSave = () => {
+    if (!id) return;
+    if (!userId) {
+      Alert.alert('Yêu cầu đăng nhập', 'Đăng nhập để lưu địa điểm này.', [
+        { text: 'Để sau', style: 'cancel' },
+        { text: 'Đăng nhập', onPress: () => router.push({ pathname: '/(auth)/login', params: { returnTo: `/place/${id}` } }) },
+      ]);
+      return;
+    }
+    // Bounce pop cho icon tim tạo cảm giác "delight"
+    if (!reduceMotion) {
+      heartScale.stopAnimation();
+      heartScale.setValue(1);
+      Animated.sequence([
+        Animated.spring(heartScale, {
+          toValue: Scale.pop,
+          useNativeDriver: true,
+          ...Spring.bouncy,
+        }),
+        Animated.spring(heartScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          ...Spring.bouncy,
+        }),
+      ]).start();
+    }
+    toggleSave.mutate({ userId, placeId: id, isCurrentlySaved: !!isSaved });
+  };
   return (
-    <TouchableOpacity
-      activeOpacity={0.9}
+    <AnimatedPressable
       onPress={onPress}
       disabled={!onPress}
+      pressScale={Scale.pressCard}
       accessibilityRole="button"
       accessibilityLabel={title}
       style={[styles.container, compact && styles.compact, style]}
@@ -44,11 +93,25 @@ export function PlaceCard({
           source={imageUrl ? { uri: imageUrl } : require('@/assets/icon.png')}
           style={styles.image}
           contentFit="cover"
-          transition={200}
+          transition={reduceMotion ? 0 : 200}
+          cachePolicy="memory-disk"
+          recyclingKey={id}
         />
         <View style={styles.badgeContainer}>
           <Badge label={categoryLabel(category)} variant="darkGreen" />
         </View>
+
+        {id && (
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={handleToggleSave}
+            disabled={toggleSave.isPending}
+          >
+            <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+              <Ionicons name={isSaved ? "heart" : "heart-outline"} size={20} color={isSaved ? Colors.error : Colors.secondary} />
+            </Animated.View>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.infoContainer}>
@@ -66,9 +129,9 @@ export function PlaceCard({
           ) : null}
         </View>
       </View>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -108,6 +171,22 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: Spacing.sm,
     left: Spacing.sm,
+  },
+  saveBtn: {
+    position: 'absolute',
+    top: Spacing.sm,
+    right: Spacing.sm,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   infoContainer: {
     padding: Spacing.md,

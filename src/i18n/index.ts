@@ -6,11 +6,6 @@ export type Language = 'vi' | 'en' | 'zh' | 'ko' | 'ja' | 'fr';
 
 export const LANGUAGES: { code: Language; label: string; flag: string; nativeName: string }[] = [
   { code: 'vi', label: 'Tiếng Việt', flag: '🇻🇳', nativeName: 'Tiếng Việt' },
-  { code: 'en', label: 'English', flag: '🇬🇧', nativeName: 'English' },
-  { code: 'zh', label: 'Chinese', flag: '🇨🇳', nativeName: '中文' },
-  { code: 'ko', label: 'Korean', flag: '🇰🇷', nativeName: '한국어' },
-  { code: 'ja', label: 'Japanese', flag: '🇯🇵', nativeName: '日本語' },
-  { code: 'fr', label: 'French', flag: '🇫🇷', nativeName: 'Français' },
 ];
 
 const translations: Record<Language, Record<string, string>> = {
@@ -21,8 +16,8 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.create': 'Lập lịch',
     'nav.profile': 'Hồ sơ',
     // Home
-    'home.greeting': 'Chào mừng đến Đà Nẵng',
-    'home.subtitle': 'Khám phá vẻ đẹp của thành phố biển',
+    'home.greeting': 'Đi Đà Nẵng',
+    'home.subtitle': 'Khám phá địa điểm · Lập lịch trình · Tối ưu đường đi',
     'home.popular': 'Địa điểm nổi bật',
     'home.itineraries': 'Lịch trình gợi ý',
     'home.search': 'Tìm địa điểm...',
@@ -99,8 +94,8 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.map': 'Map',
     'nav.create': 'Plan Trip',
     'nav.profile': 'Profile',
-    'home.greeting': 'Welcome to Da Nang',
-    'home.subtitle': 'Discover the beauty of the coastal city',
+    'home.greeting': 'Đi Đà Nẵng',
+    'home.subtitle': 'Discover places · Plan trips · Optimize routes',
     'home.popular': 'Popular Places',
     'home.itineraries': 'Suggested Itineraries',
     'home.search': 'Search places...',
@@ -170,8 +165,8 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.map': '地图',
     'nav.create': '行程规划',
     'nav.profile': '个人中心',
-    'home.greeting': '欢迎来到岘港',
-    'home.subtitle': '探索海滨城市之美',
+    'home.greeting': 'Đi Đà Nẵng',
+    'home.subtitle': '探索景点 · 规划行程 · 优化路线',
     'home.popular': '热门景点',
     'home.itineraries': '推荐行程',
     'home.search': '搜索景点...',
@@ -241,8 +236,8 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.map': '지도',
     'nav.create': '여행 계획',
     'nav.profile': '프로필',
-    'home.greeting': '다낭에 오신 것을 환영합니다',
-    'home.subtitle': '해안 도시의 아름다움을 발견하세요',
+    'home.greeting': 'Đi Đà Nẵng',
+    'home.subtitle': '명소 탐색 · 여행 일정 계획 · 경로 최적화',
     'home.popular': '인기 명소',
     'home.itineraries': '추천 일정',
     'home.search': '장소 검색...',
@@ -312,8 +307,8 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.map': 'マップ',
     'nav.create': '旅程計画',
     'nav.profile': 'プロフィール',
-    'home.greeting': 'ダナンへようこそ',
-    'home.subtitle': '海岸都市の美しさを発見しよう',
+    'home.greeting': 'Đi Đà Nẵng',
+    'home.subtitle': 'スポット探索 · 旅程作成 · ルート最適化',
     'home.popular': '人気スポット',
     'home.itineraries': 'おすすめ旅程',
     'home.search': 'スポットを検索...',
@@ -383,8 +378,8 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.map': 'Carte',
     'nav.create': 'Planifier',
     'nav.profile': 'Profil',
-    'home.greeting': 'Bienvenue à Da Nang',
-    'home.subtitle': 'Découvrez la beauté de la ville côtière',
+    'home.greeting': 'Đi Đà Nẵng',
+    'home.subtitle': 'Explorer · Planifier · Optimiser les trajets',
     'home.popular': 'Lieux populaires',
     'home.itineraries': 'Itinéraires suggérés',
     'home.search': 'Rechercher des lieux...',
@@ -471,6 +466,8 @@ export const useI18n = create<I18nState>()(
     {
       name: 'danang-language',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 2,
+      migrate: () => ({ language: 'vi' as Language }),
     }
   )
 );

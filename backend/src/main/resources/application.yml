@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: itinerary
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+    show-sql: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${SUPABASE_URL}/auth/v1
+          jwk-set-uri: ${SUPABASE_URL}/auth/v1/.well-known/jwks.json
+          audiences: authenticated
+
+# Tất cả config app.* gộp vào 1 block duy nhất
+app:
+  gemini:
+    api-key: ${GEMINI_API_KEY}
+    model: ${GEMINI_MODEL:gemini-2.5-flash}
+  http:
+    connect-timeout: 3s
+    read-timeout: 20s
+  routing:
+    car-base-url: ${OSRM_CAR_BASE_URL:${OSRM_BASE_URL:}}
+    motorbike-base-url: ${OSRM_MOTORBIKE_BASE_URL:}
+    walk-base-url: ${OSRM_WALK_BASE_URL:}
+    bicycle-base-url: ${OSRM_BICYCLE_BASE_URL:}
+    max-snap-radius-meters: ${OSRM_MAX_SNAP_RADIUS_METERS:750}
+  ai-quota:
+    free-daily: ${AI_FREE_DAILY_QUOTA:8}
+    vip-daily: ${AI_VIP_DAILY_QUOTA:80}
+  rate-limit:
+    requests-per-minute: ${AI_REQUESTS_PER_MINUTE:20}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8081,http://localhost:19006}
+
+server:
+  port: 8080
+
+logging:
+  level:
+    root: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN

@@ -1,3 +1,28 @@
+export const CATEGORIES = [
+  { id: 'beach', label: 'Bãi biển', icon: 'water-outline' },
+  { id: 'mountain', label: 'Núi', icon: 'trail-sign-outline' },
+  { id: 'food', label: 'Ẩm thực', icon: 'restaurant-outline' },
+  { id: 'temple', label: 'Tâm linh', icon: 'leaf-outline' },
+  { id: 'museum', label: 'Bảo tàng', icon: 'library-outline' },
+  { id: 'market', label: 'Chợ', icon: 'basket-outline' },
+  { id: 'entertainment', label: 'Giải trí', icon: 'game-controller-outline' },
+  { id: 'nature', label: 'Thiên nhiên', icon: 'flower-outline' },
+  { id: 'historical', label: 'Di tích', icon: 'time-outline' },
+  { id: 'viewpoint', label: 'Ngắm cảnh', icon: 'camera-outline' },
+  { id: 'park', label: 'Công viên', icon: 'walk-outline' },
+  { id: 'shopping', label: 'Mua sắm', icon: 'bag-handle-outline' },
+  { id: 'wellness', label: 'Chăm sóc sức khỏe', icon: 'fitness-outline' },
+];
+
+export const SUITABLE_FOR = [
+  { id: 'family', label: 'Gia đình' },
+  { id: 'couple', label: 'Cặp đôi' },
+  { id: 'solo', label: 'Đi một mình' },
+  { id: 'friends', label: 'Nhóm bạn' },
+  { id: 'elderly', label: 'Người cao tuổi' },
+  { id: 'pet', label: 'Cùng thú cưng' },
+];
+
 export function categoryLabel(category?: string | null): string {
   switch (category) {
     case 'beach':
@@ -22,6 +47,10 @@ export function categoryLabel(category?: string | null): string {
       return 'Ngắm cảnh';
     case 'park':
       return 'Công viên';
+    case 'shopping':
+      return 'Mua sắm';
+    case 'wellness':
+      return 'Chăm sóc sức khỏe';
     default:
       return category || 'Địa điểm';
   }
