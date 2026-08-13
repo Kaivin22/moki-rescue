@@ -6,7 +6,7 @@
 
 Sản phẩm được chốt là **ứng dụng khám phá và lập lịch trình du lịch Đà Nẵng**, không phải ứng dụng lịch chung hay nền tảng đặt dịch vụ. Tên hiển thị là **Đi Đà Nẵng**, tagline **Khám phá địa điểm · Lập lịch trình · Tối ưu đường đi**; slug, scheme và bundle identifier được giữ để không phá deep link/binary identity.
 
-Phần có thể hoàn thành an toàn trong repository đã được triển khai theo hướng production: không seed/mock địa điểm, không fallback dữ liệu giả, không vẽ đường chim bay như tuyến thật, các mutation nhạy cảm dùng RLS/RPC atomic, các bề mặt chính có loading/error/retry và test. Dữ liệu tạo lịch có policy duy nhất ở UI/store/optimizer/SQL/backend; lịch không thể lưu nếu rỗng, trùng điểm, vượt giới hạn, chồng giờ, qua nửa đêm, sai giờ mở cửa hoặc còn điểm chưa xếp.
+Phần có thể hoàn thành an toàn trong repository đã được triển khai theo hướng production: không tự nạp mock/fallback dữ liệu giả, catalog tùy chọn chỉ chứa địa điểm thật có nguồn, không vẽ đường chim bay như tuyến thật, các mutation nhạy cảm dùng RLS/RPC atomic, các bề mặt chính có loading/error/retry và test. Dữ liệu tạo lịch có policy duy nhất ở UI/store/optimizer/SQL/backend; lịch không thể lưu nếu rỗng, trùng điểm, vượt giới hạn, chồng giờ, qua nửa đêm, sai giờ mở cửa hoặc còn điểm chưa xếp.
 
 Dự án là **release candidate**, chưa được gọi production-ready cho tới khi hoàn tất Supabase staging, type generation từ database thật và smoke test Android/iOS/EAS artifact. Không có công việc nào trong repository có thể thay thế các gate hạ tầng này.
 
@@ -37,7 +37,7 @@ Không tự tạo commit/snapshot vì worktree ban đầu đã có nhiều thay 
 
 ### Gate B — SQL và hợp đồng dữ liệu
 
-- [x] Thay schema nối vá/seed bằng `scripts/01_schema.sql` baseline sạch, transaction, không dữ liệu giả.
+- [x] Thay schema nối vá bằng `scripts/01_schema.sql` baseline sạch; tách catalog 15 địa điểm thật có nguồn thành `scripts/03_seed_real_places.sql` tùy chọn.
 - [x] Reset local/staging bắt buộc `app.allow_destructive_reset='yes'` và dọn storage object trước khi drop schema.
 - [x] Constraint, index, trigger, explicit grant/default privilege revoke và RLS theo role.
 - [x] Profile trigger fail-observable, trim/limit metadata và backfill idempotent.
@@ -82,7 +82,7 @@ Không tự tạo commit/snapshot vì worktree ban đầu đã có nhiều thay 
 - [x] Admin users/places/reports có search/filter/pagination; role/ban và moderation dùng guarded RPC/audit.
 - [x] Guest bấm lưu địa điểm được điều hướng đăng nhập thay vì silent no-op.
 
-Không thêm booking, social feed, notification, gamification hay dữ liệu mẫu vì sẽ làm MVP phình to.
+Không thêm booking, social feed, notification, gamification hay dữ liệu giả vì sẽ làm MVP phình to. Catalog thật tùy chọn chỉ đủ để khởi tạo luồng khám phá/lập lịch.
 
 ### Gate F — release candidate
 
@@ -244,7 +244,7 @@ Test đã phủ local date, planning policy/store session/giới hạn 40 điể
 ## 8. Trình tự còn lại để phát hành production
 
 1. Điền các biến `EXPO_PUBLIC_*` canonical, gồm bốn OSRM profile; không dùng fallback legacy/public demo cho production.
-2. Cài `01_schema.sql` trên Supabase staging sạch; chạy `02_verify_rls.sql` và lưu log.
+2. Cài `01_schema.sql` trên Supabase staging sạch; chạy `02_verify_rls.sql` và lưu log; sau đó tùy chọn nạp `03_seed_real_places.sql`.
 3. Sinh type Supabase từ staging, typed client, chạy lại toàn bộ CI.
 4. Deploy backend HTTPS một replica; test JWT/quota/upstream với staging.
 5. Smoke đầy đủ trên Android/iOS development/preview build, gồm status bar map và routing bốn phương tiện.

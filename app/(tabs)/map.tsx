@@ -13,6 +13,7 @@ import type { Place } from '@/src/types/place';
 import { categoryLabel } from '@/src/utils/format';
 import { DA_NANG_INITIAL_REGION } from '@/src/features/location/config/danang';
 import { AppButton } from '@/src/components/atoms/AppButton';
+import { AiAssistantBubble } from '@/src/components/molecules/AiAssistantBubble';
 
 const { width, height } = Dimensions.get('window');
 
@@ -129,6 +130,12 @@ export default function MapScreen() {
       >
         <Ionicons name="navigate" size={24} color={Colors.accent} />
       </TouchableOpacity>
+
+      <AiAssistantBubble
+        compact
+        bottom={selectedPlace ? 340 : 160}
+        placeName={selectedPlace?.name}
+      />
 
       {/* Place Preview Bottom Sheet Equivalent */}
       {selectedPlace && (

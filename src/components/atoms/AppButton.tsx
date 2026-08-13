@@ -82,6 +82,57 @@ export function AppButton({
   const handlePressIn = (_e: GestureResponderEvent) => animateTo(Scale.press);
   const handlePressOut = (_e: GestureResponderEvent) => animateTo(1);
 
+  // Flex, width và margin phải nằm trên Pressable vì đây là phần tử
+  // tham gia layout của hàng/cột cha. Nếu để các thuộc tính này trên
+  // Animated.View bên trong, các nhóm hai hoặc ba nút có thể bị cắt.
+  const flattenedStyle = StyleSheet.flatten(style) ?? {};
+  const {
+    alignSelf,
+    flex,
+    flexBasis,
+    flexGrow,
+    flexShrink,
+    width,
+    minWidth,
+    maxWidth,
+    height,
+    minHeight,
+    maxHeight,
+    margin,
+    marginBottom,
+    marginEnd,
+    marginHorizontal,
+    marginLeft,
+    marginRight,
+    marginStart,
+    marginTop,
+    marginVertical,
+    ...buttonVisualStyle
+  } = flattenedStyle;
+  const wrapperStyle: ViewStyle = {
+    alignSelf,
+    flex,
+    flexBasis,
+    flexGrow,
+    flexShrink,
+    width,
+    minWidth,
+    maxWidth,
+    height,
+    minHeight,
+    maxHeight,
+    margin,
+    marginBottom,
+    marginEnd,
+    marginHorizontal,
+    marginLeft,
+    marginRight,
+    marginStart,
+    marginTop,
+    marginVertical,
+  };
+  const participatesInFlexRow = flex !== undefined || flexGrow !== undefined || flexBasis !== undefined;
+
   const getContainerStyle = (): ViewStyle => {
     switch (variant) {
       case 'primary':
@@ -131,7 +182,7 @@ export function AppButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel || title}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
-      style={fullWidth ? styles.fullWidth : undefined}
+      style={[fullWidth && !participatesInFlexRow && styles.fullWidth, wrapperStyle]}
     >
       <Animated.View
         style={[
@@ -139,7 +190,7 @@ export function AppButton({
           getContainerStyle(),
           fullWidth && styles.fullWidth,
           { transform: [{ scale }], opacity: containerOpacity },
-          style,
+          buttonVisualStyle,
         ]}
       >
         {/* Spinner nằm chồng, crossfade với text */}

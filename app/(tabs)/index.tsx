@@ -16,6 +16,7 @@ import { CATEGORIES } from '@/src/utils/format';
 import { useQuery } from '@tanstack/react-query';
 import { fetchWeatherForecast } from '@/src/services/weatherService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AiAssistantBubble } from '@/src/components/molecules/AiAssistantBubble';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -243,13 +244,14 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+      <AiAssistantBubble bottom={Spacing.md} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  scrollContent: { paddingBottom: Spacing.lg },
+  scrollContent: { paddingBottom: 96 },
   headerOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(15, 23, 42, 0.45)', // Dark overlay

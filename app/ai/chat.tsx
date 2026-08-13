@@ -11,7 +11,7 @@ import { AppButton } from '@/src/components/atoms/AppButton';
 import { useReduceMotion } from '@/src/hooks/useReduceMotion';
 import { getChatSession, saveChatSession } from '@/src/features/ai/api/chatHistory';
 
-const SUGGESTIONS = [
+const DEFAULT_SUGGESTIONS = [
   "Gợi ý lịch trình 3 ngày 2 đêm?",
   "Quán ăn ngon ở Hải Châu?",
   "Điểm check-in hot nhất Đà Nẵng?"
@@ -55,12 +55,15 @@ const TypingIndicator = () => {
 };
 
 export default function AIChatScreen() {
-  const params = useLocalSearchParams<{ sessionId?: string }>();
+  const params = useLocalSearchParams<{ sessionId?: string; placeName?: string }>();
+  const placeName = typeof params.placeName === 'string' ? params.placeName.trim().slice(0, 120) : '';
   const user = useAuthStore(state => state.user);
   const [messages, setMessages] = useState<LocalMessage[]>([
     {
       id: '1',
-      text: 'Chào bạn! Tôi là trợ lý AI chuyên về Đà Nẵng. Tôi có thể giúp gì cho bạn hôm nay?',
+      text: placeName
+        ? `Bạn đang xem ${placeName}. Tôi có thể giúp bạn tìm hiểu địa điểm này hoặc lên lịch tham quan phù hợp.`
+        : 'Chào bạn! Tôi là trợ lý AI chuyên về Đà Nẵng. Tôi có thể giúp gì cho bạn hôm nay?',
       isUser: false,
       timestamp: Date.now(),
     }
@@ -72,6 +75,13 @@ export default function AIChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   const lastUserTextRef = useRef<string>('');
   const requestInFlightRef = useRef(false);
+  const suggestions = placeName
+    ? [
+        `${placeName} có gì nổi bật?`,
+        `Nên dành bao lâu để tham quan ${placeName}?`,
+        `Gợi ý địa điểm gần ${placeName} để đi cùng tuyến?`,
+      ]
+    : DEFAULT_SUGGESTIONS;
 
   useEffect(() => {
     if (!params.sessionId || !user) return;
@@ -246,7 +256,7 @@ export default function AIChatScreen() {
               {messages.length === 1 && !isTyping && (
                 <View style={styles.suggestionsContainer}>
                   <Text style={styles.suggestionsTitle}>Bạn có thể hỏi:</Text>
-                  {SUGGESTIONS.map((sug, idx) => (
+                  {suggestions.map((sug, idx) => (
                     <TouchableOpacity key={idx} style={styles.suggestionChip} onPress={() => handleSend(sug)} disabled={isTyping}>
                       <Text style={styles.suggestionText}>{sug}</Text>
                     </TouchableOpacity>

@@ -45,7 +45,9 @@ SELECT set_config(
   (public.upsert_itinerary(
     jsonb_build_object(
       'title', 'RLS itinerary', 'num_days', 1, 'num_people', 2,
-      'transport', 'motorbike', 'start_date', '2026-08-20', 'travel_style', jsonb_build_array('culture'),
+      'transport', 'motorbike',
+      'start_date', (timezone('Asia/Ho_Chi_Minh', NOW())::DATE + 7),
+      'travel_style', jsonb_build_array('culture'),
       'days', jsonb_build_array(jsonb_build_object(
         'day_number', 1, 'advice', '[]'::jsonb,
         'slots', jsonb_build_array(jsonb_build_object(
@@ -86,10 +88,33 @@ BEGIN
   END;
 END;
 $$;
+-- The RPC must reject values outside its public 'up'/'down' contract.
+DO $$
+BEGIN
+  BEGIN
+    PERFORM public.vote_shared_itinerary(
+      current_setting('app.test_share_token'),
+      '44444444-4444-4444-4444-444444444444',
+      'invalid'
+    );
+    RAISE EXCEPTION 'RLS TEST FAILED: invalid vote was accepted';
+  EXCEPTION
+    WHEN invalid_parameter_value THEN
+      IF SQLERRM IS DISTINCT FROM 'INVALID_VOTE' THEN RAISE; END IF;
+  END;
+END;
+$$;
+
 SELECT public.vote_shared_itinerary(
   current_setting('app.test_share_token'),
   '44444444-4444-4444-4444-444444444444',
-  'yes'
+  'up'
+);
+SELECT pg_temp.assert_true(
+  (public.get_shared_votes(current_setting('app.test_share_token'))->0->>'up')::INTEGER = 1
+    AND (public.get_shared_votes(current_setting('app.test_share_token'))->0->>'down')::INTEGER = 0
+    AND (public.get_shared_votes(current_setting('app.test_share_token'))->0->>'my_vote') = 'up',
+  'a valid vote must be recorded and visible to the voter'
 );
 RESET ROLE;
 

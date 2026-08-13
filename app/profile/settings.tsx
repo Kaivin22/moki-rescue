@@ -81,7 +81,7 @@ export default function SettingsScreen() {
   const resetItinerary = useItineraryStore((state) => state.reset);
   const queryClient = useQueryClient();
   const reduceMotion = useReduceMotion();
-  const { language, setLanguage } = useI18n();
+  const { language, setLanguage, t } = useI18n();
   const appInfo = getAppInfo();
   const [permission, setPermission] = useState<Location.LocationPermissionResponse | null>(null);
   const [permissionLoading, setPermissionLoading] = useState(true);
@@ -205,15 +205,29 @@ export default function SettingsScreen() {
           />
           {LANGUAGES.length > 1 ? (
             <View style={styles.languageBlock}>
-              <Text style={styles.rowTitle}>Ngôn ngữ</Text>
+              <View style={styles.languageHeading}>
+                <View style={styles.rowIcon}>
+                  <Ionicons name="language-outline" size={20} color={Colors.primary} />
+                </View>
+                <View style={styles.rowContent}>
+                  <Text style={styles.rowTitle}>{t('profile.language')}</Text>
+                  <Text style={styles.rowSubtitle}>Chọn ngôn ngữ hiển thị của ứng dụng</Text>
+                </View>
+              </View>
               <View style={styles.languageOptions}>
                 {LANGUAGES.map((item) => (
                   <TouchableOpacity
                     key={item.code}
                     style={[styles.languageChip, language === item.code && styles.languageChipActive]}
                     onPress={() => setLanguage(item.code)}
+                    accessibilityRole="radio"
+                    accessibilityLabel={item.label}
+                    accessibilityState={{ selected: language === item.code }}
                   >
-                    <Text>{item.flag} {item.nativeName}</Text>
+                    <Text style={[styles.languageChipText, language === item.code && styles.languageChipTextActive]}>
+                      {item.flag} {item.nativeName}
+                    </Text>
+                    {language === item.code ? <Ionicons name="checkmark-circle" size={18} color={Colors.primary} /> : null}
                   </TouchableOpacity>
                 ))}
               </View>
@@ -263,7 +277,10 @@ const styles = StyleSheet.create({
   rowTitleDanger: { color: Colors.error },
   rowSubtitle: { ...Typography.caption, color: Colors.textSecondary, marginTop: 3 },
   languageBlock: { padding: Spacing.md },
+  languageHeading: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   languageOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.sm },
-  languageChip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.divider },
+  languageChip: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.divider },
   languageChipActive: { borderColor: Colors.primary, backgroundColor: Colors.surface },
+  languageChipText: { ...Typography.body, color: Colors.textPrimary },
+  languageChipTextActive: { color: Colors.primary, fontWeight: '700' },
 });

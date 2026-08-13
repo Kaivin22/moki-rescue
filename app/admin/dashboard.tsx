@@ -69,13 +69,18 @@ export default function AdminDashboardScreen() {
     <SafeAreaView style={styles.container}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <View>
+        <TouchableOpacity
+          onPress={() => router.replace('/(tabs)/profile')}
+          style={styles.exitBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Quay lại hồ sơ"
+        >
+          <Ionicons name="arrow-back" size={22} color={Colors.white} />
+        </TouchableOpacity>
+        <View style={styles.headerCopy}>
           <Text style={styles.headerTitle}>Admin Dashboard</Text>
           <Text style={styles.headerSub}>{profile?.display_name} · {ROLE_LABELS[profile?.role ?? 'admin']}</Text>
         </View>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={styles.exitBtn}>
-          <Ionicons name="exit-outline" size={22} color={Colors.white} />
-        </TouchableOpacity>
       </View>
 
       {/* ── Section Tabs ── */}
@@ -476,11 +481,12 @@ const styles = StyleSheet.create({
   // Header
   header: {
     backgroundColor: Colors.primary,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.sm,
     paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
   },
   headerTitle: { ...Typography.h3, color: Colors.white },
   headerSub: { ...Typography.caption, color: 'rgba(255,255,255,0.7)' },
+  headerCopy: { flex: 1 },
   exitBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.2)',

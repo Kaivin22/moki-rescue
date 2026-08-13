@@ -77,17 +77,6 @@ export default function ProfileScreen() {
       {/* Animated Header */}
       <SceneBackground scene="beach" height={280}>
         <View style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}>
-          {/* Settings shortcut */}
-          {user && <TouchableOpacity
-            style={[styles.editBtn, { top: insets.top + Spacing.sm }]}
-            onPress={() => router.push('/profile/settings')}
-            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel="Mở cài đặt"
-          >
-            <Ionicons name="settings-outline" size={20} color={Colors.white} />
-          </TouchableOpacity>}
-
           <View style={styles.avatarCircle}>
             {user && isProfileLoading && !profile ? (
               <ActivityIndicator color={Colors.white} />
@@ -171,6 +160,7 @@ export default function ProfileScreen() {
           </View>
         ) : renderMenuSection('Tài khoản', [
           { icon: 'person', title: t('profile.edit'), route: '/profile/edit' },
+          { icon: 'settings-outline', title: t('profile.settings'), route: '/profile/settings' },
           {
             icon: 'star',
             title: isVip ? 'Quyền lợi VIP' : 'Đăng ký thử nghiệm VIP',
@@ -191,7 +181,7 @@ export default function ProfileScreen() {
         ])}
 
         {renderMenuSection('Khám phá & Trợ giúp', [
-          { icon: 'chatbubbles', title: 'Trợ lý AI (Tư vấn du lịch)', route: '/ai/chat' },
+          { icon: 'chatbubbles', title: 'Lịch sử trò chuyện AI', route: '/ai/history' },
           { icon: 'headset', title: t('profile.support'), route: '/support' },
         ])}
 
@@ -215,16 +205,6 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.lg,
     backgroundColor: 'rgba(0,0,0,0.4)',
     position: 'relative',
-  },
-  editBtn: {
-    position: 'absolute',
-    right: Spacing.xl,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   avatarCircle: {
     width: 84, height: 84, borderRadius: 42,

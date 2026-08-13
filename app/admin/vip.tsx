@@ -3,7 +3,7 @@ import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { AppButton } from '@/src/components/atoms/AppButton';
@@ -95,7 +95,15 @@ export default function AdminVipScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <View>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => userId && router.canGoBack() ? router.back() : router.replace('/(tabs)/profile')}
+            accessibilityRole="button"
+            accessibilityLabel={userId ? 'Quay lại danh sách người dùng' : 'Quay lại hồ sơ'}
+          >
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+          <View style={styles.headerCopy}>
             <Text style={styles.title}>Gói VIP</Text>
             <Text style={styles.subtitle}>Giá bán được lấy trực tiếp từ App Store/Google Play.</Text>
           </View>
@@ -215,6 +223,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: 100 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.md },
+  backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: Colors.surface },
+  headerCopy: { flex: 1 },
   title: { ...Typography.h1, color: Colors.primary },
   subtitle: { ...Typography.caption, color: Colors.secondary, maxWidth: 280 },
   addButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primary },

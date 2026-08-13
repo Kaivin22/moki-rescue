@@ -767,7 +767,7 @@ export default function CreateItineraryScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <SceneBackground scene="mountain" height={96}>
+      <SceneBackground scene="mountain" height={96 + insets.top}>
         <View style={[styles.headerOverlay, { paddingTop: insets.top + Spacing.sm }]}>
           <Text style={styles.headerTitle}>{t('create.title')}</Text>
         </View>
@@ -1183,22 +1183,22 @@ export default function CreateItineraryScreen() {
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Spacing.sm) }]}>
         <View style={styles.footerRow}>
           {step > 1 && (
-            <AppButton
-              title="← Quay lại"
-              variant="outline"
-              onPress={() => setStep(step - 1)}
-              style={styles.footerBtnBack}
-              fullWidth={false}
-            />
+            <View style={styles.footerBtnBack}>
+              <AppButton
+                title="← Quay lại"
+                variant="outline"
+                onPress={() => setStep(step - 1)}
+              />
+            </View>
           )}
-          <AppButton
-            title={step === 3 ? (routingLoading ? 'Đang tính tuyến…' : '✅ Lưu lịch trình') : 'Tiếp theo →'}
-            onPress={handleNext}
-            loading={saveItinerary.isPending || routingLoading}
-            disabled={!canGoNext()}
-            style={styles.footerBtnNext}
-            fullWidth={false}
-          />
+          <View style={styles.footerBtnNext}>
+            <AppButton
+              title={step === 3 ? (routingLoading ? 'Đang tính tuyến…' : '✅ Lưu lịch trình') : 'Tiếp theo →'}
+              onPress={handleNext}
+              loading={saveItinerary.isPending || routingLoading}
+              disabled={!canGoNext()}
+            />
+          </View>
         </View>
       </View>
 
@@ -1452,9 +1452,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.divider, backgroundColor: Colors.white,
     shadowColor: '#06251A', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 10,
   },
-  footerRow: { flexDirection: 'row', gap: Spacing.md },
-  footerBtnBack: { flex: 1 },
-  footerBtnNext: { flex: 2 },
+  footerRow: { flexDirection: 'row', alignItems: 'stretch', gap: Spacing.md },
+  footerBtnBack: { flex: 1, minWidth: 0 },
+  footerBtnNext: { flex: 2, minWidth: 0 },
 
   vipBannerCompact: {
     flexDirection: 'row',

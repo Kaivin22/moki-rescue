@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 
 const schema = fs.readFileSync(path.join(process.cwd(), 'scripts', '01_schema.sql'), 'utf8');
+const rlsVerification = fs.readFileSync(path.join(process.cwd(), 'scripts', '02_verify_rls.sql'), 'utf8');
+const realPlacesSeed = fs.readFileSync(path.join(process.cwd(), 'scripts', '03_seed_real_places.sql'), 'utf8');
 
 describe('fresh Supabase production schema contract', () => {
   it('keeps itineraries private unless an owner enables a share capability', () => {
@@ -51,6 +53,15 @@ describe('fresh Supabase production schema contract', () => {
     expect(schema).not.toContain('voter_token');
   });
 
+  it('keeps the staging RLS fixture reusable and aligned with the vote contract', () => {
+    expect(rlsVerification).toContain("timezone('Asia/Ho_Chi_Minh', NOW())::DATE + 7");
+    expect(rlsVerification).toContain("'invalid'");
+    expect(rlsVerification).toContain("'up'");
+    expect(rlsVerification).toContain("SQLERRM IS DISTINCT FROM 'INVALID_VOTE'");
+    expect(rlsVerification).not.toContain("'yes'");
+    expect(rlsVerification).not.toMatch(/'start_date',\s*'\d{4}-\d{2}-\d{2}'/);
+  });
+
   it('searches only published places with server filters and bounded pagination', () => {
     expect(schema).toContain('CREATE EXTENSION IF NOT EXISTS pg_trgm');
     expect(schema).toContain('extensions.similarity(p.normalized_name, i.q) >= 0.2');
@@ -58,6 +69,21 @@ describe('fresh Supabase production schema contract', () => {
     expect(schema).toContain("timezone('Asia/Ho_Chi_Minh', NOW())");
     expect(schema).toContain('LIMIT LEAST(GREATEST(p_limit, 1), 100)');
     expect(schema).toContain('OFFSET GREATEST(p_offset, 0)');
+  });
+
+  it('keeps the optional starter catalog real, sourced and safe to rerun', () => {
+    const placeIds = realPlacesSeed.match(/'da\d{6}-0000-4000-8000-\d{12}'::UUID/g) ?? [];
+    const emptyImageArrays = realPlacesSeed.match(/ARRAY\[\]::TEXT\[\]/g) ?? [];
+
+    expect(placeIds).toHaveLength(15);
+    expect(new Set(placeIds).size).toBe(15);
+    expect(emptyImageArrays).toHaveLength(15);
+    expect(realPlacesSeed).toContain('OpenStreetMap contributors');
+    expect(realPlacesSeed).toContain('https://www.openstreetmap.org/');
+    expect(realPlacesSeed).toContain('ON CONFLICT DO NOTHING');
+    expect(realPlacesSeed).not.toMatch(/\brating_avg\s*,\s*rating_count\b/);
+    expect(realPlacesSeed).toContain('BEGIN;');
+    expect(realPlacesSeed).toContain('COMMIT;');
   });
 
   it('enforces the editor review workflow and admin-only public media writes', () => {

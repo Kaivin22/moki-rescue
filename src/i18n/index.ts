@@ -6,6 +6,7 @@ export type Language = 'vi' | 'en' | 'zh' | 'ko' | 'ja' | 'fr';
 
 export const LANGUAGES: { code: Language; label: string; flag: string; nativeName: string }[] = [
   { code: 'vi', label: 'Tiếng Việt', flag: '🇻🇳', nativeName: 'Tiếng Việt' },
+  { code: 'en', label: 'Tiếng Anh', flag: '🇬🇧', nativeName: 'English' },
 ];
 
 const translations: Record<Language, Record<string, string>> = {

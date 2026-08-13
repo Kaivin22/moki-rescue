@@ -138,13 +138,18 @@ export default function AdminUsersScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <TouchableOpacity
+          style={styles.exitBtn}
+          onPress={() => router.replace('/(tabs)/profile')}
+          accessibilityRole="button"
+          accessibilityLabel="Quay lại hồ sơ"
+        >
+          <Ionicons name="arrow-back" size={20} color={Colors.white} />
+        </TouchableOpacity>
+        <View style={styles.headerCopy}>
           <Text style={styles.headerTitle}>Quản lý Người dùng</Text>
           <Text style={styles.headerSub}>Đã tải {users.length} người dùng · {bannedCount} bị khóa</Text>
         </View>
-        <TouchableOpacity style={styles.exitBtn} onPress={() => router.replace('/(tabs)')}>
-          <Ionicons name="exit-outline" size={20} color={Colors.white} />
-        </TouchableOpacity>
       </View>
 
       {usersQuery.isLoading ? (
@@ -266,11 +271,12 @@ const styles = StyleSheet.create({
   denied: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl },
   header: {
     backgroundColor: Colors.primaryDark,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.sm,
     paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
   },
   headerTitle: { ...Typography.h3, color: Colors.white },
   headerSub: { ...Typography.caption, color: Colors.accentSoft, marginTop: 2 },
+  headerCopy: { flex: 1 },
   exitBtn: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center',

@@ -7,6 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { Colors } from '@/src/constants/colors';
@@ -230,7 +231,8 @@ function PlaceFormModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      {visible ? <StatusBar style="dark" /> : null}
       <SafeAreaView style={formStyles.container} edges={['top', 'bottom']}>
         {/* Header */}
         <View style={formStyles.header}>
@@ -481,15 +483,20 @@ export default function AdminPlacesScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <TouchableOpacity
+          style={styles.exitBtn}
+          onPress={() => router.replace('/(tabs)/profile')}
+          accessibilityRole="button"
+          accessibilityLabel="Quay lại hồ sơ"
+        >
+          <Ionicons name="arrow-back" size={20} color={Colors.white} />
+        </TouchableOpacity>
+        <View style={styles.headerCopy}>
           <Text style={styles.headerTitle}>Quản lý Địa điểm</Text>
           <Text style={styles.headerSub}>
             {places.length} địa điểm · {activeCount} active · {inactiveCount} ẩn
           </Text>
         </View>
-        <TouchableOpacity style={styles.exitBtn} onPress={() => router.replace('/(tabs)')}>
-          <Ionicons name="exit-outline" size={20} color={Colors.white} />
-        </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
@@ -659,11 +666,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: Spacing.sm,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
   },
   headerTitle: { ...Typography.h3, color: Colors.white },
   headerSub: { ...Typography.caption, color: Colors.accentSoft, marginTop: 2 },
+  headerCopy: { flex: 1 },
   exitBtn: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.1)',

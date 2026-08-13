@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { Place } from '@/src/types/place';
@@ -38,7 +39,8 @@ export function PlaceSelectorModal({
 }: PlaceSelectorModalProps) {
   const limitReached = selectedCount >= maxSelectedCount;
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      {visible ? <StatusBar style="dark" /> : null}
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Chọn địa điểm</Text>

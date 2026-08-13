@@ -20,6 +20,7 @@ import { submitPlaceReport } from '@/src/features/places/api/reports';
 import { PlaceReportModal } from '@/src/features/places/components/PlaceReportModal';
 import { StatusBar } from 'expo-status-bar';
 import { PLANNING_LIMITS } from '@/src/features/itinerary/config/planningPolicy';
+import { AiAssistantBubble } from '@/src/components/molecules/AiAssistantBubble';
 
 const { height } = Dimensions.get('window');
 
@@ -135,7 +136,7 @@ export default function PlaceDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView bounces={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView bounces={false} contentContainerStyle={{ paddingBottom: 176 + insets.bottom }}>
         {/* Hero Image */}
         <View style={styles.heroContainer}>
           <Image
@@ -339,6 +340,10 @@ export default function PlaceDetailScreen() {
           onPress={handleAddToItinerary}
         />
       </View>
+      <AiAssistantBubble
+        bottom={80 + Math.max(insets.bottom, Spacing.md)}
+        placeName={place.name}
+      />
       <ReviewComposerModal
         visible={reviewVisible}
         loading={submitReview.isPending}

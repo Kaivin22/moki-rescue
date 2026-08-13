@@ -67,6 +67,12 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
 
 function RouteStatusBar() {
   const pathname = usePathname();
+  const usesDarkAdminSurface = [
+    '/admin/dashboard',
+    '/admin/places',
+    '/admin/users',
+    '/admin/tickets',
+  ].some((route) => pathname.startsWith(route));
   const usesDarkSurface =
     pathname === '/' ||
     pathname === '/create' ||
@@ -76,7 +82,8 @@ function RouteStatusBar() {
     pathname === '/profile-setup' ||
     pathname === '/ai/chat' ||
     pathname.startsWith('/place/') ||
-    (pathname.startsWith('/itinerary/') && !pathname.startsWith('/itinerary/share/'));
+    (pathname.startsWith('/itinerary/') && !pathname.startsWith('/itinerary/share/')) ||
+    usesDarkAdminSurface;
 
   return <StatusBar style={usesDarkSurface ? 'light' : 'dark'} translucent backgroundColor="transparent" />;
 }

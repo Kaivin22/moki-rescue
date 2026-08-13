@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/src/services/supabase';
 import { Colors } from '@/src/constants/colors';
@@ -71,8 +72,18 @@ export default function AdminReportsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Báo cáo địa điểm</Text>
-        <Text style={styles.headerHelp}>Mọi quyết định đều được ghi vào audit log.</Text>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.replace('/(tabs)/profile')}
+          accessibilityRole="button"
+          accessibilityLabel="Quay lại hồ sơ"
+        >
+          <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+        </TouchableOpacity>
+        <View style={styles.headerCopy}>
+          <Text style={styles.headerTitle}>Báo cáo địa điểm</Text>
+          <Text style={styles.headerHelp}>Mọi quyết định đều được ghi vào audit log.</Text>
+        </View>
       </View>
       <View style={styles.filters}>
         {(['pending', 'all'] as const).map((value) => (
@@ -135,7 +146,9 @@ export default function AdminReportsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  header: { padding: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.divider, backgroundColor: Colors.white },
+  header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.divider, backgroundColor: Colors.white },
+  backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: Colors.surface },
+  headerCopy: { flex: 1 },
   headerTitle: { ...Typography.h2, color: Colors.primary },
   headerHelp: { ...Typography.caption, color: Colors.textSecondary, marginTop: 3 },
   filters: { flexDirection: 'row', gap: Spacing.sm, padding: Spacing.md, backgroundColor: Colors.white },

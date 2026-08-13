@@ -1,6 +1,6 @@
 # Đi Đà Nẵng – Trip Planner
 
-Ứng dụng Expo giúp khám phá địa điểm thật tại Đà Nẵng, lập lịch trình, chia sẻ theo liên kết và nhận hỗ trợ. Dữ liệu nghiệp vụ đến từ Supabase; dự án không đóng gói seed địa điểm, rating, ảnh hay lịch trình giả.
+Ứng dụng Expo giúp khám phá địa điểm thật tại Đà Nẵng, lập lịch trình, chia sẻ theo liên kết và nhận hỗ trợ. Dữ liệu nghiệp vụ đến từ Supabase; dự án không tự nạp rating, ảnh hay lịch trình giả. Catalog tùy chọn gồm 15 địa điểm thật nằm trong `scripts/03_seed_real_places.sql`.
 
 ## Phạm vi sản phẩm
 
@@ -45,7 +45,7 @@ npm ci
 Copy-Item .env.example .env
 ```
 
-Điền biến môi trường thật theo [DEPLOYMENT.md](./DEPLOYMENT.md). Với Supabase mới hoàn toàn, cài `scripts/01_schema.sql`; chỉ dùng `scripts/00_reset.sql` khi thật sự muốn xóa môi trường local/staging. Không có bước seed dữ liệu giả.
+Điền biến môi trường thật theo [DEPLOYMENT.md](./DEPLOYMENT.md). Với Supabase mới hoàn toàn, cài `scripts/01_schema.sql`; chỉ dùng `scripts/00_reset.sql` khi thật sự muốn xóa môi trường local/staging. Sau schema, có thể chạy `scripts/03_seed_real_places.sql` để khởi tạo catalog thật; không có bước nạp dữ liệu giả.
 
 ```powershell
 npm start
