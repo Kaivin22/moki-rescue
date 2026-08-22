@@ -45,9 +45,7 @@ export function AppButton({
   const textOpacity = useRef(new Animated.Value(loading ? 0 : 1)).current;
   const spinnerOpacity = useRef(new Animated.Value(loading ? 1 : 0)).current;
   // Fade opacity khi disabled
-  const containerOpacity = useRef(
-    new Animated.Value(disabled ? 0.5 : 1)
-  ).current;
+  const containerOpacity = useRef(new Animated.Value(disabled ? 0.5 : 1)).current;
 
   useEffect(() => {
     Animated.timing(textOpacity, {
@@ -194,21 +192,12 @@ export function AppButton({
         ]}
       >
         {/* Spinner nằm chồng, crossfade với text */}
-        <Animated.View
-          style={[styles.spinnerLayer, { opacity: spinnerOpacity }]}
-          pointerEvents="none"
-        >
+        <Animated.View style={[styles.spinnerLayer, { opacity: spinnerOpacity }]} pointerEvents="none">
           <ActivityIndicator color={Colors.primary} />
         </Animated.View>
 
         <Animated.Text
-          style={[
-            styles.text,
-            Typo.bodyBold,
-            getTextStyle(),
-            { opacity: textOpacity },
-            textStyle,
-          ]}
+          style={[styles.text, Typo.bodyBold, getTextStyle(), { opacity: textOpacity }, textStyle]}
         >
           {title}
         </Animated.Text>

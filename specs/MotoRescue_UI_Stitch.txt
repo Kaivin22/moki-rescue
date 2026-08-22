@@ -1,0 +1,432 @@
+Design a complete production mobile UI for “MotoRescue Đà Nẵng” —
+a real-time motorcycle roadside-assistance dispatch application.
+
+Platform : React Native / Expo (iOS + Android)
+Language : Vietnamese (vi-VN authoritative)
+Frame    : 390×844 px base; also validate 360×800 and tall Android devices
+Scope    : customer, verified provider, dispatcher, operations admin
+Total    : exactly 70 business frames below
+
+Do not invent provider names, teams, prices, requests, routes or user data.
+Use placeholders such as [Tên cứu hộ viên] only in design annotations. Runtime
+content comes from backend/Supabase. Emergency numbers 113/114/115 are official
+operational constants, not demo data.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FOUNDATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Visual direction: “Operational Calm”. Trustworthy, high contrast, compact enough
+for roadside use, but not a police/emergency-service impersonation.
+
+Core colors (match src/constants/colors.ts):
+  #123A5A  Primary navy       actions, icons, selected controls
+  #0B1F33  Primary dark       hero, tab bar, operational emphasis
+  #F5B942  Safety amber       primary highlights, important CTA
+  #FFF1CF  Amber soft         quote/info background
+  #DDECF5  Sky surface        icon wells and informational panels
+  #F4F7F9  App background
+  #FFFFFF  Cards
+  #13283A  Primary text
+  #456276  Secondary text
+  #718898  Muted text
+  #2F8A59  Success
+  #B87512  Warning
+  #C63F3F  Error/destructive
+
+Typography: Be Vietnam Pro.
+  Display 34/42 Bold; H1 28/36 Bold; H2 22/28 Bold; H3 18/24 Semibold;
+  Body 15/22 Regular; Caption 13/18; Label 12/16 uppercase.
+
+Spacing: 4, 8, 16, 24, 32, 48, 64.
+Radius: 8, 12, 16, 22, 28; avoid excessive pill shapes.
+
+Status bar and safe area:
+  - Never place content under iOS notch/Dynamic Island or Android cutout.
+  - Dark hero uses light status icons; light pages use dark icons.
+  - Full-screen map includes a readable top scrim and controls below top inset.
+  - Bottom CTA includes tab-bar/gesture inset and remains visible with keyboard.
+
+Accessibility:
+  - minimum target 44×44 pt, preferred 48×48;
+  - status always uses text plus icon/color;
+  - body contrast WCAG AA where practical;
+  - form errors sit next to the relevant action and use accessibility alert;
+  - dynamic text may wrap; never clip phone, price, status or safety copy.
+
+Motion:
+  - press feedback 120–200 ms;
+  - navigation uses native stack transition;
+  - route line only animates when geometry exists;
+  - no decorative animation over a map or behind critical text;
+  - reduce-motion removes scale/bounce and keeps state changes immediate.
+
+Map rules:
+  - red marker = customer pickup; navy marker = assigned provider;
+  - Polyline is drawn only from backend RoadRoute.coordinates;
+  - never draw a straight line between markers as fallback;
+  - show “Chưa có tuyến đường giao thông hợp lệ” when router fails;
+  - provider identity/contact appears only after assignment and during active ca.
+
+Shared components:
+  AppButton, AppInput, ScreenHeader, RequestSummaryCard, status badge,
+  service card, offer card, quote panel, timeline item, map marker/callout,
+  loading/error/empty panel, permission notice and destructive confirmation.
+
+Bottom navigation:
+  Dark #0B1F33, safe-area aware.
+  Customer: Trang chủ | Cứu hộ | Hoạt động | Tài khoản.
+  Provider: Trang chủ | Hoạt động | Vận hành | Tài khoản.
+  Dispatcher/admin: Trang chủ | Hoạt động | Vận hành | Tài khoản.
+  Amber active icon/label; sky-blue inactive icon/label.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+70 BUSINESS FRAMES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+═══ BOOTSTRAP & ONBOARDING — 4 FRAMES ═════════════
+
+FRAME 01 — Bootstrap
+Full dark navy screen, centered MotoRescue shield/road mark and native loading
+indicator. No fake progress percentage. Route decision waits for fonts, session
+and onboarding flag. Status bar light and safe-area clean.
+
+FRAME 02 — Onboarding: đúng loại sự cố
+Dark background, amber construct icon in navy tile. Title “Gửi đúng loại sự cố”.
+Explain that short description, vehicle type and location support capability
+matching. Skip in top-right; progress 1/3; “Tiếp tục” at safe bottom.
+
+FRAME 03 — Onboarding: tuyến đường thật
+Navigate-circle illustration with a road-shaped path, never a straight connector.
+Title “Ghép theo tuyến đường thật”. Explain road ETA and verified teams. Progress
+2/3, same component geometry as frame 02.
+
+FRAME 04 — Onboarding: dữ liệu tối thiểu
+Shield-check icon. Title “Ít dữ liệu, nhiều kiểm soát”. Explain active-case GPS,
+two-sided confirmation and no personal documents. Progress 3/3; CTA “Bắt đầu”.
+
+═══ AUTH — 4 FRAMES ═══════════════════════════════
+
+FRAME 05 — Login: phone
+Dark hero “Đăng nhập an toàn”, white form sheet. Display-name input for first-time
+profile, Vietnamese phone input, terms/privacy links, required consent checkbox,
+CTA “Gửi mã OTP”. Explain that new accounts receive customer role.
+
+FRAME 06 — Login: OTP
+Masked E.164/local phone, six-digit numeric input, verify CTA, resend countdown,
+change-phone action. Do not expose Supabase error internals.
+
+FRAME 07 — Login: send/validation error
+Same phone form with inline error for invalid Vietnamese number, SMS failure or
+rate limit. Keep entered non-sensitive fields and provide retry only when allowed.
+
+FRAME 08 — Login: OTP invalid/expired
+OTP form with error alert, clear next step, resend cooldown and change-phone link.
+Differentiate expired/too-many-attempts in text, not only color.
+
+═══ HOME BY ROLE — 3 FRAMES ═══════════════════════
+
+FRAME 09 — Customer home
+Dark hero greeting + “Khách hàng”. Primary CTA “Yêu cầu cứu hộ xe máy”. Red-soft
+115 handoff card, active request list, backend service cards and “Xem tất cả”.
+Empty active-request state is honest, not populated with mock cards.
+
+FRAME 10 — Provider home
+Hero identifies “Cứu hộ viên”. CTA opens Vận hành. Show only provider’s active ca;
+do not show customer service catalog as a creation flow.
+
+FRAME 11 — Dispatcher/admin home
+Operational summary copy and CTA to Vận hành. Active requests use real backend
+cards. Admin is visually same as dispatcher with role label, not a fake VIP theme.
+
+═══ CREATE REQUEST — 7 FRAMES ═════════════════════
+
+FRAME 12 — Request step 1: safety
+Safe-area ScreenHeader with back-to-home action, visible 1/3 progress, two safety
+questions and one bottom CTA. Do not show service or location fields yet.
+
+FRAME 13 — Emergency handoff
+When injury/fire/fuel leak/continuing danger is true, insert red safety panel and
+three call buttons 115/114/113. Explain MotoRescue technical request is stopped.
+
+FRAME 14 — Request step 2: issue and vehicle
+Visible 2/3 progress, backend service radio cards, vehicle-power segments and
+optional description. Back returns to safety answers; continue requires a service.
+
+FRAME 15 — Request step 3: pickup map confirmed
+Map dominates the upper area. A rounded bottom sheet contains GPS action, draggable
+red marker state, accuracy/manual-adjust label, landmark/note, safety checkbox and
+the primary “Tìm đội cứu hộ” CTA. Back returns to step 2; no field is lost.
+
+FRAME 16 — Service catalog unavailable
+Error panel in step 2, retry action and no fake service choices. Continue is not
+allowed while the backend catalog is unknown.
+
+FRAME 17 — GPS denied/requesting
+Step 3 shows deterministic loading or an inline denial plus “Mở cài đặt hệ thống”.
+Do not insert Da Nang center coordinates and do not show an endless animation.
+
+FRAME 18 — Backend rejects creation
+Preserve form and map after OUTSIDE_SERVICE_AREA, REQUEST_RATE_LIMITED or an active
+request conflict. Show server-safe message and direct user to active ca if relevant.
+
+═══ ACTIVITY — 2 FRAMES ═══════════════════════════
+
+FRAME 19 — Active requests
+Segment/header for open work. Request cards show service icon, status text,
+pickup landmark, ETA only when available and latest update. Tap opens detail.
+
+FRAME 20 — Request history
+Completed/cancelled list from backend. Empty state uses icon/copy, not sample jobs.
+Closed cards never expose provider contact or exact live GPS.
+
+═══ OPERATIONS — 4 FRAMES ═════════════════════════
+
+FRAME 21 — Provider operations
+Verified team/status card, availability switch, GPS tracking state, expiring offer
+cards with road distance/ETA and atomic “Nhận ca”. Show active ca link when busy.
+
+FRAME 22 — Dispatcher operations
+List operational requests, no-provider indicators and links to detail. No team
+mutation controls reserved for admin.
+
+FRAME 23 — Admin operations
+Same dispatcher monitoring plus entry to “Đội và phân quyền”. Role boundaries are
+visible; admin does not receive provider availability controls.
+
+FRAME 24 — Provider GPS denied/stale/error
+Availability cannot be represented as safely active. Show permission/network/GPS
+reason, system-settings action and last-known-state warning without fake location.
+
+═══ PROFILE, SETTINGS, LEGAL, ADMIN — 8 FRAMES ════
+
+FRAME 25 — Customer profile
+Dark identity card with minimal display name, masked phone and customer role.
+Rows: edit, security, settings, help, privacy, terms, logout.
+
+FRAME 26 — Internal profile
+Same information architecture with verified provider/dispatcher/admin role label.
+Do not display fabricated ratings, revenue, completed jobs or rank.
+
+FRAME 27 — Settings
+Language selector, foreground-location permission, push-registration status,
+privacy explanation and delete-account link. Vietnamese and English copy are
+complete; changing language refreshes server-localized catalog/request data.
+
+FRAME 28 — Edit profile
+Single minimal display-name input with current backend value, validation, save and
+loading/error states. No avatar/personality fields not supported by backend.
+
+FRAME 29 — Delete account
+Risk explanation, active-case block, typed/explicit confirmation and destructive
+CTA. Clarify this creates a deletion request and audit retention may remain.
+
+FRAME 30 — Privacy policy
+Versioned long-form page: minimal profile, Auth phone, active-case GPS, provider
+verification, processors, sharing, retention and user rights.
+
+FRAME 31 — Terms of use
+Versioned long-form page: technical-only scope, safety handoff, truthful location,
+two-sided confirmations, quote responsibility and prohibited abuse.
+
+FRAME 32 — Teams and roles (admin)
+Real backend teams with status. Create a pending team only with team name, internal
+partner file code, verified operations hotline and radius. Search an existing account
+that has signed in with OTP before assigning provider/contact/vehicle; never create a
+provider password, shared team login or ask the admin to copy a UUID. Configure team
+capabilities, then show the database-driven offline checklist, progress, minimal notes,
+provider/capability prerequisites and verified-by/time. The activate action stays
+disabled until saved data is ready; never upload contracts or identity documents.
+Verify/suspend and dispatcher grant/revoke remain admin-only. Include an inline
+bilingual service-catalog editor. Catalog code is
+immutable; admin may edit approved icon, labels, descriptions, order, quote policy
+and active state. Show real team rating/count, recent reviews, hidden-review state,
+quality signal severity, issued-warning count and the manual suspension-review hint.
+Warning, resolve, hide/restore and suspend actions require explicit reasons and audit.
+Never auto-lock a team from rating alone. No seeded teams or fabricated reputation.
+
+═══ REQUEST DETAIL — CUSTOMER — 10 FRAMES ═════════
+
+FRAME 33 — Searching/offered
+Map centered on pickup, no provider identity. Status text differentiates searching
+and offer distribution while keeping the same allowed customer actions.
+
+FRAME 34 — No provider
+Clear terminal state, support hotline only when configured, customer cancel and
+staff retry separation. Never show indefinite spinner.
+
+FRAME 35 — Assigned
+Provider name, verified team, rescue vehicle and job phone become visible. Full-map
+button appears; route state may still be pending.
+
+FRAME 36 — Provider en route
+Live marker, real road Polyline/ETA, call action, real provider rating/count and GPS update timestamp. Routing
+failure uses warning, not straight line.
+
+FRAME 37 — Arrival confirmation
+Two prominent actions: “Xác nhận cứu hộ viên đã đến” and “Chưa thấy cứu hộ viên”.
+Provider identity remains visible for real-world verification.
+
+FRAME 38 — Arrived/diagnosing
+Confirmed presence, diagnostic status and timeline. Customer waits; no premature
+completion or review control.
+
+FRAME 39 — Quote approval
+Quote version, description, repair/transport work type and VND amount. Approve and
+reject are equally clear; show loading/conflict response.
+
+FRAME 40 — Repairing/transporting
+Status and selected work type prominent. Map/contact remain for active case. No
+payment UI and no unapproved price mutation.
+
+FRAME 41 — Completion confirmation
+Actions “Xác nhận đã hoàn tất” and “Công việc chưa hoàn tất”. Rejection returns to
+the exact active work type, not a generic state.
+
+FRAME 42 — Completed + review
+Closed timeline, provider contact hidden by backend, 1–5 star editor, optional
+comment, save/edit and destructive delete confirmation. Place the review prompt before
+the long timeline and show provider/team reputation computed from non-hidden reviews.
+
+═══ REQUEST DETAIL — PROVIDER — 8 FRAMES ══════════
+
+FRAME 43 — Provider assigned
+Customer pickup/map visible only after atomic acceptance. CTA “Bắt đầu di chuyển”
+and active GPS sharing notice.
+
+FRAME 44 — Provider en route
+Road route, pickup marker, provider GPS state and CTA to request arrival
+confirmation. Do not let provider self-confirm arrival.
+
+FRAME 45 — Waiting for customer arrival confirmation
+Status explains customer must confirm. Provider can continue tracking or perform
+audited operational cancellation when truly blocked.
+
+FRAME 46 — Arrival confirmed
+CTA “Bắt đầu kiểm tra xe”, pickup/context information and timeline.
+
+FRAME 47 — Diagnosing without required quote
+Two work-type actions: repair at location or transport. The choice is persisted in
+request work_type before work begins.
+
+FRAME 48 — Diagnosing with quote
+Description input, VND numeric input, repair/transport selector and submit. Inline
+validation; no prefilled fake amount.
+
+FRAME 49 — Repairing/transporting
+Selected work status, tracking notice and CTA requesting customer completion
+confirmation. Provider cannot mark completed alone.
+
+FRAME 50 — Waiting for completion confirmation
+Read-only wait state with timeline and audited stop-case action. No repeated submit
+button that could duplicate transition.
+
+═══ REQUEST DETAIL — STAFF — 2 FRAMES ═════════════
+
+FRAME 51 — Staff active-case monitor
+Full status, real route/provider/team data and timeline. Staff may cancel with a
+specific audit reason but cannot impersonate customer confirmations.
+
+FRAME 52 — Staff no-provider recovery
+No-provider cause/routing status, timeline and “Tìm lại đội phù hợp”. Retrying
+returns request to searching and must show backend conflict/error.
+
+═══ SERVICE CATALOG — 7 FRAMES ════════════════════
+
+FRAME 53 — Service catalog success
+Backend list with icon, label, description and quote policy. Cards navigate to
+details; no static fallback catalog.
+
+FRAME 54 — Service catalog loading
+Centered/contained loader and descriptive text; preserve header/back navigation.
+
+FRAME 55 — Service catalog error
+Cloud-offline/error icon, explanation that mock data is not substituted, retry.
+
+FRAME 56 — Empty service catalog
+Operational empty state: no active services published. No request CTA.
+
+FRAME 57 — Service detail requiring quote
+Dynamic service identity plus process timeline including diagnosis and customer
+quote approval. Customer CTA passes the real service code to request form.
+
+FRAME 58 — Service detail without required quote
+Dynamic identity and shorter process. Explain two-sided arrival/completion still
+apply even without a pre-work quote.
+
+FRAME 59 — Service unavailable/not found
+Safe error page for deactivated/unknown code with return-to-catalog action.
+
+═══ HELP & SAFETY — 3 FRAMES ══════════════════════
+
+FRAME 60 — Help center with hotline
+Safety, service and security quick links; guidance for missing provider, route
+failure and quote rejection; configured support hotline tap-to-call.
+
+FRAME 61 — Help center without hotline
+Development/configuration state clearly says hotline is not configured. Legal and
+safety help remain accessible; never insert a fake phone number.
+
+FRAME 62 — Roadside safety
+Red danger panel, 115/114/113 call cards, five practical safety steps and a scope
+disclaimer. Calls open the OS dialer; app never claims the call succeeded.
+
+═══ ACCOUNT SECURITY — 2 FRAMES ═══════════════════
+
+FRAME 63 — OTP verified
+Dark shield hero, masked phone, verified state, real last-sign-in/account-created
+timestamps and anti-phishing guidance from the current Supabase session.
+
+FRAME 64 — OTP unverified/unavailable state
+Same structure with clear unverified status and support direction. Do not fabricate
+session history or a multi-device list unsupported by backend.
+
+═══ FULL-SCREEN RESCUE MAP — 4 FRAMES ═════════════
+
+FRAME 65 — Live road route
+Full map, safe top back/title controls, pickup/provider markers, backend Polyline,
+road km/minutes, provider card, last GPS update and call button in bottom sheet.
+
+FRAME 66 — Waiting for provider location
+Pickup marker only, bottom status “Đang chờ vị trí cứu hộ viên”. Identity may be
+shown if assigned; no estimated line or invented coordinate.
+
+FRAME 67 — Routing unavailable
+Both real markers when available, no Polyline, explicit router warning and the rule
+that the app does not replace it with a straight connector.
+
+FRAME 68 — Map access/not-found error
+No map leakage. Error explains request is absent or current account has no access;
+single safe back-to-activity action.
+
+═══ RESTRICTED APP ASSISTANT — 2 FRAMES ════════════
+
+FRAME 69 — MotoRescue assistant ready/in-scope
+Authenticated app surface with a 56 pt floating amber chat button above bottom
+navigation and gesture inset. Open state is a safe-area bottom sheet with scope
+label “Hỗ trợ cách dùng app · Không chẩn đoán xe”, session-only messages, three
+real feature prompts, multiline 500-character composer, sending state and clear/
+close 44 pt controls. No Gemini key, raw model metadata or fake chat history.
+
+FRAME 70 — Assistant guard/quota/upstream state
+Same sheet shows a deterministic local refusal for off-topic/vehicle-diagnosis
+requests, emergency handoff to 113/114/115, or an explicit quota/upstream error.
+Outside-scope requests do not call Gemini. Keep the composer usable when safe;
+do not imply that the assistant replaces a mechanic or emergency service.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DELIVERY RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Design all 70 frames and keep the numbering above.
+2. Use one component system across roles; role changes permission/content, not brand.
+3. Every frame includes top/bottom safe-area annotation.
+4. Map frames include status-bar scrim and no straight-line fallback.
+5. Loading, error and empty frames use no sample business records.
+6. Payment, AI diagnosis, general-purpose AI chat, hotel/tourism, VIP and travel-place UI are forbidden. The restricted MotoRescue app-support assistant in frames 69–70 is allowed.
+7. Customer never browses or selects nearby providers.
+8. Provider contact is absent before assignment and after case closure.
+9. All Vietnamese text must be proofread with full diacritics.
+10. Figma prototype paths: happy path, emergency handoff, no provider, quote reject,
+    GPS denied, router unavailable and concurrent offer loss.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

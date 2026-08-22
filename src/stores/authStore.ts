@@ -1,8 +1,9 @@
+import type { User } from '@supabase/supabase-js';
 import { create } from 'zustand';
-import { User } from '@supabase/supabase-js';
-import { supabase } from '../services/supabase';
-import type { Profile } from '../types/profile';
-export type { Profile } from '../types/profile';
+import { supabase } from '@/src/services/supabase';
+import type { Profile } from '@/src/types/profile';
+import { useI18n } from '@/src/i18n';
+export type { Profile } from '@/src/types/profile';
 
 interface AuthState {
   user: User | null;
@@ -11,9 +12,6 @@ interface AuthState {
   isProfileLoading: boolean;
   isHydrated: boolean;
   error: string | null;
-  setUser: (user: User | null) => void;
-  setProfile: (profile: Profile | null) => void;
-  setLoading: (loading: boolean) => void;
   syncUser: (user: User | null) => Promise<void>;
   initialize: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -26,6 +24,13 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
   return data as Profile | null;
 }
 
+function authError(kind: 'profile' | 'session' | 'refresh') {
+  const english = useI18n.getState().language === 'en';
+  if (kind === 'session') return english ? 'Could not initialize the session.' : 'Không thể khởi tạo phiên.';
+  if (kind === 'refresh') return english ? 'Could not refresh the profile.' : 'Không thể làm mới hồ sơ.';
+  return english ? 'Could not load the profile.' : 'Không thể tải hồ sơ.';
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   profile: null,
@@ -33,9 +38,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isProfileLoading: true,
   isHydrated: false,
   error: null,
-  setUser: (user) => set({ user }),
-  setProfile: (profile) => set({ profile }),
-  setLoading: (loading) => set({ isLoading: loading }),
   syncUser: async (user) => {
     set({ user, isLoading: true, isProfileLoading: Boolean(user), error: null });
     if (!user) {
@@ -44,10 +46,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     try {
       const profile = await fetchProfile(user.id);
-      if (get().user?.id === user.id) set({ profile, error: null });
-    } catch (error) {
+      if (get().user?.id === user.id) set({ profile });
+    } catch {
       if (get().user?.id === user.id) {
-        set({ profile: null, error: error instanceof Error ? error.message : 'Không thể tải hồ sơ.' });
+        set({ error: authError('profile') });
       }
     } finally {
       if (get().user?.id === user.id) set({ isLoading: false, isProfileLoading: false, isHydrated: true });
@@ -55,49 +57,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   initialize: async () => {
     if (get().isHydrated) return;
-    set({ isLoading: true, isProfileLoading: true, error: null });
     try {
       const { data, error } = await supabase.auth.getSession();
       if (error) throw error;
       const user = data.session?.user ?? null;
       set({ user });
-      if (!user) {
-        set({ profile: null });
-      } else {
-        try {
-          const profile = await fetchProfile(user.id);
-          if (get().user?.id === user.id) set({ profile });
-        } catch (profileError) {
-          if (get().user?.id === user.id) {
-            set({
-              profile: null,
-              error: profileError instanceof Error ? profileError.message : 'Không thể tải hồ sơ.',
-            });
-          }
-        }
-      }
-    } catch (error) {
-      set({ user: null, profile: null, error: error instanceof Error ? error.message : 'Không thể khởi tạo phiên đăng nhập.' });
+      set({ profile: user ? await fetchProfile(user.id) : null });
+    } catch {
+      set({ user: null, profile: null, error: authError('session') });
     } finally {
       set({ isLoading: false, isProfileLoading: false, isHydrated: true });
     }
   },
   refreshProfile: async () => {
     const user = get().user;
-    if (!user) {
-      set({ profile: null, isProfileLoading: false });
-      return;
-    }
-    set({ isProfileLoading: true, error: null });
+    if (!user) return;
+    set({ isProfileLoading: true });
     try {
-      const profile = await fetchProfile(user.id);
-      if (get().user?.id === user.id) set({ profile, error: null });
-    } catch (error) {
-      if (get().user?.id === user.id) {
-        set({ error: error instanceof Error ? error.message : 'Không thể làm mới hồ sơ.' });
-      }
+      set({ profile: await fetchProfile(user.id), error: null });
+    } catch {
+      set({ error: authError('refresh') });
     } finally {
-      if (get().user?.id === user.id) set({ isProfileLoading: false });
+      set({ isProfileLoading: false });
     }
   },
   signOut: async () => {

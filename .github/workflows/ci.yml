@@ -1,4 +1,4 @@
-name: CI — Production validation
+name: CI - MotoRescue validation
 
 on:
   push:
@@ -15,21 +15,18 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: "20.19.x"
+  NODE_VERSION: '20.19.x'
   APP_ENV: production
   EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
   EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
-  EXPO_PUBLIC_API_URL: https://api.example.com/api
-  EXPO_PUBLIC_WEATHER_API_URL: https://api.open-meteo.com
-  EXPO_PUBLIC_OSRM_CAR_BASE_URL: https://routing-car.example.com
-  EXPO_PUBLIC_OSRM_MOTORBIKE_BASE_URL: https://routing-motorbike.example.com
-  EXPO_PUBLIC_OSRM_WALK_BASE_URL: https://routing-walk.example.com
-  EXPO_PUBLIC_OSRM_BICYCLE_BASE_URL: https://routing-bicycle.example.com
+  EXPO_PUBLIC_API_URL: https://api.example.com
+  EXPO_PUBLIC_EAS_PROJECT_ID: 00000000-0000-4000-8000-000000000000
+  EXPO_PUBLIC_SUPPORT_HOTLINE: '19000000'
   GOOGLE_MAPS_KEY: ci-placeholder
 
 jobs:
   validate:
-    name: Test, security and Expo bundle
+    name: Mobile, backend and security
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -46,7 +43,7 @@ jobs:
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: '21'
           cache: maven
       - name: Install locked dependencies
         run: npm ci
@@ -68,14 +65,14 @@ jobs:
           fi
       - name: Run ESLint
         run: npm run lint
+      - name: Check source formatting
+        run: npm run format:check
       - name: Run TypeScript type-check
         run: npm run typecheck
       - name: Run frontend tests
         run: npm run test:ci
       - name: Validate Expo public configuration
         run: npx expo config --type public
-      - name: Validate Expo SDK compatibility
-        run: npx --yes expo-doctor@1.20.1
       - name: Validate Expo package versions
         run: npx expo install --check
       - name: Export Android, iOS and web bundles

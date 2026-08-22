@@ -1,0 +1,64 @@
+# Triển khai MotoRescue
+
+## 1. Yêu cầu
+
+- Node `>=20.19`, npm, JDK 21.
+- Supabase project riêng cho staging và production.
+- OSRM instance có dataset/profile xe máy đã kiểm chứng tại Đà Nẵng.
+- EAS project, Android/iOS credential và thiết bị thật cho background location/push.
+- SMS provider được cấu hình trong Supabase Auth cho phone OTP.
+
+## 2. Cấu hình
+
+Sao chép `.env.example` thành `.env`. Client chỉ nhận Supabase URL + publishable/anon key, API URL, hotline, EAS project ID và Maps key đã restriction. Database password, Expo access token và Gemini key chỉ ở backend secret store. `EXPO_PUBLIC_API_URL` là origin/prefix đứng trước `/api`, không thêm `/api` lần nữa.
+
+`APP_ENV=production` làm Expo config fail-fast nếu thiếu Supabase, API, Maps hoặc hotline. Không dùng `localhost` cho API URL trên điện thoại thật.
+
+## 3. Supabase
+
+Với project mới:
+
+1. Chạy `scripts/01_schema.sql`.
+2. Đặt mật khẩu ngẫu nhiên cho role `motorescue_api` bằng câu lệnh trong `scripts/README.md`, lưu vào secret manager và cấu hình `SPRING_DATASOURCE_USERNAME=motorescue_api`. Không dùng `postgres` runtime.
+3. Chạy `scripts/02_verify_rls.sql`; script chỉ đọc metadata, không tạo vote/fixture và không phát sinh `INVALID_VOTE`.
+4. Bật phone auth và SMS provider. Đặt OTP expiry ngắn, rate limit, CAPTCHA/bot protection theo gói Supabase.
+5. Đăng nhập OTP cho tài khoản operator đầu tiên. Thay đúng một số E.164 trong `03_bootstrap_operator.sql` rồi chạy. Không dùng UPDATE không có `WHERE`.
+6. Bật Supabase Cron/`pg_cron`, sau đó chạy `04_schedule_retention.sql`.
+7. Trong Realtime Settings, tắt public access và kiểm tra private topic `request:<uuid>` bằng hai tài khoản không liên quan.
+8. Với đối tác thật, dùng mã hồ sơ nội bộ không chứa số CCCD/số điện thoại. Từng provider tự đăng nhập OTP trước; admin cấp quyền, khai báo capability, hoàn tất checklist và kích hoạt đội. Không đưa hợp đồng hoặc ảnh giấy tờ vào Supabase Storage.
+
+`00_reset.sql` chỉ dùng local/staging được phép xóa và yêu cầu cờ xác nhận trong cùng SQL session. Không chạy trên production có dữ liệu cần giữ.
+
+## 4. Routing
+
+- `OSRM_MOTORBIKE_BASE_URL` là base origin, không kèm `/route/v1` hoặc `/table/v1`.
+- Dataset phải được preprocess bằng profile xe máy phù hợp luật giao thông; không dùng public demo router production.
+- Đặt `OSRM_TABLE_BATCH_SIZE` không quá giới hạn coordinate của instance (mặc định dự án là 80, tối đa code là 99 nguồn + một đích).
+- Smoke `/table` với nhiều provider đến một pickup và `/route` với geometry. Kiểm tra cầu, đường một chiều, đường cấm xe máy, bán kính snap và `NoRoute`.
+- OSRM tĩnh không có traffic live. UI dùng từ “ETA theo tuyến”, không cam kết thời gian đến tuyệt đối.
+
+## 5. Backend
+
+Deploy JAR sau reverse proxy HTTPS. Cấu hình database TLS, Supabase issuer/JWKS, CORS allowlist, connection pool, OSRM, push access token, Gemini key/model/quota, `TERMS_VERSION` khớp `LEGAL_VERSION` và service-area. Chỉ chạy một replica cho đến khi đã kiểm chứng scheduled expiry job/locking dưới nhiều replica. Reverse proxy vẫn phải có request/body limit; filter trong app là lớp bổ sung, không thay edge rate limit nhiều replica.
+
+Smoke trợ lý bằng ba nhóm: câu về cách dùng app phải gọi Gemini; câu ngoài lề/chẩn đoán xe phải trả local và không giảm quota; thương tích/cháy/rò nhiên liệu phải trả bàn giao 113/114/115. Kiểm log/database không có prompt hoặc reply.
+
+Health check: `GET /api/health`. Log production phải redaction Authorization, phone, exact coordinates và datasource URL.
+
+## 6. Mobile
+
+Expo Go SDK 54 phù hợp smoke luồng foreground. Background location, push token/channel và native permissions phải kiểm chứng bằng preview/development build:
+
+```powershell
+npx eas-cli build --platform android --profile preview
+npx eas-cli build --platform android --profile production
+npx eas-cli build --platform ios --profile production
+```
+
+Kiểm tra status bar/cutout trên map, quyền location deny/allow, kill/resume app, pin notification, deep link từ push và dừng tracking sau khi đóng ca.
+
+## 7. CI/CD và release
+
+Repository có đúng một workflow `ci.yml`. Một lần push commit lên `main` tạo một run, một job tuần tự: backend test, audit critical, secret scan, lint, format check, typecheck, Jest, Expo config/package check và export bundle. Concurrency hủy run cũ cùng ref.
+
+CI không deploy Supabase, backend hay EAS. Release có thay đổi bên ngoài chỉ được thêm sau khi EAS credential/project và staging gate đã tồn tại, qua GitHub Environment có reviewer.

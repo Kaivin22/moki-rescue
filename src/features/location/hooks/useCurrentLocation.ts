@@ -1,14 +1,33 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import * as Location from 'expo-location';
 
 export interface UserCoordinate {
   latitude: number;
   longitude: number;
+  accuracy: number | null;
 }
 
-export function useCurrentLocation(requestOnMount = false) {
+function addressLabel(address: Location.LocationGeocodedAddress) {
+  return [address.streetNumber, address.street, address.district, address.city].filter(Boolean).join(', ');
+}
+
+export function useCurrentLocation() {
   const [coordinate, setCoordinate] = useState<UserCoordinate | null>(null);
+  const [label, setLabel] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'granted' | 'denied' | 'error'>('idle');
+
+  const selectCoordinate = useCallback(async (next: UserCoordinate) => {
+    setCoordinate(next);
+    setLabel('');
+    setStatus('granted');
+    try {
+      const addresses = await Location.reverseGeocodeAsync(next);
+      setLabel(addresses[0] ? addressLabel(addresses[0]) : '');
+    } catch {
+      setLabel('');
+    }
+    return next;
+  }, []);
 
   const requestLocation = useCallback(async () => {
     setStatus('loading');
@@ -18,21 +37,18 @@ export function useCurrentLocation(requestOnMount = false) {
         setStatus('denied');
         return null;
       }
-      const lastKnown = await Location.getLastKnownPositionAsync({ maxAge: 5 * 60 * 1000, requiredAccuracy: 1000 });
-      const position = lastKnown ?? await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const next = { latitude: position.coords.latitude, longitude: position.coords.longitude };
-      setCoordinate(next);
-      setStatus('granted');
-      return next;
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const next = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+      };
+      return await selectCoordinate(next);
     } catch {
       setStatus('error');
       return null;
     }
-  }, []);
+  }, [selectCoordinate]);
 
-  useEffect(() => {
-    if (requestOnMount) void requestLocation();
-  }, [requestLocation, requestOnMount]);
-
-  return { coordinate, status, requestLocation };
+  return { coordinate, label, status, requestLocation, selectCoordinate, setLabel };
 }

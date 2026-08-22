@@ -1,87 +1,92 @@
-# Đi Đà Nẵng – Trip Planner
+# MotoRescue Đà Nẵng
 
-Ứng dụng Expo giúp khám phá địa điểm thật tại Đà Nẵng, lập lịch trình, chia sẻ theo liên kết và nhận hỗ trợ. Dữ liệu nghiệp vụ đến từ Supabase; dự án không tự nạp rating, ảnh hay lịch trình giả. Catalog tùy chọn gồm 15 địa điểm thật nằm trong `scripts/03_seed_real_places.sql`.
+Ứng dụng điều phối cứu hộ xe máy theo thời gian thực cho một mạng lưới kín gồm các đội đối tác đã được xác minh tại Đà Nẵng. Sản phẩm không phải sàn mở cho thợ tự đăng ký và không thay thế 113/114/115.
 
-## Phạm vi sản phẩm
+## Mô hình sử dụng
 
-- Supabase Auth: đăng ký, đăng nhập, khôi phục mật khẩu, hoàn thiện hồ sơ và xóa tài khoản.
-- Địa điểm: tìm kiếm/phân trang/lọc, bản đồ, lưu, review, helpful vote và báo cáo sai thông tin.
-- Lịch trình: tạo, sửa, clone, tối ưu theo ma trận đường của từng phương tiện, đổi giờ có kiểm tra xung đột, dự báo đúng ngày, chia sẻ/revoke/vote bằng token.
-- AI: chat và nhận xét lịch trình qua Spring Boot; JWT, quota, VIP và trạng thái khóa đều được kiểm tra phía server.
-- Hỗ trợ: ticket, phản hồi và xử lý trạng thái atomic.
-- Editor/admin: quy trình nháp–duyệt địa điểm, kiểm duyệt review/report, phân trang tài khoản và audit thao tác đặc quyền.
-- Thanh toán không thuộc phạm vi hoàn thiện hiện tại; không bật thu tiền chỉ dựa trên schema VIP.
+- **Khách đi xe máy** tạo yêu cầu, xác nhận vị trí, theo dõi cứu hộ viên, duyệt báo giá và đánh giá 1–5 sao cho ca đã hoàn thành.
+- **Cứu hộ viên** là thành viên của một đội đối tác đã được xác minh ngoại tuyến; họ bật sẵn sàng, nhận đề nghị phù hợp và cập nhật quy trình xử lý.
+- **Điều phối viên** là nhân sự của đơn vị vận hành trung tâm, theo dõi ca và tìm lại đội khi hệ thống chưa ghép được.
+- **Admin** là quản trị vận hành của chính đơn vị trung tâm. Admin quản lý đội, năng lực, catalog, quyền nhân sự và cảnh báo chất lượng; admin không mặc nhiên là cứu hộ viên và không có khái niệm VIP.
 
-Khách chưa đăng nhập chỉ đọc địa điểm đã xuất bản và lịch trình được chia sẻ bằng token còn hạn. Không có public itinerary feed trong MVP.
+Đây là sản phẩm cho **một đơn vị điều phối trung tâm quản lý mạng lưới kín nhiều đội cứu hộ nhỏ**, không phải ứng dụng riêng của một đội và cũng không phải marketplace để doanh nghiệp tự đăng ký hoặc đấu giá công khai. Thuật toán tự gửi đề nghị đến các cứu hộ viên đủ điều kiện theo ETA đường thực tế.
+
+MVP chưa thu tiền trong ứng dụng. Cứu hộ viên gửi báo giá, khách duyệt trước khi làm; thao tác duyệt giá **không phải xác nhận đã thanh toán**. Khách thanh toán trực tiếp bằng tiền mặt hoặc kênh ngoài hệ thống. Nếu phát triển thương mại, nguồn thu đơn giản nhất là phí kết nối nhỏ trên ca hoàn tất hoặc phí đối tác; đồ án không xây ví, đối soát hay kế toán.
+
+## Phạm vi đã triển khai
+
+- Đăng nhập bằng số điện thoại và OTP qua Supabase; tài khoản mới luôn là khách hàng.
+- Đơn vị cứu hộ không có trang tự đăng ký. Sau khi ký hợp tác ngoại tuyến, admin tạo đội với mã hồ sơ nội bộ, cấp quyền cho các tài khoản đã tự đăng nhập OTP và chỉ kích hoạt khi đủ checklist, năng lực và nhân sự.
+- Giao diện theo bốn vai trò: khách, cứu hộ viên, điều phối và admin vận hành.
+- Phân loại nguy cơ trước khi tạo ca; ca khẩn cấp được chuyển sang trình gọi hệ thống.
+- Khách xác nhận hoặc kéo ghim điểm cứu hộ trên bản đồ trước khi gửi; không chỉ tin vào GPS thô.
+- Catalog/chi tiết dịch vụ lấy từ backend; có trung tâm trợ giúp, hướng dẫn an toàn và trạng thái bảo mật tài khoản.
+- Tạo ca có idempotency, giới hạn spam, kiểm tra vùng phục vụ và chỉ một ca đang mở mỗi khách.
+- Lọc PostGIS theo năng lực/bán kính/độ mới và độ chính xác GPS, sau đó xếp hạng toàn bộ ứng viên bằng ETA OSRM theo đường xe máy. Không dùng đường chim bay làm kết quả cuối.
+- Phát nhiều đề nghị có thời hạn; chỉ một cứu hộ viên có thể nhận ca nhờ transaction nguyên tử.
+- State machine phía server, optimistic version, lịch sử chỉ thêm và audit log.
+- Vị trí live qua private Realtime Broadcast; checkpoint tối thiểu, outbox GPS khi mất mạng và job xóa/làm mờ dữ liệu.
+- Sau khi nhận ca, khách thấy tên, đội, phương tiện và số liên hệ công việc đã xác minh của cứu hộ viên; số bị ẩn khi ca đóng.
+- Bản đồ ca toàn màn hình theo dõi provider bằng GPS live và chỉ vẽ geometry tuyến đường bộ do router trả về.
+- Xác nhận hai phía khi đến và hoàn thành; báo giá phải được khách duyệt.
+- Đánh giá chỉ gắn với ca đã hoàn thành, có sửa và xóa.
+- Điểm uy tín cứu hộ viên/đội chỉ tính từ đánh giá thật không bị ẩn. Hệ thống mở tín hiệu khi đủ mẫu và điểm thấp; admin kiểm tra review, gửi cảnh báo hoặc đình chỉ thủ công. Không tự khóa đội chỉ bằng điểm sao.
+- Push notification theo cài đặt thiết bị, onboarding, giao diện vi/en, consent versioned, yêu cầu xóa tài khoản và quy trình xác minh đội đối tác có audit.
+- Admin chỉnh được nội dung catalog nghiệp vụ song ngữ và trạng thái nhận ca; layout giao diện vẫn được kiểm soát trong codebase.
+- ChatBox Gemini dạng bong bóng nổi chỉ hướng dẫn cách dùng MotoRescue/quy trình trong app; câu ngoài lề, chẩn đoán xe và khẩn cấp được chặn cục bộ trước khi dùng quota.
+
+Thanh toán, ví, AI chẩn đoán, chatbot kiến thức chung, dashboard web và marketplace mở không thuộc MVP.
 
 ## Kiến trúc
 
 ```text
-app/                 Expo Router routes/layouts
-src/components/      UI dùng chung
-src/features/        API, component và nghiệp vụ theo miền
-src/services/        Supabase, weather và adapter hạ tầng
-src/stores/          Auth và draft xuyên màn hình
-src/types/           Hợp đồng domain dùng chung
-backend/             Spring Boot API cho AI/routing/quota
-scripts/             Supabase baseline + RLS verification
-__tests__/           Unit/static contract tests
+app/                 Expo Router screens theo vai trò
+src/features/        Auth, location, notification, rescue và trợ lý trong app
+src/components/      UI/map adapter dùng chung
+backend/             Spring Boot 3 / Java 21 - cổng mutation tin cậy
+scripts/             Supabase schema, RLS, bootstrap và retention
+docs/                Kiến trúc, triển khai, release checklist
+__tests__/           Contract/unit test phía mobile
 ```
 
-- Expo SDK 54, React Native 0.81, React 19.1.
-- Zustand + TanStack Query.
-- Supabase Auth/PostgreSQL/Storage với RLS.
-- Spring Boot 3, Java 21, Supabase JWT/JWKS, Gemini và OSRM.
-- Open-Meteo cho dự báo thời tiết.
+Danh mục bàn giao thiết kế gồm số route và toàn bộ frame nghiệp vụ nằm tại [docs/FIGMA_SCREEN_INVENTORY.md](./docs/FIGMA_SCREEN_INVENTORY.md).
 
-Xem ranh giới phụ thuộc tại [ARCHITECTURE.md](./ARCHITECTURE.md).
+Đặc tả hiện hành nằm tại [specs/MotoRescue_ky_thuat.txt](./specs/MotoRescue_ky_thuat.txt) và [specs/MotoRescue_UI_Stitch.txt](./specs/MotoRescue_UI_Stitch.txt). Kết quả rà soát dữ liệu cứng/mẫu nằm tại [docs/HARDCODE_AND_MOCK_AUDIT.md](./docs/HARDCODE_AND_MOCK_AUDIT.md).
 
-## Cài đặt
+Mobile là client không tin cậy. Các thay đổi nghiệp vụ đi qua Spring Boot; Supabase RLS vẫn là lớp phòng thủ cuối. Xem [kiến trúc chi tiết](./docs/ARCHITECTURE.md).
 
-Yêu cầu Node `>=20.19.0`, npm và JDK 21 nếu chạy backend.
+## Cài đặt local
+
+Yêu cầu Node `>=20.19`, npm và JDK 21.
 
 ```powershell
 npm ci
 Copy-Item .env.example .env
-```
-
-Điền biến môi trường thật theo [DEPLOYMENT.md](./DEPLOYMENT.md). Với Supabase mới hoàn toàn, cài `scripts/01_schema.sql`; chỉ dùng `scripts/00_reset.sql` khi thật sự muốn xóa môi trường local/staging. Sau schema, có thể chạy `scripts/03_seed_real_places.sql` để khởi tạo catalog thật; không có bước nạp dữ liệu giả.
-
-```powershell
 npm start
 ```
 
-Expo Go trên store được dùng với SDK 54. Khi nâng SDK, ưu tiên development build để không phụ thuộc phiên bản Expo Go trên App Store/Play Store.
+Điện cấu hình thật theo [hướng dẫn triển khai](./docs/DEPLOYMENT.md). Trên điện thoại thật, `EXPO_PUBLIC_API_URL` phải là HTTPS hoặc IP LAN truy cập được; `localhost` là chính điện thoại.
+
+Backend:
+
+```powershell
+cd backend
+.\mvnw.cmd test
+.\mvnw.cmd spring-boot:run
+```
+
+Database mới chạy theo đúng thứ tự trong [scripts/README.md](./scripts/README.md). Không có seed ca, vị trí, đội hay review giả; danh mục loại sự cố là cấu hình sản phẩm.
+
+## Expo SDK 54
+
+Dự án chủ đích giữ Expo SDK 54 để không phá luồng quét QR bằng Expo Go mà chủ dự án đang dùng. `AGENTS.md` chỉ hướng dẫn coding agent và không thể tự nâng dependency. Background location và remote push không được kiểm chứng đầy đủ trong Expo Go; production phải dùng development/preview build.
 
 ## Kiểm tra
 
 ```powershell
 npm run check
 cd backend
-.\mvnw.cmd test
+.\mvnw.cmd clean test
 ```
 
-`npm run check` chạy lint, TypeScript, Jest, kiểm tra phiên bản package Expo và public config. Trạng thái xác minh thực tế và các bước bắt buộc trên staging/thiết bị nằm trong [RELEASE_READINESS.md](./RELEASE_READINESS.md).
-
-## CI/CD
-
-GitHub Actions chạy backend test, secret/dependency gate, lint, typecheck, Jest, Expo Doctor cố định phiên bản, package compatibility và export Android/iOS/web trên cả pull request lẫn push. Bundle CI dùng placeholder công khai, không phụ thuộc production secret. Binary ký để phát hành phải tạo bằng EAS profile `production` sau khi cấu hình project và credential:
-
-```powershell
-npx eas-cli build --platform android --profile production
-npx eas-cli build --platform ios --profile production
-```
-
-CD EAS chưa tự chạy khi push `main`: cần hoàn tất build Android/iOS đầu tiên trên máy tin cậy, tạo EAS `projectId`/credential rồi mới cấp `EXPO_TOKEN` qua GitHub Environment có reviewer. Secret backend được quản lý ở môi trường deploy backend, không đưa vào Expo config.
-
-## Cấp admin đầu tiên
-
-Tạo user bằng Supabase Auth, rồi chạy một lần trong SQL Editor bằng tài khoản chủ dự án:
-
-```sql
-UPDATE public.profiles
-SET role = 'admin'
-WHERE id = (SELECT id FROM auth.users WHERE email = 'your@email.com');
-```
-
-Không cấp VIP thủ công trong câu lệnh này. Sau bootstrap, quản lý role/khóa tài khoản qua giao diện admin để dùng RPC có guard và audit.
+Repository chỉ được coi là release candidate. Các gate Supabase staging, OSRM xe máy, push, background GPS và hai thiết bị thật nằm trong [release checklist](./docs/RELEASE_READINESS.md).

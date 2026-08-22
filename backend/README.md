@@ -1,34 +1,35 @@
-# Spring Boot API
+# MotoRescue API
 
-Spring Boot là lớp bảo mật và tính toán tin cậy của ứng dụng, không nhân đôi CRUD đã được Supabase + RLS xử lý.
+Spring Boot là ranh giới tin cậy duy nhất cho mutation nghiệp vụ. Mobile không được ghi trực tiếp ca, báo giá, đề nghị điều phối hay audit log.
 
 ## Trách nhiệm
 
-- Xác minh access token Supabase bằng JWKS và yêu cầu đăng nhập cho mọi API.
-- Đọc trạng thái VIP/hạn dùng từ `profiles`; client không được tự cấp quyền.
-- Giới hạn tần suất và hạn mức AI theo người dùng.
-- Gọi Gemini mà không làm lộ API key trên ứng dụng.
-- Phân ngày, sắp thứ tự tuyến VIP trên server; dùng đúng OSRM instance của ô tô/xe máy/đi bộ/xe đạp và fallback ước tính có khai báo khi dịch vụ ngoài lỗi.
-- Chuẩn hóa lỗi API; không trả lỗi dưới dạng HTTP 200.
+- Xác minh Supabase JWT qua JWKS và đọc vai trò/trạng thái từ `profiles`.
+- Tạo ca idempotent, kiểm tra vùng phục vụ, chống ca song song và rate limit theo database.
+- Lọc ứng viên hợp lệ bằng PostGIS, route toàn bộ danh sách theo các lô OSRM Table và xếp hạng ETA đường xe máy.
+- Phát đề nghị có TTL, tự hết hạn bằng scheduled job và nhận ca nguyên tử tại PostgreSQL.
+- Kiểm tra state machine, optimistic version, xác nhận hai phía và báo giá.
+- Nhận checkpoint GPS có giới hạn, phát push và ghi audit cho thao tác nhạy cảm.
+- Quản lý mạng đối tác khép kín: mã hồ sơ nội bộ, checklist ngoại tuyến, năng lực, provider và dispatcher. Chỉ kích hoạt đội khi đủ điều kiện; không lưu bản hợp đồng/giấy tờ.
+- Cung cấp trợ lý Gemini giới hạn trong cách dùng MotoRescue, lọc input trước model, kiểm output sau model và không lưu nội dung chat.
 
-## API
+## API chính
 
-- `POST /api/ai/chat`: chat có hạn mức ngày.
-- `POST /api/ai/optimize`: chỉ VIP; tối ưu các địa điểm theo số ngày và phương tiện.
-- `POST /api/ai/optimize-review`: chỉ VIP; Gemini nhận xét phương án đã tối ưu.
+- `/api/me/*`: hồ sơ, push token, yêu cầu xóa tài khoản.
+- `/api/catalog/service-types`: danh mục sự cố đang hoạt động theo locale.
+- `/api/operator/service-types/*`: admin sửa field catalog được allowlist và ghi audit.
+- `/api/requests/*`: tạo/xem/hủy, state action, route, quote và review.
+- `/api/provider/*`: sẵn sàng, vị trí, đề nghị và nhận ca.
+- `/api/operator/*`: hàng đợi, retry dispatch, tạo/checklist/kích hoạt đội đối tác, phân vai trò, review gần đây và xử lý cảnh báo chất lượng.
+- `/api/assistant/message`: trợ lý trong app cho tài khoản active, quota theo phút/ngày.
 
-## Cấu hình và chạy
-
-Sao chép biến tương ứng trong `.env.example`. Supabase phải dùng asymmetric signing key để Spring xác minh qua JWKS; không đưa service-role key vào ứng dụng.
+## Chạy
 
 ```powershell
-cd backend
 .\mvnw.cmd test
 .\mvnw.cmd spring-boot:run
 ```
 
-Mỗi `OSRM_*_BASE_URL` phải là base URL của một instance được preprocess bằng profile tương ứng; tham số `driving` trong URL request không đổi profile của dataset. Không dùng `router.project-osrm.org` cho production. Response trả `routingStatus`, `objective` và `exactOrder`; fallback Haversine chỉ là ước tính có nhãn, không được dùng để vẽ tuyến trên bản đồ.
+`OSRM_MOTORBIKE_BASE_URL` phải trỏ tới dataset đã preprocess bằng profile xe máy được kiểm chứng. Chuỗi `driving` trong URL không tự biến dataset ô tô thành xe máy. Khi router không trả tuyến hợp lệ, API trả trạng thái không khả dụng thay vì bịa Polyline thẳng.
 
-Mục tiêu routing là giảm **thời gian của tuyến nhanh nhất** do OSRM trả về, không tuyên bố là khoảng cách hình học ngắn nhất hoặc có giao thông thời gian thực. Tối đa 8 điểm có thứ tự exact theo ma trận hiện có; danh sách lớn dùng multi-start + 2-opt. Nhiều ngày được chia bằng dynamic programming theo thời lượng tham quan, thời gian đường và buffer. Đây là open path giữa các địa điểm đã chọn, chưa bao gồm điểm xuất phát như khách sạn/vị trí hiện tại.
-
-Rate limiter hiện lưu trong bộ nhớ, phù hợp một instance. Nếu scale nhiều instance, thay bằng Redis/token bucket dùng chung.
+Runtime database phải dùng `SPRING_DATASOURCE_USERNAME=motorescue_api`, không dùng `postgres`. `GEMINI_API_KEY` là secret backend bắt buộc nếu bật trợ lý và không bao giờ dùng prefix `EXPO_PUBLIC_`.

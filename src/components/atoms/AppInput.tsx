@@ -1,15 +1,9 @@
 import React, { useState } from 'react';
-import {
-  TextInput,
-  View,
-  Text,
-  StyleSheet,
-  TextInputProps,
-  TouchableOpacity,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { TextInput, View, Text, StyleSheet, TextInputProps, TouchableOpacity } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '@/src/constants/colors';
 import { Spacing, Radius, Typography } from '@/src/constants/spacing';
+import { useI18n } from '@/src/i18n';
 
 interface AppInputProps extends TextInputProps {
   label?: string;
@@ -18,42 +12,23 @@ interface AppInputProps extends TextInputProps {
   isPassword?: boolean;
 }
 
-export function AppInput({
-  label,
-  error,
-  leftIcon,
-  isPassword,
-  style,
-  ...props
-}: AppInputProps) {
+export function AppInput({ label, error, leftIcon, isPassword, style, ...props }: AppInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const language = useI18n((state) => state.language);
 
   return (
     <View style={[styles.container, style]}>
-      {label && (
-        <Text style={[styles.label, Typography.label]}>{label}</Text>
-      )}
-      
-      <View
-        style={[
-          styles.inputContainer,
-          isFocused && styles.inputFocused,
-          !!error && styles.inputError,
-        ]}
-      >
-        {leftIcon && (
-          <Ionicons
-            name={leftIcon}
-            size={20}
-            color={Colors.secondary}
-            style={styles.leftIcon}
-          />
-        )}
-        
+      {label && <Text style={[styles.label, Typography.label]}>{label}</Text>}
+
+      <View style={[styles.inputContainer, isFocused && styles.inputFocused, !!error && styles.inputError]}>
+        {leftIcon && <Ionicons name={leftIcon} size={20} color={Colors.secondary} style={styles.leftIcon} />}
+
         <TextInput
+          {...props}
           style={[styles.input, Typography.body]}
-          placeholderTextColor={Colors.secondary}
+          accessibilityLabel={props.accessibilityLabel ?? label}
+          placeholderTextColor={props.placeholderTextColor ?? Colors.secondary}
           secureTextEntry={isPassword && !showPassword}
           onFocus={(e) => {
             setIsFocused(true);
@@ -63,25 +38,32 @@ export function AppInput({
             setIsFocused(false);
             props.onBlur?.(e);
           }}
-          {...props}
         />
-        
+
         {isPassword && (
           <TouchableOpacity
             onPress={() => setShowPassword(!showPassword)}
             style={styles.eyeIcon}
+            accessibilityRole="button"
+            accessibilityLabel={
+              showPassword
+                ? language === 'en'
+                  ? 'Hide password'
+                  : 'Ẩn mật khẩu'
+                : language === 'en'
+                  ? 'Show password'
+                  : 'Hiện mật khẩu'
+            }
           >
-            <Ionicons
-              name={showPassword ? 'eye-off' : 'eye'}
-              size={20}
-              color={Colors.secondary}
-            />
+            <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={Colors.secondary} />
           </TouchableOpacity>
         )}
       </View>
-      
+
       {error && (
-        <Text style={[styles.errorText, Typography.caption]}>{error}</Text>
+        <Text accessibilityRole="alert" style={[styles.errorText, Typography.caption]}>
+          {error}
+        </Text>
       )}
     </View>
   );

@@ -1,71 +1,41 @@
-// Design Tokens — Da Nang Tropical (Toutoucans × Wellness)
-// Palette 1: 30545C · C9E9F1 · ACD87D · 427D71
-// Palette 2: E4E4DF · 1C726F · CBDBA7 · C6D9ED
-// Combined into a harmonious tropical-coastal theme.
-
 export const Colors = {
-  // ─── Brand ────────────────────────────────────────────────────────────────
-  primary: '#1C726F',         // Deep teal — headers, nav, primary actions
-  primaryDark: '#30545C',     // Darker teal — pressed states, shadows
-  primaryMuted: '#427D71',    // Mid teal — secondary actions, borders
-  accent: '#ACD87D',          // Tropical lime green — CTA buttons, highlights
-  accentSoft: '#CBDBA7',      // Soft sage green — light accent backgrounds
-  accentDark: '#8BBE58',      // Deeper lime — pressed states
-  sky: '#C9E9F1',             // Aqua sky — info, badges, chips
-  skyBlue: '#C6D9ED',         // Periwinkle blue — secondary backgrounds
-  lime: '#ACD87D',            // Same as accent — VIP badge, success
-  limeDark: '#8BBE58',        // Deeper lime — pressed lime
+  primary: '#123A5A',
+  primaryDark: '#0B1F33',
+  primaryMuted: '#3B607A',
+  accent: '#F5B942',
+  accentSoft: '#FFF1CF',
+  accentDark: '#D89A20',
+  sky: '#DDECF5',
+  skyBlue: '#BFD7E6',
   white: '#FFFFFF',
 
-  // ─── Semantic surfaces ────────────────────────────────────────────────────
-  background: '#E4E4DF',      // Warm off-white — main app background
-  cardBg: '#FFFFFF',          // Pure white card surfaces
-  surface: '#C9E9F1',         // Aqua sky — chip backgrounds, input fills
-  surfaceWarm: '#F0F2EE',     // Warm light — secondary card backgrounds
-  mist: '#CBDBA7',            // Soft sage — dividers, shimmer
+  background: '#F4F7F9',
+  cardBg: '#FFFFFF',
+  surface: '#EDF3F6',
+  mist: '#D8E2E8',
 
-  // ─── Text ─────────────────────────────────────────────────────────────────
-  textPrimary: '#30545C',     // Dark teal — primary body text
-  textSecondary: '#427D71',   // Mid teal — secondary body text
-  textMuted: '#7A9E99',       // Muted teal — placeholder, disabled text
-  textOnDark: '#FFFFFF',      // Text on dark/primary backgrounds
-  textOnAccent: '#1C3A20',    // Dark green text on lime accent buttons
-  textOnSky: '#1C4A5C',       // Dark text on sky blue backgrounds
+  textPrimary: '#13283A',
+  textSecondary: '#456276',
+  textMuted: '#718898',
+  textOnAccent: '#2D2208',
 
-  // ─── Borders / dividers ───────────────────────────────────────────────────
-  border: 'rgba(28, 114, 111, 0.15)',
-  divider: '#C9E9F1',
+  border: 'rgba(18, 58, 90, 0.14)',
+  divider: '#DCE6EC',
+  success: '#2F8A59',
+  successSoft: '#EDF8F1',
+  warning: '#B87512',
+  warningSoft: '#FFF4E0',
+  error: '#C63F3F',
+  errorSoft: '#FFF0F0',
+  errorSubtle: '#FFF8F8',
+  errorBorder: '#F4C8C8',
+  info: '#347BA8',
 
-  // ─── Status ───────────────────────────────────────────────────────────────
-  success: '#427D71',
-  warning: '#D4A84B',
-  error: '#C0555A',
-  info: '#C6D9ED',            // Periwinkle blue for info
+  overlay: 'rgba(11, 31, 51, 0.62)',
+  overlayLight: 'rgba(244, 247, 249, 0.94)',
+  glass: 'rgba(255, 255, 255, 0.84)',
+  mapScrim: 'rgba(255, 255, 255, 0.58)',
+  borderOnDark: 'rgba(255, 255, 255, 0.12)',
 
-  // ─── Overlays ─────────────────────────────────────────────────────────────
-  overlay: 'rgba(28, 114, 111, 0.55)',
-  overlaySoft: 'rgba(48, 84, 92, 0.35)',
-  overlayLight: 'rgba(228, 228, 223, 0.92)',
-  glass: 'rgba(201, 233, 241, 0.25)',
-
-  // ─── Scene tints (video/image headers) ───────────────────────────────────
-  sceneMountain: '#1A3030',
-  sceneBeach: '#0D3A4A',
-  sceneHoiAn: '#2A2010',
-  sceneBridge: '#0A1A2E',
-
-  // ─── Chart colors ─────────────────────────────────────────────────────────
-  chart1: '#1C726F',
-  chart2: '#ACD87D',
-  chart3: '#C9E9F1',
-  chart4: '#427D71',
-  chart5: '#CBDBA7',
-  chart6: '#C6D9ED',
-
-  // ─── Shimmer loading ──────────────────────────────────────────────────────
-  shimmerBase: '#C9E9F1',
-  shimmerHigh: '#E4E4DF',
-
-  // ─── Legacy aliases (để không phá code cũ) ────────────────────────────────
-  secondary: '#427D71',
+  secondary: '#3B607A',
 } as const;

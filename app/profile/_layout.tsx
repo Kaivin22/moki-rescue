@@ -1,30 +1,62 @@
-import { Redirect, Stack, usePathname } from 'expo-router';
-import { useAuthStore } from '@/src/stores/authStore';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Redirect, router, Stack } from 'expo-router';
+import { Pressable, StyleSheet } from 'react-native';
 import { Colors } from '@/src/constants/colors';
-import { Typography } from '@/src/constants/spacing';
-import { useI18n } from '@/src/i18n';
+import { useAuthStore } from '@/src/stores/authStore';
+import { useHasAppAccess } from '@/src/features/auth/access';
+import { useCopy } from '@/src/i18n';
 
-export default function ProfileRoutesLayout() {
+const COPY = {
+  vi: {
+    edit: 'Chỉnh sửa hồ sơ',
+    settings: 'Cài đặt',
+    security: 'Bảo mật tài khoản',
+    delete: 'Xóa tài khoản',
+    back: 'Quay lại',
+  },
+  en: {
+    edit: 'Edit profile',
+    settings: 'Settings',
+    security: 'Account security',
+    delete: 'Delete account',
+    back: 'Go back',
+  },
+} as const;
+
+export default function ProfileLayout() {
   const user = useAuthStore((state) => state.user);
-  const settingsTitle = useI18n((state) => state.t('profile.settings'));
-  const pathname = usePathname();
-  if (!user) return <Redirect href={{ pathname: '/(auth)/login', params: { returnTo: pathname } }} />;
+  const hasAccess = useHasAppAccess();
+  const c = useCopy(COPY);
+  if (!user || !hasAccess) return <Redirect href="/(auth)/login" />;
   return (
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: Colors.cardBg },
-        headerTintColor: Colors.primary,
-        headerTitleStyle: Typography.h3,
+        headerTintColor: Colors.textPrimary,
         headerShadowVisible: false,
+        headerTitleStyle: { fontFamily: 'BeVietnamPro_600SemiBold' },
         contentStyle: { backgroundColor: Colors.background },
+        headerLeft: () => (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={c.back}
+            hitSlop={10}
+            style={styles.back}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))}
+          >
+            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          </Pressable>
+        ),
       }}
     >
-      <Stack.Screen name="history" options={{ title: 'Lịch trình của bạn' }} />
-      <Stack.Screen name="saved" options={{ title: 'Đã lưu' }} />
-      <Stack.Screen name="edit" options={{ title: 'Chỉnh sửa hồ sơ' }} />
-      <Stack.Screen name="settings" options={{ title: settingsTitle }} />
-      <Stack.Screen name="delete-account" options={{ title: 'Xóa tài khoản' }} />
-      <Stack.Screen name="reviews" options={{ headerShown: false }} />
+      <Stack.Screen name="edit" options={{ title: c.edit }} />
+      <Stack.Screen name="settings" options={{ title: c.settings }} />
+      <Stack.Screen name="security" options={{ title: c.security }} />
+      <Stack.Screen name="delete-account" options={{ title: c.delete }} />
     </Stack>
   );
 }
+
+const styles = StyleSheet.create({
+  back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+});

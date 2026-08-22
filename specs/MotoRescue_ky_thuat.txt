@@ -1,0 +1,464 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ĐẶC TẢ KỸ THUẬT — MOTORESCUE ĐÀ NẴNG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tên sản phẩm : MotoRescue Đà Nẵng
+Mục tiêu     : Điều phối cứu hộ xe máy theo thời gian thực
+Android ID   : com.danang.motorescue
+iOS Bundle ID: com.danang.motorescue
+Phiên bản    : 1.0.0
+Cập nhật     : 16/08/2026
+
+Tài liệu này mô tả codebase đang tồn tại. Khi có mâu thuẫn, thứ tự ưu tiên là:
+  1. scripts/01_schema.sql và RLS đang triển khai;
+  2. backend Spring Boot và contract API;
+  3. type/domain và route trong mobile;
+  4. tài liệu này.
+
+Không lấy dữ liệu trong test, placeholder .env.example hoặc nội dung Figma làm
+dữ liệu production.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. BÀI TOÁN VÀ PHẠM VI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MotoRescue hỗ trợ khách gặp sự cố kỹ thuật xe máy tại vùng phục vụ Đà Nẵng:
+  - phân loại nguy cơ trước khi tạo ca;
+  - xác nhận/kéo ghim vị trí nhận cứu hộ;
+  - tìm đội đối tác đã được xác minh, có đúng năng lực;
+  - xếp hạng provider theo ETA của tuyến giao thông thực tế;
+  - chống hai provider nhận cùng một ca;
+  - theo dõi provider sau khi nhận ca;
+  - xác nhận hai phía khi đến và khi hoàn tất;
+  - báo giá, duyệt báo giá, review 1–5 sao có sửa/xóa;
+  - điểm uy tín thật cho provider/đội và cảnh báo chất lượng có admin kiểm duyệt;
+  - ChatBox AI hướng dẫn cách dùng app và quy trình cứu hộ trong app;
+  - điều phối lại ca không tìm được đội;
+  - quản trị đội, provider và dispatcher.
+
+Mô hình vận hành:
+  - Một đơn vị vận hành quản lý mạng lưới kín gồm nhiều đội cứu hộ nhỏ.
+  - Provider không tự đăng ký công khai. Mỗi người tự đăng nhập OTP một lần với
+    tài khoản riêng; admin chỉ cấp quyền sau khi đơn vị đã hợp tác ngoại tuyến.
+  - Không có mật khẩu do admin cấp, tài khoản đội dùng chung hoặc upload hợp đồng/
+    CCCD. App chỉ lưu mã hồ sơ nội bộ và kết quả checklist tối thiểu.
+  - Khách không xem danh sách provider gần đó và không tự chọn provider.
+  - App không quản lý kế toán, đơn hàng nội bộ hay dòng tiền của đội đối tác.
+
+Ngoài phạm vi v1:
+  - thanh toán, ví, hoa hồng;
+  - AI chẩn đoán xe;
+  - chatbot kiến thức chung hoặc trả lời câu hỏi ngoài MotoRescue;
+  - dashboard web và CMS giao diện;
+  - marketplace mở cho thợ tự do;
+  - cứu hộ ô tô;
+  - tự động xác nhận provider đã đến chỉ bằng GPS;
+  - thay thế 113, 114 hoặc 115.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. VAI TRÒ VÀ QUYỀN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+customer:
+  - đăng nhập OTP, sửa tên, tạo một ca hoạt động tại một thời điểm;
+  - xem ca của mình, duyệt báo giá, xác nhận đến/hoàn tất, hủy theo policy;
+  - review duy nhất cho ca completed, có thể sửa và xóa.
+  - thấy điểm trung bình và số lượt đánh giá thật của provider/đội sau khi được gán.
+
+provider:
+  - phải thuộc provider_members active và rescue_team verified;
+  - bật/tắt sẵn sàng, gửi vị trí matching, nhận offer đúng capability;
+  - chỉ provider thắng transaction mới xem vị trí chính xác và xử lý ca;
+  - gửi vị trí live, trạng thái, work type và báo giá.
+  - thấy điểm đội và nội dung cảnh báo chất lượng do admin đã phát hành.
+
+dispatcher:
+  - xem ca vận hành, theo dõi no_provider, kích hoạt tìm lại;
+  - có quyền dừng ca với lý do được audit;
+  - không tự cấp role admin/provider.
+
+admin:
+  - có toàn bộ quyền điều phối;
+  - tạo đội bằng mã hồ sơ nội bộ, cấp tài khoản provider, khai báo capability;
+  - hoàn tất checklist, xem người/thời điểm kiểm tra, xác minh/tạm ngưng đội;
+  - xem điểm đội, review gần đây và tín hiệu điểm thấp;
+  - ẩn/khôi phục review spam với lý do được audit;
+  - gửi cảnh báo hoặc đình chỉ đội sau khi kiểm tra; không auto-lock chỉ từ điểm sao;
+  - cấp/thu dispatcher;
+  - không mặc nhiên đóng vai provider nếu chưa có provider_members hợp lệ.
+
+Tài khoản mới từ Supabase Auth luôn nhận role customer. Admin đầu tiên chỉ được
+bootstrap bằng một số điện thoại E.164 khớp đúng một auth.users.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. STACK THỰC TẾ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Mobile:
+  - Expo SDK 54, React Native 0.81, React 19, TypeScript strict;
+  - Expo Router 6 file-based routes;
+  - Zustand cho session/profile/language;
+  - TanStack Query cho server state;
+  - Supabase JS cho Auth, profile self-service và private Realtime;
+  - react-native-maps cho iOS/Android;
+  - expo-location + expo-task-manager cho GPS foreground/background;
+  - expo-notifications cho push;
+  - expo-secure-store cho session trên native;
+  - react-native-safe-area-context cho notch/Dynamic Island/cutout.
+
+Backend:
+  - Java 21, Spring Boot 3, Maven Wrapper;
+  - OAuth2 Resource Server xác minh Supabase JWT;
+  - JdbcTemplate + TransactionTemplate;
+  - PostgreSQL/PostGIS trên Supabase;
+  - OSRM được preprocess bằng profile xe máy đã kiểm chứng;
+  - Expo Push API;
+  - Gemini GenerateContent API, chỉ được gọi từ backend cho trợ lý trong phạm vi app.
+
+SDK 54 được giữ để tương thích Expo Go theo yêu cầu dự án. Khi dùng API mới,
+phải đọc đúng tài liệu versioned Expo SDK 54 và chỉ cài package theo ma trận SDK 54.
+Background GPS và remote push phải kiểm thử bằng development/preview build,
+không dùng Expo Go làm bằng chứng production.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. BIÊN HỆ THỐNG VÀ TRUST MODEL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Expo app (untrusted client)
+  │ HTTPS + Supabase access token
+  ▼
+Spring Boot API (trusted business mutations)
+  ├── JDBC/TLS ──► Supabase PostgreSQL + PostGIS + RLS
+  ├── HTTPS ─────► OSRM motorcycle router
+  ├── HTTPS ─────► Expo Push API
+  └── HTTPS ─────► Gemini GenerateContent API (app-support only)
+
+Supabase Realtime private topic: request:<uuid>
+  - assigned provider được ghi;
+  - customer của ca, assigned provider và staff được đọc;
+  - policy không dựa vào việc UI có ẩn nút hay không.
+
+Mobile không được có database service key, database password, Expo push access
+token, Gemini API key hoặc credential OSRM nội bộ. EXPO_PUBLIC_* là cấu hình công
+khai được nhúng vào binary; secret backend không được dùng prefix này.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. CẤU TRÚC ROUTE VÀ MÃ NGUỒN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+app/
+  index.tsx                       bootstrap/redirect
+  onboarding.tsx                  3 slide giới thiệu
+  (auth)/login.tsx                số điện thoại + OTP + chấp nhận điều khoản
+  (tabs)/index.tsx                home theo role
+  (tabs)/request.tsx              tạo yêu cầu customer
+  (tabs)/activity.tsx             ca mở/lịch sử
+  (tabs)/operations.tsx           provider/dispatcher/admin
+  (tabs)/profile.tsx              tài khoản theo role
+  rescue/[id].tsx                 chi tiết ca, action, quote, review
+  rescue/[id]/map.tsx             bản đồ ca toàn màn hình
+  service/index.tsx               catalog từ backend
+  service/[code].tsx              chi tiết/quy trình dịch vụ
+  help/index.tsx                  trung tâm trợ giúp
+  help/safety.tsx                 an toàn và gọi khẩn cấp
+  operator/teams.tsx              quản trị đội/role
+  profile/edit.tsx                sửa tên hiển thị
+  profile/settings.tsx            ngôn ngữ/quyền/push/xóa dữ liệu
+  profile/security.tsx            trạng thái OTP/phiên
+  profile/delete-account.tsx      yêu cầu xóa tài khoản
+  legal/privacy.tsx               chính sách quyền riêng tư
+  legal/terms.tsx                 điều khoản
+
+Tổng: 20 route điều hướng + 1 bootstrap = 21 file màn hình.
+
+src/components/   UI atoms và adapter map native/web
+src/features/     auth, safety, onboarding, notification, location, rescue, assistant
+src/stores/       auth/profile và language preference
+src/types/        contract canonical của mobile
+backend/          business layer tin cậy
+scripts/          baseline Supabase, verify, bootstrap, retention
+docs/             kiến trúc, deployment, release và inventory Figma
+
+Quy tắc phụ thuộc:
+  - route được import feature; feature không import app/;
+  - component dùng chung không truy vấn database;
+  - mutation nghiệp vụ đi qua backend;
+  - type request/response phải đồng bộ ApiModels.java và src/types/rescue.ts.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. DATABASE SUPABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+17 bảng production:
+  profiles, rescue_teams, team_verification_requirements,
+  team_verification_checks, service_types, provider_members,
+  team_capabilities, rescue_requests, dispatch_offers, quotes,
+  request_status_events, provider_location_checkpoints, reviews, team_quality_alerts,
+  push_devices, audit_logs, assistant_usage_events.
+
+`assistant_usage_events` chỉ lưu user_id và created_at để giới hạn quota theo
+tài khoản. Không lưu prompt, câu trả lời hoặc lịch sử hội thoại.
+
+Catalog baseline chính thức trong 01_schema.sql gồm 6 loại:
+  flat_tire, dead_battery, electric_battery, out_of_fuel,
+  minor_repair, motorbike_transport.
+
+Đây là cấu hình sản phẩm có thể sửa bằng SQL/admin backend, không phải mock data.
+Không seed team, provider, vị trí, request, quote hoặc review giả vào production.
+Sáu requirement xác minh baseline là policy/reference data; không seed check
+completed cho bất kỳ đội nào.
+`push_devices` liên kết Expo token với UUID cài đặt app để xử lý token refresh,
+đổi tài khoản và cài lại app mà không gửi nhầm binding cũ.
+
+Ràng buộc quan trọng:
+  - một customer chỉ có một request chưa completed/cancelled;
+  - một provider chỉ có một request hoạt động;
+  - contract_reference của đội là mã nội bộ uppercase, duy nhất, không chứa nội
+    dung hợp đồng hoặc số giấy tờ cá nhân;
+  - đội chỉ verified khi đủ requirement bắt buộc đang active, ít nhất một
+    capability và một provider active; lần verify ghi admin + thời điểm;
+  - provider contact phải E.164;
+  - location accuracy trong DB từ 0..1000 m; backend áp ngưỡng vận hành nhỏ hơn;
+  - event là append-only;
+  - review chỉ cho customer của request completed;
+  - review giữ team_id tại thời điểm phục vụ; điểm uy tín bỏ qua review bị admin ẩn;
+  - đủ số mẫu và điểm thấp mới tạo quality alert; SQL/backend không tự đổi team sang suspended;
+  - function privileged bị revoke khỏi anon/authenticated;
+  - mọi bảng public bật RLS.
+
+Thứ tự chạy database mới:
+  00_reset.sql
+  01_schema.sql
+  02_verify_rls.sql
+  03_bootstrap_operator.sql
+  04_schedule_retention.sql (nếu Supabase có pg_cron)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. LUỒNG TẠO VÀ GHÉP CA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Customer trả lời hasInjury và hasImmediateHazard.
+2. Nếu có nguy cơ, dừng tạo ca kỹ thuật và bàn giao 113/114/115.
+3. Customer chọn service từ catalog backend, loại xe và lấy GPS.
+4. Customer kiểm tra/chạm/kéo ghim, nhập điểm nhận biết và xác nhận đã an toàn.
+5. Mobile gửi UUID Idempotency-Key và payload tối thiểu.
+6. Backend kiểm tra role, service active, bounding box, rate limit, idempotency,
+   advisory lock theo customer và unique active request.
+7. PostGIS lọc provider active/available, team verified, đúng capability,
+   GPS có accuracy hợp lệ/còn mới, trong service radius và không bận ca khác.
+8. OSRM Table tính route cho toàn bộ candidate hợp lệ theo lô tối đa cấu hình;
+   NoRoute bị loại và thứ tự lô được ghép lại nguyên vẹn.
+9. Kết quả xếp theo duration đường bộ, rồi road distance và provider UUID để phá hòa;
+   không dùng Haversine quyết định shortlist hoặc kết quả cuối.
+10. Tạo tối đa MATCHING_OFFER_COUNT offer với TTL cấu hình.
+11. SQL api_accept_dispatch_offer khóa request, offer và provider; chỉ một bên thắng.
+12. Sau assigned mới trả tên, đội, phương tiện và contact phone đã xác minh.
+
+Nếu router lỗi hoặc mọi candidate NoRoute: routing_status=unavailable và không vẽ
+đường chim bay. Nếu không có candidate phù hợp: no_provider. Dispatcher có thể retry.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. STATE MACHINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+searching → offered → assigned → en_route
+  → awaiting_arrival_confirmation
+  ├── customer reject_arrival → en_route
+  └── customer confirm_arrival → arrived → diagnosing
+
+diagnosing
+  ├── dịch vụ không cần quote: start_work → repairing|transporting
+  └── submit quote → awaiting_quote
+       ├── customer reject → diagnosing
+       └── customer approve → repairing|transporting
+
+repairing|transporting → awaiting_completion
+  ├── customer reject đúng work_type → repairing|transporting
+  └── customer confirm → completed
+
+searching|offered → no_provider
+no_provider → searching khi dispatcher retry
+trạng thái policy cho phép → cancelled có reason/audit
+
+Mọi action gửi expectedVersion. Service kiểm graph, PostgreSQL trigger kiểm cạnh lần
+hai và tăng version. Client phải xử lý 409 conflict bằng tải lại state, không tự ép.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. VỊ TRÍ, BẢN ĐỒ VÀ ROUTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Trước khi gửi ca:
+  - xin foreground permission khi customer chủ động bấm;
+  - hiển thị map xác nhận ghim, không chỉ tin reverse geocode/GPS thô.
+
+Provider available:
+  - foreground watch cập nhật vị trí matching;
+  - điểm không có accuracy hữu hạn bị client bỏ và API/SQL cũng từ chối;
+  - backend từ chối accuracy vượt PROVIDER_LOCATION_MAX_ACCURACY_METERS;
+  - vị trí quá PROVIDER_LOCATION_MAX_AGE_SECONDS không được matching.
+
+Sau assigned:
+  - provider gửi foreground/background checkpoint;
+  - private Realtime broadcast cập nhật marker cho participant;
+  - outbox chỉ giữ điểm mới nhất và bỏ điểm quá 2 phút;
+  - map detail/fullscreen chỉ render Polyline từ RoadRoute.coordinates.
+
+Tuyệt đối không:
+  - nối thẳng hai marker làm route fallback;
+  - dùng Haversine làm ETA cuối;
+  - cho customer chọn provider từ danh sách gần đó;
+  - tự xác nhận arrived/completed bằng geofence.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10. API CONTRACT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Account/catalog:
+  GET    /api/me
+  GET    /api/catalog/service-types
+  POST   /api/me/deletion-request
+  PUT    /api/me/push-device
+  DELETE /api/me/push-device
+
+Assistant (mọi tài khoản đã xác thực và đang active):
+  POST   /api/assistant/message
+
+Endpoint assistant nhận tối đa 500 ký tự. Bộ lọc local xử lý lời chào, câu ngoài
+phạm vi, yêu cầu chẩn đoán xe, prompt injection rõ ràng và tình huống khẩn cấp
+trước khi gọi Gemini. Chỉ câu thuộc cách dùng MotoRescue/quy trình trong app mới
+được giữ quota và gửi đi; nội dung không được ghi database/log.
+
+Customer/participants:
+  POST   /api/requests
+  GET    /api/requests?history=true|false
+  GET    /api/requests/{id}
+  GET    /api/requests/{id}/road-route
+  POST   /api/requests/{id}/cancel
+  POST   /api/requests/{id}/actions
+  POST   /api/requests/{id}/quotes
+  POST   /api/requests/{id}/quotes/{quoteId}/decision
+  PUT    /api/requests/{id}/review
+  DELETE /api/requests/{id}/review
+
+Provider:
+  GET    /api/provider/status
+  PUT    /api/provider/availability
+  GET    /api/provider/offers
+  POST   /api/provider/offers/{offerId}/accept
+  POST   /api/provider/requests/{requestId}/location
+  POST   /api/provider/location
+
+Operator/admin:
+  GET    /api/operator/teams
+  POST   /api/operator/requests/{requestId}/retry
+  POST   /api/operator/teams
+  PUT    /api/operator/teams/{teamId}/status
+  GET    /api/operator/teams/{teamId}/verification
+  PUT    /api/operator/teams/{teamId}/verification
+  PUT    /api/operator/teams/{teamId}/providers
+  GET    /api/operator/teams/{teamId}/reviews
+  POST   /api/operator/quality-alerts/{alertId}/warn
+  POST   /api/operator/quality-alerts/{alertId}/resolve
+  PUT    /api/operator/reviews/{reviewId}/visibility
+  PUT    /api/operator/staff-role
+  GET    /api/operator/service-types
+  PUT    /api/operator/service-types/{code}
+
+Health:
+  GET    /api/health
+
+Error trả JSON có timestamp, status, code, message, path. UI hiển thị message an toàn,
+không hiển thị stack trace hoặc SQL error.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+11. BẢO MẬT VÀ QUYỀN RIÊNG TƯ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  - OTP phone do Supabase Auth xử lý; app không lưu mật khẩu riêng.
+  - Hồ sơ tối thiểu: display name, role, locale, trạng thái và consent.
+  - Consent phải khớp đúng TERMS_VERSION ở mobile lẫn backend; timestamp đơn lẻ
+    không đủ cấp quyền khi điều khoản đã đổi.
+  - Không yêu cầu CCCD, GPLX, danh bạ, micro hoặc thông tin thanh toán.
+  - Giấy tờ/hợp đồng được đối chiếu ngoại tuyến; DB chỉ lưu mã hồ sơ nội bộ,
+    checklist, người/thời điểm xác minh và capability. Không lưu file/số giấy tờ.
+  - Contact provider chỉ hiện cho participant của ca trackable.
+  - Checkpoint GPS purge mặc định sau 24 giờ.
+  - Ca đóng giảm chi tiết vị trí/note mặc định sau 30 ngày.
+  - Request status event và audit không cho client sửa/xóa.
+  - Spring dùng role `motorescue_api` không có DDL/superuser; không dùng `postgres` runtime.
+  - Gemini key chỉ ở secret store backend; mobile chỉ gọi `/api/assistant/message`.
+  - Trợ lý lọc cả input và output, có giới hạn theo phút/ngày trong database và
+    rate limit API theo tài khoản; không lưu nội dung hội thoại.
+  - CORS production phải allowlist origin thật; không dùng wildcard.
+  - Production build fail nếu thiếu API URL, map key hoặc support hotline.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+12. CẤU HÌNH, HARDCODE VÀ DỮ LIỆU MẪU
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Bắt buộc qua environment:
+  Supabase URL/anon key, API URL, EAS project ID, Google Maps key,
+  support hotline, database credential, OSRM URL/profile, matching thresholds,
+  service-area bounds, provider GPS freshness/accuracy, CORS, Expo access token,
+  Gemini key/model/quota và rate-limit API.
+
+Được phép bundle trong code:
+  design tokens, status/action graph, validation bounds, 113/114/115,
+  legal version, copy onboarding/help/legal và icon name.
+
+Không được phép trong runtime:
+  mock user/team/provider/request/location/route/quote/review;
+  URL server production cố định trong source;
+  fake Polyline khi OSRM lỗi;
+  service role/database password/Gemini key trong mobile;
+  lưu prompt hoặc lịch sử ChatBox trong database;
+  random business result để demo.
+
+.env.example chỉ chứa placeholder. Test fixture chỉ nằm trong __tests__ hoặc
+backend/src/test và không được import vào app/backend main.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+13. UI, ACCESSIBILITY VÀ I18N
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  - 70 frame Figma nghiệp vụ, chi tiết ở MotoRescue_UI_Stitch.txt.
+  - Safe area bắt buộc cho iOS notch/Dynamic Island và Android cutout.
+  - Touch target tối thiểu 44×44 pt; nút chính không bị tab bar/keyboard che.
+  - Map phải có status scrim/header đọc được trên nền bản đồ.
+  - Status luôn có text + icon/màu, không truyền đạt chỉ bằng màu.
+  - reduce motion phải tắt press animation không thiết yếu.
+  - Bản v1 hỗ trợ đầy đủ tiếng Việt và tiếng Anh cho UI runtime chính.
+  - Backend chọn label catalog/push theo locale hồ sơ; đổi ngôn ngữ phải invalidate
+    cache dữ liệu đã địa phương hóa.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+14. TEST, CI VÀ RELEASE GATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Mobile gate:
+  npm run lint
+  npm run typecheck
+  npm run test:ci
+  npx expo install --check
+  expo config --type public
+  expo export Android + iOS + web
+
+Backend gate:
+  mvnw test
+
+Database gate:
+  chạy 00→04 trên Supabase staging mới;
+  02_verify_rls.sql phải đạt;
+  test hai provider nhận đồng thời chỉ một người thành công;
+  kiểm participant không đọc được ca/contact/GPS của người khác.
+
+Thiết bị thật:
+  customer + provider trên hai máy;
+  permission denied/granted;
+  GPS background, push, app restart, mất mạng/outbox;
+  OSRM profile xe máy với tuyến cấm ô tô/xe máy phù hợp dữ liệu địa phương;
+  notch/cutout, bàn phím và tab bar.
+
+Không gọi sản phẩm là production-ready chỉ vì unit test/export thành công. Cần
+Supabase staging, OSRM thật, EAS build ký, push thật và đội đối tác thật.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

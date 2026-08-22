@@ -1,116 +1,78 @@
-import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/src/constants/colors';
-import { View, StyleSheet } from 'react-native';
-import { useI18n } from '@/src/i18n';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Redirect, Tabs } from 'expo-router';
+import { StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-function TabIcon({ name, color, size }: { name: keyof typeof Ionicons.glyphMap; color: string; size: number }) {
-  return <Ionicons name={name} size={size} color={color} />;
-}
+import { Colors } from '@/src/constants/colors';
+import { useI18n } from '@/src/i18n';
+import { useAuthStore } from '@/src/stores/authStore';
+import { hasOperationsRole } from '@/src/features/auth/roles';
+import { useHasAppAccess } from '@/src/features/auth/access';
 
 export default function TabLayout() {
-  const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const role = useAuthStore((state) => state.profile?.role ?? 'customer');
+  const user = useAuthStore((state) => state.user);
+  const hasAccess = useHasAppAccess();
+  const { t } = useI18n();
+  const isCustomer = role === 'customer';
+  const hasOperations = hasOperationsRole(role);
+
+  if (!user || !hasAccess) return <Redirect href="/(auth)/login" />;
 
   return (
-    <View style={{ flex: 1 }}>
-      <Tabs
+    <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: Colors.primaryDark,
-          height: 60 + insets.bottom,
-          paddingBottom: insets.bottom,
-          borderTopWidth: 0,
-          elevation: 12,
-          shadowColor: Colors.primaryDark,
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 10,
-        },
         tabBarActiveTintColor: Colors.accent,
-        tabBarInactiveTintColor: 'rgba(201,233,241,0.5)',
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '700',
-          marginBottom: 6,
-        },
-        tabBarIconStyle: {
-          marginTop: 6,
-        },
+        tabBarInactiveTintColor: Colors.skyBlue,
+        tabBarStyle: [styles.bar, { height: 60 + insets.bottom, paddingBottom: insets.bottom }],
+        tabBarLabelStyle: styles.label,
+        tabBarIconStyle: styles.icon,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Trang chủ',
-          tabBarIcon: ({ color, size }) => <TabIcon name="home" size={size} color={color} />,
+          title: t('nav.home'),
+          tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
-        name="search"
+        name="request"
         options={{
-          title: 'Tìm kiếm',
-          tabBarIcon: ({ color, size }) => <TabIcon name="search" size={size} color={color} />,
+          href: isCustomer ? undefined : null,
+          title: t('nav.request'),
+          tabBarIcon: ({ color, size }) => <Ionicons name="shield" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
-        name="create"
+        name="activity"
         options={{
-          title: '',
-          tabBarLabel: () => null,
-          tabBarIcon: ({ color }) => (
-            <CreateFab active={color === Colors.accent} />
-          ),
+          title: t('nav.activity'),
+          tabBarIcon: ({ color, size }) => <Ionicons name="time" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
-        name="map"
+        name="operations"
         options={{
-          title: t('nav.map'),
-          tabBarIcon: ({ color, size }) => <TabIcon name="map" size={size} color={color} />,
+          href: hasOperations ? undefined : null,
+          title: t('nav.operations'),
+          tabBarIcon: ({ color, size }) => <Ionicons name="radio" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: t('nav.profile'),
-          tabBarIcon: ({ color, size }) => <TabIcon name="person" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="person" color={color} size={size} />,
         }}
       />
-      </Tabs>
-
-    </View>
-  );
-}
-
-/** Nút "+" giữa tab bar — trạng thái active được thể hiện bằng màu. */
-function CreateFab({ active }: { active: boolean }) {
-  return (
-    <View
-      style={[
-        styles.fabContainer,
-        { backgroundColor: active ? Colors.accent : Colors.accentSoft },
-      ]}
-    >
-      <Ionicons name="add" size={32} color={Colors.primaryDark} />
-    </View>
+    </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
-  fabContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: -14,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 8,
-  },
+  bar: { backgroundColor: Colors.primaryDark, borderTopWidth: 0, paddingTop: 4 },
+  label: { fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 10, marginBottom: 4 },
+  icon: { marginTop: 4 },
 });

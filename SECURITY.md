@@ -1,43 +1,48 @@
-# Bảo mật dự án
+# Bảo mật MotoRescue
 
 ## Mô hình tin cậy
 
-- Mobile là client không tin cậy. Supabase anon key và Google Maps key xuất hiện trong binary; an toàn đến từ RLS, RPC allowlist và restriction của Google Cloud.
-- Gemini key, PostgreSQL credential và mọi service-role key chỉ ở backend/secret manager.
-- Spring Boot xác minh Supabase JWT/JWKS, trạng thái khóa, entitlement và quota. Client không được tự khai báo VIP.
-- SQL dùng explicit grant, RLS và RPC atomic/audited cho chia sẻ, admin, hỗ trợ và xóa tài khoản.
+- Mobile là client không tin cậy. Supabase publishable/anon key và Maps key có thể xuất hiện trong binary; an toàn đến từ RLS, API authorization, quota và key restriction.
+- Database credential, Expo access token, Gemini key và mọi secret server chỉ nằm trong secret manager của backend.
+- Đăng ký công khai luôn tạo vai trò `customer`. Chỉ admin đã bootstrap theo đúng một số điện thoại mới có thể cấp vai trò nội bộ.
+- Admin tra cứu chính xác tài khoản bằng số đăng nhập qua backend; hàm SQL tối thiểu không mở cho client, không trả lại số điện thoại và audit chỉ ghi UUID tài khoản được tra.
+- Provider không có form tự đăng ký hoặc tài khoản dùng chung. Mỗi người tự xác thực OTP một lần, sau đó admin mới gắn tài khoản đó vào đội đối tác đã ký hợp tác ngoại tuyến.
+- Database chỉ giữ mã hồ sơ đối tác nội bộ, kết quả checklist, admin và thời điểm xác minh. Không lưu file hợp đồng, CCCD, giấy phép hay số giấy tờ trong bảng nghiệp vụ.
+- Đội chỉ chuyển sang `verified` khi đủ checklist đang áp dụng, ít nhất một capability và một provider active; đình chỉ làm toàn bộ provider của đội ngừng nhận ca mới.
+- Tất cả business mutation đi qua Spring Boot; RLS chặn truy cập chéo và direct mutation từ client.
 
-## Secret và cấu hình
+## Dữ liệu và vị trí
 
-- Không commit `.env`, keystore, private key hay database password.
-- Giới hạn Maps key theo Android package + signing SHA và iOS bundle ID; đặt quota.
-- Production dùng HTTPS; PostgreSQL dùng TLS (`sslmode=require`); CORS là allowlist origin cụ thể.
-- Nếu secret từng xuất hiện trong commit/log, phải thu hồi và rotate. Xóa ở commit mới không xóa được lịch sử.
-- Keystore hiện được ignore nhưng vẫn nằm trong workspace; chuyển bản phát hành sang EAS Credentials/secret store và không chia sẻ file này.
+- Không thu CCCD, bằng lái, danh bạ, tài khoản ngân hàng hay lịch sử GPS ngoài ca.
+- Số đăng nhập của người dùng do Supabase Auth quản lý, không sao chép vào `public.profiles`.
+- `provider_members.contact_phone_e164` là số công việc riêng do admin xác minh, không tự lấy từ Auth. Backend chỉ trả số này cho các bên của ca khi ca đã được phân công và còn hoạt động; push notification và log không chứa số.
+- Trước khi nhận ca, provider chỉ thấy khu vực tương đối. Sau khi nhận, vị trí chính xác chỉ hiển thị cho các bên của ca và nhân sự điều phối.
+- Private Realtime channel dùng RLS trên `realtime.messages`; quyền phát vị trí chỉ thuộc provider được phân công.
+- Checkpoint GPS hết hạn sau 24 giờ. Ca đã đóng được làm mờ tọa độ và xóa ghi chú nhạy cảm sau 30 ngày bằng Supabase Cron.
 
-## Kiểm tra trước merge
+## Chống lạm dụng
 
-```powershell
-npm ci
-npm run check
-npm audit --audit-level=critical
-cd backend
-.\mvnw.cmd test
-```
+- OTP rate limit/CAPTCHA được cấu hình tại Supabase Auth.
+- Mỗi khách chỉ có một ca đang mở và tối đa ba lần tạo trong 10 phút.
+- Nhận ca nguyên tử, state machine và optimistic version ngăn thao tác cạnh tranh/sai thứ tự.
+- Review chỉ có sau ca `completed`, mỗi ca một review. Điểm đội chỉ tính review không bị ẩn và phải đủ cỡ mẫu cấu hình mới mở tín hiệu chất lượng.
+- Điểm thấp không tự khóa tài khoản hoặc đội. Admin xem review/ca liên quan, ẩn spam với lý do, phát cảnh báo có audit rồi mới quyết định đình chỉ; hệ thống chỉ đưa ra khuyến nghị xem xét.
+- Push body không chứa tọa độ chính xác; log không được ghi JWT, OTP, số điện đầy đủ hay database URL có credential.
+- Câu ngoài phạm vi/chẩn đoán xe/khẩn cấp được xử lý trước Gemini; quota theo tài khoản không lưu nội dung chat. Prompt và reply không đi vào database hoặc audit log.
+- Phản hồi Gemini được kiểm lại trước khi trả về; output ngoài phạm vi hoặc chứa dữ liệu nhạy cảm bị thay bằng phản hồi local. Gemini key không đi vào Expo config/bundle.
+- Consent chỉ hợp lệ khi `terms_version` khớp phiên bản backend hiện hành; thay đổi điều khoản buộc xác nhận lại.
+- Push token gắn với UUID cài đặt app và chỉ được xóa bằng đúng user + token + installation. Notification không chứa tọa độ hay số liên hệ.
+- Lỗi OSRM không log URL vì URL chứa tọa độ chính xác.
 
-Không chạy `npm audit fix --force`: nó có thể nâng major/Expo SDK ngoài compatibility matrix. Các advisory không critical của SDK 54 phải được theo dõi và đánh giá lại khi chuyển sang development build/SDK mới.
+## Secret và phát hành
 
-## Database và dữ liệu cá nhân
+- Không commit `.env`, `*.jks`, `*.p8`, `*.p12`, `*.key` hay private key. `.env.example` chỉ chứa placeholder và được phép đưa lên GitHub.
+- Giới hạn Maps key theo package `com.danang.motorescue`, signing SHA-1 và iOS bundle ID tương ứng.
+- Production dùng HTTPS, PostgreSQL TLS, CORS allowlist, Supabase asymmetric JWT/JWKS và branch protection.
+- Backend dùng role `motorescue_api` không có quyền DDL/superuser; tài khoản `postgres` chỉ dành cho cài đặt/bảo trì schema.
+- Không chạy `npm audit fix --force`; việc nâng Expo phải theo ma trận SDK và smoke native build.
+- Nếu secret từng xuất hiện trong commit/log, phải thu hồi và rotate; xóa ở commit sau không xóa được lịch sử.
 
-- `00_reset.sql` chỉ dùng local/staging và bắt buộc cờ xác nhận trong cùng SQL session.
-- Chạy `02_verify_rls.sql` trên staging sau khi cài schema. Static test không thay thế PostgreSQL thật.
-- AI chat, avatar, review và ticket là dữ liệu người dùng. Privacy Policy mô tả phạm vi lưu; account deletion xóa dữ liệu theo FK/RPC.
-- Bucket avatar/place image là public theo quyết định sản phẩm; URL đã biết có thể đọc. Chỉ admin quản lý media công khai. Nếu sau này cho editor tải ảnh revision chưa duyệt, phải dùng bucket private/signed URL trước khi mở tính năng.
-- Backend rate limiter hiện phù hợp một instance. Trước khi scale nhiều replica phải dùng shared store như Redis và kiểm thử quota concurrency.
+## Báo cáo lỗ hổng
 
-## Vận hành production
-
-- Bật branch protection và bắt buộc các job `backend-test`, `security`, `typecheck`, `test`.
-- Dùng GitHub Environment/EAS credentials có reviewer cho release.
-- Cấu hình log redaction; không log JWT, prompt AI đầy đủ, password hoặc database URL có credential.
-- Có backup/restore drill trước migration production và monitoring cho lỗi mobile/backend/upstream.
+Không tạo issue công khai có token, số điện, tọa độ hoặc dữ liệu ca. Gửi báo cáo qua kênh riêng của chủ repository, kèm phiên bản và cách tái hiện đã khử dữ liệu cá nhân.

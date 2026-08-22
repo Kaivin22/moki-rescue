@@ -1,146 +1,404 @@
--- STAGING TEST ONLY. Run after 01_schema.sql in Supabase SQL Editor.
--- The whole test is rolled back. A failure raises an exception and identifies
--- the violated contract. Never include this file in a production migration.
-BEGIN;
+-- Kiểm tra cấu trúc bảo mật sau khi chạy 01_schema.sql.
+-- Script chỉ đọc metadata và không tạo fixture/người dùng/dữ liệu nghiệp vụ.
 
-CREATE OR REPLACE FUNCTION pg_temp.assert_true(p_value BOOLEAN, p_message TEXT)
-RETURNS VOID LANGUAGE plpgsql AS $$
+DO $$
+DECLARE
+  table_name TEXT;
+  missing_tables TEXT[] := ARRAY[]::TEXT[];
 BEGIN
-  IF NOT COALESCE(p_value, FALSE) THEN RAISE EXCEPTION 'RLS TEST FAILED: %', p_message; END IF;
+  FOREACH table_name IN ARRAY ARRAY[
+    'profiles', 'rescue_teams', 'team_verification_requirements', 'team_verification_checks',
+    'service_types', 'provider_members', 'team_capabilities',
+    'rescue_requests', 'dispatch_offers', 'quotes', 'request_status_events',
+    'provider_location_checkpoints', 'reviews', 'team_quality_alerts', 'push_devices', 'audit_logs',
+    'assistant_usage_events'
+  ] LOOP
+    IF to_regclass('public.' || table_name) IS NULL THEN
+      missing_tables := array_append(missing_tables, table_name);
+    END IF;
+  END LOOP;
+
+  IF cardinality(missing_tables) > 0 THEN
+    RAISE EXCEPTION 'MISSING_TABLES: %', array_to_string(missing_tables, ', ');
+  END IF;
 END;
 $$;
 
-INSERT INTO auth.users (
-  id, instance_id, aud, role, email, encrypted_password,
-  email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
-) VALUES
-  ('11111111-1111-1111-1111-111111111111', NULL, 'authenticated', 'authenticated', 'rls-a@example.invalid', '', NOW(), '{}', '{"full_name":"RLS User A"}', NOW(), NOW()),
-  ('22222222-2222-2222-2222-222222222222', NULL, 'authenticated', 'authenticated', 'rls-b@example.invalid', '', NOW(), '{}', '{"full_name":"RLS User B"}', NOW(), NOW()),
-  ('33333333-3333-3333-3333-333333333333', NULL, 'authenticated', 'authenticated', 'rls-admin@example.invalid', '', NOW(), '{}', '{"full_name":"RLS Admin"}', NOW(), NOW());
-
-UPDATE public.profiles SET role = 'admin' WHERE id = '33333333-3333-3333-3333-333333333333';
-
-INSERT INTO public.places (
-  id, name, description, address, city, lat, lng, category, tags, suitable_for,
-  avg_duration_min, opening_time, closing_time, opening_days, image_urls,
-  source_name, source_url, is_active, content_status
-) VALUES (
-  '44444444-4444-4444-4444-444444444444', 'RLS Test Place', 'Temporary staging test row',
-  'Staging only', 'Đà Nẵng', 16.0544, 108.2022, 'park', '{}', ARRAY['family'],
-  60, '07:00', '21:00', ARRAY[1,2,3,4,5,6,7], '{}',
-  'RLS integration test', 'https://example.invalid/rls-test', TRUE, 'published'
-);
-
-SET LOCAL ROLE anon;
-SELECT pg_temp.assert_true(
-  (SELECT count(*) = 1 FROM public.places WHERE id = '44444444-4444-4444-4444-444444444444'),
-  'anon must see a published place'
-);
-RESET ROLE;
-
-SET LOCAL ROLE authenticated;
-SELECT set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', TRUE);
-SELECT set_config(
-  'app.test_itinerary_id',
-  (public.upsert_itinerary(
-    jsonb_build_object(
-      'title', 'RLS itinerary', 'num_days', 1, 'num_people', 2,
-      'transport', 'motorbike',
-      'start_date', (timezone('Asia/Ho_Chi_Minh', NOW())::DATE + 7),
-      'travel_style', jsonb_build_array('culture'),
-      'days', jsonb_build_array(jsonb_build_object(
-        'day_number', 1, 'advice', '[]'::jsonb,
-        'slots', jsonb_build_array(jsonb_build_object(
-          'place_id', '44444444-4444-4444-4444-444444444444',
-          'place_name', 'Ignored client snapshot', 'order_index', 0,
-          'start_time', '08:00', 'duration_min', 60, 'is_meal', FALSE
-        ))
-      ))
-    ), NULL
-  )->>'id'),
-  TRUE
-);
-SELECT pg_temp.assert_true(
-  (SELECT place_name = 'RLS Test Place' FROM public.itinerary_slots s
-    JOIN public.itinerary_days d ON d.id = s.day_id
-    WHERE d.itinerary_id = current_setting('app.test_itinerary_id')::uuid),
-  'RPC must use the canonical published place snapshot'
-);
-SELECT set_config(
-  'app.test_share_token',
-  (public.enable_itinerary_share(current_setting('app.test_itinerary_id')::uuid)->>'share_token'),
-  TRUE
-);
-RESET ROLE;
-
-SET LOCAL ROLE authenticated;
-SELECT set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}', TRUE);
-SELECT pg_temp.assert_true(
-  (SELECT count(*) = 0 FROM public.itineraries WHERE id = current_setting('app.test_itinerary_id')::uuid),
-  'another user must not read the owner row'
-);
 DO $$
+DECLARE
+  missing_columns TEXT;
 BEGIN
-  BEGIN
-    PERFORM public.admin_set_user_access('11111111-1111-1111-1111-111111111111', 'editor', NULL);
-    RAISE EXCEPTION 'RLS TEST FAILED: non-admin changed user access';
-  EXCEPTION WHEN insufficient_privilege THEN NULL;
-  END;
+  SELECT string_agg(required.table_name || '.' || required.column_name, ', ' ORDER BY 1)
+  INTO missing_columns
+  FROM (VALUES
+    ('rescue_teams', 'contract_reference'),
+    ('rescue_teams', 'verified_by'),
+    ('rescue_teams', 'verified_at'),
+    ('team_verification_checks', 'checked_by'),
+    ('team_verification_checks', 'checked_at'),
+    ('provider_members', 'contact_phone_e164'),
+    ('provider_members', 'location_accuracy_m'),
+    ('provider_location_checkpoints', 'accuracy_m'),
+    ('service_types', 'label_en'),
+    ('service_types', 'description_en'),
+    ('rescue_requests', 'pickup_location'),
+    ('rescue_requests', 'work_type'),
+    ('push_devices', 'installation_id'),
+    ('reviews', 'team_id'),
+    ('reviews', 'moderation_note'),
+    ('team_quality_alerts', 'review_count_checkpoint')
+  ) AS required(table_name, column_name)
+  WHERE NOT EXISTS (
+    SELECT 1 FROM information_schema.columns column_info
+    WHERE column_info.table_schema = 'public'
+      AND column_info.table_name = required.table_name
+      AND column_info.column_name = required.column_name
+  );
+
+  IF missing_columns IS NOT NULL THEN
+    RAISE EXCEPTION 'MISSING_REQUIRED_COLUMNS: %', missing_columns;
+  END IF;
 END;
 $$;
--- The RPC must reject values outside its public 'up'/'down' contract.
+
 DO $$
+DECLARE
+  missing_indexes TEXT;
 BEGIN
-  BEGIN
-    PERFORM public.vote_shared_itinerary(
-      current_setting('app.test_share_token'),
-      '44444444-4444-4444-4444-444444444444',
-      'invalid'
+  SELECT string_agg(required.index_name, ', ' ORDER BY required.index_name)
+  INTO missing_indexes
+  FROM (VALUES
+    ('rescue_requests_one_active_customer_idx'),
+    ('rescue_requests_one_active_provider_idx'),
+    ('rescue_requests_pickup_gix'),
+    ('provider_members_location_gix'),
+    ('push_devices_installation_id_key')
+  ) AS required(index_name)
+  WHERE to_regclass('public.' || required.index_name) IS NULL;
+
+  IF missing_indexes IS NOT NULL THEN
+    RAISE EXCEPTION 'MISSING_SAFETY_INDEXES: %', missing_indexes;
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  unprotected TEXT;
+BEGIN
+  SELECT string_agg(c.relname, ', ' ORDER BY c.relname)
+  INTO unprotected
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relkind = 'r'
+    AND c.relname IN (
+      'profiles', 'rescue_teams', 'team_verification_requirements', 'team_verification_checks',
+      'service_types', 'provider_members', 'team_capabilities',
+      'rescue_requests', 'dispatch_offers', 'quotes', 'request_status_events',
+      'provider_location_checkpoints', 'reviews', 'team_quality_alerts', 'push_devices', 'audit_logs',
+      'assistant_usage_events'
+    )
+    AND NOT c.relrowsecurity;
+
+  IF unprotected IS NOT NULL THEN
+    RAISE EXCEPTION 'RLS_DISABLED_ON: %', unprotected;
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  exposed_function TEXT;
+BEGIN
+  SELECT p.proname
+  INTO exposed_function
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND (
+      has_function_privilege('anon', p.oid, 'EXECUTE')
+      OR (
+        has_function_privilege('authenticated', p.oid, 'EXECUTE')
+        AND p.proname NOT IN (
+          'current_profile_role', 'is_dispatch_staff',
+          'can_view_request', 'can_access_realtime_topic'
+        )
+      )
+    )
+  LIMIT 1;
+
+  IF exposed_function IS NOT NULL THEN
+    RAISE EXCEPTION 'UNEXPECTED_CLIENT_FUNCTION_EXECUTE: %', exposed_function;
+  END IF;
+
+  IF NOT has_function_privilege(
+    'authenticated', 'public.can_access_realtime_topic(text,boolean)', 'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'REALTIME_AUTH_FUNCTION_NOT_EXECUTABLE';
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  unsafe_grants TEXT;
+BEGIN
+  SELECT string_agg(table_name || ':' || privilege_type, ', ' ORDER BY table_name, privilege_type)
+  INTO unsafe_grants
+  FROM information_schema.role_table_grants
+  WHERE table_schema = 'public'
+    AND grantee IN ('anon', 'authenticated')
+    AND table_name IN (
+      'rescue_teams', 'team_verification_requirements', 'team_verification_checks',
+      'service_types', 'provider_members', 'team_capabilities', 'rescue_requests',
+      'dispatch_offers', 'quotes', 'request_status_events', 'provider_location_checkpoints',
+      'reviews', 'team_quality_alerts', 'push_devices', 'audit_logs', 'assistant_usage_events'
+    )
+    AND privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER');
+
+  IF unsafe_grants IS NOT NULL THEN
+    RAISE EXCEPTION 'DIRECT_BUSINESS_MUTATION_GRANTED: %', unsafe_grants;
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  exposed_reads TEXT;
+BEGIN
+  SELECT string_agg(table_name, ', ' ORDER BY table_name)
+  INTO exposed_reads
+  FROM information_schema.role_table_grants
+  WHERE table_schema = 'public'
+    AND grantee IN ('anon', 'authenticated')
+    AND privilege_type = 'SELECT'
+    AND table_name IN (
+      'rescue_teams', 'team_verification_requirements', 'team_verification_checks',
+      'service_types', 'provider_members', 'team_capabilities',
+      'rescue_requests', 'dispatch_offers', 'quotes', 'request_status_events',
+      'provider_location_checkpoints', 'reviews', 'team_quality_alerts', 'push_devices', 'audit_logs',
+      'assistant_usage_events'
     );
-    RAISE EXCEPTION 'RLS TEST FAILED: invalid vote was accepted';
-  EXCEPTION
-    WHEN invalid_parameter_value THEN
-      IF SQLERRM IS DISTINCT FROM 'INVALID_VOTE' THEN RAISE; END IF;
-  END;
+
+  IF exposed_reads IS NOT NULL THEN
+    RAISE EXCEPTION 'SENSITIVE_POSTGREST_READ_GRANTED: %', exposed_reads;
+  END IF;
 END;
 $$;
 
-SELECT public.vote_shared_itinerary(
-  current_setting('app.test_share_token'),
-  '44444444-4444-4444-4444-444444444444',
-  'up'
-);
-SELECT pg_temp.assert_true(
-  (public.get_shared_votes(current_setting('app.test_share_token'))->0->>'up')::INTEGER = 1
-    AND (public.get_shared_votes(current_setting('app.test_share_token'))->0->>'down')::INTEGER = 0
-    AND (public.get_shared_votes(current_setting('app.test_share_token'))->0->>'my_vote') = 'up',
-  'a valid vote must be recorded and visible to the voter'
-);
-RESET ROLE;
+DO $$
+DECLARE
+  missing_functions TEXT[] := ARRAY[]::TEXT[];
+BEGIN
+  IF to_regprocedure('public.current_profile_role()') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'current_profile_role');
+  END IF;
+  IF to_regprocedure('public.can_view_request(uuid)') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'can_view_request');
+  END IF;
+  IF to_regprocedure('public.api_accept_dispatch_offer(uuid,uuid,integer)') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'api_accept_dispatch_offer');
+  END IF;
+  IF to_regprocedure('public.api_lookup_account_by_phone(text)') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'api_lookup_account_by_phone');
+  END IF;
+  IF to_regprocedure('public.purge_expired_location_checkpoints(interval)') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'purge_expired_location_checkpoints');
+  END IF;
+  IF to_regprocedure('public.minimize_closed_request_data(interval)') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'minimize_closed_request_data');
+  END IF;
+  IF to_regprocedure('public.purge_assistant_usage_events(interval)') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'purge_assistant_usage_events');
+  END IF;
 
-SET LOCAL ROLE anon;
-SELECT set_config('request.jwt.claims', '{"role":"anon"}', TRUE);
-SELECT pg_temp.assert_true(
-  (public.get_shared_itinerary(current_setting('app.test_share_token'))->>'title') = 'RLS itinerary',
-  'active token must expose the allowlisted shared payload'
-);
-SELECT pg_temp.assert_true(
-  NOT (public.get_shared_itinerary(current_setting('app.test_share_token')) ? 'user_id'),
-  'shared payload must not reveal owner id'
-);
-RESET ROLE;
+  IF cardinality(missing_functions) > 0 THEN
+    RAISE EXCEPTION 'MISSING_SECURITY_FUNCTIONS: %', array_to_string(missing_functions, ', ');
+  END IF;
+END;
+$$;
 
-SET LOCAL ROLE authenticated;
-SELECT set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', TRUE);
-SELECT public.revoke_itinerary_share(current_setting('app.test_itinerary_id')::uuid);
-RESET ROLE;
+DO $$
+DECLARE
+  exposed_rpc TEXT;
+BEGIN
+  SELECT p.proname
+  INTO exposed_rpc
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname IN (
+      'api_accept_dispatch_offer', 'purge_expired_location_checkpoints',
+      'minimize_closed_request_data', 'purge_assistant_usage_events'
+    )
+    AND (
+      has_function_privilege('anon', p.oid, 'EXECUTE')
+      OR has_function_privilege('authenticated', p.oid, 'EXECUTE')
+    )
+  LIMIT 1;
 
-SET LOCAL ROLE anon;
-SELECT set_config('request.jwt.claims', '{"role":"anon"}', TRUE);
-SELECT pg_temp.assert_true(
-  public.get_shared_itinerary(current_setting('app.test_share_token')) IS NULL,
-  'revoked token must stop reading immediately'
-);
-RESET ROLE;
+  IF exposed_rpc IS NOT NULL THEN
+    RAISE EXCEPTION 'PRIVILEGED_RPC_EXPOSED_TO_CLIENT: %', exposed_rpc;
+  END IF;
+END;
+$$;
 
-ROLLBACK;
+DO $$
+DECLARE
+  missing_policy_tables TEXT;
+BEGIN
+  SELECT string_agg(required.table_name, ', ' ORDER BY required.table_name)
+  INTO missing_policy_tables
+  FROM (VALUES
+    ('profiles'), ('rescue_teams'), ('team_verification_requirements'),
+    ('team_verification_checks'), ('service_types'), ('provider_members'),
+    ('team_capabilities'), ('rescue_requests'), ('dispatch_offers'), ('quotes'),
+    ('request_status_events'), ('provider_location_checkpoints'), ('reviews'), ('team_quality_alerts'),
+    ('push_devices'), ('audit_logs'), ('assistant_usage_events')
+  ) AS required(table_name)
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_policies p
+    WHERE p.schemaname = 'public' AND p.tablename = required.table_name
+  );
+
+  IF missing_policy_tables IS NOT NULL THEN
+    RAISE EXCEPTION 'TABLE_WITHOUT_POLICY: %', missing_policy_tables;
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  runtime_role RECORD;
+BEGIN
+  SELECT rolname, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls
+  INTO runtime_role
+  FROM pg_roles
+  WHERE rolname = 'motorescue_api';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_ROLE_MISSING';
+  END IF;
+  IF runtime_role.rolsuper OR runtime_role.rolcreatedb OR runtime_role.rolcreaterole
+    OR runtime_role.rolreplication OR NOT runtime_role.rolbypassrls THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_ROLE_UNSAFE';
+  END IF;
+  IF has_schema_privilege('motorescue_api', 'public', 'CREATE') THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_HAS_DDL_PRIVILEGE';
+  END IF;
+  IF NOT has_schema_privilege('motorescue_api', 'extensions', 'USAGE') THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_EXTENSION_USAGE_MISSING';
+  END IF;
+  IF NOT has_table_privilege('motorescue_api', 'public.assistant_usage_events', 'SELECT,INSERT') THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_ASSISTANT_GRANT_MISSING';
+  END IF;
+  IF NOT has_table_privilege('motorescue_api', 'public.service_types', 'SELECT,UPDATE') THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_CATALOG_GRANT_MISSING';
+  END IF;
+  IF NOT has_table_privilege('motorescue_api', 'public.team_quality_alerts', 'SELECT,INSERT,UPDATE') THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_QUALITY_ALERT_GRANT_MISSING';
+  END IF;
+  IF NOT has_table_privilege(
+    'motorescue_api', 'public.team_verification_requirements', 'SELECT'
+  ) OR NOT has_table_privilege(
+    'motorescue_api', 'public.team_verification_checks', 'SELECT,INSERT,UPDATE'
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_PARTNER_VERIFICATION_GRANT_MISSING';
+  END IF;
+  IF NOT has_function_privilege(
+    'motorescue_api', 'public.api_lookup_account_by_phone(text)', 'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_ACCOUNT_LOOKUP_GRANT_MISSING';
+  END IF;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'provider_location_checkpoints'
+      AND column_name = 'accuracy_m'
+      AND is_nullable = 'YES'
+  ) THEN
+    RAISE EXCEPTION 'CHECKPOINT_ACCURACY_MUST_BE_REQUIRED';
+  END IF;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name IN (
+        'profiles', 'rescue_teams', 'team_verification_checks',
+        'provider_members', 'rescue_requests', 'audit_logs'
+      )
+      AND column_name IN (
+        'cccd', 'citizen_id', 'driver_license', 'password', 'access_token', 'refresh_token',
+        'contract_file', 'contract_path', 'identity_document_path'
+      )
+  ) THEN
+    RAISE EXCEPTION 'FORBIDDEN_SENSITIVE_COLUMN_FOUND';
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  missing_profile_count BIGINT;
+BEGIN
+  SELECT COUNT(*)
+  INTO missing_profile_count
+  FROM auth.users auth_user
+  LEFT JOIN public.profiles profile ON profile.id = auth_user.id
+  WHERE profile.id IS NULL;
+
+  IF missing_profile_count > 0 THEN
+    RAISE EXCEPTION 'AUTH_USERS_WITHOUT_PROFILE: %', missing_profile_count;
+  END IF;
+
+  IF (SELECT COUNT(*) FROM public.service_types) <> 6 THEN
+    RAISE EXCEPTION 'UNEXPECTED_SERVICE_CATALOG_SIZE';
+  END IF;
+  IF (SELECT COUNT(*) FROM public.team_verification_requirements WHERE is_active AND is_required) <> 6 THEN
+    RAISE EXCEPTION 'UNEXPECTED_PARTNER_VERIFICATION_REQUIREMENTS';
+  END IF;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger trigger_info
+    WHERE trigger_info.tgrelid = 'auth.users'::regclass
+      AND trigger_info.tgname = 'on_auth_user_created'
+      AND NOT trigger_info.tgisinternal
+  ) THEN
+    RAISE EXCEPTION 'AUTH_PROFILE_TRIGGER_MISSING';
+  END IF;
+
+  IF to_regclass('realtime.messages') IS NULL THEN
+    RAISE EXCEPTION 'REALTIME_MESSAGES_TABLE_MISSING';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'realtime' AND tablename = 'messages'
+      AND policyname = 'motorescue_realtime_read'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'realtime' AND tablename = 'messages'
+      AND policyname = 'motorescue_realtime_write'
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_REALTIME_POLICIES_MISSING';
+  END IF;
+END;
+$$;
+
+SELECT 'RLS/security metadata verification passed' AS result;

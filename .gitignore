@@ -1,11 +1,16 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
 # ─── Agent / AI assistant skill files ────────────────────────────────────────
-AGENTS.md
-CLAUDE.md
+/AGENTS.md
+/CLAUDE.md
+/plan.md
 claude.json
 skills-lock.json
 .claude/
+.github/modernize/
+
+# ─── Editor caches ────────────────────────────────────────────────────────────
+.vscode/.react/
 
 # ─── Dependencies ─────────────────────────────────────────────────────────────
 node_modules/
@@ -17,12 +22,14 @@ backend/.maven-home/
 
 # ─── Expo ─────────────────────────────────────────────────────────────────────
 .expo/
+.tmp/
 dist/
 web-build/
 expo-env.d.ts
 
 # ─── Native build output ──────────────────────────────────────────────────────
 .kotlin/
+.credentials/
 *.orig.*
 *.jks
 *.p8

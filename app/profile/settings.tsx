@@ -1,286 +1,220 @@
-import React, { useCallback, useState, type ComponentProps, type ReactNode } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useQueryClient } from '@tanstack/react-query';
 import * as Linking from 'expo-linking';
 import * as Location from 'expo-location';
-import { useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
-import { useAuthStore } from '@/src/stores/authStore';
-import { useItineraryStore } from '@/src/stores/itineraryStore';
+import { LANGUAGES, type Language, useCopy, useI18n } from '@/src/i18n';
 import { supabase } from '@/src/services/supabase';
-import { authErrorMessage } from '@/src/features/auth/authErrors';
-import { clearSearchHistory } from '@/src/features/search/searchHistory';
-import { useReduceMotion } from '@/src/hooks/useReduceMotion';
-import { LANGUAGES, useI18n } from '@/src/i18n';
-import { getAppInfo } from '@/src/utils/appInfo';
+import { useAuthStore } from '@/src/stores/authStore';
+import { registerPushNotifications } from '@/src/features/notifications/pushNotifications';
+import { rescueKeys } from '@/src/features/rescue/hooks/useRescueQueries';
 
-interface SettingsRowProps {
-  icon: ComponentProps<typeof Ionicons>['name'];
-  title: string;
-  subtitle?: string;
-  onPress?: () => void;
-  destructive?: boolean;
-  trailing?: ReactNode;
-}
-
-function SettingsRow({ icon, title, subtitle, onPress, destructive, trailing }: SettingsRowProps) {
-  const content = (
-    <>
-      <View style={[styles.rowIcon, destructive && styles.rowIconDanger]}>
-        <Ionicons name={icon} size={20} color={destructive ? Colors.error : Colors.primary} />
-      </View>
-      <View style={styles.rowContent}>
-        <Text style={[styles.rowTitle, destructive && styles.rowTitleDanger]}>{title}</Text>
-        {subtitle ? <Text style={styles.rowSubtitle}>{subtitle}</Text> : null}
-      </View>
-      {trailing ?? (onPress ? <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} /> : null)}
-    </>
-  );
-
-  if (!onPress) return <View style={styles.row}>{content}</View>;
-  return (
-    <TouchableOpacity style={styles.row} onPress={onPress} accessibilityRole="button">
-      {content}
-    </TouchableOpacity>
-  );
-}
-
-function SettingsSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.card}>{children}</View>
-    </View>
-  );
-}
-
-function locationStatusLabel(permission: Location.LocationPermissionResponse | null, loading: boolean): string {
-  if (loading) return 'Đang kiểm tra…';
-  if (!permission) return 'Không kiểm tra được';
-  if (permission.status === Location.PermissionStatus.GRANTED) return 'Đã cho phép khi dùng ứng dụng';
-  if (permission.status === Location.PermissionStatus.DENIED) {
-    return permission.canAskAgain ? 'Đã từ chối · Có thể yêu cầu lại' : 'Đã từ chối · Mở cài đặt hệ thống để đổi';
-  }
-  return 'Chưa yêu cầu';
-}
+type PushState = 'unchecked' | 'registered' | 'expo-go' | 'unavailable' | 'denied';
+const COPY = {
+  vi: {
+    locationReadError: 'Không thể đọc quyền vị trí của thiết bị.',
+    languageSyncError: 'Không thể đồng bộ ngôn ngữ. Cài đặt chưa được thay đổi.',
+    locationSettingsError: 'Không thể mở cài đặt quyền vị trí trên thiết bị này.',
+    language: 'Ngôn ngữ',
+    permissions: 'Quyền và dữ liệu',
+    location: 'Quyền vị trí',
+    granted: 'Chỉ khi dùng ứng dụng',
+    denied: 'Chưa được cho phép',
+    notifications: 'Thông báo ca cứu hộ',
+    privacy: 'Dữ liệu được xử lý thế nào',
+    delete: 'Yêu cầu xóa tài khoản',
+    note: 'MotoRescue không yêu cầu quyền danh bạ, micro hoặc truy cập vị trí nền trong bản Expo Go.',
+    push: {
+      unchecked: 'Chạm để kiểm tra',
+      registered: 'Đã bật trên thiết bị này',
+      'expo-go': 'Expo Go không nhận push từ xa; dùng development build',
+      unavailable: 'Thiết bị hoặc EAS project chưa sẵn sàng',
+      denied: 'Đã từ chối trong cài đặt hệ thống',
+    },
+  },
+  en: {
+    locationReadError: "Could not read this device's location permission.",
+    languageSyncError: 'Could not sync the language. The setting was not changed.',
+    locationSettingsError: 'Could not open location settings on this device.',
+    language: 'Language',
+    permissions: 'Permissions and data',
+    location: 'Location permission',
+    granted: 'While using the app',
+    denied: 'Not allowed',
+    notifications: 'Rescue notifications',
+    privacy: 'How your data is processed',
+    delete: 'Request account deletion',
+    note: 'MotoRescue does not request contacts, microphone, or background location access in Expo Go.',
+    push: {
+      unchecked: 'Tap to check',
+      registered: 'Enabled on this device',
+      'expo-go': 'Expo Go cannot receive remote push; use a development build',
+      unavailable: 'The device or EAS project is not ready',
+      denied: 'Denied in system settings',
+    },
+  },
+} as const;
 
 export default function SettingsScreen() {
-  const { user, signOut } = useAuthStore();
-  const resetItinerary = useItineraryStore((state) => state.reset);
+  const { language, setLanguage } = useI18n();
+  const profile = useAuthStore((state) => state.profile);
+  const refreshProfile = useAuthStore((state) => state.refreshProfile);
   const queryClient = useQueryClient();
-  const reduceMotion = useReduceMotion();
-  const { language, setLanguage, t } = useI18n();
-  const appInfo = getAppInfo();
-  const [permission, setPermission] = useState<Location.LocationPermissionResponse | null>(null);
-  const [permissionLoading, setPermissionLoading] = useState(true);
-  const [sendingPasswordEmail, setSendingPasswordEmail] = useState(false);
+  const c = useCopy(COPY);
+  const [permission, setPermission] = useState<Location.PermissionStatus | null>(null);
+  const [pushStatus, setPushStatus] = useState<PushState>('unchecked');
+  const [savingLanguage, setSavingLanguage] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  const refreshLocationPermission = useCallback(async () => {
-    setPermissionLoading(true);
+  useEffect(() => {
+    let active = true;
+    void Location.getForegroundPermissionsAsync()
+      .then((value) => {
+        if (active) setPermission(value.status);
+      })
+      .catch(() => {
+        if (active) setMessage(c.locationReadError);
+      });
+    return () => {
+      active = false;
+    };
+  }, [c.locationReadError]);
+
+  const changeLanguage = async (next: Language) => {
+    if (next === language || savingLanguage) return;
+    setSavingLanguage(true);
+    setMessage(null);
     try {
-      setPermission(await Location.getForegroundPermissionsAsync());
-    } catch {
-      setPermission(null);
-    } finally {
-      setPermissionLoading(false);
-    }
-  }, []);
-
-  useFocusEffect(useCallback(() => {
-    void refreshLocationPermission();
-  }, [refreshLocationPermission]));
-
-  const manageLocationPermission = async () => {
-    if (permissionLoading) return;
-    try {
-      if (permission?.status === Location.PermissionStatus.GRANTED || permission?.canAskAgain === false) {
-        if (Platform.OS === 'web') {
-          Alert.alert('Quyền vị trí', 'Hãy thay đổi quyền vị trí trong cài đặt của trình duyệt.');
-        } else {
-          await Linking.openSettings();
-        }
-        return;
+      if (profile) {
+        const { error } = await supabase.from('profiles').update({ locale: next }).eq('id', profile.id);
+        if (error) throw error;
       }
-      setPermissionLoading(true);
-      setPermission(await Location.requestForegroundPermissionsAsync());
+      setLanguage(next);
+      await refreshProfile();
+      await queryClient.invalidateQueries({ queryKey: rescueKeys.all });
     } catch {
-      Alert.alert('Không thể cập nhật quyền', 'Hãy thử lại hoặc mở cài đặt hệ thống.');
+      setMessage(c.languageSyncError);
     } finally {
-      setPermissionLoading(false);
+      setSavingLanguage(false);
     }
   };
 
-  const sendPasswordReset = async () => {
-    if (!user?.email || sendingPasswordEmail) return;
-    setSendingPasswordEmail(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-      redirectTo: Linking.createURL('/(auth)/reset-password'),
-    });
-    setSendingPasswordEmail(false);
-    if (error) {
-      Alert.alert('Không thể gửi email', authErrorMessage(error, 'Vui lòng thử lại sau.'));
-      return;
+  const manageLocation = async () => {
+    setMessage(null);
+    try {
+      if (permission === Location.PermissionStatus.UNDETERMINED) {
+        const result = await Location.requestForegroundPermissionsAsync();
+        setPermission(result.status);
+      } else if (Platform.OS !== 'web') await Linking.openSettings();
+    } catch {
+      setMessage(c.locationSettingsError);
     }
-    Alert.alert('Đã gửi email', `Liên kết đổi mật khẩu đã được gửi tới ${user.email}.`);
   };
 
-  const confirmClearHistory = () => {
-    Alert.alert('Xóa lịch sử tìm kiếm', 'Thao tác này chỉ xóa lịch sử tìm kiếm trên thiết bị hiện tại.', [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Xóa',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await clearSearchHistory(user?.id);
-            Alert.alert('Đã xóa', 'Lịch sử tìm kiếm trên thiết bị đã được xóa.');
-          } catch {
-            Alert.alert('Không thể xóa', 'Vui lòng thử lại.');
-          }
-        },
-      },
-    ]);
-  };
-
-  const confirmSignOut = () => {
-    Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất khỏi thiết bị này?', [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Đăng xuất',
-        style: 'destructive',
-        onPress: async () => {
-          await signOut();
-          queryClient.removeQueries();
-          resetItinerary();
-          router.replace('/(tabs)');
-        },
-      },
-    ]);
+  const manageNotifications = async () => {
+    const result = await registerPushNotifications().catch(() => 'unavailable' as const);
+    setPushStatus(result);
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <SettingsSection title="Tài khoản & bảo mật">
-          <SettingsRow
-            icon="mail-outline"
-            title={user?.email || 'Không có email'}
-            subtitle={user?.email_confirmed_at ? 'Email đã xác minh' : 'Email chưa xác minh'}
-            trailing={<Ionicons name={user?.email_confirmed_at ? 'checkmark-circle' : 'alert-circle'} size={20} color={user?.email_confirmed_at ? Colors.success : Colors.warning} />}
-          />
-          <SettingsRow
-            icon="key-outline"
-            title="Đổi mật khẩu"
-            subtitle="Gửi liên kết bảo mật tới email đăng nhập"
-            onPress={user?.email ? sendPasswordReset : undefined}
-            trailing={sendingPasswordEmail ? <ActivityIndicator size="small" color={Colors.primary} /> : undefined}
-          />
-          <SettingsRow icon="log-out-outline" title="Đăng xuất" onPress={confirmSignOut} destructive />
-        </SettingsSection>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <ScrollView contentContainerStyle={styles.content}>
+        {message ? (
+          <Text accessibilityRole="alert" style={styles.error}>
+            {message}
+          </Text>
+        ) : null}
+        <Text style={styles.section}>{c.language}</Text>
+        <View style={styles.card}>
+          {LANGUAGES.map((item) => (
+            <Pressable
+              key={item.code}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: language === item.code, disabled: savingLanguage }}
+              disabled={savingLanguage}
+              style={[styles.row, savingLanguage && styles.disabled]}
+              onPress={() => void changeLanguage(item.code)}
+            >
+              <Text style={styles.rowTitle}>{item.nativeName}</Text>
+              <Ionicons
+                name={language === item.code ? 'radio-button-on' : 'radio-button-off'}
+                size={22}
+                color={language === item.code ? Colors.primary : Colors.textMuted}
+              />
+            </Pressable>
+          ))}
+        </View>
 
-        <SettingsSection title="Quyền & khả năng truy cập">
-          <SettingsRow
-            icon="location-outline"
-            title="Quyền vị trí"
-            subtitle={locationStatusLabel(permission, permissionLoading)}
-            onPress={manageLocationPermission}
-            trailing={permissionLoading ? <ActivityIndicator size="small" color={Colors.primary} /> : undefined}
-          />
-          <SettingsRow
-            icon="accessibility-outline"
-            title="Giảm chuyển động"
-            subtitle={`Theo cài đặt hệ thống · ${reduceMotion ? 'Đang bật' : 'Đang tắt'}`}
-          />
-          {LANGUAGES.length > 1 ? (
-            <View style={styles.languageBlock}>
-              <View style={styles.languageHeading}>
-                <View style={styles.rowIcon}>
-                  <Ionicons name="language-outline" size={20} color={Colors.primary} />
-                </View>
-                <View style={styles.rowContent}>
-                  <Text style={styles.rowTitle}>{t('profile.language')}</Text>
-                  <Text style={styles.rowSubtitle}>Chọn ngôn ngữ hiển thị của ứng dụng</Text>
-                </View>
-              </View>
-              <View style={styles.languageOptions}>
-                {LANGUAGES.map((item) => (
-                  <TouchableOpacity
-                    key={item.code}
-                    style={[styles.languageChip, language === item.code && styles.languageChipActive]}
-                    onPress={() => setLanguage(item.code)}
-                    accessibilityRole="radio"
-                    accessibilityLabel={item.label}
-                    accessibilityState={{ selected: language === item.code }}
-                  >
-                    <Text style={[styles.languageChipText, language === item.code && styles.languageChipTextActive]}>
-                      {item.flag} {item.nativeName}
-                    </Text>
-                    {language === item.code ? <Ionicons name="checkmark-circle" size={18} color={Colors.primary} /> : null}
-                  </TouchableOpacity>
-                ))}
-              </View>
+        <Text style={styles.section}>{c.permissions}</Text>
+        <View style={styles.card}>
+          <Pressable style={styles.row} onPress={() => void manageLocation()}>
+            <View style={styles.flex}>
+              <Text style={styles.rowTitle}>{c.location}</Text>
+              <Text style={styles.rowSub}>
+                {permission === Location.PermissionStatus.GRANTED ? c.granted : c.denied}
+              </Text>
             </View>
-          ) : null}
-        </SettingsSection>
-
-        <SettingsSection title="Quyền riêng tư & dữ liệu">
-          <SettingsRow icon="trash-bin-outline" title="Xóa lịch sử tìm kiếm" subtitle="Chỉ dữ liệu trên thiết bị này" onPress={confirmClearHistory} />
-          <SettingsRow icon="document-text-outline" title="Điều khoản sử dụng" onPress={() => router.push('/legal/terms')} />
-          <SettingsRow icon="shield-outline" title="Chính sách quyền riêng tư" onPress={() => router.push('/legal/privacy')} />
-          <SettingsRow icon="person-remove-outline" title="Xóa tài khoản và dữ liệu" onPress={() => router.push('/profile/delete-account')} destructive />
-        </SettingsSection>
-
-        <SettingsSection title="Hỗ trợ & giới thiệu">
-          <SettingsRow icon="headset-outline" title="Trung tâm hỗ trợ" onPress={() => router.push('/support')} />
-          <SettingsRow
-            icon="information-circle-outline"
-            title={appInfo.name}
-            subtitle={`Phiên bản ${appInfo.version}${appInfo.build ? ` · Build ${appInfo.build}` : ''}`}
-          />
-        </SettingsSection>
+            <Ionicons name="open-outline" size={20} color={Colors.primary} />
+          </Pressable>
+          <Pressable style={styles.row} onPress={() => void manageNotifications()}>
+            <View style={styles.flex}>
+              <Text style={styles.rowTitle}>{c.notifications}</Text>
+              <Text style={styles.rowSub}>{c.push[pushStatus]}</Text>
+            </View>
+            <Ionicons name="notifications-outline" size={20} color={Colors.primary} />
+          </Pressable>
+          <Pressable style={styles.row} onPress={() => router.push('/legal/privacy')}>
+            <Text style={styles.rowTitle}>{c.privacy}</Text>
+            <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+          </Pressable>
+          <Pressable style={styles.row} onPress={() => router.push('/profile/delete-account')}>
+            <Text style={styles.delete}>{c.delete}</Text>
+            <Ionicons name="chevron-forward" size={20} color={Colors.error} />
+          </Pressable>
+        </View>
+        <Text style={styles.note}>{c.note}</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  content: { padding: Spacing.md, paddingBottom: Spacing.xxl },
-  section: { marginBottom: Spacing.lg },
-  sectionTitle: {
-    ...Typography.label,
-    color: Colors.textSecondary,
-    textTransform: 'uppercase',
-    fontSize: 11,
-    letterSpacing: 1,
-    marginBottom: Spacing.sm,
-    paddingLeft: Spacing.xs,
+  safe: { flex: 1, backgroundColor: Colors.background },
+  content: { padding: Spacing.lg, gap: Spacing.md },
+  section: { ...Typography.label, color: Colors.textSecondary, marginTop: Spacing.sm },
+  card: {
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.cardBg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  card: { backgroundColor: Colors.white, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.divider, overflow: 'hidden' },
-  row: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.divider },
-  rowIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center' },
-  rowIconDanger: { backgroundColor: '#FFF0F0' },
-  rowContent: { flex: 1 },
+  row: {
+    minHeight: 62,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.md,
+    padding: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
+  },
   rowTitle: { ...Typography.bodyBold, color: Colors.textPrimary },
-  rowTitleDanger: { color: Colors.error },
-  rowSubtitle: { ...Typography.caption, color: Colors.textSecondary, marginTop: 3 },
-  languageBlock: { padding: Spacing.md },
-  languageHeading: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  languageOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.sm },
-  languageChip: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.divider },
-  languageChipActive: { borderColor: Colors.primary, backgroundColor: Colors.surface },
-  languageChipText: { ...Typography.body, color: Colors.textPrimary },
-  languageChipTextActive: { color: Colors.primary, fontWeight: '700' },
+  rowSub: { ...Typography.caption, color: Colors.textMuted },
+  delete: { ...Typography.bodyBold, color: Colors.error },
+  note: { ...Typography.caption, color: Colors.textMuted },
+  flex: { flex: 1 },
+  error: {
+    ...Typography.body,
+    color: Colors.error,
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.errorSoft,
+  },
+  disabled: { opacity: 0.55 },
 });

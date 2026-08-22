@@ -1,23 +1,47 @@
--- DEV/STAGING ONLY — file này xóa toàn bộ dữ liệu ứng dụng.
--- Trước khi chạy, phải chủ động bật cờ trong CÙNG phiên SQL:
---   SET app.allow_destructive_reset = 'yes';
--- Production deployment tuyệt đối không được gọi file này.
-BEGIN;
+-- CHỈ DÙNG KHI CÀI MỚI/STAGING. Script này xóa toàn bộ schema public.
+-- Chạy cùng một lượt với dòng sau trong Supabase SQL Editor:
+--   SELECT set_config('app.confirm_motorescue_reset', 'RESET_MOTORESCUE', false);
 
 DO $$
 BEGIN
-  IF current_setting('app.allow_destructive_reset', TRUE) IS DISTINCT FROM 'yes' THEN
-    RAISE EXCEPTION 'Reset bị chặn. Chạy SET app.allow_destructive_reset = ''yes'' trước khi reset dev/staging.';
+  IF COALESCE(current_setting('app.confirm_motorescue_reset', TRUE), '') <> 'RESET_MOTORESCUE' THEN
+    RAISE EXCEPTION 'RESET_NOT_CONFIRMED';
   END IF;
 END;
 $$;
 
-DELETE FROM storage.objects WHERE bucket_id = 'place-images';
-DELETE FROM storage.objects WHERE bucket_id = 'place-revisions';
-DELETE FROM storage.objects WHERE bucket_id = 'avatars';
-DELETE FROM storage.buckets WHERE id IN ('place-images', 'place-revisions', 'avatars');
+-- Cron lưu command dưới dạng text nên không tự mất khi drop schema public.
+DO $$
+BEGIN
+  IF to_regclass('cron.job') IS NOT NULL THEN
+    EXECUTE $sql$
+      SELECT cron.unschedule(jobid)
+      FROM cron.job
+      WHERE jobname IN (
+        'motorescue-purge-location-checkpoints',
+        'motorescue-minimize-closed-requests',
+        'motorescue-purge-assistant-usage'
+      )
+    $sql$;
+  END IF;
+END;
+$$;
+
+-- Xóa policy ngoài schema public trước khi tạo lại hàm authorization.
+DO $$
+BEGIN
+  IF to_regclass('realtime.messages') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS motorescue_realtime_read ON realtime.messages';
+    EXECUTE 'DROP POLICY IF EXISTS motorescue_realtime_write ON realtime.messages';
+  END IF;
+END;
+$$;
+
 DROP SCHEMA IF EXISTS public CASCADE;
-CREATE SCHEMA public AUTHORIZATION postgres;
+CREATE SCHEMA public;
+
 GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
 GRANT ALL ON SCHEMA public TO postgres, service_role;
-COMMIT;
+
+COMMENT ON SCHEMA public IS
+  'MotoRescue - nền tảng điều phối cứu hộ xe máy cho mạng lưới đối tác được xác minh.';

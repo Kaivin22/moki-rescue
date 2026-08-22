@@ -1,113 +1,109 @@
 const isProductionBuild =
-  process.env.APP_ENV === 'production' ||
-  process.env.EAS_BUILD_PROFILE === 'production';
+  process.env.APP_ENV === 'production' || process.env.EAS_BUILD_PROFILE === 'production';
 
-// Legacy fallbacks keep the current SDK 54 Expo Go workflow usable while the
-// local .env is migrated. Only the Supabase URL and anon key are allowed here;
-// neither value is a server-side secret.
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
 const mapsKey = process.env.GOOGLE_MAPS_KEY || '';
-const weatherApiUrl = process.env.EXPO_PUBLIC_WEATHER_API_URL || '';
-const osrmCarBaseUrl = process.env.EXPO_PUBLIC_OSRM_CAR_BASE_URL || process.env.EXPO_PUBLIC_OSRM_BASE_URL || '';
-const osrmMotorbikeBaseUrl = process.env.EXPO_PUBLIC_OSRM_MOTORBIKE_BASE_URL || '';
-const osrmWalkBaseUrl = process.env.EXPO_PUBLIC_OSRM_WALK_BASE_URL || '';
-const osrmBicycleBaseUrl = process.env.EXPO_PUBLIC_OSRM_BICYCLE_BASE_URL || '';
+const supportHotline = process.env.EXPO_PUBLIC_SUPPORT_HOTLINE || '';
+const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID || '';
+
+function isHttpsUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !['localhost', '127.0.0.1', '0.0.0.0'].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
 
 if (isProductionBuild) {
   const missing = [
-    // Production must use the canonical public names; legacy fallbacks above
-    // exist only to keep an older local SDK 54 .env usable during migration.
     ['EXPO_PUBLIC_SUPABASE_URL', process.env.EXPO_PUBLIC_SUPABASE_URL],
     ['EXPO_PUBLIC_SUPABASE_ANON_KEY', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY],
     ['EXPO_PUBLIC_API_URL', apiUrl],
     ['GOOGLE_MAPS_KEY', mapsKey],
-    ['EXPO_PUBLIC_WEATHER_API_URL', weatherApiUrl],
-    ['EXPO_PUBLIC_OSRM_CAR_BASE_URL', process.env.EXPO_PUBLIC_OSRM_CAR_BASE_URL],
-    ['EXPO_PUBLIC_OSRM_MOTORBIKE_BASE_URL', osrmMotorbikeBaseUrl],
-    ['EXPO_PUBLIC_OSRM_WALK_BASE_URL', osrmWalkBaseUrl],
-    ['EXPO_PUBLIC_OSRM_BICYCLE_BASE_URL', osrmBicycleBaseUrl],
-  ].filter(([, value]) => !value).map(([name]) => name);
+    ['EXPO_PUBLIC_SUPPORT_HOTLINE', supportHotline],
+    ['EXPO_PUBLIC_EAS_PROJECT_ID', easProjectId],
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
 
   if (missing.length > 0) {
     throw new Error(`Missing production environment variables: ${missing.join(', ')}`);
   }
+  if (!isHttpsUrl(supabaseUrl) || !isHttpsUrl(apiUrl)) {
+    throw new Error('Production Supabase and API URLs must use HTTPS and cannot point to localhost.');
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(easProjectId)) {
+    throw new Error('EXPO_PUBLIC_EAS_PROJECT_ID must be a valid UUID.');
+  }
+  if (!/^\+?[0-9]{6,15}$/.test(supportHotline)) {
+    throw new Error('EXPO_PUBLIC_SUPPORT_HOTLINE must contain 6-15 digits, with an optional leading +.');
+  }
 }
 
 export default {
-  "expo": {
-    "name": "Đi Đà Nẵng",
-    "slug": "danang-itinerary",
-    "description": "Khám phá địa điểm, lập lịch trình và tối ưu đường đi tại Đà Nẵng.",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "scheme": "danangitinerary",
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.danang.itinerary",
-      "buildNumber": "1"
+  expo: {
+    name: 'MotoRescue Đà Nẵng',
+    slug: 'motorescue-danang',
+    description: 'Điều phối cứu hộ xe máy theo thời gian thực cho mạng lưới đối tác được xác minh.',
+    version: '1.0.0',
+    orientation: 'portrait',
+    icon: './assets/motorescue-icon-opaque.png',
+    userInterfaceStyle: 'light',
+    scheme: 'motorescue',
+    ios: {
+      supportsTablet: true,
+      bundleIdentifier: 'com.danang.motorescue',
+      buildNumber: '1',
     },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#144425",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+    android: {
+      adaptiveIcon: {
+        backgroundColor: '#0B1F33',
+        foregroundImage: './assets/motorescue-icon-opaque.png',
       },
-      "package": "com.danang.itinerary",
-      "versionCode": 1,
-      "predictiveBackGestureEnabled": true,
-      "config": {
-        "googleMaps": {
-          "apiKey": mapsKey
-        }
-      }
+      package: 'com.danang.motorescue',
+      versionCode: 1,
+      predictiveBackGestureEnabled: true,
+      config: {
+        googleMaps: { apiKey: mapsKey },
+      },
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      "expo-router",
-      "expo-font",
-      "expo-secure-store",
+    web: { favicon: './assets/motorescue-icon-opaque.png' },
+    plugins: [
+      'expo-router',
+      'expo-font',
+      'expo-secure-store',
       [
-        "expo-location",
+        'expo-location',
         {
-          "locationWhenInUsePermission": "Cho phép Đi Đà Nẵng dùng vị trí để tính khoảng cách tới địa điểm."
-        }
+          locationWhenInUsePermission:
+            'MotoRescue dùng vị trí khi bạn tạo hoặc đang xử lý một yêu cầu cứu hộ. Vị trí không được theo dõi khi không có ca hoạt động.',
+          locationAlwaysAndWhenInUsePermission:
+            'Cứu hộ viên cho phép MotoRescue cập nhật vị trí trong nền chỉ khi đang xử lý một ca. Khách hàng không cần cấp quyền này.',
+          isIosBackgroundLocationEnabled: true,
+          isAndroidBackgroundLocationEnabled: true,
+          isAndroidForegroundServiceEnabled: true,
+        },
       ],
       [
-        "expo-image-picker",
+        'expo-notifications',
         {
-          "photosPermission": "Cho phép Đi Đà Nẵng chọn ảnh thật cho thông tin địa điểm.",
-          "microphonePermission": false
-        }
+          icon: './assets/motorescue-notification-icon.png',
+          color: '#F5B942',
+          defaultChannel: 'rescue-updates',
+        },
       ],
-      "@react-native-community/datetimepicker"
     ],
-    "extra": {
-      // Only public configuration may be embedded in the client bundle.
-      // Never add server-side secrets (for example GEMINI_API_KEY) here.
-      "supabaseUrl": supabaseUrl,
-      "supabaseAnonKey": supabaseAnonKey,
-      "apiUrl": apiUrl,
-      "weatherApiUrl": weatherApiUrl,
-      "routingBaseUrls": {
-        "car": osrmCarBaseUrl,
-        "motorbike": osrmMotorbikeBaseUrl,
-        "walk": osrmWalkBaseUrl,
-        "bicycle": osrmBicycleBaseUrl
-      },
-      "appEnvironment": process.env.APP_ENV || 'development',
-      ...(process.env.EXPO_PUBLIC_EAS_PROJECT_ID
-        ? { "eas": { "projectId": process.env.EXPO_PUBLIC_EAS_PROJECT_ID } }
-        : {})
+    extra: {
+      supabaseUrl,
+      supabaseAnonKey,
+      apiUrl,
+      supportHotline,
+      appEnvironment: process.env.APP_ENV || 'development',
+      ...(easProjectId ? { eas: { projectId: easProjectId } } : {}),
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    }
-  }
+    runtimeVersion: { policy: 'appVersion' },
+  },
 };

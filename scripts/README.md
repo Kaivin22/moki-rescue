@@ -1,35 +1,44 @@
-# Cài mới Supabase
+# Cài mới cơ sở dữ liệu MotoRescue
 
-Bộ SQL này dùng để tạo database từ đầu. Schema không tự chèn dữ liệu; catalog địa điểm thật là bước tùy chọn riêng.
+Bộ SQL này dành cho một Supabase project mới hoặc staging. Không chạy `00_reset.sql` trên môi trường có dữ liệu cần giữ.
 
-Chạy trong Supabase SQL Editor bằng tài khoản chủ dự án, đúng thứ tự:
+## Thứ tự chạy
 
-1. `00_reset.sql` — xóa schema ứng dụng và object trong các bucket `place-images`, `place-revisions`, `avatars`.
-2. `01_schema.sql` — tạo extension, bảng, constraint, index, trigger, RPC, bucket, quyền và RLS hoàn chỉnh.
-3. Trên **staging**, chạy `02_verify_rls.sql` để kiểm tra anon/user A/user B/admin, RPC atomic, vote hợp lệ/không hợp lệ và vòng đời share token. Fixture tự chọn ngày tương lai, toàn bộ test `ROLLBACK` và không phải migration production.
-4. Tùy chọn chạy `03_seed_real_places.sql` để nạp 15 địa điểm Đà Nẵng thật có nguồn và tọa độ. Script không bịa rating, không hotlink ảnh và không ghi đè dữ liệu Admin đã chỉnh.
+1. Trong **cùng một lần Run** của SQL Editor, đặt câu lệnh xác nhận trước nội dung `00_reset.sql`:
 
-Sau khi cài schema, hãy tạo người dùng qua Supabase Auth rồi cấp quyền quản trị đầu tiên theo đúng email trong SQL Editor:
+   ```sql
+   SELECT set_config('app.confirm_motorescue_reset', 'RESET_MOTORESCUE', false);
+   ```
 
-```sql
-UPDATE public.profiles AS p
-SET role = 'admin', is_banned = FALSE
-FROM auth.users AS u
-WHERE p.id = u.id
-  AND lower(u.email) = lower('email-admin-cua-ban@example.com')
-RETURNING p.id, u.email, p.role, p.is_banned;
-```
+2. Chạy `01_schema.sql` để tạo toàn bộ bảng, dữ liệu danh mục chuẩn, constraint, index, trigger, quyền và RLS. Script tự backfill các tài khoản còn tồn tại trong `auth.users` về vai trò `customer`.
+3. Tạo mật khẩu ngẫu nhiên riêng cho role backend do schema vừa tạo, rồi lưu đúng giá trị vào secret store của backend (không commit câu lệnh đã điền mật khẩu):
 
-Câu lệnh phải trả về đúng một dòng. Không chạy biến thể thiếu `WHERE` vì sẽ nâng quyền toàn bộ profile.
+   ```sql
+   ALTER ROLE motorescue_api PASSWORD '<RANDOM_PASSWORD>';
+   ```
 
-## Lưu ý an toàn
+4. Chạy `02_verify_rls.sql`. Script chỉ kiểm tra metadata bảo mật, không tạo fixture và không sửa dữ liệu nghiệp vụ.
+5. Đăng nhập OTP bằng tài khoản vận hành đầu tiên, sửa đúng **một số điện thoại E.164** trong `03_bootstrap_operator.sql`, rồi chạy script đó. Script dừng nếu còn giá trị mẫu hoặc số điện thoại không khớp đúng một tài khoản.
+6. Trên production, chạy `04_schedule_retention.sql` để xóa checkpoint GPS sau 24 giờ, làm mờ vị trí/nội dung nhạy cảm của ca đã đóng sau 30 ngày và xóa dấu quota trợ lý sau 2 ngày.
 
-- Trước `00_reset.sql`, phải chạy `SET app.allow_destructive_reset = 'yes';` trong cùng phiên SQL. File sẽ dừng nếu thiếu cờ này.
-- `00_reset.sql` xóa toàn bộ dữ liệu ứng dụng và các bucket thuộc dự án; không chạy trên môi trường có dữ liệu cần giữ.
-- Không đưa service-role key vào ứng dụng mobile.
-- Giao dịch VIP chỉ được backend/service role ghi sau khi xác minh với App Store hoặc Google Play; client không được tự tạo giao dịch hay tự cấp VIP.
-- `vip_plans` lưu catalog và Product ID; giá hiển thị thực tế phải lấy từ store, không hardcode trong ứng dụng.
-- Hủy tự động gia hạn phải thực hiện/đồng bộ với store. Chỉ sửa `vip_status` trong database không có tác dụng dừng thu tiền.
-- Địa điểm thật được nhập qua giao diện editor và duyệt bởi admin; không thêm dữ liệu giả vào SQL.
-- `03_seed_real_places.sql` là catalog khởi tạo tùy chọn, không phải migration bắt buộc. Giờ hoạt động cần được Admin tái xác minh định kỳ; dữ liệu OpenStreetMap phải giữ ghi công nguồn theo ODbL.
-- Nếu `00_reset.sql` báo bucket còn object, kiểm tra lại quyền của tài khoản đang chạy SQL Editor.
+Không còn migration `05`: lần reset này đã hợp nhất số liên hệ công việc và mọi thay đổi vào `01_schema.sql`. Không chạy lại bất kỳ SQL cũ nào ngoài các tệp đang có trong thư mục này.
+
+Không có seed đội cứu hộ, vị trí, yêu cầu hay đánh giá giả. Danh mục loại sự cố trong `01_schema.sql` là dữ liệu cấu hình chính thức của sản phẩm, không phải mock data.
+
+## Nguyên tắc vận hành
+
+- Ứng dụng mobile chỉ giữ `anon key`. Tuyệt đối không đóng gói `service_role` hoặc mật khẩu database vào app.
+- Spring runtime đăng nhập bằng `motorescue_api`, không dùng `postgres`. Role này không có DDL/superuser và chỉ nhận grant cần cho API.
+- Client chỉ đọc dữ liệu được RLS cho phép. Mọi thay đổi nghiệp vụ (tạo yêu cầu, nhận đơn, đổi trạng thái, báo giá, phân công) đi qua Spring Boot API.
+- Tài khoản đăng ký công khai luôn là `customer`; không có đăng ký provider công khai. Mỗi cứu hộ viên tự đăng nhập OTP một lần, sau đó admin mới tra đúng số đăng nhập và cấp quyền vào một đội. Không tạo mật khẩu hộ và không dùng tài khoản chung.
+- Đội đối tác được tạo sau thỏa thuận ngoại tuyến bằng một mã hồ sơ nội bộ duy nhất. Admin phải hoàn tất checklist database-driven, khai báo ít nhất một năng lực và cấp ít nhất một provider active trước khi chuyển đội sang `verified`; lần xác minh lưu admin/thời điểm và audit.
+- Năng lực thuộc về đội, được admin quản lý riêng; thêm một cứu hộ viên không được thay đổi tập năng lực của đội.
+- Số liên hệ của cứu hộ viên là số công việc do admin nhập và xác minh, không sao chép từ `auth.users`; backend chỉ trả số này khi ca được phân công và còn hoạt động.
+- Không lưu CCCD, giấy phép lái xe, file hợp đồng hoặc ảnh hồ sơ xác minh trong database dùng chung. Chỉ lưu mã tham chiếu nội bộ, kết quả checklist và dấu audit tối thiểu.
+- Vị trí chính xác chỉ được dùng khi yêu cầu đang hoạt động. Job lưu vệt GPS cũ phải được cấu hình xóa định kỳ theo chính sách lưu trữ của tổ chức vận hành.
+- Không ghi nhận thanh toán trong ứng dụng. Giá được khách xác nhận trước; việc thu tiền diễn ra bằng tiền mặt hoặc kênh ngoài hệ thống.
+- RLS là lớp giới hạn truy cập, không thay cho kiểm tra vai trò và state machine ở backend.
+- `assistant_usage_events` chỉ lưu tài khoản + thời điểm để giới hạn quota; không lưu câu hỏi/câu trả lời ChatBox.
+- `push_devices` dùng `installation_id` ngẫu nhiên của cài đặt app; không dùng số điện thoại hay hardware identifier làm khóa thiết bị.
+- Catalog baseline có thể được admin sửa qua backend sau khi bootstrap; mã service giữ bất biến để bảo toàn khóa ngoại và lịch sử ca.
+- Review lưu cả provider và đội tại thời điểm phục vụ. `team_quality_alerts` chỉ là tín hiệu; admin phải kiểm tra review, ghi lý do cảnh báo/kiểm duyệt và tự quyết định trạng thái đội. Database không tự đình chỉ theo điểm sao.
