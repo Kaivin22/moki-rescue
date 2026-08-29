@@ -1,0 +1,42 @@
+package com.danang.motorescue.service;
+
+import java.time.Instant;
+import java.util.UUID;
+
+record RescueRequestData(
+        UUID id,
+        UUID customerId,
+        String status,
+        String serviceCode,
+        String serviceLabel,
+        String serviceIcon,
+        boolean serviceRequiresQuote,
+        boolean serviceRequiresDestination,
+        String vehiclePowerType,
+        String vehicleDescription,
+        String workType,
+        String pickupAreaLabel,
+        String pickupNote,
+        double pickupLatitude,
+        double pickupLongitude,
+        String destinationAreaLabel,
+        String destinationNote,
+        Double destinationLatitude,
+        Double destinationLongitude,
+        UUID assignedProviderId,
+        String providerName,
+        String providerContactPhone,
+        String providerTeamName,
+        String rescueVehicleLabel,
+        Integer roadDistanceM,
+        Integer etaMinutes,
+        String routingStatus,
+        String locationPrecision,
+        String cancellationCode,
+        String cancellationStage,
+        String cancellationReason,
+        boolean lateCancellation,
+        Boolean providerNearPickupOnCancel,
+        int version,
+        Instant requestedAt,
+        Instant updatedAt) {}
