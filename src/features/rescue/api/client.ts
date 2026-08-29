@@ -90,7 +90,7 @@ const ENGLISH_API_ERRORS: Record<string, string> = {
   ACCOUNT_NOT_FOUND: 'No active account was found for that sign-in phone number.',
   USER_NOT_FOUND: 'The user was not found.',
   DUPLICATE_VERIFICATION_CHECK: 'The verification checklist contains duplicate items.',
-  CONTRACT_REFERENCE_EXISTS: 'That internal partner reference is already in use.',
+  PARTNER_REFERENCE_EXISTS: 'That internal partner reference is already in use.',
   VERIFICATION_CHECKLIST_CHANGED: 'The verification checklist changed. Reload it and try again.',
   VERIFIED_TEAM_REQUIREMENTS_REQUIRED: 'A verified team must keep every activation requirement.',
   TEAM_VERIFICATION_INCOMPLETE: 'Complete the checklist, capabilities, and provider assignment first.',

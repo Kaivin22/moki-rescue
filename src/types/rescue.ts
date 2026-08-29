@@ -184,7 +184,8 @@ export interface RequestDetails {
   routingStatus: 'pending' | 'road' | 'unavailable';
   locationPrecision: 'exact' | 'approximate';
   cancellationCode: CancellationReasonCode | null;
-  cancellationStage: 'pre_dispatch' | 'assigned' | 'en_route' | 'arrival_disputed' | 'operational' | null;
+  cancellationStage:
+    'pre_dispatch' | 'assigned' | 'en_route' | 'arrival_disputed' | 'reassignment' | 'operational' | null;
   cancellationReason: string | null;
   lateCancellation: boolean;
   providerNearPickupOnCancel: boolean | null;
@@ -287,7 +288,7 @@ export interface TeamVerification {
   teamId: string;
   teamName: string;
   status: 'pending' | 'verified' | 'suspended';
-  contractReference: string;
+  partnerReference: string;
   verifiedByName: string | null;
   verifiedAt: string | null;
   activeProviderCount: number;
@@ -299,7 +300,7 @@ export interface TeamVerification {
 }
 
 export interface UpdateTeamVerificationInput {
-  contractReference: string;
+  partnerReference: string;
   checks: { code: string; completed: boolean; note?: string }[];
 }
 

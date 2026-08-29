@@ -299,7 +299,7 @@ public final class ApiModels {
 
     public record CreateTeamRequest(
             @NotBlank @Size(max = 120) String name,
-            @NotBlank @Pattern(regexp = "^[A-Za-z0-9][A-Za-z0-9._/-]{3,79}$") String contractReference,
+            @NotBlank @Pattern(regexp = "^[A-Za-z0-9][A-Za-z0-9._/-]{3,79}$") String partnerReference,
             @NotBlank @Pattern(regexp = "^\\+[1-9][0-9]{7,14}$") String hotline,
             @DecimalMin("-90") @DecimalMax("90") Double baseLatitude,
             @DecimalMin("-180") @DecimalMax("180") Double baseLongitude,
@@ -321,7 +321,7 @@ public final class ApiModels {
             UUID teamId,
             String teamName,
             String status,
-            String contractReference,
+            String partnerReference,
             String verifiedByName,
             Instant verifiedAt,
             int activeProviderCount,
@@ -337,7 +337,7 @@ public final class ApiModels {
             @Size(min = 5, max = 300) String note) {}
 
     public record UpdateTeamVerificationRequest(
-            @NotBlank @Pattern(regexp = "^[A-Za-z0-9][A-Za-z0-9._/-]{3,79}$") String contractReference,
+            @NotBlank @Pattern(regexp = "^[A-Za-z0-9][A-Za-z0-9._/-]{3,79}$") String partnerReference,
             @NotNull @Size(min = 1, max = 20) List<@Valid TeamVerificationCheckRequest> checks) {}
 
     public record TeamStatusRequest(@NotBlank @Pattern(regexp = "pending|verified|suspended") String status) {}

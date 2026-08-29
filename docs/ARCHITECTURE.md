@@ -94,7 +94,7 @@ RLS dùng quan hệ customer/assigned provider/staff. Client không có grant IN
 ## Vòng đời đối tác khép kín
 
 1. Người dùng tự xác thực OTP; trigger luôn tạo `customer`, kể cả metadata do client gửi có nội dung khác.
-2. Đơn vị vận hành ký/đối chiếu hợp tác bên ngoài app. Admin tạo đội với mã hồ sơ nội bộ và hotline đã kiểm tra; không tải hợp đồng hay giấy tờ cá nhân.
+2. Đơn vị vận hành xác minh quan hệ đối tác bên ngoài app. Admin tạo đội với mã hồ sơ nội bộ và hotline đã kiểm tra; không tải tài liệu pháp lý hay giấy tờ cá nhân.
 3. Từng cứu hộ viên tự đăng nhập OTP một lần. Admin tra cứu chính xác số đăng nhập qua backend, rồi gắn tài khoản cá nhân vào đội; không có mật khẩu do admin cấp hoặc tài khoản đội dùng chung.
 4. Admin khai báo capability và hoàn tất checklist lấy từ `team_verification_requirements`. `team_verification_checks` chỉ lưu kết quả, ghi chú tối thiểu, người và thời điểm kiểm tra.
 5. Backend chỉ cho chuyển đội sang `verified` khi đủ mọi requirement bắt buộc đang hoạt động, có capability và có provider active. Dấu `verified_by/verified_at` cùng audit log cho biết ai chịu trách nhiệm kích hoạt.

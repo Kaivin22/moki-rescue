@@ -10,7 +10,7 @@ Spring Boot là ranh giới tin cậy duy nhất cho mutation nghiệp vụ. Mob
 - Phát đề nghị có TTL, tự hết hạn bằng scheduled job và nhận ca nguyên tử tại PostgreSQL.
 - Kiểm tra state machine, optimistic version, xác nhận hai phía và báo giá.
 - Nhận checkpoint GPS có giới hạn, phát push và ghi audit cho thao tác nhạy cảm.
-- Quản lý mạng đối tác khép kín: mã hồ sơ nội bộ, checklist ngoại tuyến, năng lực, provider và dispatcher. Chỉ kích hoạt đội khi đủ điều kiện; không lưu bản hợp đồng/giấy tờ.
+- Quản lý mạng đối tác khép kín: mã hồ sơ nội bộ, checklist ngoại tuyến, năng lực, provider và dispatcher. Chỉ kích hoạt đội khi đủ điều kiện; không lưu tài liệu pháp lý hoặc giấy tờ cá nhân.
 - Cung cấp trợ lý Gemini giới hạn trong cách dùng Moki Rescue, lọc input trước model, kiểm output sau model và không lưu nội dung chat.
 
 ## API chính

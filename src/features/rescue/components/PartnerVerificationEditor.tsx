@@ -15,10 +15,11 @@ import type { TeamVerificationCheck } from '@/src/types/rescue';
 const COPY = {
   vi: {
     title: 'Xác minh đối tác',
-    privacy: 'Chỉ ghi kết quả đã đối chiếu. Không tải hợp đồng, CCCD hoặc giấy tờ cá nhân lên ứng dụng.',
-    contractReference: 'Mã hồ sơ đối tác nội bộ',
-    contractPlaceholder: 'Ví dụ: MR-DN-2026-0001',
-    contractHelp: 'Dùng mã nội bộ duy nhất gồm chữ, số, dấu chấm, gạch ngang, gạch chéo hoặc gạch dưới.',
+    privacy:
+      'Chỉ ghi kết quả xác minh tối thiểu. Không tải tài liệu pháp lý, CCCD hoặc giấy tờ cá nhân lên ứng dụng.',
+    partnerReference: 'Mã hồ sơ đối tác nội bộ',
+    partnerPlaceholder: 'Ví dụ: MR-DN-2026-0001',
+    partnerHelp: 'Dùng mã nội bộ duy nhất gồm chữ, số, dấu chấm, gạch ngang, gạch chéo hoặc gạch dưới.',
     progress: 'Tiến độ checklist bắt buộc',
     providers: 'Có ít nhất 1 tài khoản cứu hộ viên',
     capabilities: 'Đã khai báo ít nhất 1 năng lực',
@@ -40,11 +41,10 @@ const COPY = {
   },
   en: {
     title: 'Partner verification',
-    privacy:
-      'Store only verification results. Never upload contracts, identity cards, or personal documents.',
-    contractReference: 'Internal partner file code',
-    contractPlaceholder: 'Example: MR-DN-2026-0001',
-    contractHelp:
+    privacy: 'Store only minimal verification results. Never upload legal or personal documents.',
+    partnerReference: 'Internal partner file code',
+    partnerPlaceholder: 'Example: MR-DN-2026-0001',
+    partnerHelp:
       'Use one unique internal code with letters, numbers, dots, hyphens, slashes, or underscores.',
     progress: 'Required checklist progress',
     providers: 'At least 1 provider account is assigned',
@@ -83,14 +83,14 @@ export function PartnerVerificationEditor({ teamId, onChanged, onError }: Props)
     queryFn: () => rescueApi.teamVerification(teamId),
     enabled: Boolean(teamId),
   });
-  const [contractReference, setContractReference] = useState('');
+  const [partnerReference, setPartnerReference] = useState('');
   const [checks, setChecks] = useState<TeamVerificationCheck[]>([]);
   const [dirty, setDirty] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!verification.data) return;
-    setContractReference(verification.data.contractReference);
+    setPartnerReference(verification.data.partnerReference);
     setChecks(verification.data.checks);
     setDirty(false);
   }, [verification.data]);
@@ -112,7 +112,7 @@ export function PartnerVerificationEditor({ teamId, onChanged, onError }: Props)
   const save = useMutation({
     mutationFn: () =>
       rescueApi.updateTeamVerification(teamId, {
-        contractReference: contractReference.trim().toUpperCase(),
+        partnerReference: partnerReference.trim().toUpperCase(),
         checks: checks.map((check) => ({
           code: check.code,
           completed: check.completed,
@@ -164,7 +164,7 @@ export function PartnerVerificationEditor({ teamId, onChanged, onError }: Props)
     setActionMessage(null);
   };
   const submitSave = () => {
-    const normalizedReference = contractReference.trim().toUpperCase();
+    const normalizedReference = partnerReference.trim().toUpperCase();
     if (!/^[A-Z0-9][A-Z0-9._/-]{3,79}$/.test(normalizedReference)) {
       showError(c.invalidReference);
       return;
@@ -181,10 +181,10 @@ export function PartnerVerificationEditor({ teamId, onChanged, onError }: Props)
       <Text style={styles.section}>{c.title}</Text>
       <Text style={styles.privacy}>{c.privacy}</Text>
       <AppInput
-        label={c.contractReference}
-        value={contractReference}
+        label={c.partnerReference}
+        value={partnerReference}
         onChangeText={(value) => {
-          setContractReference(value.toUpperCase());
+          setPartnerReference(value.toUpperCase());
           setDirty(true);
           setActionMessage(null);
         }}
@@ -192,9 +192,9 @@ export function PartnerVerificationEditor({ teamId, onChanged, onError }: Props)
         autoCapitalize="characters"
         autoCorrect={false}
         maxLength={80}
-        placeholder={c.contractPlaceholder}
+        placeholder={c.partnerPlaceholder}
       />
-      <Text style={styles.muted}>{c.contractHelp}</Text>
+      <Text style={styles.muted}>{c.partnerHelp}</Text>
 
       <Text style={styles.subheading}>
         {c.progress}: {completedRequired}/{data.requiredCount}

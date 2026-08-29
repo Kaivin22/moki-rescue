@@ -32,10 +32,10 @@ Không có seed đội cứu hộ, vị trí, yêu cầu hay đánh giá giả. 
 - Spring runtime đăng nhập bằng `motorescue_api`, không dùng `postgres`. Role này không có DDL/superuser và chỉ nhận grant cần cho API.
 - Client chỉ đọc dữ liệu được RLS cho phép. Mọi thay đổi nghiệp vụ (tạo yêu cầu, nhận đơn, đổi trạng thái, báo giá, phân công) đi qua Spring Boot API.
 - Tài khoản đăng ký công khai luôn là `customer`; không có đăng ký provider công khai. Mỗi cứu hộ viên tự đăng nhập OTP một lần, sau đó admin mới tra đúng số đăng nhập và cấp quyền vào một đội. Không tạo mật khẩu hộ và không dùng tài khoản chung.
-- Đội đối tác được tạo sau thỏa thuận ngoại tuyến bằng một mã hồ sơ nội bộ duy nhất. Admin phải hoàn tất checklist database-driven, khai báo ít nhất một năng lực và cấp ít nhất một provider active trước khi chuyển đội sang `verified`; lần xác minh lưu admin/thời điểm và audit.
+- Đội đối tác chỉ được tạo sau khi đơn vị vận hành phê duyệt ngoại tuyến, với một mã hồ sơ nội bộ duy nhất. Admin phải hoàn tất checklist database-driven, khai báo ít nhất một năng lực và cấp ít nhất một provider active trước khi chuyển đội sang `verified`; lần xác minh lưu admin/thời điểm và audit.
 - Năng lực thuộc về đội, được admin quản lý riêng; thêm một cứu hộ viên không được thay đổi tập năng lực của đội.
 - Số liên hệ của cứu hộ viên là số công việc do admin nhập và xác minh, không sao chép từ `auth.users`; backend chỉ trả số này khi ca được phân công và còn hoạt động.
-- Không lưu CCCD, giấy phép lái xe, file hợp đồng hoặc ảnh hồ sơ xác minh trong database dùng chung. Chỉ lưu mã tham chiếu nội bộ, kết quả checklist và dấu audit tối thiểu.
+- Không lưu CCCD, giấy phép lái xe, tài liệu pháp lý hoặc ảnh hồ sơ xác minh trong database dùng chung. Chỉ lưu mã tham chiếu nội bộ, kết quả checklist và dấu audit tối thiểu.
 - Vị trí chính xác chỉ được dùng khi yêu cầu đang hoạt động. Job lưu vệt GPS cũ phải được cấu hình xóa định kỳ theo chính sách lưu trữ của tổ chức vận hành.
 - Không ghi nhận thanh toán trong ứng dụng. Giá được khách xác nhận trước; việc thu tiền diễn ra bằng tiền mặt hoặc kênh ngoài hệ thống.
 - RLS là lớp giới hạn truy cập, không thay cho kiểm tra vai trò và state machine ở backend.

@@ -22,7 +22,7 @@ const COPY = {
       ],
       [
         'Đối tác cứu hộ',
-        'Đơn vị vận hành đối chiếu hợp tác và nhân sự ngoại tuyến. Database chỉ lưu mã hồ sơ đối tác nội bộ, kết quả checklist, người/thời điểm xác minh, đội, năng lực, trạng thái và số liên hệ công việc đã duyệt; không lưu hợp đồng, số hoặc ảnh giấy tờ cá nhân. Số công việc chỉ hiển thị trong ca đang hoạt động.',
+        'Đơn vị vận hành xác minh quan hệ đối tác và nhân sự ngoại tuyến. Database chỉ lưu mã hồ sơ đối tác nội bộ, kết quả checklist, người/thời điểm xác minh, đội, năng lực, trạng thái và số liên hệ công việc đã duyệt; không lưu tài liệu pháp lý, số hoặc ảnh giấy tờ cá nhân. Số công việc chỉ hiển thị trong ca đang hoạt động.',
       ],
       [
         'Mục đích và bên xử lý',
@@ -61,7 +61,7 @@ const COPY = {
       ],
       [
         'Rescue partners',
-        'The operator checks partnership and personnel offline. The database stores only an internal partner file code, checklist results, verifier/time, team, capabilities, status, and an approved work number; it stores no contract, identity-document number, or document image. The work number is visible only during an active request.',
+        'The operator verifies partnership and personnel offline. The database stores only an internal partner file code, checklist results, verifier/time, team, capabilities, status, and an approved work number; it stores no legal document, identity-document number, or document image. The work number is visible only during an active request.',
       ],
       [
         'Purpose and processors',

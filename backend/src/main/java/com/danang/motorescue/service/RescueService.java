@@ -414,7 +414,8 @@ public class RescueService {
         boolean active = !List.of("completed", "cancelled").contains(current.status());
         boolean allowed = switch (actor.role()) {
             case "customer" -> current.customerId().equals(actor.id()) && List.of(
-                    "searching", "offered", "assigned", "en_route", "awaiting_arrival_confirmation", "no_provider"
+                    "searching", "offered", "assigned", "en_route", "awaiting_arrival_confirmation",
+                    "no_provider", "needs_dispatch"
             ).contains(current.status());
             case "provider" -> false;
             case "dispatcher", "admin" -> active;

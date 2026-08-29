@@ -25,7 +25,7 @@ Với project mới:
 5. Đăng nhập OTP cho tài khoản operator đầu tiên. Thay đúng một số E.164 trong `03_bootstrap_operator.sql` rồi chạy. Không dùng UPDATE không có `WHERE`.
 6. Bật Supabase Cron/`pg_cron`, sau đó chạy `04_schedule_retention.sql`.
 7. Trong Realtime Settings, tắt public access và kiểm tra private topic `request:<uuid>` bằng hai tài khoản không liên quan.
-8. Với đối tác thật, dùng mã hồ sơ nội bộ không chứa số CCCD/số điện thoại. Từng provider tự đăng nhập OTP trước; admin cấp quyền, khai báo capability, hoàn tất checklist và kích hoạt đội. Không đưa hợp đồng hoặc ảnh giấy tờ vào Supabase Storage.
+8. Với đối tác thật, dùng mã hồ sơ nội bộ không chứa số CCCD/số điện thoại. Từng provider tự đăng nhập OTP trước; admin cấp quyền, khai báo capability, hoàn tất checklist và kích hoạt đội. Không đưa tài liệu pháp lý hoặc ảnh giấy tờ vào Supabase Storage.
 
 `00_reset.sql` chỉ dùng local/staging được phép xóa và yêu cầu cờ xác nhận trong cùng SQL session. Không chạy trên production có dữ liệu cần giữ.
 

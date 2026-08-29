@@ -38,9 +38,9 @@ COMMENT ON TABLE public.profiles IS
 CREATE TABLE public.rescue_teams (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL UNIQUE CHECK (char_length(name) BETWEEN 2 AND 120),
-  contract_reference TEXT NOT NULL UNIQUE CHECK (
-    contract_reference = UPPER(contract_reference)
-    AND contract_reference ~ '^[A-Z0-9][A-Z0-9._/-]{3,79}$'
+  partner_reference TEXT NOT NULL UNIQUE CHECK (
+    partner_reference = UPPER(partner_reference)
+    AND partner_reference ~ '^[A-Z0-9][A-Z0-9._/-]{3,79}$'
   ),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'verified', 'suspended')),
   hotline TEXT NOT NULL CHECK (hotline ~ '^\+[1-9][0-9]{7,14}$'),
@@ -55,8 +55,8 @@ CREATE TABLE public.rescue_teams (
   CHECK (status <> 'verified' OR verified_at IS NOT NULL)
 );
 
-COMMENT ON COLUMN public.rescue_teams.contract_reference IS
-  'Mã hồ sơ đối tác nội bộ, không phải nội dung hợp đồng hay số giấy tờ định danh.';
+COMMENT ON COLUMN public.rescue_teams.partner_reference IS
+  'Mã hồ sơ đối tác nội bộ dùng để đối soát quy trình phê duyệt ngoại tuyến; không chứa số giấy tờ định danh.';
 COMMENT ON COLUMN public.rescue_teams.verified_by IS
   'Admin chịu trách nhiệm cho lần xác minh đang có hiệu lực; có thể rỗng nếu tài khoản admin đã bị xóa.';
 
@@ -74,7 +74,7 @@ CREATE TABLE public.team_verification_requirements (
 INSERT INTO public.team_verification_requirements
   (code, label_vi, description_vi, label_en, description_en, sort_order)
 VALUES
-  ('partner_agreement', 'Thỏa thuận hợp tác', 'Đã đối chiếu thỏa thuận hợp tác còn hiệu lực ở quy trình ngoại tuyến; không tải bản hợp đồng lên ứng dụng.', 'Partner agreement', 'The active partner agreement was checked offline; no contract copy is uploaded to the app.', 10),
+  ('partnership_verified', 'Quan hệ đối tác đã xác minh', 'Admin đã xác minh đơn vị được phép tham gia mạng lưới qua quy trình ngoại tuyến; ứng dụng không quản lý hồ sơ pháp lý.', 'Partnership verified', 'An admin verified offline that the unit may join the partner network; the app does not manage legal documents.', 10),
   ('representative_contact', 'Đầu mối đại diện', 'Đã xác nhận đầu mối chịu trách nhiệm và kênh liên hệ công việc của đơn vị.', 'Authorized contact', 'The responsible contact and the unit work channel were confirmed.', 20),
   ('service_hotline', 'Hotline vận hành', 'Đã gọi thử và xác nhận hotline có thể tiếp nhận liên hệ trong thời gian hoạt động.', 'Operations hotline', 'The hotline was tested and can receive calls during operating hours.', 30),
   ('service_area', 'Khu vực phục vụ', 'Đã thống nhất tâm hoạt động và bán kính nhận ca thực tế của đội.', 'Service area', 'The operating base and practical service radius were agreed.', 40),
@@ -94,7 +94,7 @@ CREATE TABLE public.team_verification_checks (
 );
 
 COMMENT ON TABLE public.team_verification_checks IS
-  'Chỉ lưu kết quả checklist và ghi chú tối thiểu; không lưu tệp hợp đồng hoặc giấy tờ nhận dạng.';
+  'Chỉ lưu kết quả checklist và ghi chú tối thiểu; không lưu tài liệu pháp lý hoặc giấy tờ nhận dạng.';
 
 CREATE TABLE public.service_types (
   code TEXT PRIMARY KEY CHECK (code ~ '^[a-z][a-z0-9_]{2,39}$'),
@@ -215,7 +215,7 @@ CREATE TABLE public.rescue_requests (
     'customer_unreachable', 'duplicate_or_fraud', 'other'
   )),
   cancellation_stage TEXT CHECK (cancellation_stage IS NULL OR cancellation_stage IN (
-    'pre_dispatch', 'assigned', 'en_route', 'arrival_disputed', 'operational'
+    'pre_dispatch', 'assigned', 'en_route', 'arrival_disputed', 'reassignment', 'operational'
   )),
   cancellation_reason TEXT CHECK (cancellation_reason IS NULL OR char_length(cancellation_reason) <= 300),
   is_late_cancellation BOOLEAN NOT NULL DEFAULT FALSE,

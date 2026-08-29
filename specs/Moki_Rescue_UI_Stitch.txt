@@ -238,7 +238,7 @@ that has signed in with OTP before assigning provider/contact/vehicle; never cre
 provider password, shared team login or ask the admin to copy a UUID. Configure team
 capabilities, then show the database-driven offline checklist, progress, minimal notes,
 provider/capability prerequisites and verified-by/time. The activate action stays
-disabled until saved data is ready; never upload contracts or identity documents.
+disabled until saved data is ready; never upload legal or identity documents.
 Verify/suspend and dispatcher grant/revoke remain admin-only. Include an inline
 bilingual service-catalog editor. Catalog code is
 immutable; admin may edit approved icon, labels, descriptions, order, quote policy

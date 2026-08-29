@@ -32,7 +32,7 @@ BEGIN
   SELECT string_agg(required.table_name || '.' || required.column_name, ', ' ORDER BY 1)
   INTO missing_columns
   FROM (VALUES
-    ('rescue_teams', 'contract_reference'),
+    ('rescue_teams', 'partner_reference'),
     ('rescue_teams', 'verified_by'),
     ('rescue_teams', 'verified_at'),
     ('team_verification_checks', 'checked_by'),

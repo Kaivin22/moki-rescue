@@ -187,12 +187,7 @@ export const rescueApi = {
     }
     return apiRequest<AuditLogEntry[]>(`/api/operator/audit-logs?${query.toString()}`);
   },
-  createTeam: (input: {
-    name: string;
-    contractReference: string;
-    hotline: string;
-    serviceRadiusKm: number;
-  }) =>
+  createTeam: (input: { name: string; partnerReference: string; hotline: string; serviceRadiusKm: number }) =>
     apiRequest<{ teamId: string }>('/api/operator/teams', { method: 'POST', body: JSON.stringify(input) }),
   teamVerification: (teamId: string) =>
     apiRequest<TeamVerification>(`/api/operator/teams/${teamId}/verification`),

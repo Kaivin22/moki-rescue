@@ -25,6 +25,14 @@ class CancellationPolicyTest {
     }
 
     @Test
+    void allowsCancellationWhileWaitingForReassignmentWithoutLatePenalty() {
+        var decision = policy.evaluate("customer", "needs_dispatch", "changed_mind", "");
+        assertThat(decision.stage()).isEqualTo("reassignment");
+        assertThat(decision.late()).isFalse();
+        assertThat(decision.arrivalDisputed()).isFalse();
+    }
+
+    @Test
     void customerCannotSelfCancelAfterArrivalWasConfirmed() {
         assertThatThrownBy(() -> policy.evaluate("customer", "arrived", "changed_mind", ""))
                 .isInstanceOf(ApiException.class)

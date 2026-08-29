@@ -25,6 +25,7 @@ public class CancellationPolicy {
             if ("other".equals(code) && cleanNote.length() < 5) throw reasonNoteRequired();
             return switch (status) {
                 case "searching", "offered", "no_provider" -> new Decision("pre_dispatch", false, false);
+                case "needs_dispatch" -> new Decision("reassignment", false, false);
                 case "assigned" -> new Decision("assigned", false, false);
                 case "en_route" -> new Decision("en_route", true, false);
                 case "awaiting_arrival_confirmation" -> {

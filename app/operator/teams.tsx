@@ -61,8 +61,8 @@ const COPY = {
       'Đây là mạng lưới đối tác khép kín. Người dùng thường tự đăng ký OTP; chỉ admin cấp quyền cứu hộ sau khi hợp tác và xác minh ngoại tuyến.',
     createSection: 'Tạo đội đối tác',
     teamName: 'Tên đội',
-    contractReference: 'Mã hồ sơ đối tác nội bộ',
-    contractPlaceholder: 'Ví dụ: MR-DN-2026-0001',
+    partnerReference: 'Mã hồ sơ đối tác nội bộ',
+    partnerPlaceholder: 'Ví dụ: MR-DN-2026-0001',
     hotline: 'Hotline vận hành',
     radius: 'Bán kính phục vụ (km)',
     create: 'Tạo đội ở trạng thái chờ',
@@ -141,8 +141,8 @@ const COPY = {
       'This is a closed partner network. Customers self-register with OTP; only an admin grants provider access after offline partnership and verification.',
     createSection: 'Create partner team',
     teamName: 'Team name',
-    contractReference: 'Internal partner file code',
-    contractPlaceholder: 'Example: MR-DN-2026-0001',
+    partnerReference: 'Internal partner file code',
+    partnerPlaceholder: 'Example: MR-DN-2026-0001',
     hotline: 'Operations hotline',
     radius: 'Service radius (km)',
     create: 'Create as pending team',
@@ -188,7 +188,7 @@ export default function TeamManagementScreen() {
   const teams = useQuery({ queryKey: rescueKeys.teams, queryFn: rescueApi.teams });
   const services = useServiceTypes();
   const [teamName, setTeamName] = useState('');
-  const [contractReference, setContractReference] = useState('');
+  const [partnerReference, setPartnerReference] = useState('');
   const [hotline, setHotline] = useState('');
   const [radius, setRadius] = useState('');
   const [selectedTeam, setSelectedTeam] = useState('');
@@ -228,7 +228,7 @@ export default function TeamManagementScreen() {
       setSelectedTeam(teamId);
       setCapabilities([]);
       setTeamName('');
-      setContractReference('');
+      setPartnerReference('');
       setHotline('');
       setRadius('');
       refreshTeams(teamId);
@@ -301,7 +301,7 @@ export default function TeamManagementScreen() {
   const createTeam = async () => {
     const radiusValue = Number(radius);
     const normalizedHotline = normalizeVietnamesePhone(hotline);
-    const normalizedReference = contractReference.trim().toUpperCase();
+    const normalizedReference = partnerReference.trim().toUpperCase();
     if (
       teamName.trim().length < 2 ||
       !/^[A-Z0-9][A-Z0-9._/-]{3,79}$/.test(normalizedReference) ||
@@ -316,7 +316,7 @@ export default function TeamManagementScreen() {
     try {
       await create.mutateAsync({
         name: teamName.trim(),
-        contractReference: normalizedReference,
+        partnerReference: normalizedReference,
         hotline: normalizedHotline,
         serviceRadiusKm: radiusValue,
       });
@@ -394,13 +394,13 @@ export default function TeamManagementScreen() {
         <View style={styles.card}>
           <AppInput label={c.teamName} value={teamName} onChangeText={setTeamName} maxLength={120} />
           <AppInput
-            label={c.contractReference}
-            value={contractReference}
-            onChangeText={(value) => setContractReference(value.toUpperCase())}
+            label={c.partnerReference}
+            value={partnerReference}
+            onChangeText={(value) => setPartnerReference(value.toUpperCase())}
             autoCapitalize="characters"
             autoCorrect={false}
             maxLength={80}
-            placeholder={c.contractPlaceholder}
+            placeholder={c.partnerPlaceholder}
           />
           <AppInput
             label={c.hotline}

@@ -40,7 +40,7 @@ Mô hình vận hành:
   - Một đơn vị vận hành quản lý mạng lưới kín gồm nhiều đội cứu hộ nhỏ.
   - Provider không tự đăng ký công khai. Mỗi người tự đăng nhập OTP một lần với
     tài khoản riêng; admin chỉ cấp quyền sau khi đơn vị đã hợp tác ngoại tuyến.
-  - Không có mật khẩu do admin cấp, tài khoản đội dùng chung hoặc upload hợp đồng/
+  - Không có mật khẩu do admin cấp, tài khoản đội dùng chung hoặc upload tài liệu pháp lý/
     CCCD. App chỉ lưu mã hồ sơ nội bộ và kết quả checklist tối thiểu.
   - Khách không xem danh sách provider gần đó và không tự chọn provider.
   - App không quản lý kế toán, đơn hàng nội bộ hay dòng tiền của đội đối tác.
@@ -217,8 +217,8 @@ Backend chia batch gửi tối đa 100 message, lưu ticket tối thiểu, hỏi
 Ràng buộc quan trọng:
   - một customer chỉ có một request chưa completed/cancelled;
   - một provider chỉ có một request hoạt động;
-  - contract_reference của đội là mã nội bộ uppercase, duy nhất, không chứa nội
-    dung hợp đồng hoặc số giấy tờ cá nhân;
+  - partner_reference của đội là mã nội bộ uppercase, duy nhất, không chứa số
+    giấy tờ cá nhân;
   - đội chỉ verified khi đủ requirement bắt buộc đang active, ít nhất một
     capability và một provider active; lần verify ghi admin + thời điểm;
   - provider contact phải E.164;
@@ -383,7 +383,7 @@ không hiển thị stack trace hoặc SQL error.
   - Consent phải khớp đúng TERMS_VERSION ở mobile lẫn backend; timestamp đơn lẻ
     không đủ cấp quyền khi điều khoản đã đổi.
   - Không yêu cầu CCCD, GPLX, danh bạ, micro hoặc thông tin thanh toán.
-  - Giấy tờ/hợp đồng được đối chiếu ngoại tuyến; DB chỉ lưu mã hồ sơ nội bộ,
+  - Quan hệ đối tác và giấy tờ được xác minh ngoại tuyến; DB chỉ lưu mã hồ sơ nội bộ,
     checklist, người/thời điểm xác minh và capability. Không lưu file/số giấy tờ.
   - Contact provider chỉ hiện cho participant của ca trackable.
   - Checkpoint GPS purge mặc định sau 24 giờ.

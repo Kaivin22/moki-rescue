@@ -35,7 +35,7 @@ public class OperatorService {
     private record VerificationReadiness(
             String teamName,
             String status,
-            String contractReference,
+            String partnerReference,
             String verifiedByName,
             java.time.Instant verifiedAt,
             int activeProviderCount,
@@ -288,9 +288,9 @@ public class OperatorService {
         UUID id = transactions.execute(status -> {
             UUID created = jdbc.queryForObject("""
                     INSERT INTO public.rescue_teams(
-                      name, contract_reference, hotline, base_latitude, base_longitude, service_radius_km
+                      name, partner_reference, hotline, base_latitude, base_longitude, service_radius_km
                     ) VALUES (?, ?, ?, ?, ?, ?) RETURNING id
-                    """, UUID.class, input.name().trim(), PartnerVerificationPolicy.normalizeReference(input.contractReference()),
+                    """, UUID.class, input.name().trim(), PartnerVerificationPolicy.normalizeReference(input.partnerReference()),
                     input.hotline(), input.baseLatitude(), input.baseLongitude(), input.serviceRadiusKm());
             audit.record(actor.id(), "team.created", "rescue_team", created);
             return created;
@@ -336,7 +336,7 @@ public class OperatorService {
                 teamId,
                 readiness.teamName(),
                 readiness.status(),
-                readiness.contractReference(),
+                readiness.partnerReference(),
                 readiness.verifiedByName(),
                 readiness.verifiedAt(),
                 readiness.activeProviderCount(),
@@ -349,7 +349,7 @@ public class OperatorService {
 
     public void updateTeamVerification(Actor actor, UUID teamId, UpdateTeamVerificationRequest input) {
         requireAdmin(actor);
-        String contractReference = PartnerVerificationPolicy.normalizeReference(input.contractReference());
+        String partnerReference = PartnerVerificationPolicy.normalizeReference(input.partnerReference());
         Set<String> submittedCodes = new HashSet<>();
         input.checks().forEach(check -> {
             if (!submittedCodes.add(check.code())) {
@@ -369,11 +369,11 @@ public class OperatorService {
             Boolean referenceUsed = jdbc.queryForObject("""
                     SELECT EXISTS(
                       SELECT 1 FROM public.rescue_teams
-                      WHERE contract_reference = ? AND id <> ?
+                      WHERE partner_reference = ? AND id <> ?
                     )
-                    """, Boolean.class, contractReference, teamId);
+                    """, Boolean.class, partnerReference, teamId);
             if (Boolean.TRUE.equals(referenceUsed)) {
-                throw new ApiException(HttpStatus.CONFLICT, "CONTRACT_REFERENCE_EXISTS",
+                throw new ApiException(HttpStatus.CONFLICT, "PARTNER_REFERENCE_EXISTS",
                         "Mã hồ sơ đối tác đã được dùng cho một đội khác.");
             }
 
@@ -385,8 +385,8 @@ public class OperatorService {
                         "Checklist xác minh vừa thay đổi. Hãy tải lại và kiểm tra trước khi lưu.");
             }
 
-            jdbc.update("UPDATE public.rescue_teams SET contract_reference = ? WHERE id = ?",
-                    contractReference, teamId);
+            jdbc.update("UPDATE public.rescue_teams SET partner_reference = ? WHERE id = ?",
+                    partnerReference, teamId);
             input.checks().forEach(check -> {
                 boolean completed = check.completed();
                 jdbc.update("""
@@ -676,7 +676,7 @@ public class OperatorService {
 
     private VerificationReadiness verificationReadiness(UUID teamId) {
         return jdbc.query("""
-                        SELECT team.name, team.status, team.contract_reference,
+                        SELECT team.name, team.status, team.partner_reference,
                                verifier.display_name AS verified_by_name, team.verified_at,
                                (SELECT COUNT(*) FROM public.provider_members member
                                 WHERE member.team_id = team.id AND member.status = 'active') AS active_provider_count,
@@ -701,7 +701,7 @@ public class OperatorService {
                     return new VerificationReadiness(
                             rs.getString("name"),
                             rs.getString("status"),
-                            rs.getString("contract_reference"),
+                            rs.getString("partner_reference"),
                             rs.getString("verified_by_name"),
                             verifiedAt == null ? null : verifiedAt.toInstant(),
                             rs.getInt("active_provider_count"),

@@ -1114,7 +1114,12 @@ function CustomerActions({ request }: { request: RequestDetails }) {
 
 function customerCancellationReasons(status: RequestDetails['status']): CancellationReasonCode[] {
   if (status === 'awaiting_arrival_confirmation') return ['provider_not_present'];
-  if (status === 'searching' || status === 'offered' || status === 'no_provider') {
+  if (
+    status === 'searching' ||
+    status === 'offered' ||
+    status === 'no_provider' ||
+    status === 'needs_dispatch'
+  ) {
     return ['issue_resolved', 'changed_mind', 'wrong_location', 'duplicate_request', 'other'];
   }
   return ['issue_resolved', 'changed_mind', 'wrong_location', 'provider_not_present', 'other'];

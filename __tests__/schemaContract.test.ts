@@ -70,6 +70,7 @@ describe('Moki Rescue schema contract', () => {
   it('records structured cancellation policy without retaining a cancellation location', () => {
     expect(schema).toContain('cancellation_code TEXT');
     expect(schema).toContain('cancellation_stage TEXT');
+    expect(schema).toContain("'arrival_disputed', 'reassignment', 'operational'");
     expect(schema).toContain('is_late_cancellation BOOLEAN NOT NULL DEFAULT FALSE');
     expect(schema).toContain('provider_near_pickup_on_cancel BOOLEAN');
     expect(schema).not.toContain('cancellation_latitude');
@@ -123,7 +124,10 @@ describe('Moki Rescue schema contract', () => {
   it('keeps provider onboarding closed and auditable without storing identity documents', () => {
     expect(schema).toContain('CREATE TABLE public.team_verification_requirements');
     expect(schema).toContain('CREATE TABLE public.team_verification_checks');
-    expect(schema).toContain('contract_reference TEXT NOT NULL UNIQUE');
+    expect(schema).toContain('partner_reference TEXT NOT NULL UNIQUE');
+    expect(schema).toContain("'partnership_verified'");
+    expect(schema).not.toContain('contract_reference');
+    expect(schema).not.toContain("'partner_agreement'");
     expect(schema).toContain("'provider_roster'");
     expect(schema).toContain("'customer'");
     expect(schema).toContain('verified_by UUID REFERENCES public.profiles');

@@ -7,7 +7,7 @@
 - Đăng ký công khai luôn tạo vai trò `customer`. Chỉ admin đã bootstrap theo đúng một số điện thoại mới có thể cấp vai trò nội bộ.
 - Admin tra cứu chính xác tài khoản bằng số đăng nhập qua backend; hàm SQL tối thiểu không mở cho client, không trả lại số điện thoại và audit chỉ ghi UUID tài khoản được tra.
 - Provider không có form tự đăng ký hoặc tài khoản dùng chung. Mỗi người tự xác thực OTP một lần, sau đó admin mới gắn tài khoản đó vào đội đối tác đã ký hợp tác ngoại tuyến.
-- Database chỉ giữ mã hồ sơ đối tác nội bộ, kết quả checklist, admin và thời điểm xác minh. Không lưu file hợp đồng, CCCD, giấy phép hay số giấy tờ trong bảng nghiệp vụ.
+- Database chỉ giữ mã hồ sơ đối tác nội bộ, kết quả checklist, admin và thời điểm xác minh. Không lưu tài liệu pháp lý, CCCD, giấy phép hay số giấy tờ trong bảng nghiệp vụ.
 - Đội chỉ chuyển sang `verified` khi đủ checklist đang áp dụng, ít nhất một capability và một provider active; đình chỉ làm toàn bộ provider của đội ngừng nhận ca mới.
 - Tất cả business mutation đi qua Spring Boot; RLS chặn truy cập chéo và direct mutation từ client.
 

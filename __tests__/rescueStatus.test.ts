@@ -9,6 +9,7 @@ describe('rescue status policy', () => {
   it('does not let customer cancel after work begins', () => {
     expect(canCustomerCancel('en_route')).toBe(true);
     expect(canCustomerCancel('no_provider')).toBe(true);
+    expect(canCustomerCancel('needs_dispatch')).toBe(true);
     expect(canCustomerCancel('arrived')).toBe(false);
     expect(canCustomerCancel('repairing')).toBe(false);
     expect(canCustomerCancel('completed')).toBe(false);
