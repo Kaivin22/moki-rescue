@@ -7,10 +7,10 @@ Mục tiêu     : Điều phối cứu hộ xe máy theo thời gian thực
 Android ID   : com.danang.motorescue
 iOS Bundle ID: com.danang.motorescue
 Phiên bản    : 1.0.0
-Cập nhật     : 16/08/2026
+Cập nhật     : 30/08/2026
 
 Tài liệu này mô tả codebase đang tồn tại. Khi có mâu thuẫn, thứ tự ưu tiên là:
-  1. scripts/01_schema.sql và RLS đang triển khai;
+  1. Flyway migrations trong backend/src/main/resources/db/migration và RLS đang triển khai;
   2. backend Spring Boot và contract API;
   3. type/domain và route trong mobile;
   4. tài liệu này.
@@ -176,7 +176,8 @@ src/features/     auth, safety, onboarding, notification, location, rescue, assi
 src/stores/       auth/profile và language preference
 src/types/        contract canonical của mobile
 backend/          business layer tin cậy
-scripts/          baseline Supabase, verify, bootstrap, retention
+scripts/          database runbook, verify, bootstrap, retention
+backend/src/main/resources/db/migration/  Flyway baseline và versioned migrations
 docs/             kiến trúc, deployment, release và inventory Figma
 
 Quy tắc phụ thuộc:
@@ -199,7 +200,7 @@ Quy tắc phụ thuộc:
 `assistant_usage_events` chỉ lưu user_id và created_at để giới hạn quota theo
 tài khoản. Không lưu prompt, câu trả lời hoặc lịch sử hội thoại.
 
-Catalog baseline chính thức trong 01_schema.sql gồm 6 loại:
+Catalog baseline chính thức trong B1__initial_schema.sql gồm 6 loại:
   flat_tire, dead_battery, electric_battery, out_of_fuel,
   minor_repair, motorbike_transport.
 
@@ -231,11 +232,13 @@ Ràng buộc quan trọng:
   - mọi bảng public bật RLS.
 
 Thứ tự chạy database mới:
-  00_reset.sql
-  01_schema.sql
+  Flyway info → migrate B1 → validate
   02_verify_rls.sql
   03_bootstrap_operator.sql
   04_schedule_retention.sql (nếu Supabase có pg_cron)
+
+Database trống không chạy 00_reset.sql và không dùng flyway:baseline. Database
+legacy khớp chính xác B1 mới được baseline version 1 theo scripts/README.md.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 7. LUỒNG TẠO VÀ GHÉP CA
@@ -451,7 +454,7 @@ Backend gate:
   mvnw test
 
 Database gate:
-  chạy 00→04 trên Supabase staging mới;
+  chạy Flyway info → migrate → validate trên Supabase staging mới;
   02_verify_rls.sql phải đạt;
   test hai provider nhận đồng thời chỉ một người thành công;
   kiểm participant không đọc được ca/contact/GPS của người khác.

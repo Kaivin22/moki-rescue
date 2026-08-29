@@ -37,6 +37,23 @@ phải liên hệ điều phối để dừng ca.
 .\mvnw.cmd spring-boot:run
 ```
 
+## Database migration
+
+Flyway đọc migration từ `src/main/resources/db/migration`. `B1__initial_schema.sql` là baseline tích lũy cho database PostgreSQL/PostGIS sạch; thay đổi sau này phải dùng `V2__...`, `V3__...` và không sửa file đã applied.
+
+Migration được chạy như một deployment job bằng database owner riêng:
+
+```powershell
+$env:FLYWAY_URL = 'jdbc:postgresql://<host>:5432/postgres?sslmode=require'
+$env:FLYWAY_USER = '<migration-owner>'
+$env:FLYWAY_PASSWORD = '<database-password>'
+.\mvnw.cmd flyway:info
+.\mvnw.cmd flyway:migrate
+.\mvnw.cmd flyway:validate
+```
+
+Auto-migration khi application startup mặc định tắt. Chỉ bật `SPRING_FLYWAY_ENABLED=true` trong một migration job có `SPRING_FLYWAY_URL/USER/PASSWORD` riêng; runtime thường xuyên tiếp tục dùng role ít quyền `motorescue_api`. Xem đầy đủ luồng database mới, legacy baseline, staging và rollback tại [`scripts/README.md`](../scripts/README.md).
+
 `OSRM_MOTORBIKE_BASE_URL` phải trỏ tới dataset đã preprocess bằng profile xe máy được kiểm chứng. Chuỗi `driving` trong URL không tự biến dataset ô tô thành xe máy. Khi router không trả tuyến hợp lệ, API trả trạng thái không khả dụng thay vì bịa Polyline thẳng.
 
 Runtime database phải dùng `SPRING_DATASOURCE_USERNAME=motorescue_api`, không dùng `postgres`. `GEMINI_API_KEY` là secret backend bắt buộc nếu bật trợ lý và không bao giờ dùng prefix `EXPO_PUBLIC_`.

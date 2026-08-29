@@ -6,7 +6,7 @@
 
 - Runtime không có mock user, đội, cứu hộ viên, ca, GPS, route, báo giá hoặc review.
 - Khi backend/router lỗi, app hiển thị trạng thái lỗi/rỗng; không thay bằng card giả, ETA Haversine hay polyline đường chim bay.
-- Sáu `service_types` trong `01_schema.sql` là catalog khởi tạo chính thức của sản phẩm. Admin có thể sửa nội dung vi/en, icon allowlist, thứ tự, chính sách báo giá và bật/tắt qua API có authorization + audit; mã dịch vụ không đổi.
+- Sáu `service_types` trong Flyway `B1__initial_schema.sql` là catalog khởi tạo chính thức của sản phẩm. Admin có thể sửa nội dung vi/en, icon allowlist, thứ tự, chính sách báo giá và bật/tắt qua API có authorization + audit; mã dịch vụ không đổi.
 - Sáu `team_verification_requirements` là checklist chính sách baseline, không phải dữ liệu đội giả. Kết quả theo từng đối tác đến từ admin/backend; production không seed trạng thái completed.
 - Gemini vẫn là chức năng production của ChatBox. Key chỉ ở backend; mobile không gọi Google trực tiếp và không có fallback câu trả lời giả.
 - Fixture chỉ nằm trong `__tests__/` và `backend/src/test/`, không được import vào runtime.

@@ -1,7 +1,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const schema = fs.readFileSync(path.join(process.cwd(), 'scripts', '01_schema.sql'), 'utf8');
+const schema = fs.readFileSync(
+  path.join(
+    process.cwd(),
+    'backend',
+    'src',
+    'main',
+    'resources',
+    'db',
+    'migration',
+    'B1__initial_schema.sql',
+  ),
+  'utf8',
+);
 const verify = fs.readFileSync(path.join(process.cwd(), 'scripts', '02_verify_rls.sql'), 'utf8');
 const qualityService = fs.readFileSync(
   path.join(

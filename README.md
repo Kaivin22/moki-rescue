@@ -47,7 +47,8 @@ app/                 Expo Router screens theo vai trò
 src/features/        Auth, location, notification, rescue và trợ lý trong app
 src/components/      UI/map adapter dùng chung
 backend/             Spring Boot 3 / Java 21 - cổng mutation tin cậy
-scripts/             Supabase schema, RLS, bootstrap và retention
+scripts/             Database runbook, verify, bootstrap và retention
+backend/src/main/resources/db/migration/  Flyway schema versioned
 docs/                Kiến trúc, triển khai, release checklist
 __tests__/           Contract/unit test phía mobile
 ```
@@ -78,7 +79,7 @@ cd backend
 .\mvnw.cmd spring-boot:run
 ```
 
-Database mới chạy theo đúng thứ tự trong [scripts/README.md](./scripts/README.md). Không có seed ca, vị trí, đội hay review giả; danh mục loại sự cố là cấu hình sản phẩm.
+Database mới được dựng bằng Flyway theo đúng thứ tự trong [scripts/README.md](./scripts/README.md). Không có seed ca, vị trí, đội hay review giả; danh mục loại sự cố là cấu hình sản phẩm.
 
 ## Expo SDK 54
 

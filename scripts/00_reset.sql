@@ -1,4 +1,5 @@
--- CHỈ DÙNG KHI CÀI MỚI/STAGING. Script này xóa toàn bộ schema public.
+-- CHỈ DÙNG CHO LOCAL/STAGING ĐƯỢC PHÉP MẤT DỮ LIỆU.
+-- Script này xóa schema public; sau đó bootstrap lại bằng Flyway B1 theo scripts/README.md.
 -- Chạy cùng một lượt với dòng sau trong Supabase SQL Editor:
 --   SELECT set_config('app.confirm_motorescue_reset', 'RESET_MOTORESCUE', false);
 

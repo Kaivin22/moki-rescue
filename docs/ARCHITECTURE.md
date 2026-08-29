@@ -37,7 +37,8 @@ src/
   features/notifications/ Push registration, token rollover và retry theo app installation
   stores/             Session/profile duy nhất
 backend/              Trusted business layer
-scripts/              Supabase baseline và operational SQL
+scripts/              Database runbook, verify/bootstrap/retention operational SQL
+backend/.../migration Flyway baseline và versioned PostgreSQL/PostGIS migrations
 ```
 
 Route có thể import feature; feature không import từ `app/`. Component dùng chung không truy vấn Supabase. Type domain canonical nằm trong `src/types`.

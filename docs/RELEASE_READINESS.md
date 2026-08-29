@@ -20,7 +20,7 @@ Repository đã được chuyển hoàn toàn từ app lập lịch du lịch sa
 
 ## External gate bắt buộc
 
-1. Chạy `01_schema.sql` và `02_verify_rls.sql` trên Supabase staging mới; kiểm tra SQL Editor không báo lỗi.
+1. Trên Supabase staging mới, chạy Flyway `info` → `migrate` → `validate`, xác nhận `B1` success trong `flyway_schema_history`, rồi chạy `02_verify_rls.sql`; database trống không được dùng lệnh `baseline`.
 2. Bật phone OTP với SMS provider thật, rate limit và bot protection; test số Việt Nam hợp lệ/không hợp lệ/quá nhiều OTP.
 3. Bootstrap đúng một admin theo số E.164. Với mỗi provider, tự đăng nhập OTP một lần rồi dùng giao diện admin để tra tài khoản; tạo đội bằng mã hồ sơ nội bộ, cấp provider, khai báo capability, hoàn tất checklist và chỉ sau đó kích hoạt. Thử bỏ từng điều kiện phải bị chặn; kiểm `verified_by`, `verified_at` và audit.
 4. Dùng OSRM xe máy thật: chứng minh mọi candidate hợp lệ được route theo lô, ETA/Polyline bám tuyến đường và `NoRoute` không sinh đường thẳng.

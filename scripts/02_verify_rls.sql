@@ -1,4 +1,4 @@
--- Kiểm tra cấu trúc bảo mật sau khi chạy 01_schema.sql.
+-- Kiểm tra cấu trúc bảo mật sau khi Flyway migrate thành công.
 -- Script chỉ đọc metadata và không tạo fixture/người dùng/dữ liệu nghiệp vụ.
 
 DO $$

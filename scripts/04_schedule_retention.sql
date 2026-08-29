@@ -1,4 +1,4 @@
--- Chạy một lần trên production sau khi 01_schema.sql đã thành công.
+-- Chạy một lần trên production sau khi Flyway migrate và verify đã thành công.
 -- Supabase Cron dùng timezone UTC; hai job dưới đây chạy ngoài giờ cao điểm Việt Nam.
 
 -- pg_cron creates and manages its own `cron` schema; do not force pg_catalog.
