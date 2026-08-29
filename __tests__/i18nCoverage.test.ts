@@ -27,7 +27,7 @@ describe('Vietnamese and English coverage', () => {
       .filter((file) => {
         const source = fs.readFileSync(file, 'utf8');
         const rendersCopy = /<Text|<AppButton|<AppInput|<ScreenHeader/.test(source);
-        return rendersCopy && !/useCopy|useI18n|useTranslation/.test(source);
+        return rendersCopy && !/useCopy|useI18n|useTranslation|useRescueDetailsCopy/.test(source);
       })
       .map((file) => path.relative(root, file));
     expect(missing).toEqual([]);

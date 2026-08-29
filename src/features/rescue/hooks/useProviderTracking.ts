@@ -8,9 +8,11 @@ import {
 import { RescueDistance, RescueTiming } from '../config/operational';
 import { isValidProviderAccuracy } from '../services/locationAccuracy';
 
+export type ProviderTrackingState = 'idle' | 'requesting' | 'tracking' | 'denied' | 'error';
+
 export function useProviderTracking(requestId: string, enabled: boolean) {
   const sending = useRef(false);
-  const [state, setState] = useState<'idle' | 'requesting' | 'tracking' | 'denied' | 'error'>('idle');
+  const [state, setState] = useState<ProviderTrackingState>('idle');
 
   useEffect(() => {
     if (!enabled) {

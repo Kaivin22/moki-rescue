@@ -80,7 +80,7 @@ describe('project integrity', () => {
 
   it('requires map confirmation and scopes provider contact to active cases', () => {
     const requestScreen = fs.readFileSync(path.join(process.cwd(), 'app', '(tabs)', 'request.tsx'), 'utf8');
-    const rescueService = fs.readFileSync(
+    const rescueQueryService = fs.readFileSync(
       path.join(
         process.cwd(),
         'backend',
@@ -91,14 +91,14 @@ describe('project integrity', () => {
         'danang',
         'motorescue',
         'service',
-        'RescueService.java',
+        'RescueQueryService.java',
       ),
       'utf8',
     );
     expect(requestScreen).toContain('<MapView');
     expect(requestScreen).toContain('draggable');
     expect(requestScreen).toContain('selectCoordinate');
-    expect(rescueService).toContain('isTrackable(row.status()) ? row.providerContactPhone() : null');
+    expect(rescueQueryService).toContain('isTrackable(row.status()) ? row.providerContactPhone() : null');
   });
 
   it('keeps the Figma inventory synchronized with the route tree', () => {
