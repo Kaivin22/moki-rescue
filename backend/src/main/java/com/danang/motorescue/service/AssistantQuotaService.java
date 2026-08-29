@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AssistantQuotaService {
-    public record Reservation(int remainingToday) {}
+    public record Reservation(long eventId, int remainingToday) {}
 
     private final JdbcTemplate jdbc;
     private final AssistantProperties properties;
@@ -45,8 +45,15 @@ public class AssistantQuotaService {
                     "Bạn đã dùng hết lượt trợ lý trong 24 giờ. Vui lòng quay lại sau.");
         }
 
-        jdbc.update("INSERT INTO public.assistant_usage_events(user_id) VALUES (?)", userId);
+        Long eventId = jdbc.queryForObject("""
+                INSERT INTO public.assistant_usage_events(user_id) VALUES (?) RETURNING id
+                """, Long.class, userId);
         int used = dayCount == null ? 1 : Math.toIntExact(dayCount + 1);
-        return new Reservation(Math.max(0, properties.requestsPerDay() - used));
+        return new Reservation(eventId == null ? 0 : eventId, Math.max(0, properties.requestsPerDay() - used));
+    }
+
+    public void release(Reservation reservation) {
+        if (reservation == null || reservation.eventId() <= 0 || jdbc == null) return;
+        jdbc.update("DELETE FROM public.assistant_usage_events WHERE id = ?", reservation.eventId());
     }
 }

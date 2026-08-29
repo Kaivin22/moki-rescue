@@ -8,10 +8,11 @@ DECLARE
 BEGIN
   FOREACH table_name IN ARRAY ARRAY[
     'profiles', 'rescue_teams', 'team_verification_requirements', 'team_verification_checks',
-    'service_types', 'provider_members', 'team_capabilities',
+    'service_types', 'service_zones', 'provider_members', 'team_capabilities',
     'rescue_requests', 'dispatch_offers', 'quotes', 'request_status_events',
-    'provider_location_checkpoints', 'reviews', 'team_quality_alerts', 'push_devices', 'audit_logs',
-    'assistant_usage_events'
+    'case_attention_flags', 'request_feedback_events', 'provider_location_checkpoints',
+    'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
+    'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows'
   ] LOOP
     IF to_regclass('public.' || table_name) IS NULL THEN
       missing_tables := array_append(missing_tables, table_name);
@@ -41,11 +42,27 @@ BEGIN
     ('provider_location_checkpoints', 'accuracy_m'),
     ('service_types', 'label_en'),
     ('service_types', 'description_en'),
+    ('service_types', 'requires_destination'),
+    ('service_zones', 'boundary'),
     ('rescue_requests', 'pickup_location'),
+    ('rescue_requests', 'pickup_source'),
+    ('rescue_requests', 'pickup_accuracy_m'),
+    ('rescue_requests', 'destination_location'),
     ('rescue_requests', 'work_type'),
+    ('rescue_requests', 'cancellation_code'),
+    ('rescue_requests', 'cancellation_stage'),
+    ('rescue_requests', 'is_late_cancellation'),
+    ('rescue_requests', 'provider_near_pickup_on_cancel'),
+    ('rescue_requests', 'cancelled_by'),
     ('push_devices', 'installation_id'),
+    ('push_delivery_receipts', 'push_device_id'),
+    ('push_delivery_receipts', 'expo_ticket_id'),
+    ('push_delivery_receipts', 'status'),
+    ('push_delivery_receipts', 'next_check_at'),
+    ('push_delivery_receipts', 'attempt_count'),
     ('reviews', 'team_id'),
     ('reviews', 'moderation_note'),
+    ('incident_reports', 'resolution_note'),
     ('team_quality_alerts', 'review_count_checkpoint')
   ) AS required(table_name, column_name)
   WHERE NOT EXISTS (
@@ -62,6 +79,22 @@ END;
 $$;
 
 DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'push_delivery_receipts'
+      AND column_name IN (
+        'expo_push_token', 'title', 'body', 'message', 'payload', 'request_id', 'latitude', 'longitude'
+      )
+  ) THEN
+    RAISE EXCEPTION 'PUSH_RECEIPT_SENSITIVE_COLUMN_FOUND';
+  END IF;
+END;
+$$;
+
+DO $$
 DECLARE
   missing_indexes TEXT;
 BEGIN
@@ -71,8 +104,11 @@ BEGIN
     ('rescue_requests_one_active_customer_idx'),
     ('rescue_requests_one_active_provider_idx'),
     ('rescue_requests_pickup_gix'),
+    ('rescue_requests_destination_gix'),
+    ('service_zones_boundary_gix'),
     ('provider_members_location_gix'),
-    ('push_devices_installation_id_key')
+    ('push_devices_installation_id_key'),
+    ('push_delivery_receipts_pending_idx')
   ) AS required(index_name)
   WHERE to_regclass('public.' || required.index_name) IS NULL;
 
@@ -94,10 +130,11 @@ BEGIN
     AND c.relkind = 'r'
     AND c.relname IN (
       'profiles', 'rescue_teams', 'team_verification_requirements', 'team_verification_checks',
-      'service_types', 'provider_members', 'team_capabilities',
+      'service_types', 'service_zones', 'provider_members', 'team_capabilities',
       'rescue_requests', 'dispatch_offers', 'quotes', 'request_status_events',
-      'provider_location_checkpoints', 'reviews', 'team_quality_alerts', 'push_devices', 'audit_logs',
-      'assistant_usage_events'
+      'case_attention_flags', 'request_feedback_events', 'provider_location_checkpoints',
+      'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
+      'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows'
     )
     AND NOT c.relrowsecurity;
 
@@ -151,9 +188,11 @@ BEGIN
     AND grantee IN ('anon', 'authenticated')
     AND table_name IN (
       'rescue_teams', 'team_verification_requirements', 'team_verification_checks',
-      'service_types', 'provider_members', 'team_capabilities', 'rescue_requests',
-      'dispatch_offers', 'quotes', 'request_status_events', 'provider_location_checkpoints',
-      'reviews', 'team_quality_alerts', 'push_devices', 'audit_logs', 'assistant_usage_events'
+      'service_types', 'service_zones', 'provider_members', 'team_capabilities', 'rescue_requests',
+      'dispatch_offers', 'quotes', 'request_status_events', 'case_attention_flags',
+      'request_feedback_events', 'provider_location_checkpoints', 'reviews', 'incident_reports',
+      'team_quality_alerts', 'push_devices', 'push_delivery_receipts',
+      'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows'
     )
     AND privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER');
 
@@ -175,10 +214,11 @@ BEGIN
     AND privilege_type = 'SELECT'
     AND table_name IN (
       'rescue_teams', 'team_verification_requirements', 'team_verification_checks',
-      'service_types', 'provider_members', 'team_capabilities',
+      'service_types', 'service_zones', 'provider_members', 'team_capabilities',
       'rescue_requests', 'dispatch_offers', 'quotes', 'request_status_events',
-      'provider_location_checkpoints', 'reviews', 'team_quality_alerts', 'push_devices', 'audit_logs',
-      'assistant_usage_events'
+      'case_attention_flags', 'request_feedback_events', 'provider_location_checkpoints',
+      'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
+      'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows'
     );
 
   IF exposed_reads IS NOT NULL THEN
@@ -212,6 +252,9 @@ BEGIN
   IF to_regprocedure('public.purge_assistant_usage_events(interval)') IS NULL THEN
     missing_functions := array_append(missing_functions, 'purge_assistant_usage_events');
   END IF;
+  IF to_regprocedure('public.purge_push_delivery_receipts(interval)') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'purge_push_delivery_receipts');
+  END IF;
 
   IF cardinality(missing_functions) > 0 THEN
     RAISE EXCEPTION 'MISSING_SECURITY_FUNCTIONS: %', array_to_string(missing_functions, ', ');
@@ -230,7 +273,8 @@ BEGIN
   WHERE n.nspname = 'public'
     AND p.proname IN (
       'api_accept_dispatch_offer', 'purge_expired_location_checkpoints',
-      'minimize_closed_request_data', 'purge_assistant_usage_events'
+      'minimize_closed_request_data', 'purge_assistant_usage_events',
+      'purge_push_delivery_receipts'
     )
     AND (
       has_function_privilege('anon', p.oid, 'EXECUTE')
@@ -252,10 +296,12 @@ BEGIN
   INTO missing_policy_tables
   FROM (VALUES
     ('profiles'), ('rescue_teams'), ('team_verification_requirements'),
-    ('team_verification_checks'), ('service_types'), ('provider_members'),
+    ('team_verification_checks'), ('service_types'), ('service_zones'), ('provider_members'),
     ('team_capabilities'), ('rescue_requests'), ('dispatch_offers'), ('quotes'),
-    ('request_status_events'), ('provider_location_checkpoints'), ('reviews'), ('team_quality_alerts'),
-    ('push_devices'), ('audit_logs'), ('assistant_usage_events')
+    ('request_status_events'), ('case_attention_flags'), ('request_feedback_events'),
+    ('provider_location_checkpoints'), ('reviews'), ('incident_reports'), ('team_quality_alerts'),
+    ('push_devices'), ('push_delivery_receipts'), ('audit_logs'), ('assistant_usage_events'),
+    ('api_rate_limit_windows')
   ) AS required(table_name)
   WHERE NOT EXISTS (
     SELECT 1 FROM pg_policies p
@@ -290,19 +336,48 @@ BEGIN
   IF NOT has_schema_privilege('motorescue_api', 'extensions', 'USAGE') THEN
     RAISE EXCEPTION 'MOTORESCUE_API_EXTENSION_USAGE_MISSING';
   END IF;
-  IF NOT has_table_privilege('motorescue_api', 'public.assistant_usage_events', 'SELECT,INSERT') THEN
+  IF NOT (
+    has_table_privilege('motorescue_api', 'public.assistant_usage_events', 'SELECT')
+    AND has_table_privilege('motorescue_api', 'public.assistant_usage_events', 'INSERT')
+    AND has_table_privilege('motorescue_api', 'public.assistant_usage_events', 'DELETE')
+  ) THEN
     RAISE EXCEPTION 'MOTORESCUE_API_ASSISTANT_GRANT_MISSING';
   END IF;
-  IF NOT has_table_privilege('motorescue_api', 'public.service_types', 'SELECT,UPDATE') THEN
+  IF NOT (
+    has_table_privilege('motorescue_api', 'public.api_rate_limit_windows', 'SELECT')
+    AND has_table_privilege('motorescue_api', 'public.api_rate_limit_windows', 'INSERT')
+    AND has_table_privilege('motorescue_api', 'public.api_rate_limit_windows', 'UPDATE')
+    AND has_table_privilege('motorescue_api', 'public.api_rate_limit_windows', 'DELETE')
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_RATE_LIMIT_GRANT_MISSING';
+  END IF;
+  IF NOT (
+    has_table_privilege('motorescue_api', 'public.service_types', 'SELECT')
+    AND has_table_privilege('motorescue_api', 'public.service_types', 'UPDATE')
+  ) THEN
     RAISE EXCEPTION 'MOTORESCUE_API_CATALOG_GRANT_MISSING';
   END IF;
-  IF NOT has_table_privilege('motorescue_api', 'public.team_quality_alerts', 'SELECT,INSERT,UPDATE') THEN
+  IF NOT (
+    has_table_privilege('motorescue_api', 'public.team_quality_alerts', 'SELECT')
+    AND has_table_privilege('motorescue_api', 'public.team_quality_alerts', 'INSERT')
+    AND has_table_privilege('motorescue_api', 'public.team_quality_alerts', 'UPDATE')
+  ) THEN
     RAISE EXCEPTION 'MOTORESCUE_API_QUALITY_ALERT_GRANT_MISSING';
+  END IF;
+  IF NOT (
+    has_table_privilege('motorescue_api', 'public.push_delivery_receipts', 'SELECT')
+    AND has_table_privilege('motorescue_api', 'public.push_delivery_receipts', 'INSERT')
+    AND has_table_privilege('motorescue_api', 'public.push_delivery_receipts', 'UPDATE')
+    AND has_table_privilege('motorescue_api', 'public.push_delivery_receipts', 'DELETE')
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_PUSH_RECEIPT_GRANT_MISSING';
   END IF;
   IF NOT has_table_privilege(
     'motorescue_api', 'public.team_verification_requirements', 'SELECT'
-  ) OR NOT has_table_privilege(
-    'motorescue_api', 'public.team_verification_checks', 'SELECT,INSERT,UPDATE'
+  ) OR NOT (
+    has_table_privilege('motorescue_api', 'public.team_verification_checks', 'SELECT')
+    AND has_table_privilege('motorescue_api', 'public.team_verification_checks', 'INSERT')
+    AND has_table_privilege('motorescue_api', 'public.team_verification_checks', 'UPDATE')
   ) THEN
     RAISE EXCEPTION 'MOTORESCUE_API_PARTNER_VERIFICATION_GRANT_MISSING';
   END IF;

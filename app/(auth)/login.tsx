@@ -1,7 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Link, router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
@@ -168,14 +177,19 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.brandIcon}>
-            <Ionicons name="shield-checkmark" size={42} color={Colors.accent} />
-          </View>
-          <Text style={styles.brand}>MotoRescue</Text>
+          <Image
+            source={require('../../assets/branding/moki-rescue-logo.png')}
+            style={styles.brandLogo}
+            resizeMode="contain"
+            accessible
+            accessibilityLabel="Moki Rescue"
+          />
+          <Text style={styles.brand}>Moki Rescue</Text>
           <Pressable
             style={styles.languageButton}
             onPress={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
             accessibilityRole="button"
+            accessibilityLabel={language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
           >
             <Text style={styles.languageText}>{language === 'vi' ? 'English' : 'Tiếng Việt'}</Text>
           </Pressable>
@@ -209,6 +223,7 @@ export default function LoginScreen() {
                   style={styles.termsRow}
                   onPress={() => setAcceptedTerms((value) => !value)}
                   accessibilityRole="checkbox"
+                  accessibilityLabel={`${c.agree} ${c.terms} ${c.and} ${c.privacy}`}
                   accessibilityState={{ checked: acceptedTerms }}
                 >
                   <Ionicons
@@ -217,17 +232,18 @@ export default function LoginScreen() {
                     color={acceptedTerms ? Colors.primary : Colors.textMuted}
                   />
                   <Text style={styles.termsText}>
-                    {c.agree}{' '}
-                    <Link href="/legal/terms" style={styles.link}>
-                      {c.terms}
-                    </Link>{' '}
-                    {c.and}{' '}
-                    <Link href="/legal/privacy" style={styles.link}>
-                      {c.privacy}
-                    </Link>
-                    .
+                    {c.agree} {c.terms} {c.and} {c.privacy}.
                   </Text>
                 </Pressable>
+                <View style={styles.legalLinks}>
+                  <Link href="/legal/terms" style={styles.link}>
+                    {c.terms}
+                  </Link>
+                  <Text style={styles.linkSeparator}>•</Text>
+                  <Link href="/legal/privacy" style={styles.link}>
+                    {c.privacy}
+                  </Link>
+                </View>
                 <AppButton title={c.send} onPress={() => void sendOtp()} loading={busy} />
               </>
             ) : (
@@ -278,29 +294,26 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.primaryDark },
+  safe: { flex: 1, backgroundColor: Colors.background },
   flex: { flex: 1 },
   content: { flexGrow: 1, padding: Spacing.xl, justifyContent: 'center' },
-  brandIcon: {
-    width: 76,
-    height: 76,
-    borderRadius: 24,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+  brandLogo: {
+    width: 112,
+    height: 112,
     alignSelf: 'center',
     marginBottom: Spacing.md,
   },
-  brand: { ...Typography.label, color: Colors.accent, textAlign: 'center', letterSpacing: 2 },
+  brand: { ...Typography.label, color: Colors.primary, textAlign: 'center', letterSpacing: 2 },
   languageButton: {
     alignSelf: 'center',
+    minHeight: 44,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
+    justifyContent: 'center',
     marginTop: Spacing.sm,
   },
-  languageText: { ...Typography.caption, color: Colors.accent, textDecorationLine: 'underline' },
-  title: { ...Typography.h1, color: Colors.white, textAlign: 'center', marginTop: Spacing.sm },
-  subtitle: { ...Typography.body, color: Colors.skyBlue, textAlign: 'center', marginTop: Spacing.sm },
+  languageText: { ...Typography.caption, color: Colors.primary, textDecorationLine: 'underline' },
+  title: { ...Typography.h1, color: Colors.textPrimary, textAlign: 'center', marginTop: Spacing.sm },
+  subtitle: { ...Typography.body, color: Colors.textSecondary, textAlign: 'center', marginTop: Spacing.sm },
   form: {
     backgroundColor: Colors.cardBg,
     borderRadius: Radius.xl,
@@ -310,7 +323,21 @@ const styles = StyleSheet.create({
   },
   termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, marginBottom: Spacing.sm },
   termsText: { ...Typography.caption, color: Colors.textSecondary, flex: 1 },
-  link: { color: Colors.primary, textDecorationLine: 'underline' },
+  link: {
+    ...Typography.caption,
+    minHeight: 44,
+    paddingVertical: Spacing.md,
+    color: Colors.primary,
+    textDecorationLine: 'underline',
+  },
+  legalLinks: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  linkSeparator: { ...Typography.caption, color: Colors.textMuted },
   error: { ...Typography.caption, color: Colors.error, textAlign: 'center', marginTop: Spacing.sm },
   privacyNote: {
     flexDirection: 'row',
@@ -319,5 +346,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: Spacing.lg,
   },
-  privacyText: { ...Typography.caption, color: Colors.skyBlue, flexShrink: 1 },
+  privacyText: { ...Typography.caption, color: Colors.textSecondary, flexShrink: 1 },
 });

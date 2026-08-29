@@ -14,7 +14,7 @@ const COPY = {
     sections: [
       [
         'Phạm vi',
-        'MotoRescue là hệ thống điều phối cứu hộ kỹ thuật cho xe máy tại vùng đang vận hành. Ứng dụng không phải dịch vụ cấp cứu y tế, công an hoặc bảo hiểm. Khi có người bị thương, cháy nổ hay nguy hiểm tức thời, hãy gọi cơ quan khẩn cấp trước.',
+        'Moki Rescue là hệ thống điều phối cứu hộ kỹ thuật cho xe máy tại vùng đang vận hành. Ứng dụng không phải dịch vụ cấp cứu y tế, công an hoặc bảo hiểm. Khi có người bị thương, cháy nổ hay nguy hiểm tức thời, hãy gọi cơ quan khẩn cấp trước.',
       ],
       [
         'Tài khoản và vai trò',
@@ -38,7 +38,7 @@ const COPY = {
       ],
       [
         'Trợ lý trong ứng dụng',
-        'ChatBox chỉ hỗ trợ cách dùng MotoRescue và quy trình trong ứng dụng. Câu trả lời có thể không đầy đủ, không phải chẩn đoán kỹ thuật hay hướng dẫn tự sửa xe, và không thay thế cứu hộ viên hoặc 113/114/115. Không gửi OTP, số điện thoại, tọa độ chính xác hoặc dữ liệu cá nhân không cần thiết vào ChatBox.',
+        'ChatBox chỉ hỗ trợ cách dùng Moki Rescue và quy trình trong ứng dụng. Câu trả lời có thể không đầy đủ, không phải chẩn đoán kỹ thuật hay hướng dẫn tự sửa xe, và không thay thế cứu hộ viên hoặc 113/114/115. Không gửi OTP, số điện thoại, tọa độ chính xác hoặc dữ liệu cá nhân không cần thiết vào ChatBox.',
       ],
       [
         'Tạm ngừng',
@@ -53,7 +53,7 @@ const COPY = {
     sections: [
       [
         'Scope',
-        'MotoRescue coordinates technical motorcycle rescue in its active service area. It is not medical emergency, police, or insurance service. If anyone is injured or there is fire, explosion, or immediate danger, contact emergency services first.',
+        'Moki Rescue coordinates technical motorcycle rescue in its active service area. It is not medical emergency, police, or insurance service. If anyone is injured or there is fire, explosion, or immediate danger, contact emergency services first.',
       ],
       [
         'Accounts and roles',
@@ -77,7 +77,7 @@ const COPY = {
       ],
       [
         'In-app assistant',
-        'ChatBox only supports MotoRescue app use and in-app processes. Replies may be incomplete, are not technical diagnosis or self-repair instructions, and do not replace a provider or 113/114/115. Do not send an OTP, phone number, exact coordinates, or unnecessary personal data to ChatBox.',
+        'ChatBox only supports Moki Rescue app use and in-app processes. Replies may be incomplete, are not technical diagnosis or self-repair instructions, and do not replace a provider or 113/114/115. Do not send an OTP, phone number, exact coordinates, or unnecessary personal data to ChatBox.',
       ],
       [
         'Suspension',

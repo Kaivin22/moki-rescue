@@ -12,9 +12,11 @@ const STATUS_LABELS_BY_LANGUAGE: Record<Language, Record<RescueStatus, string>> 
     arrived: 'Đã xác nhận có mặt',
     diagnosing: 'Đang kiểm tra xe',
     awaiting_quote: 'Chờ bạn duyệt báo giá',
+    quote_approved: 'Đã duyệt, chờ bắt đầu công việc',
     repairing: 'Đang sửa xe',
     transporting: 'Đang vận chuyển xe',
     awaiting_completion: 'Chờ bạn xác nhận hoàn tất',
+    needs_dispatch: 'Cần điều phối đội thay thế',
     completed: 'Đã hoàn tất',
     cancelled: 'Đã hủy',
     no_provider: 'Chưa tìm được đội phù hợp',
@@ -28,9 +30,11 @@ const STATUS_LABELS_BY_LANGUAGE: Record<Language, Record<RescueStatus, string>> 
     arrived: 'Arrival confirmed',
     diagnosing: 'Inspecting the motorcycle',
     awaiting_quote: 'Waiting for your quote approval',
+    quote_approved: 'Approved, waiting for work to start',
     repairing: 'Repair in progress',
     transporting: 'Motorcycle transport in progress',
     awaiting_completion: 'Waiting for your completion confirmation',
+    needs_dispatch: 'Waiting for dispatch reassignment',
     completed: 'Completed',
     cancelled: 'Cancelled',
     no_provider: 'No suitable team found',
@@ -47,12 +51,13 @@ export function statusLabel(status: RescueStatus, language: Language) {
 export function statusColor(status: RescueStatus) {
   if (status === 'completed') return Colors.success;
   if (status === 'cancelled' || status === 'no_provider') return Colors.error;
+  if (status === 'needs_dispatch') return Colors.warning;
   if (status.startsWith('awaiting_')) return Colors.warning;
   return Colors.info;
 }
 
 export function isLiveStatus(status: RescueStatus) {
-  return !['completed', 'cancelled', 'no_provider'].includes(status);
+  return !['completed', 'cancelled', 'no_provider', 'needs_dispatch'].includes(status);
 }
 
 export function canCustomerCancel(status: RescueStatus) {
@@ -63,5 +68,6 @@ export function canCustomerCancel(status: RescueStatus) {
     'en_route',
     'awaiting_arrival_confirmation',
     'no_provider',
+    'needs_dispatch',
   ].includes(status);
 }

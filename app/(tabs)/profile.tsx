@@ -72,6 +72,7 @@ function MenuRow({
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       accessibilityRole="button"
+      accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
     >
       <View style={[styles.rowIcon, danger && styles.dangerIcon]}>
         <Ionicons name={icon} size={21} color={danger ? Colors.error : Colors.primary} />
@@ -103,7 +104,7 @@ export default function ProfileScreen() {
         <Text style={styles.title}>{c.title}</Text>
         <View style={styles.identity}>
           <View style={styles.avatar}>
-            <Ionicons name="person" size={34} color={Colors.white} />
+            <Ionicons name="person" size={34} color={Colors.textPrimary} />
           </View>
           <View style={styles.flex}>
             <Text style={styles.name}>{profile?.display_name ?? c.user}</Text>
@@ -171,21 +172,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
     padding: Spacing.lg,
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: Colors.brandBlue,
     borderRadius: Radius.xl,
   },
   avatar: {
     width: 66,
     height: 66,
-    borderRadius: 24,
-    backgroundColor: Colors.primary,
+    borderRadius: Radius.xl,
+    backgroundColor: Colors.brandBlue,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  name: { ...Typography.h2, color: Colors.white },
-  role: { ...Typography.caption, color: Colors.accent, marginTop: 2 },
-  phone: { ...Typography.caption, color: Colors.skyBlue, marginTop: 2 },
-  accountId: { ...Typography.caption, color: Colors.textMuted, marginTop: 2 },
+  name: { ...Typography.h2, color: Colors.textPrimary },
+  role: { ...Typography.caption, color: Colors.primary, marginTop: 2 },
+  phone: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
+  accountId: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
   section: { ...Typography.label, color: Colors.textSecondary, marginTop: Spacing.sm },
   card: {
     borderRadius: Radius.lg,
@@ -207,7 +208,7 @@ const styles = StyleSheet.create({
   rowIcon: {
     width: 40,
     height: 40,
-    borderRadius: 14,
+    borderRadius: Radius.lg,
     backgroundColor: Colors.sky,
     alignItems: 'center',
     justifyContent: 'center',

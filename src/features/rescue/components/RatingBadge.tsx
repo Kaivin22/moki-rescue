@@ -6,8 +6,8 @@ import { useCopy, useI18n } from '@/src/i18n';
 import type { RatingSummary } from '@/src/types/rescue';
 
 const COPY = {
-  vi: { newProvider: 'Mới trên MotoRescue', reviews: 'lượt đánh giá' },
-  en: { newProvider: 'New on MotoRescue', reviews: 'reviews' },
+  vi: { newProvider: 'Mới trên Moki Rescue', reviews: 'lượt đánh giá' },
+  en: { newProvider: 'New on Moki Rescue', reviews: 'reviews' },
 } as const;
 
 export function RatingBadge({ rating, label, compact = false }: RatingBadgeProps) {

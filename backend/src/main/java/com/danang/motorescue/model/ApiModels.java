@@ -19,7 +19,12 @@ public final class ApiModels {
     public record ProfileResponse(UUID id, String displayName, String role, String locale) {}
 
     public record ServiceTypeResponse(
-            String code, String label, String description, String iconName, boolean requiresQuote) {}
+            String code,
+            String label,
+            String description,
+            String iconName,
+            boolean requiresQuote,
+            boolean requiresDestination) {}
 
     public record AdminServiceTypeResponse(
             String code,
@@ -29,6 +34,7 @@ public final class ApiModels {
             String descriptionEn,
             String iconName,
             boolean requiresQuote,
+            boolean requiresDestination,
             short sortOrder,
             boolean active) {}
 
@@ -39,6 +45,7 @@ public final class ApiModels {
             @NotBlank @Size(min = 2, max = 300) String descriptionEn,
             @NotBlank @Pattern(regexp = "^[a-z0-9-]{2,40}$") String iconName,
             boolean requiresQuote,
+            boolean requiresDestination,
             @Min(0) @Max(1000) short sortOrder,
             boolean active) {}
 
@@ -50,6 +57,12 @@ public final class ApiModels {
             @Size(max = 500) String pickupNote,
             @NotNull @DecimalMin("-90") @DecimalMax("90") Double latitude,
             @NotNull @DecimalMin("-180") @DecimalMax("180") Double longitude,
+            @NotBlank @Pattern(regexp = "gps|manual|geocoded") String pickupSource,
+            @DecimalMin("0") @DecimalMax("1000") Double pickupAccuracyM,
+            @Size(min = 2, max = 160) String destinationAreaLabel,
+            @Size(max = 500) String destinationNote,
+            @DecimalMin("-90") @DecimalMax("90") Double destinationLatitude,
+            @DecimalMin("-180") @DecimalMax("180") Double destinationLongitude,
             @NotNull Boolean hasInjury,
             @NotNull Boolean hasImmediateHazard,
             boolean safetyAcknowledged) {}
@@ -62,6 +75,7 @@ public final class ApiModels {
             String serviceIcon,
             String pickupAreaLabel,
             Integer etaMinutes,
+            boolean attentionRequired,
             int version,
             Instant requestedAt,
             Instant updatedAt) {}
@@ -92,9 +106,17 @@ public final class ApiModels {
 
     public record RouteCoordinate(double latitude, double longitude) {}
 
-    public record RoadRouteResponse(int distanceMeters, int durationSeconds, List<RouteCoordinate> coordinates) {}
+    public record RoadRouteResponse(
+            String phase, int distanceMeters, int durationSeconds, List<RouteCoordinate> coordinates) {}
 
     public record StatusEvent(String fromStatus, String toStatus, Instant createdAt) {}
+
+    public record FeedbackSummary(
+            String action, String reasonCode, String note, Instant createdAt) {}
+
+    public record IncidentReportSummary(
+            UUID id, String category, String description, String status, Instant createdAt,
+            String resolutionNote, Instant resolvedAt) {}
 
     public record RequestDetails(
             UUID id,
@@ -103,6 +125,7 @@ public final class ApiModels {
             String serviceLabel,
             String serviceIcon,
             boolean serviceRequiresQuote,
+            boolean serviceRequiresDestination,
             String vehiclePowerType,
             String vehicleDescription,
             String activeWorkType,
@@ -110,6 +133,10 @@ public final class ApiModels {
             String pickupNote,
             double pickupLatitude,
             double pickupLongitude,
+            String destinationAreaLabel,
+            String destinationNote,
+            Double destinationLatitude,
+            Double destinationLongitude,
             UUID assignedProviderId,
             String providerName,
             String providerContactPhone,
@@ -119,6 +146,11 @@ public final class ApiModels {
             Integer etaMinutes,
             String routingStatus,
             String locationPrecision,
+            String cancellationCode,
+            String cancellationStage,
+            String cancellationReason,
+            boolean lateCancellation,
+            Boolean providerNearPickupOnCancel,
             int version,
             Instant requestedAt,
             Instant updatedAt,
@@ -127,9 +159,28 @@ public final class ApiModels {
             QuoteSummary currentQuote,
             ReviewSummary review,
             LocationPoint providerLocation,
+            String providerLocationStatus,
+            List<String> attentionCodes,
+            List<FeedbackSummary> feedback,
+            List<IncidentReportSummary> incidentReports,
             List<StatusEvent> events) {}
 
-    public record AvailabilityRequest(boolean available) {}
+    public record DestinationRequest(
+            @NotBlank @Size(max = 160) String areaLabel,
+            @Size(max = 500) String note,
+            @NotNull @DecimalMin("-90") @DecimalMax("90") Double latitude,
+            @NotNull @DecimalMin("-180") @DecimalMax("180") Double longitude,
+            @Min(1) int expectedRequestVersion) {}
+
+    public record AvailabilityRequest(
+            boolean available,
+            @DecimalMin("-90") @DecimalMax("90") Double latitude,
+            @DecimalMin("-180") @DecimalMax("180") Double longitude,
+            @DecimalMin("0") @DecimalMax("1000") Double accuracyM) {}
+
+    public record ProviderWithdrawalResponse(UUID requestId, String status) {}
+
+    public record ProviderWithdrawalRequest(@NotBlank @Size(min = 5, max = 300) String reason) {}
 
     public record ProviderLocationRequest(
             @NotNull @DecimalMin("-90") @DecimalMax("90") Double latitude,
@@ -151,6 +202,8 @@ public final class ApiModels {
     public record StateActionRequest(
             @NotBlank @Pattern(regexp = "^[a-z_]{3,40}$") String action,
             @Pattern(regexp = "repair|transport") String workType,
+            @Pattern(regexp = "^[a-z_]{3,40}$") String reasonCode,
+            @Size(max = 300) String note,
             @Min(1) Integer expectedVersion) {}
 
     public record QuoteRequest(
@@ -163,7 +216,20 @@ public final class ApiModels {
             @NotBlank @Pattern(regexp = "approve|reject") String decision,
             @Min(1) int expectedRequestVersion) {}
 
-    public record CancelRequest(@NotBlank @Size(max = 300) String reason, @Min(1) int expectedVersion) {}
+    public record CancelRequest(
+            @NotBlank @Pattern(regexp = "^[a-z_]{3,40}$") String reasonCode,
+            @Size(max = 300) String note,
+            @Min(1) int expectedVersion) {}
+
+    public record SupportRequest(
+            @NotBlank @Pattern(regexp = "assisted_cancellation|no_provider|provider_contact|safety_concern|other")
+            String reasonCode,
+            @Size(max = 300) String note) {}
+
+    public record IncidentReportRequest(
+            @NotBlank @Pattern(regexp = "provider_conduct|service_quality|safety|property_damage|other")
+            String category,
+            @NotBlank @Size(min = 10, max = 1000) String description) {}
 
     public record ReviewRequest(@Min(1) @Max(5) short rating, @Size(max = 1000) String comment) {}
 
@@ -198,6 +264,29 @@ public final class ApiModels {
             boolean hidden,
             Instant createdAt,
             Instant updatedAt) {}
+
+    public record AttentionFlagResponse(
+            UUID id,
+            UUID requestId,
+            String serviceLabel,
+            String requestStatus,
+            String code,
+            String contextNote,
+            String status,
+            Instant detectedAt,
+            String resolutionNote,
+            Instant resolvedAt) {}
+
+    public record AttentionResolutionRequest(
+            @NotBlank @Size(min = 5, max = 500) String note) {}
+
+    public record IncidentResolutionRequest(
+            @NotBlank @Pattern(regexp = "resolved|dismissed") String decision,
+            @NotBlank @Size(min = 5, max = 500) String note) {}
+
+    public record AuditLogResponse(
+            long id, String actorDisplayName, String action, String entityType,
+            String entityId, Instant createdAt) {}
 
     public record ReviewVisibilityRequest(
             @NotNull Boolean hidden,
@@ -263,9 +352,16 @@ public final class ApiModels {
             @NotBlank @Pattern(regexp = "^\\+[1-9][0-9]{7,14}$") String contactPhone,
             @Size(max = 80) String rescueVehicleLabel) {}
 
+    public record ProviderMemberResponse(
+            UUID userId, String displayName, String contactPhone, String status,
+            boolean available, String rescueVehicleLabel, Instant locationUpdatedAt) {}
+
+    public record ProviderMemberStatusRequest(
+            @NotBlank @Pattern(regexp = "active|suspended|left") String status) {}
+
     public record StaffRoleRequest(
             @NotNull UUID userId,
-            @NotBlank @Pattern(regexp = "dispatcher|customer") String role) {}
+            @NotBlank @Pattern(regexp = "admin|dispatcher|customer") String role) {}
 
     public record PushDeviceRequest(
             @NotBlank @Pattern(regexp = "^(ExponentPushToken|ExpoPushToken)\\[[A-Za-z0-9_-]+]$") String token,

@@ -1,20 +1,23 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { rescueApi } from '../api/rescueApi';
 import { RescueTiming } from '../config/operational';
-import type { CreateRescueInput } from '@/src/types/rescue';
+import type { CancelRescueInput, CreateRescueInput } from '@/src/types/rescue';
 
 export const rescueKeys = {
   all: ['rescue'] as const,
   services: ['rescue', 'services'] as const,
   requests: (history: boolean) => ['rescue', 'requests', history] as const,
+  requestHistory: ['rescue', 'request-history'] as const,
   request: (id: string) => ['rescue', 'request', id] as const,
   route: (id: string) => ['rescue', 'route', id] as const,
   providerStatus: ['rescue', 'provider-status'] as const,
   offers: ['rescue', 'offers'] as const,
   teams: ['rescue', 'teams'] as const,
+  providers: (teamId: string) => ['rescue', 'providers', teamId] as const,
   teamVerification: (teamId: string) => ['rescue', 'team-verification', teamId] as const,
   qualityReviews: (teamId: string) => ['rescue', 'quality-reviews', teamId] as const,
   adminServices: ['rescue', 'admin-services'] as const,
+  attention: (openOnly: boolean) => ['rescue', 'attention', openOnly] as const,
 };
 
 export function useServiceTypes() {
@@ -30,6 +33,24 @@ export function useRequests(history = false) {
     queryKey: rescueKeys.requests(history),
     queryFn: () => rescueApi.requests(history),
     refetchInterval: history ? false : RescueTiming.activeRequestRefetchMs,
+  });
+}
+
+export function useRequestHistory() {
+  const pageSize = 20;
+  return useInfiniteQuery({
+    queryKey: rescueKeys.requestHistory,
+    initialPageParam: undefined as { before: string; beforeId: string } | undefined,
+    queryFn: ({ pageParam }) => rescueApi.requests(true, pageParam, pageSize),
+    getNextPageParam: (lastPage) =>
+      lastPage.length < pageSize
+        ? undefined
+        : lastPage[lastPage.length - 1]
+          ? {
+              before: lastPage[lastPage.length - 1].requestedAt,
+              beforeId: lastPage[lastPage.length - 1].id,
+            }
+          : undefined,
   });
 }
 
@@ -73,13 +94,17 @@ export function useRequestMutation(id: string) {
   };
   return {
     action: useMutation({
-      mutationFn: (input: { action: string; version: number; workType?: 'repair' | 'transport' }) =>
-        rescueApi.action(id, input.action, input.version, input.workType),
+      mutationFn: (input: {
+        action: string;
+        version: number;
+        workType?: 'repair' | 'transport';
+        reasonCode?: string;
+        note?: string;
+      }) => rescueApi.action(id, input.action, input.version, input.workType, input.reasonCode, input.note),
       onSuccess: update,
     }),
     cancel: useMutation({
-      mutationFn: (input: { reason: string; version: number }) =>
-        rescueApi.cancel(id, input.reason, input.version),
+      mutationFn: (input: CancelRescueInput) => rescueApi.cancel(id, input),
       onSuccess: update,
     }),
     quote: useMutation({
@@ -94,6 +119,16 @@ export function useRequestMutation(id: string) {
     decideQuote: useMutation({
       mutationFn: (input: { quoteId: string; decision: 'approve' | 'reject'; version: number }) =>
         rescueApi.decideQuote(id, input.quoteId, input.decision, input.version),
+      onSuccess: update,
+    }),
+    destination: useMutation({
+      mutationFn: (input: {
+        areaLabel: string;
+        note?: string;
+        latitude: number;
+        longitude: number;
+        expectedRequestVersion: number;
+      }) => rescueApi.updateDestination(id, input),
       onSuccess: update,
     }),
   };

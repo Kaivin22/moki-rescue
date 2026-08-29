@@ -5,7 +5,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { RequestSummaryCard } from '@/src/features/rescue/components/RequestSummaryCard';
-import { useRequests } from '@/src/features/rescue/hooks/useRescueQueries';
+import { useRequestHistory, useRequests } from '@/src/features/rescue/hooks/useRescueQueries';
+import { AppButton } from '@/src/components/atoms/AppButton';
 import { useCopy } from '@/src/i18n';
 
 const COPY = {
@@ -17,6 +18,7 @@ const COPY = {
     error: 'Không thể tải danh sách. Kéo xuống để thử lại.',
     noClosed: 'Chưa có ca đã kết thúc.',
     noOpen: 'Không có ca đang hoạt động.',
+    loadMore: 'Tải thêm',
   },
   en: {
     title: 'Activity',
@@ -26,14 +28,22 @@ const COPY = {
     error: 'Could not load requests. Pull down to try again.',
     noClosed: 'There are no closed requests.',
     noOpen: 'There are no active requests.',
+    loadMore: 'Load more',
   },
 } as const;
 
 export default function ActivityScreen() {
   const insets = useSafeAreaInsets();
   const [history, setHistory] = useState(false);
-  const requests = useRequests(history);
+  const activeRequests = useRequests(false);
+  const historyRequests = useRequestHistory();
   const c = useCopy(COPY);
+  const data = history
+    ? (historyRequests.data?.pages.flatMap((page) => page) ?? [])
+    : (activeRequests.data ?? []);
+  const isError = history ? historyRequests.isError : activeRequests.isError;
+  const isLoading = history ? historyRequests.isLoading : activeRequests.isLoading;
+  const isRefetching = history ? historyRequests.isRefetching : activeRequests.isRefetching;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -44,12 +54,18 @@ export default function ActivityScreen() {
       <View style={styles.switcher}>
         <Pressable
           onPress={() => setHistory(false)}
+          accessibilityRole="tab"
+          accessibilityLabel={c.open}
+          accessibilityState={{ selected: !history }}
           style={[styles.switchItem, !history && styles.switchActive]}
         >
           <Text style={[styles.switchText, !history && styles.switchTextActive]}>{c.open}</Text>
         </Pressable>
         <Pressable
           onPress={() => setHistory(true)}
+          accessibilityRole="tab"
+          accessibilityLabel={c.closed}
+          accessibilityState={{ selected: history }}
           style={[styles.switchItem, history && styles.switchActive]}
         >
           <Text style={[styles.switchText, history && styles.switchTextActive]}>{c.closed}</Text>
@@ -59,24 +75,32 @@ export default function ActivityScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: 86 + insets.bottom }]}
         refreshControl={
           <RefreshControl
-            refreshing={requests.isRefetching}
-            onRefresh={() => void requests.refetch()}
+            refreshing={isRefetching}
+            onRefresh={() => void (history ? historyRequests.refetch() : activeRequests.refetch())}
             tintColor={Colors.primary}
           />
         }
       >
-        {requests.isError ? <Text style={styles.error}>{c.error}</Text> : null}
-        {(requests.data ?? []).map((request) => (
+        {isError ? <Text style={styles.error}>{c.error}</Text> : null}
+        {data.map((request) => (
           <RequestSummaryCard
             key={request.id}
             request={request}
             onPress={() => router.push(`/rescue/${request.id}`)}
           />
         ))}
-        {!requests.isLoading && !requests.isError && requests.data?.length === 0 ? (
+        {!isLoading && !isError && data.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyText}>{history ? c.noClosed : c.noOpen}</Text>
           </View>
+        ) : null}
+        {history && historyRequests.hasNextPage ? (
+          <AppButton
+            title={c.loadMore}
+            variant="outline"
+            loading={historyRequests.isFetchingNextPage}
+            onPress={() => void historyRequests.fetchNextPage()}
+          />
         ) : null}
       </ScrollView>
     </SafeAreaView>
@@ -95,7 +119,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: Radius.md,
   },
-  switchItem: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: Radius.sm },
+  switchItem: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Radius.sm,
+  },
   switchActive: { backgroundColor: Colors.cardBg },
   switchText: { ...Typography.bodyBold, color: Colors.textMuted },
   switchTextActive: { color: Colors.primary },

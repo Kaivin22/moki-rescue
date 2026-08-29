@@ -3,6 +3,7 @@ import { Redirect, Tabs } from 'expo-router';
 import { StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/src/constants/colors';
+import { Spacing, Typography } from '@/src/constants/spacing';
 import { useI18n } from '@/src/i18n';
 import { useAuthStore } from '@/src/stores/authStore';
 import { hasOperationsRole } from '@/src/features/auth/roles';
@@ -23,8 +24,8 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.accent,
-        tabBarInactiveTintColor: Colors.skyBlue,
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textMuted,
         tabBarStyle: [styles.bar, { height: 60 + insets.bottom, paddingBottom: insets.bottom }],
         tabBarLabelStyle: styles.label,
         tabBarIconStyle: styles.icon,
@@ -72,7 +73,12 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  bar: { backgroundColor: Colors.primaryDark, borderTopWidth: 0, paddingTop: 4 },
-  label: { fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 10, marginBottom: 4 },
-  icon: { marginTop: 4 },
+  bar: {
+    backgroundColor: Colors.cardBg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border,
+    paddingTop: Spacing.xs,
+  },
+  label: { ...Typography.nav, marginBottom: Spacing.xs },
+  icon: { marginTop: Spacing.xs },
 });

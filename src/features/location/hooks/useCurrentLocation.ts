@@ -5,7 +5,10 @@ export interface UserCoordinate {
   latitude: number;
   longitude: number;
   accuracy: number | null;
+  source: 'gps' | 'manual' | 'geocoded';
 }
+
+type CoordinateSelection = Omit<UserCoordinate, 'source'> & { source?: UserCoordinate['source'] };
 
 function addressLabel(address: Location.LocationGeocodedAddress) {
   return [address.streetNumber, address.street, address.district, address.city].filter(Boolean).join(', ');
@@ -16,17 +19,18 @@ export function useCurrentLocation() {
   const [label, setLabel] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'granted' | 'denied' | 'error'>('idle');
 
-  const selectCoordinate = useCallback(async (next: UserCoordinate) => {
-    setCoordinate(next);
+  const selectCoordinate = useCallback(async (next: CoordinateSelection) => {
+    const selected: UserCoordinate = { ...next, source: next.source ?? 'manual' };
+    setCoordinate(selected);
     setLabel('');
     setStatus('granted');
     try {
-      const addresses = await Location.reverseGeocodeAsync(next);
+      const addresses = await Location.reverseGeocodeAsync(selected);
       setLabel(addresses[0] ? addressLabel(addresses[0]) : '');
     } catch {
       setLabel('');
     }
-    return next;
+    return selected;
   }, []);
 
   const requestLocation = useCallback(async () => {
@@ -42,6 +46,7 @@ export function useCurrentLocation() {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
         accuracy: position.coords.accuracy,
+        source: 'gps' as const,
       };
       return await selectCoordinate(next);
     } catch {

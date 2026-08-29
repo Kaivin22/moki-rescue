@@ -64,8 +64,8 @@ export async function startProviderBackgroundTracking(requestId: string): Promis
       showsBackgroundLocationIndicator: true,
       foregroundService: {
         notificationTitle: english
-          ? 'MotoRescue is tracking an active request'
-          : 'MotoRescue đang theo dõi ca cứu hộ',
+          ? 'Moki Rescue is tracking an active request'
+          : 'Moki Rescue đang theo dõi ca cứu hộ',
         notificationBody: english
           ? 'Location is shared only with the customer and dispatch staff for the active request.'
           : 'Vị trí chỉ được chia sẻ với khách và điều phối viên của ca đang hoạt động.',

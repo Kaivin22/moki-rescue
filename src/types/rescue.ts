@@ -7,12 +7,32 @@ export type RescueStatus =
   | 'arrived'
   | 'diagnosing'
   | 'awaiting_quote'
+  | 'quote_approved'
   | 'repairing'
   | 'transporting'
   | 'awaiting_completion'
+  | 'needs_dispatch'
   | 'completed'
   | 'cancelled'
   | 'no_provider';
+
+export type CancellationReasonCode =
+  | 'issue_resolved'
+  | 'changed_mind'
+  | 'wrong_location'
+  | 'duplicate_request'
+  | 'provider_not_present'
+  | 'provider_unavailable'
+  | 'safety_issue'
+  | 'customer_unreachable'
+  | 'duplicate_or_fraud'
+  | 'other';
+
+export interface CancelRescueInput {
+  reasonCode: CancellationReasonCode;
+  note?: string;
+  expectedVersion: number;
+}
 
 export interface ServiceType {
   code: string;
@@ -20,6 +40,7 @@ export interface ServiceType {
   description: string;
   iconName: string;
   requiresQuote: boolean;
+  requiresDestination: boolean;
 }
 
 export interface AdminServiceType {
@@ -30,6 +51,7 @@ export interface AdminServiceType {
   descriptionEn: string;
   iconName: string;
   requiresQuote: boolean;
+  requiresDestination: boolean;
   sortOrder: number;
   active: boolean;
 }
@@ -42,6 +64,7 @@ export interface RequestCardData {
   serviceIcon: string;
   pickupAreaLabel: string;
   etaMinutes: number | null;
+  attentionRequired: boolean;
   version: number;
   requestedAt: string;
   updatedAt: string;
@@ -96,10 +119,40 @@ export interface QualityReview {
   updatedAt: string;
 }
 
+export interface AttentionFlag {
+  id: string;
+  requestId: string;
+  serviceLabel: string;
+  requestStatus: RescueStatus;
+  code: string;
+  contextNote: string | null;
+  status: 'open' | 'resolved';
+  detectedAt: string;
+  resolutionNote: string | null;
+  resolvedAt: string | null;
+}
+
 export interface StatusEvent {
   fromStatus: RescueStatus | null;
   toStatus: RescueStatus;
   createdAt: string;
+}
+
+export interface FeedbackSummary {
+  action: 'reject_arrival' | 'reject_repair' | 'reject_transport';
+  reasonCode: string;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface IncidentReport {
+  id: string;
+  category: 'provider_conduct' | 'service_quality' | 'safety' | 'property_damage' | 'other';
+  description: string;
+  status: 'open' | 'resolved' | 'dismissed';
+  createdAt: string;
+  resolutionNote: string | null;
+  resolvedAt: string | null;
 }
 
 export interface RequestDetails {
@@ -109,6 +162,7 @@ export interface RequestDetails {
   serviceLabel: string;
   serviceIcon: string;
   serviceRequiresQuote: boolean;
+  serviceRequiresDestination: boolean;
   vehiclePowerType: 'gasoline' | 'electric' | 'unknown';
   vehicleDescription: string | null;
   activeWorkType: 'repair' | 'transport' | null;
@@ -116,6 +170,10 @@ export interface RequestDetails {
   pickupNote: string | null;
   pickupLatitude: number;
   pickupLongitude: number;
+  destinationAreaLabel: string | null;
+  destinationNote: string | null;
+  destinationLatitude: number | null;
+  destinationLongitude: number | null;
   assignedProviderId: string | null;
   providerName: string | null;
   providerContactPhone: string | null;
@@ -125,6 +183,11 @@ export interface RequestDetails {
   etaMinutes: number | null;
   routingStatus: 'pending' | 'road' | 'unavailable';
   locationPrecision: 'exact' | 'approximate';
+  cancellationCode: CancellationReasonCode | null;
+  cancellationStage: 'pre_dispatch' | 'assigned' | 'en_route' | 'arrival_disputed' | 'operational' | null;
+  cancellationReason: string | null;
+  lateCancellation: boolean;
+  providerNearPickupOnCancel: boolean | null;
   version: number;
   requestedAt: string;
   updatedAt: string;
@@ -133,10 +196,15 @@ export interface RequestDetails {
   currentQuote: QuoteSummary | null;
   review: ReviewSummary | null;
   providerLocation: LocationPoint | null;
+  providerLocationStatus: 'pending' | 'fresh' | 'stale' | 'not_applicable';
+  attentionCodes: string[];
+  feedback: FeedbackSummary[];
+  incidentReports: IncidentReport[];
   events: StatusEvent[];
 }
 
 export interface RoadRoute {
+  phase: 'to_pickup' | 'to_destination';
   distanceMeters: number;
   durationSeconds: number;
   coordinates: { latitude: number; longitude: number }[];
@@ -175,6 +243,25 @@ export interface TeamSummary {
   qualityWarningCount: number;
   suspensionReviewRecommended: boolean;
   activeQualityAlert: QualityAlertSummary | null;
+}
+
+export interface ProviderMember {
+  userId: string;
+  displayName: string;
+  contactPhone: string;
+  status: 'active' | 'suspended' | 'left';
+  available: boolean;
+  rescueVehicleLabel: string | null;
+  locationUpdatedAt: string | null;
+}
+
+export interface AuditLogEntry {
+  id: number;
+  actorDisplayName: string | null;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  createdAt: string;
 }
 
 export interface AccountLookup {
@@ -224,6 +311,12 @@ export interface CreateRescueInput {
   pickupNote?: string;
   latitude: number;
   longitude: number;
+  pickupSource: 'gps' | 'manual' | 'geocoded';
+  pickupAccuracyM?: number;
+  destinationAreaLabel?: string;
+  destinationNote?: string;
+  destinationLatitude?: number;
+  destinationLongitude?: number;
   hasInjury: boolean;
   hasImmediateHazard: boolean;
   safetyAcknowledged: boolean;

@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { type ErrorInfo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,16 +33,22 @@ export class AppErrorBoundary extends React.Component<{ children: ReactNode }, S
     const english = useI18n.getState().language === 'en';
     return (
       <SafeAreaView style={styles.safe}>
+        <StatusBar style="dark" backgroundColor={Colors.background} />
         <View style={styles.card} accessibilityRole="alert">
           <Text style={styles.title}>
-            {english ? 'MotoRescue encountered a problem' : 'MotoRescue gặp sự cố'}
+            {english ? 'Moki Rescue encountered a problem' : 'Moki Rescue gặp sự cố'}
           </Text>
           <Text style={styles.body}>
             {english
               ? 'The app cannot display this screen. Your server-side request data was not deleted.'
               : 'Ứng dụng không thể hiển thị màn hình này. Dữ liệu yêu cầu trên máy chủ không bị xóa.'}
           </Text>
-          <Pressable accessibilityRole="button" onPress={this.reset} style={styles.button}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={english ? 'Go home' : 'Về trang chủ'}
+            onPress={this.reset}
+            style={styles.button}
+          >
             <Text style={styles.buttonText}>{english ? 'Go home' : 'Về trang chủ'}</Text>
           </Pressable>
         </View>

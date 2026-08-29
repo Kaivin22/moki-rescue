@@ -13,11 +13,22 @@ import type {
   QualityReview,
   TeamVerification,
   UpdateTeamVerificationInput,
+  CancelRescueInput,
+  AttentionFlag,
+  ProviderMember,
+  AuditLogEntry,
 } from '@/src/types/rescue';
 
 export const rescueApi = {
   serviceTypes: () => apiRequest<ServiceType[]>('/api/catalog/service-types'),
-  requests: (history = false) => apiRequest<RequestCardData[]>(`/api/requests?history=${history}`),
+  requests: (history = false, cursor?: { before: string; beforeId: string }, limit = 50) => {
+    const query = new URLSearchParams({ history: String(history), limit: String(limit) });
+    if (cursor) {
+      query.set('before', cursor.before);
+      query.set('beforeId', cursor.beforeId);
+    }
+    return apiRequest<RequestCardData[]>(`/api/requests?${query.toString()}`);
+  },
   request: (id: string) => apiRequest<RequestDetails>(`/api/requests/${id}`),
   roadRoute: (id: string) => apiRequest<RoadRoute>(`/api/requests/${id}/road-route`),
   create: (input: CreateRescueInput, idempotencyKey: string) =>
@@ -26,15 +37,55 @@ export const rescueApi = {
       headers: { 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify(input),
     }),
-  cancel: (id: string, reason: string, expectedVersion: number) =>
+  cancel: (id: string, input: CancelRescueInput) =>
     apiRequest<RequestDetails>(`/api/requests/${id}/cancel`, {
       method: 'POST',
-      body: JSON.stringify({ reason, expectedVersion }),
+      body: JSON.stringify(input),
     }),
-  action: (id: string, action: string, expectedVersion: number, workType?: 'repair' | 'transport') =>
+  retryCustomer: (id: string) => apiRequest<RequestDetails>(`/api/requests/${id}/retry`, { method: 'POST' }),
+  requestSupport: (
+    id: string,
+    reasonCode: 'assisted_cancellation' | 'no_provider' | 'provider_contact' | 'safety_concern' | 'other',
+    note?: string,
+  ) =>
+    apiRequest<void>(`/api/requests/${id}/support`, {
+      method: 'POST',
+      body: JSON.stringify({ reasonCode, note }),
+    }),
+  reportIncident: (
+    id: string,
+    category: 'provider_conduct' | 'service_quality' | 'safety' | 'property_damage' | 'other',
+    description: string,
+  ) =>
+    apiRequest<void>(`/api/requests/${id}/incidents`, {
+      method: 'POST',
+      body: JSON.stringify({ category, description }),
+    }),
+  action: (
+    id: string,
+    action: string,
+    expectedVersion: number,
+    workType?: 'repair' | 'transport',
+    reasonCode?: string,
+    note?: string,
+  ) =>
     apiRequest<RequestDetails>(`/api/requests/${id}/actions`, {
       method: 'POST',
-      body: JSON.stringify({ action, expectedVersion, workType }),
+      body: JSON.stringify({ action, expectedVersion, workType, reasonCode, note }),
+    }),
+  updateDestination: (
+    id: string,
+    input: {
+      areaLabel: string;
+      note?: string;
+      latitude: number;
+      longitude: number;
+      expectedRequestVersion: number;
+    },
+  ) =>
+    apiRequest<RequestDetails>(`/api/requests/${id}/destination`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
     }),
   submitQuote: (
     id: string,
@@ -66,10 +117,15 @@ export const rescueApi = {
     }),
   deleteReview: (id: string) => apiRequest<void>(`/api/requests/${id}/review`, { method: 'DELETE' }),
   providerStatus: () => apiRequest<ProviderStatus>('/api/provider/status'),
-  setAvailability: (available: boolean) =>
+  setAvailability: (input: {
+    available: boolean;
+    latitude?: number;
+    longitude?: number;
+    accuracyM?: number;
+  }) =>
     apiRequest<ProviderStatus>('/api/provider/availability', {
       method: 'PUT',
-      body: JSON.stringify({ available }),
+      body: JSON.stringify(input),
     }),
   offers: () => apiRequest<Offer[]>('/api/provider/offers'),
   acceptOffer: (offerId: string, expectedVersion: number) =>
@@ -78,6 +134,13 @@ export const rescueApi = {
       {
         method: 'POST',
       },
+    ),
+  declineOffer: (offerId: string) =>
+    apiRequest<void>(`/api/provider/offers/${offerId}/decline`, { method: 'POST' }),
+  withdrawProvider: (requestId: string, reason: string) =>
+    apiRequest<{ requestId: string; status: 'searching' | 'needs_dispatch' }>(
+      `/api/provider/requests/${requestId}/withdraw`,
+      { method: 'POST', body: JSON.stringify({ reason }) },
     ),
   saveProviderLocation: (id: string, latitude: number, longitude: number, accuracyM: number) =>
     apiRequest<{ stored: boolean }>(`/api/provider/requests/${id}/location`, {
@@ -90,12 +153,40 @@ export const rescueApi = {
       body: JSON.stringify({ latitude, longitude, accuracyM }),
     }),
   teams: () => apiRequest<TeamSummary[]>('/api/operator/teams'),
+  providers: (teamId: string) => apiRequest<ProviderMember[]>(`/api/operator/teams/${teamId}/providers`),
+  setProviderStatus: (teamId: string, providerId: string, status: 'active' | 'suspended' | 'left') =>
+    apiRequest<void>(`/api/operator/teams/${teamId}/providers/${providerId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
   lookupAccount: (phone: string) =>
     apiRequest<AccountLookup>('/api/operator/account-lookup', {
       method: 'POST',
       body: JSON.stringify({ phone }),
     }),
   retryDispatch: (id: string) => apiRequest<void>(`/api/operator/requests/${id}/retry`, { method: 'POST' }),
+  reassignDispatch: (id: string) =>
+    apiRequest<void>(`/api/operator/requests/${id}/reassign`, { method: 'POST' }),
+  attentionFlags: (openOnly = true) =>
+    apiRequest<AttentionFlag[]>(`/api/operator/attention?openOnly=${openOnly}`),
+  resolveAttention: (flagId: string, note: string) =>
+    apiRequest<void>(`/api/operator/attention/${flagId}/resolve`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    }),
+  resolveIncident: (incidentId: string, decision: 'resolved' | 'dismissed', note: string) =>
+    apiRequest<void>(`/api/operator/incidents/${incidentId}/resolve`, {
+      method: 'POST',
+      body: JSON.stringify({ decision, note }),
+    }),
+  auditLogs: (cursor?: { before: string; beforeId: number }, limit = 50) => {
+    const query = new URLSearchParams({ limit: String(limit) });
+    if (cursor) {
+      query.set('before', cursor.before);
+      query.set('beforeId', String(cursor.beforeId));
+    }
+    return apiRequest<AuditLogEntry[]>(`/api/operator/audit-logs?${query.toString()}`);
+  },
   createTeam: (input: {
     name: string;
     contractReference: string;
@@ -149,7 +240,7 @@ export const rescueApi = {
       method: 'PUT',
       body: JSON.stringify(input),
     }),
-  setStaffRole: (userId: string, role: 'dispatcher' | 'customer') =>
+  setStaffRole: (userId: string, role: 'admin' | 'dispatcher' | 'customer') =>
     apiRequest<void>('/api/operator/staff-role', { method: 'PUT', body: JSON.stringify({ userId, role }) }),
   adminServiceTypes: () => apiRequest<AdminServiceType[]>('/api/operator/service-types'),
   updateServiceType: ({ code, ...input }: AdminServiceType) =>
@@ -158,4 +249,5 @@ export const rescueApi = {
       body: JSON.stringify(input),
     }),
   requestAccountDeletion: () => apiRequest<void>('/api/me/deletion-request', { method: 'POST' }),
+  unregisterAllPushDevices: () => apiRequest<void>('/api/me/push-devices', { method: 'DELETE' }),
 };

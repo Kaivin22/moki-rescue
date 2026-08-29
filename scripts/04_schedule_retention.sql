@@ -9,7 +9,8 @@ FROM cron.job
 WHERE jobname IN (
   'motorescue-purge-location-checkpoints',
   'motorescue-minimize-closed-requests',
-  'motorescue-purge-assistant-usage'
+  'motorescue-purge-assistant-usage',
+  'motorescue-purge-push-receipts'
 );
 
 SELECT cron.schedule(
@@ -28,4 +29,10 @@ SELECT cron.schedule(
   'motorescue-purge-assistant-usage',
   '45 19 * * *',
   $$SELECT public.purge_assistant_usage_events(INTERVAL '2 days');$$
+);
+
+SELECT cron.schedule(
+  'motorescue-purge-push-receipts',
+  '55 19 * * *',
+  $$SELECT public.purge_push_delivery_receipts(INTERVAL '2 days');$$
 );

@@ -1,4 +1,4 @@
-# Triển khai MotoRescue
+# Triển khai Moki Rescue
 
 ## 1. Yêu cầu
 
@@ -12,7 +12,7 @@
 
 Sao chép `.env.example` thành `.env`. Client chỉ nhận Supabase URL + publishable/anon key, API URL, hotline, EAS project ID và Maps key đã restriction. Database password, Expo access token và Gemini key chỉ ở backend secret store. `EXPO_PUBLIC_API_URL` là origin/prefix đứng trước `/api`, không thêm `/api` lần nữa.
 
-`APP_ENV=production` làm Expo config fail-fast nếu thiếu Supabase, API, Maps hoặc hotline. Không dùng `localhost` cho API URL trên điện thoại thật.
+`APP_ENV=production` làm Expo config fail-fast nếu thiếu Supabase, API, Maps, hotline, EAS project ID hoặc tâm bản đồ ban đầu. Tâm bản đồ chỉ là viewport public; polygon `service_zones` trong database mới là nguồn quyết định có nhận ca hay không. Không dùng `localhost` cho API URL trên điện thoại thật.
 
 ## 3. Supabase
 
@@ -39,11 +39,11 @@ Với project mới:
 
 ## 5. Backend
 
-Deploy JAR sau reverse proxy HTTPS. Cấu hình database TLS, Supabase issuer/JWKS, CORS allowlist, connection pool, OSRM, push access token, Gemini key/model/quota, `TERMS_VERSION` khớp `LEGAL_VERSION` và service-area. Chỉ chạy một replica cho đến khi đã kiểm chứng scheduled expiry job/locking dưới nhiều replica. Reverse proxy vẫn phải có request/body limit; filter trong app là lớp bổ sung, không thay edge rate limit nhiều replica.
+Deploy JAR sau reverse proxy HTTPS. Cấu hình database TLS, Supabase issuer/JWKS, CORS allowlist, connection pool, OSRM, push access token, Gemini key/model/quota và `TERMS_VERSION` khớp `LEGAL_VERSION`. Hiệu chỉnh polygon `service_zones` bằng SQL được review trước khi nhận ca thật. Chỉ chạy một replica cho đến khi đã kiểm chứng scheduled expiry job/locking dưới nhiều replica. Rate limit trong API dùng PostgreSQL chung giữa các replica, nhưng reverse proxy vẫn phải có request/body limit để chặn tải trước khi vào ứng dụng.
 
 Smoke trợ lý bằng ba nhóm: câu về cách dùng app phải gọi Gemini; câu ngoài lề/chẩn đoán xe phải trả local và không giảm quota; thương tích/cháy/rò nhiên liệu phải trả bàn giao 113/114/115. Kiểm log/database không có prompt hoặc reply.
 
-Health check: `GET /api/health`. Log production phải redaction Authorization, phone, exact coordinates và datasource URL.
+Liveness dùng `GET /api/health`; readiness kiểm database bằng `GET /api/health/ready`. Log production phải redaction Authorization, phone, exact coordinates và datasource URL.
 
 ## 6. Mobile
 

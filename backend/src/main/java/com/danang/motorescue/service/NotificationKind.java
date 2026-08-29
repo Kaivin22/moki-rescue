@@ -7,5 +7,6 @@ public enum NotificationKind {
     REQUEST_CANCELLED,
     STATUS_CHANGED,
     QUOTE_SUBMITTED,
-    QUOTE_DECIDED
+    QUOTE_DECIDED,
+    SUPPORT_REQUESTED
 }

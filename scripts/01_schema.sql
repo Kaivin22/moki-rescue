@@ -107,6 +107,7 @@ CREATE TABLE public.service_types (
     'water-outline', 'build-outline', 'trail-sign-outline'
   )),
   requires_quote BOOLEAN NOT NULL DEFAULT FALSE,
+  requires_destination BOOLEAN NOT NULL DEFAULT FALSE,
   sort_order SMALLINT NOT NULL CHECK (sort_order BETWEEN 0 AND 1000),
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -114,14 +115,34 @@ CREATE TABLE public.service_types (
 );
 
 INSERT INTO public.service_types
-  (code, label_vi, description_vi, label_en, description_en, icon_name, requires_quote, sort_order)
+  (code, label_vi, description_vi, label_en, description_en, icon_name,
+   requires_quote, requires_destination, sort_order)
 VALUES
-  ('flat_tire', 'Vá hoặc thay lốp', 'Lốp thủng, xì hơi hoặc cần thay săm/lốp tại chỗ.', 'Flat tire repair', 'Repair a puncture or replace a tube/tire at the pickup point.', 'construct-outline', FALSE, 10),
-  ('dead_battery', 'Hết ắc quy', 'Kích bình hoặc hỗ trợ kiểm tra ắc quy cho xe xăng.', 'Dead battery', 'Jump-start or inspect the battery of a gasoline motorcycle.', 'battery-dead-outline', FALSE, 20),
-  ('electric_battery', 'Xe điện hết pin', 'Hỗ trợ vận chuyển xe điện đến điểm sạc hoặc địa điểm phù hợp.', 'Electric bike out of charge', 'Transport an electric motorcycle to a suitable charging point.', 'flash-outline', TRUE, 30),
-  ('out_of_fuel', 'Hết xăng', 'Mang lượng nhiên liệu khẩn cấp đến vị trí xe gặp sự cố.', 'Out of fuel', 'Deliver a small emergency fuel supply to the pickup point.', 'water-outline', FALSE, 40),
-  ('minor_repair', 'Sửa chữa nhẹ', 'Kiểm tra và xử lý lỗi nhẹ có thể khắc phục an toàn tại chỗ.', 'Minor roadside repair', 'Inspect and handle a minor issue that can be repaired safely on site.', 'build-outline', TRUE, 50),
-  ('motorbike_transport', 'Chở xe cứu hộ', 'Vận chuyển xe máy đến cửa hàng hoặc địa điểm do khách chọn.', 'Motorcycle transport', 'Transport the motorcycle to a shop or another customer-selected location.', 'trail-sign-outline', TRUE, 60);
+  ('flat_tire', 'Vá hoặc thay lốp', 'Lốp thủng, xì hơi hoặc cần thay săm/lốp tại chỗ.', 'Flat tire repair', 'Repair a puncture or replace a tube/tire at the pickup point.', 'construct-outline', FALSE, FALSE, 10),
+  ('dead_battery', 'Hết ắc quy', 'Kích bình hoặc hỗ trợ kiểm tra ắc quy cho xe xăng.', 'Dead battery', 'Jump-start or inspect the battery of a gasoline motorcycle.', 'battery-dead-outline', FALSE, FALSE, 20),
+  ('electric_battery', 'Xe điện hết pin', 'Hỗ trợ vận chuyển xe điện đến điểm sạc hoặc địa điểm phù hợp.', 'Electric bike out of charge', 'Transport an electric motorcycle to a suitable charging point.', 'flash-outline', TRUE, TRUE, 30),
+  ('out_of_fuel', 'Hết xăng', 'Mang lượng nhiên liệu khẩn cấp đến vị trí xe gặp sự cố.', 'Out of fuel', 'Deliver a small emergency fuel supply to the pickup point.', 'water-outline', FALSE, FALSE, 40),
+  ('minor_repair', 'Sửa chữa nhẹ', 'Kiểm tra và xử lý lỗi nhẹ có thể khắc phục an toàn tại chỗ.', 'Minor roadside repair', 'Inspect and handle a minor issue that can be repaired safely on site.', 'build-outline', TRUE, FALSE, 50),
+  ('motorbike_transport', 'Chở xe cứu hộ', 'Vận chuyển xe máy đến cửa hàng hoặc địa điểm do khách chọn.', 'Motorcycle transport', 'Transport the motorcycle to a shop or another customer-selected location.', 'trail-sign-outline', TRUE, TRUE, 60);
+
+CREATE TABLE public.service_zones (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL UNIQUE CHECK (char_length(name) BETWEEN 2 AND 120),
+  boundary extensions.geography(POLYGON, 4326) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Initial operational coverage for the Da Nang launch. This polygon is business
+-- configuration, not a UI constant; replace/refine it before a real deployment.
+INSERT INTO public.service_zones(name, boundary)
+VALUES (
+  'Da Nang launch zone',
+  extensions.ST_GeogFromText(
+    'SRID=4326;POLYGON((107.8000 16.0500,107.8400 16.2000,108.0000 16.2800,108.1800 16.2200,108.3500 16.1200,108.3100 15.9600,108.2000 15.8400,108.0300 15.8700,107.8800 15.9400,107.8000 16.0500))'
+  )
+);
 
 CREATE TABLE public.provider_members (
   user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -162,8 +183,8 @@ CREATE TABLE public.rescue_requests (
   idempotency_key UUID NOT NULL,
   status TEXT NOT NULL DEFAULT 'searching' CHECK (status IN (
     'searching', 'offered', 'assigned', 'en_route', 'awaiting_arrival_confirmation',
-    'arrived', 'diagnosing', 'awaiting_quote', 'repairing', 'transporting',
-    'awaiting_completion', 'completed', 'cancelled', 'no_provider'
+    'arrived', 'diagnosing', 'awaiting_quote', 'quote_approved', 'repairing', 'transporting',
+    'awaiting_completion', 'needs_dispatch', 'completed', 'cancelled', 'no_provider'
   )),
   vehicle_power_type TEXT NOT NULL CHECK (vehicle_power_type IN ('gasoline', 'electric', 'unknown')),
   vehicle_description TEXT CHECK (vehicle_description IS NULL OR char_length(vehicle_description) <= 160),
@@ -171,8 +192,16 @@ CREATE TABLE public.rescue_requests (
   pickup_note TEXT CHECK (pickup_note IS NULL OR char_length(pickup_note) <= 500),
   pickup_latitude DOUBLE PRECISION NOT NULL CHECK (pickup_latitude BETWEEN -90 AND 90),
   pickup_longitude DOUBLE PRECISION NOT NULL CHECK (pickup_longitude BETWEEN -180 AND 180),
+  pickup_source TEXT NOT NULL CHECK (pickup_source IN ('gps', 'manual', 'geocoded')),
+  pickup_accuracy_m NUMERIC(8,2) CHECK (pickup_accuracy_m IS NULL OR pickup_accuracy_m BETWEEN 0 AND 1000),
   pickup_location extensions.geography(POINT, 4326) NOT NULL,
-  evidence_path TEXT CHECK (evidence_path IS NULL OR char_length(evidence_path) <= 500),
+  destination_area_label TEXT CHECK (
+    destination_area_label IS NULL OR char_length(destination_area_label) BETWEEN 2 AND 160
+  ),
+  destination_note TEXT CHECK (destination_note IS NULL OR char_length(destination_note) <= 500),
+  destination_latitude DOUBLE PRECISION CHECK (destination_latitude IS NULL OR destination_latitude BETWEEN -90 AND 90),
+  destination_longitude DOUBLE PRECISION CHECK (destination_longitude IS NULL OR destination_longitude BETWEEN -180 AND 180),
+  destination_location extensions.geography(POINT, 4326),
   safety_acknowledged BOOLEAN NOT NULL DEFAULT FALSE,
   assigned_team_id UUID REFERENCES public.rescue_teams(id) ON DELETE RESTRICT,
   assigned_provider_id UUID REFERENCES public.provider_members(user_id) ON DELETE RESTRICT,
@@ -180,8 +209,21 @@ CREATE TABLE public.rescue_requests (
   eta_minutes INTEGER CHECK (eta_minutes IS NULL OR eta_minutes BETWEEN 0 AND 1440),
   routing_status TEXT NOT NULL DEFAULT 'pending' CHECK (routing_status IN ('pending', 'road', 'unavailable')),
   location_precision TEXT NOT NULL DEFAULT 'exact' CHECK (location_precision IN ('exact', 'approximate')),
+  cancellation_code TEXT CHECK (cancellation_code IS NULL OR cancellation_code IN (
+    'issue_resolved', 'changed_mind', 'wrong_location', 'duplicate_request',
+    'provider_not_present', 'provider_unavailable', 'safety_issue',
+    'customer_unreachable', 'duplicate_or_fraud', 'other'
+  )),
+  cancellation_stage TEXT CHECK (cancellation_stage IS NULL OR cancellation_stage IN (
+    'pre_dispatch', 'assigned', 'en_route', 'arrival_disputed', 'operational'
+  )),
   cancellation_reason TEXT CHECK (cancellation_reason IS NULL OR char_length(cancellation_reason) <= 300),
+  is_late_cancellation BOOLEAN NOT NULL DEFAULT FALSE,
+  provider_near_pickup_on_cancel BOOLEAN,
+  cancelled_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   work_type TEXT CHECK (work_type IS NULL OR work_type IN ('repair', 'transport')),
+  customer_retry_count SMALLINT NOT NULL DEFAULT 0 CHECK (customer_retry_count BETWEEN 0 AND 10),
+  last_customer_retry_at TIMESTAMPTZ,
   version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
   requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   offered_at TIMESTAMPTZ,
@@ -194,13 +236,31 @@ CREATE TABLE public.rescue_requests (
   CHECK ((assigned_team_id IS NULL) = (assigned_provider_id IS NULL)),
   CHECK (
     status NOT IN ('assigned', 'en_route', 'awaiting_arrival_confirmation', 'arrived', 'diagnosing',
-      'awaiting_quote', 'repairing', 'transporting', 'awaiting_completion', 'completed')
+      'awaiting_quote', 'quote_approved', 'repairing', 'transporting', 'awaiting_completion', 'completed')
     OR (assigned_team_id IS NOT NULL AND assigned_provider_id IS NOT NULL)
   ),
   CHECK (safety_acknowledged),
+  CHECK (pickup_source <> 'gps' OR pickup_accuracy_m IS NOT NULL),
   CHECK (status <> 'repairing' OR work_type = 'repair'),
   CHECK (status <> 'transporting' OR work_type = 'transport'),
-  CHECK (status NOT IN ('awaiting_completion', 'completed') OR work_type IS NOT NULL)
+  CHECK (status NOT IN ('awaiting_completion', 'completed') OR work_type IS NOT NULL),
+  CHECK (
+    (destination_area_label IS NULL AND destination_latitude IS NULL
+      AND destination_longitude IS NULL AND destination_location IS NULL)
+    OR
+    (destination_area_label IS NOT NULL AND destination_latitude IS NOT NULL
+      AND destination_longitude IS NOT NULL AND destination_location IS NOT NULL)
+  ),
+  CHECK (work_type IS DISTINCT FROM 'transport' OR destination_location IS NOT NULL),
+  CHECK (
+    status = 'cancelled'
+    OR (
+      cancellation_code IS NULL AND cancellation_stage IS NULL AND cancellation_reason IS NULL
+      AND NOT is_late_cancellation AND provider_near_pickup_on_cancel IS NULL AND cancelled_by IS NULL
+    )
+  ),
+  CHECK (NOT is_late_cancellation OR cancellation_stage IN ('en_route', 'arrival_disputed')),
+  CHECK (provider_near_pickup_on_cancel IS NULL OR cancellation_stage IN ('en_route', 'arrival_disputed'))
 );
 
 COMMENT ON TABLE public.rescue_requests IS
@@ -245,6 +305,48 @@ CREATE TABLE public.request_status_events (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE public.case_attention_flags (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id UUID NOT NULL REFERENCES public.rescue_requests(id) ON DELETE CASCADE,
+  code TEXT NOT NULL CHECK (code IN (
+    'provider_start_timeout', 'provider_gps_stale', 'arrival_confirmation_overdue',
+    'quote_decision_overdue', 'completion_confirmation_overdue', 'work_progress_overdue',
+    'provider_withdrew', 'arrival_dispute', 'completion_dispute', 'customer_support_requested',
+    'approved_work_start_overdue', 'customer_incident_reported'
+  )),
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
+  context_note TEXT CHECK (context_note IS NULL OR char_length(context_note) BETWEEN 5 AND 300),
+  resolution_note TEXT CHECK (resolution_note IS NULL OR char_length(resolution_note) BETWEEN 5 AND 500),
+  detected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  resolved_at TIMESTAMPTZ,
+  resolved_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  CHECK (
+    (status = 'open' AND resolved_at IS NULL AND resolution_note IS NULL)
+    OR (status = 'resolved' AND resolved_at IS NOT NULL AND resolution_note IS NOT NULL)
+  )
+);
+
+CREATE TABLE public.request_feedback_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id UUID NOT NULL REFERENCES public.rescue_requests(id) ON DELETE CASCADE,
+  actor_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  action TEXT NOT NULL CHECK (action IN ('reject_arrival', 'reject_repair', 'reject_transport')),
+  reason_code TEXT NOT NULL CHECK (reason_code IN (
+    'provider_not_visible', 'wrong_meeting_point', 'cannot_contact_provider',
+    'issue_persists', 'work_not_as_agreed', 'destination_not_reached', 'other'
+  )),
+  note TEXT CHECK (note IS NULL OR char_length(note) BETWEEN 5 AND 300),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (reason_code <> 'other' OR note IS NOT NULL),
+  CHECK (
+    (action = 'reject_arrival' AND reason_code IN (
+      'provider_not_visible', 'wrong_meeting_point', 'cannot_contact_provider', 'other'))
+    OR
+    (action IN ('reject_repair', 'reject_transport') AND reason_code IN (
+      'issue_persists', 'work_not_as_agreed', 'destination_not_reached', 'other'))
+  )
+);
+
 CREATE TABLE public.provider_location_checkpoints (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   request_id UUID NOT NULL REFERENCES public.rescue_requests(id) ON DELETE CASCADE,
@@ -274,6 +376,28 @@ CREATE TABLE public.reviews (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CHECK ((moderated_by IS NULL) = (moderated_at IS NULL)),
   CHECK (NOT is_hidden OR (moderation_note IS NOT NULL AND moderated_at IS NOT NULL))
+);
+
+CREATE TABLE public.incident_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id UUID NOT NULL REFERENCES public.rescue_requests(id) ON DELETE CASCADE,
+  customer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  team_id UUID NOT NULL REFERENCES public.rescue_teams(id) ON DELETE RESTRICT,
+  provider_id UUID NOT NULL REFERENCES public.provider_members(user_id) ON DELETE RESTRICT,
+  category TEXT NOT NULL CHECK (category IN (
+    'provider_conduct', 'service_quality', 'safety', 'property_damage', 'other'
+  )),
+  description TEXT NOT NULL CHECK (char_length(description) BETWEEN 10 AND 1000),
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'dismissed')),
+  resolution_note TEXT CHECK (resolution_note IS NULL OR char_length(resolution_note) BETWEEN 5 AND 500),
+  resolved_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  resolved_at TIMESTAMPTZ,
+  UNIQUE (request_id, customer_id, category),
+  CHECK (
+    (status = 'open' AND resolved_at IS NULL AND resolution_note IS NULL)
+    OR (status <> 'open' AND resolved_at IS NOT NULL AND resolution_note IS NOT NULL)
+  )
 );
 
 CREATE TABLE public.team_quality_alerts (
@@ -307,6 +431,29 @@ CREATE TABLE public.push_devices (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE public.push_delivery_receipts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  push_device_id UUID NOT NULL REFERENCES public.push_devices(id) ON DELETE CASCADE,
+  expo_ticket_id TEXT NOT NULL UNIQUE CHECK (char_length(expo_ticket_id) BETWEEN 8 AND 100),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'delivered', 'failed', 'expired')),
+  attempt_count SMALLINT NOT NULL DEFAULT 0 CHECK (attempt_count BETWEEN 0 AND 20),
+  next_check_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '15 minutes'),
+  last_error_code TEXT CHECK (
+    last_error_code IS NULL OR last_error_code ~ '^[A-Za-z][A-Za-z0-9_]{1,79}$'
+  ),
+  checked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (
+    (status = 'pending' AND checked_at IS NULL)
+    OR (status <> 'pending' AND checked_at IS NOT NULL)
+  ),
+  CHECK (status <> 'delivered' OR last_error_code IS NULL)
+);
+
+COMMENT ON TABLE public.push_delivery_receipts IS
+  'Chỉ lưu ticket và trạng thái giao nhận tối thiểu; không lưu nội dung thông báo, token bản sao hoặc dữ liệu ca.';
+
 CREATE TABLE public.audit_logs (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   actor_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -323,6 +470,14 @@ CREATE TABLE public.assistant_usage_events (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE public.api_rate_limit_windows (
+  subject_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  category TEXT NOT NULL CHECK (category IN ('mutation', 'location', 'assistant')),
+  window_start TIMESTAMPTZ NOT NULL,
+  request_count INTEGER NOT NULL CHECK (request_count BETWEEN 1 AND 10000),
+  PRIMARY KEY (subject_id, category, window_start)
+);
+
 COMMENT ON TABLE public.assistant_usage_events IS
   'Chi luu moc thoi gian de gioi han quota tro ly; khong luu cau hoi, cau tra loi hay lich su hoi thoai.';
 
@@ -336,23 +491,38 @@ CREATE UNIQUE INDEX rescue_requests_one_active_provider_idx ON public.rescue_req
   WHERE assigned_provider_id IS NOT NULL AND status NOT IN ('completed', 'cancelled');
 CREATE INDEX rescue_requests_active_idx ON public.rescue_requests(status, requested_at DESC)
   WHERE status NOT IN ('completed', 'cancelled');
+CREATE INDEX service_zones_boundary_gix ON public.service_zones USING GIST(boundary)
+  WHERE is_active;
 CREATE INDEX rescue_requests_pickup_gix ON public.rescue_requests USING GIST(pickup_location);
+CREATE INDEX rescue_requests_destination_gix ON public.rescue_requests USING GIST(destination_location)
+  WHERE destination_location IS NOT NULL;
 CREATE INDEX provider_members_available_idx ON public.provider_members(team_id, location_updated_at DESC)
   WHERE status = 'active' AND is_available;
 CREATE INDEX provider_members_location_gix ON public.provider_members USING GIST(last_location);
 CREATE INDEX dispatch_offers_provider_pending_idx ON public.dispatch_offers(provider_id, expires_at)
   WHERE status = 'pending';
 CREATE INDEX request_status_events_request_idx ON public.request_status_events(request_id, created_at);
+CREATE UNIQUE INDEX case_attention_flags_one_open_idx
+  ON public.case_attention_flags(request_id, code) WHERE status = 'open';
+CREATE INDEX case_attention_flags_open_idx
+  ON public.case_attention_flags(detected_at, request_id) WHERE status = 'open';
+CREATE INDEX request_feedback_events_request_idx
+  ON public.request_feedback_events(request_id, created_at DESC);
 CREATE INDEX provider_location_checkpoints_request_idx ON public.provider_location_checkpoints(request_id, recorded_at DESC);
 CREATE INDEX reviews_provider_visible_idx ON public.reviews(provider_id) WHERE NOT is_hidden;
 CREATE INDEX reviews_team_visible_idx ON public.reviews(team_id) WHERE NOT is_hidden;
+CREATE INDEX incident_reports_open_idx ON public.incident_reports(created_at, request_id)
+  WHERE status = 'open';
 CREATE INDEX team_quality_alerts_team_recent_idx
   ON public.team_quality_alerts(team_id, created_at DESC);
 CREATE UNIQUE INDEX team_quality_alerts_one_open_idx
   ON public.team_quality_alerts(team_id) WHERE status = 'open';
+CREATE INDEX push_delivery_receipts_pending_idx
+  ON public.push_delivery_receipts(next_check_at, id) WHERE status = 'pending';
 CREATE INDEX audit_logs_entity_idx ON public.audit_logs(entity_type, entity_id, created_at DESC);
 CREATE INDEX assistant_usage_events_user_time_idx
   ON public.assistant_usage_events(user_id, created_at DESC);
+CREATE INDEX api_rate_limit_windows_expiry_idx ON public.api_rate_limit_windows(window_start);
 
 CREATE OR REPLACE FUNCTION public.touch_updated_at()
 RETURNS TRIGGER
@@ -372,6 +542,8 @@ FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
 CREATE TRIGGER team_verification_checks_touch_updated_at BEFORE UPDATE ON public.team_verification_checks
 FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
 CREATE TRIGGER service_types_touch_updated_at BEFORE UPDATE ON public.service_types
+FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+CREATE TRIGGER service_zones_touch_updated_at BEFORE UPDATE ON public.service_zones
 FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
 CREATE TRIGGER provider_members_touch_updated_at BEFORE UPDATE ON public.provider_members
 FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
@@ -414,12 +586,20 @@ BEGIN
   NEW.pickup_location := extensions.ST_SetSRID(
     extensions.ST_MakePoint(NEW.pickup_longitude, NEW.pickup_latitude), 4326
   )::extensions.geography;
+  IF NEW.destination_latitude IS NULL THEN
+    NEW.destination_location := NULL;
+  ELSE
+    NEW.destination_location := extensions.ST_SetSRID(
+      extensions.ST_MakePoint(NEW.destination_longitude, NEW.destination_latitude), 4326
+    )::extensions.geography;
+  END IF;
   RETURN NEW;
 END;
 $$;
 
 CREATE TRIGGER rescue_requests_sync_location
-BEFORE INSERT OR UPDATE OF pickup_latitude, pickup_longitude ON public.rescue_requests
+BEFORE INSERT OR UPDATE OF pickup_latitude, pickup_longitude, destination_latitude, destination_longitude
+ON public.rescue_requests
 FOR EACH ROW EXECUTE FUNCTION public.sync_request_location();
 
 CREATE OR REPLACE FUNCTION public.validate_location_checkpoint()
@@ -430,11 +610,12 @@ AS $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public.rescue_requests rr
+    JOIN public.provider_members pm ON pm.user_id = NEW.provider_id
     WHERE rr.id = NEW.request_id
       AND rr.assigned_provider_id = NEW.provider_id
-      AND rr.assigned_team_id = NEW.team_id
+      AND rr.assigned_team_id = pm.team_id
       AND rr.status IN ('assigned', 'en_route', 'awaiting_arrival_confirmation', 'arrived',
-        'diagnosing', 'awaiting_quote', 'repairing', 'transporting', 'awaiting_completion')
+        'diagnosing', 'awaiting_quote', 'quote_approved', 'repairing', 'transporting', 'awaiting_completion')
   ) THEN
     RAISE EXCEPTION 'LOCATION_CHECKPOINT_NOT_ALLOWED' USING ERRCODE = '23514';
   END IF;
@@ -484,20 +665,23 @@ BEGIN
   allowed := CASE OLD.status
     WHEN 'searching' THEN NEW.status IN ('offered', 'no_provider', 'cancelled')
     WHEN 'offered' THEN NEW.status IN ('assigned', 'searching', 'no_provider', 'cancelled')
-    WHEN 'assigned' THEN NEW.status IN ('en_route', 'cancelled')
-    WHEN 'en_route' THEN NEW.status IN ('awaiting_arrival_confirmation', 'cancelled')
-    WHEN 'awaiting_arrival_confirmation' THEN NEW.status IN ('arrived', 'en_route', 'cancelled')
-    WHEN 'arrived' THEN NEW.status IN ('diagnosing', 'cancelled')
-    WHEN 'diagnosing' THEN NEW.status IN ('awaiting_quote', 'repairing', 'transporting', 'cancelled')
-    WHEN 'awaiting_quote' THEN NEW.status IN ('diagnosing', 'repairing', 'transporting', 'cancelled')
-    WHEN 'repairing' THEN NEW.status IN ('awaiting_completion', 'cancelled')
-    WHEN 'transporting' THEN NEW.status IN ('awaiting_completion', 'cancelled')
+    WHEN 'assigned' THEN NEW.status IN ('en_route', 'searching', 'needs_dispatch', 'cancelled')
+    WHEN 'en_route' THEN NEW.status IN ('awaiting_arrival_confirmation', 'searching', 'needs_dispatch', 'cancelled')
+    WHEN 'awaiting_arrival_confirmation' THEN NEW.status IN ('arrived', 'en_route', 'searching', 'needs_dispatch', 'cancelled')
+    WHEN 'arrived' THEN NEW.status IN ('diagnosing', 'needs_dispatch', 'cancelled')
+    WHEN 'diagnosing' THEN NEW.status IN ('awaiting_quote', 'repairing', 'transporting', 'needs_dispatch', 'cancelled')
+    WHEN 'awaiting_quote' THEN NEW.status IN ('diagnosing', 'quote_approved', 'needs_dispatch', 'cancelled')
+    WHEN 'quote_approved' THEN NEW.status IN ('repairing', 'transporting', 'needs_dispatch', 'cancelled')
+    WHEN 'repairing' THEN NEW.status IN ('awaiting_completion', 'needs_dispatch', 'cancelled')
+    WHEN 'transporting' THEN NEW.status IN ('awaiting_completion', 'needs_dispatch', 'cancelled')
     WHEN 'awaiting_completion' THEN
       NEW.status = 'completed'
       OR (OLD.work_type = 'repair' AND NEW.status = 'repairing')
       OR (OLD.work_type = 'transport' AND NEW.status = 'transporting')
+      OR NEW.status = 'needs_dispatch'
       OR NEW.status = 'cancelled'
     WHEN 'no_provider' THEN NEW.status IN ('searching', 'cancelled')
+    WHEN 'needs_dispatch' THEN NEW.status IN ('searching', 'cancelled')
     ELSE FALSE
   END;
 
@@ -744,7 +928,7 @@ BEGIN
     WHERE rr.id = topic_id
       AND rr.assigned_provider_id = auth.uid()
       AND rr.status IN ('assigned', 'en_route', 'awaiting_arrival_confirmation', 'arrived',
-        'diagnosing', 'awaiting_quote', 'repairing', 'transporting', 'awaiting_completion')
+        'diagnosing', 'awaiting_quote', 'quote_approved', 'repairing', 'transporting', 'awaiting_completion')
       AND pm.status = 'active'
   );
 END;
@@ -861,7 +1045,11 @@ BEGIN
   SET pickup_latitude = ROUND(pickup_latitude::NUMERIC, 2)::DOUBLE PRECISION,
       pickup_longitude = ROUND(pickup_longitude::NUMERIC, 2)::DOUBLE PRECISION,
       pickup_note = NULL,
-      evidence_path = NULL,
+      destination_latitude = CASE WHEN destination_latitude IS NULL THEN NULL
+        ELSE ROUND(destination_latitude::NUMERIC, 2)::DOUBLE PRECISION END,
+      destination_longitude = CASE WHEN destination_longitude IS NULL THEN NULL
+        ELSE ROUND(destination_longitude::NUMERIC, 2)::DOUBLE PRECISION END,
+      destination_note = NULL,
       vehicle_description = NULL,
       location_precision = 'approximate'
   WHERE status IN ('completed', 'cancelled')
@@ -891,6 +1079,25 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.purge_push_delivery_receipts(retention INTERVAL DEFAULT INTERVAL '2 days')
+RETURNS BIGINT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  deleted_count BIGINT;
+BEGIN
+  IF retention < INTERVAL '1 day' OR retention > INTERVAL '30 days' THEN
+    RAISE EXCEPTION 'INVALID_PUSH_RECEIPT_RETENTION';
+  END IF;
+  DELETE FROM public.push_delivery_receipts
+  WHERE created_at < NOW() - retention;
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+$$;
+
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.current_profile_role() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_dispatch_staff() TO authenticated;
@@ -900,6 +1107,7 @@ GRANT EXECUTE ON FUNCTION public.api_accept_dispatch_offer(UUID, UUID, INTEGER) 
 GRANT EXECUTE ON FUNCTION public.purge_expired_location_checkpoints(INTERVAL) TO service_role;
 GRANT EXECUTE ON FUNCTION public.minimize_closed_request_data(INTERVAL) TO service_role;
 GRANT EXECUTE ON FUNCTION public.purge_assistant_usage_events(INTERVAL) TO service_role;
+GRANT EXECUTE ON FUNCTION public.purge_push_delivery_receipts(INTERVAL) TO service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated;
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -907,18 +1115,24 @@ ALTER TABLE public.rescue_teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.team_verification_requirements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.team_verification_checks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.service_types ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.service_zones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.provider_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.team_capabilities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rescue_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dispatch_offers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.quotes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.request_status_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.case_attention_flags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.request_feedback_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.provider_location_checkpoints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.incident_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.team_quality_alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.push_devices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.push_delivery_receipts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.assistant_usage_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.api_rate_limit_windows ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY profiles_select_own ON public.profiles
 FOR SELECT TO authenticated
@@ -938,6 +1152,8 @@ FOR SELECT TO authenticated USING (FALSE);
 CREATE POLICY service_types_select_active ON public.service_types
 FOR SELECT TO authenticated
 USING (is_active OR public.is_dispatch_staff());
+CREATE POLICY service_zones_no_client_access ON public.service_zones
+FOR SELECT TO authenticated USING (FALSE);
 CREATE POLICY provider_members_select_own_or_staff ON public.provider_members
 FOR SELECT TO authenticated
 USING (user_id = auth.uid() OR public.is_dispatch_staff());
@@ -956,21 +1172,31 @@ USING (public.can_view_request(request_id));
 CREATE POLICY status_events_select_participants ON public.request_status_events
 FOR SELECT TO authenticated
 USING (public.can_view_request(request_id));
+CREATE POLICY case_attention_flags_no_client_access ON public.case_attention_flags
+FOR SELECT TO authenticated USING (FALSE);
+CREATE POLICY request_feedback_events_no_client_access ON public.request_feedback_events
+FOR SELECT TO authenticated USING (FALSE);
 CREATE POLICY locations_select_participants ON public.provider_location_checkpoints
 FOR SELECT TO authenticated
 USING (public.can_view_request(request_id));
 CREATE POLICY reviews_select_authenticated ON public.reviews
 FOR SELECT TO authenticated
 USING (NOT is_hidden OR customer_id = auth.uid() OR provider_id = auth.uid() OR public.is_dispatch_staff());
+CREATE POLICY incident_reports_no_client_access ON public.incident_reports
+FOR SELECT TO authenticated USING (FALSE);
 CREATE POLICY team_quality_alerts_no_client_access ON public.team_quality_alerts
 FOR SELECT TO authenticated USING (FALSE);
 CREATE POLICY push_devices_select_own ON public.push_devices
 FOR SELECT TO authenticated USING (user_id = auth.uid());
+CREATE POLICY push_delivery_receipts_no_client_access ON public.push_delivery_receipts
+FOR SELECT TO authenticated USING (FALSE);
 CREATE POLICY audit_logs_select_staff ON public.audit_logs
 FOR SELECT TO authenticated USING (public.is_dispatch_staff());
 -- Deliberately deny PostgREST clients. The backend role bypasses RLS and has
 -- only SELECT/INSERT on this quota table.
 CREATE POLICY assistant_usage_no_client_access ON public.assistant_usage_events
+FOR SELECT TO authenticated USING (FALSE);
+CREATE POLICY api_rate_limit_windows_no_client_access ON public.api_rate_limit_windows
 FOR SELECT TO authenticated USING (FALSE);
 
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
@@ -995,24 +1221,31 @@ GRANT SELECT, INSERT, UPDATE ON public.rescue_teams TO motorescue_api;
 GRANT SELECT ON public.team_verification_requirements TO motorescue_api;
 GRANT SELECT, INSERT, UPDATE ON public.team_verification_checks TO motorescue_api;
 GRANT SELECT, UPDATE ON public.service_types TO motorescue_api;
+GRANT SELECT ON public.service_zones TO motorescue_api;
 GRANT SELECT, INSERT, UPDATE ON public.provider_members TO motorescue_api;
 GRANT SELECT, INSERT, UPDATE ON public.team_capabilities TO motorescue_api;
 GRANT SELECT, INSERT, UPDATE ON public.rescue_requests TO motorescue_api;
 GRANT SELECT, INSERT, UPDATE ON public.dispatch_offers TO motorescue_api;
 GRANT SELECT, INSERT, UPDATE ON public.quotes TO motorescue_api;
 GRANT SELECT ON public.request_status_events TO motorescue_api;
+GRANT SELECT, INSERT, UPDATE ON public.case_attention_flags TO motorescue_api;
+GRANT SELECT, INSERT ON public.request_feedback_events TO motorescue_api;
 GRANT SELECT, INSERT ON public.provider_location_checkpoints TO motorescue_api;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.reviews TO motorescue_api;
+GRANT SELECT, INSERT, UPDATE ON public.incident_reports TO motorescue_api;
 GRANT SELECT, INSERT, UPDATE ON public.team_quality_alerts TO motorescue_api;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.push_devices TO motorescue_api;
-GRANT INSERT ON public.audit_logs TO motorescue_api;
-GRANT SELECT, INSERT ON public.assistant_usage_events TO motorescue_api;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.push_delivery_receipts TO motorescue_api;
+GRANT SELECT, INSERT ON public.audit_logs TO motorescue_api;
+GRANT SELECT, INSERT, DELETE ON public.assistant_usage_events TO motorescue_api;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.api_rate_limit_windows TO motorescue_api;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO motorescue_api;
 GRANT EXECUTE ON FUNCTION public.api_lookup_account_by_phone(TEXT) TO motorescue_api;
 GRANT EXECUTE ON FUNCTION public.api_accept_dispatch_offer(UUID, UUID, INTEGER) TO motorescue_api;
 GRANT EXECUTE ON FUNCTION public.purge_expired_location_checkpoints(INTERVAL) TO motorescue_api;
 GRANT EXECUTE ON FUNCTION public.minimize_closed_request_data(INTERVAL) TO motorescue_api;
 GRANT EXECUTE ON FUNCTION public.purge_assistant_usage_events(INTERVAL) TO motorescue_api;
+GRANT EXECUTE ON FUNCTION public.purge_push_delivery_receipts(INTERVAL) TO motorescue_api;
 
 DO $$
 BEGIN

@@ -1,4 +1,4 @@
-# MotoRescue API
+# Moki Rescue API
 
 Spring Boot là ranh giới tin cậy duy nhất cho mutation nghiệp vụ. Mobile không được ghi trực tiếp ca, báo giá, đề nghị điều phối hay audit log.
 
@@ -11,14 +11,21 @@ Spring Boot là ranh giới tin cậy duy nhất cho mutation nghiệp vụ. Mob
 - Kiểm tra state machine, optimistic version, xác nhận hai phía và báo giá.
 - Nhận checkpoint GPS có giới hạn, phát push và ghi audit cho thao tác nhạy cảm.
 - Quản lý mạng đối tác khép kín: mã hồ sơ nội bộ, checklist ngoại tuyến, năng lực, provider và dispatcher. Chỉ kích hoạt đội khi đủ điều kiện; không lưu bản hợp đồng/giấy tờ.
-- Cung cấp trợ lý Gemini giới hạn trong cách dùng MotoRescue, lọc input trước model, kiểm output sau model và không lưu nội dung chat.
+- Cung cấp trợ lý Gemini giới hạn trong cách dùng Moki Rescue, lọc input trước model, kiểm output sau model và không lưu nội dung chat.
 
 ## API chính
 
 - `/api/me/*`: hồ sơ, push token, yêu cầu xóa tài khoản.
 - `/api/catalog/service-types`: danh mục sự cố đang hoạt động theo locale.
 - `/api/operator/service-types/*`: admin sửa field catalog được allowlist và ghi audit.
-- `/api/requests/*`: tạo/xem/hủy, state action, route, quote và review.
+- `/api/requests/*`: tạo/xem/hủy theo giai đoạn, state action, route, quote và review.
+
+Khách được tự hủy trước khi xác nhận đội đã đến. Khi đội đã xuất phát, hệ thống lưu
+mã lý do, đánh dấu hủy muộn và chỉ lưu kết luận GPS gần/không gần thay vì sao chép tọa
+độ. Từ lần hủy muộn có dấu hiệu lạm dụng thứ ba trong cửa sổ mặc định 30 ngày, việc tạo
+ca mới tạm dừng 24 giờ; báo chưa thấy đội không bị tính nếu GPS không xác nhận đội ở gần.
+Hệ thống không thu phí và không tự khóa tài khoản. Sau khi đã xác nhận đội đến, khách
+phải liên hệ điều phối để dừng ca.
 - `/api/provider/*`: sẵn sàng, vị trí, đề nghị và nhận ca.
 - `/api/operator/*`: hàng đợi, retry dispatch, tạo/checklist/kích hoạt đội đối tác, phân vai trò, review gần đây và xử lý cảnh báo chất lượng.
 - `/api/assistant/message`: trợ lý trong app cho tài khoản active, quota theo phút/ngày.

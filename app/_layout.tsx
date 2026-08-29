@@ -9,13 +9,14 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 import { Colors } from '@/src/constants/colors';
-import { ReduceMotionProvider } from '@/src/hooks/useReduceMotion';
+import { ReduceMotionProvider, useReduceMotion } from '@/src/hooks/useReduceMotion';
 import { supabase } from '@/src/services/supabase';
 import { useAuthStore } from '@/src/stores/authStore';
-import { registerPushNotifications } from '@/src/features/notifications/pushNotifications';
+import { startPushNotificationSync } from '@/src/features/notifications/pushNotifications';
 import { AssistantBubble } from '@/src/features/assistant/components/AssistantBubble';
 import { AppErrorBoundary } from '@/src/components/AppErrorBoundary';
 import { hasCurrentConsent } from '@/src/features/auth/access';
+import { useI18n } from '@/src/i18n';
 import '@/src/features/rescue/services/backgroundLocation';
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -32,7 +33,9 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
   const syncUser = useAuthStore((state) => state.syncUser);
   const isHydrated = useAuthStore((state) => state.isHydrated);
   const userId = useAuthStore((state) => state.user?.id ?? null);
+  const profileLocale = useAuthStore((state) => state.profile?.locale ?? null);
   const hasConsent = useAuthStore((state) => hasCurrentConsent(state.profile));
+  const setLanguage = useI18n((state) => state.setLanguage);
   const lastUserId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -49,11 +52,23 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
   }, [initialize, syncUser]);
 
   useEffect(() => {
+    if (!profileLocale) return undefined;
+
+    // The authenticated profile is authoritative across installations. Run
+    // once now and once after AsyncStorage hydration so an older local value
+    // cannot overwrite the account preference during a cold start.
+    const synchronizeLanguage = () => setLanguage(profileLocale);
+    synchronizeLanguage();
+    return useI18n.persist.onFinishHydration(synchronizeLanguage);
+  }, [profileLocale, setLanguage]);
+
+  useEffect(() => {
     if (userId && hasConsent) {
       // Register silently only when permission was already granted. The first
       // system prompt is initiated by the user from Settings.
-      void registerPushNotifications(false).catch(() => undefined);
+      return startPushNotificationSync();
     }
+    return undefined;
   }, [hasConsent, userId]);
 
   useEffect(() => {
@@ -81,9 +96,7 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
 }
 
 function RouteStatusBar() {
-  const pathname = usePathname();
-  const light = pathname === '/' || pathname === '/onboarding' || pathname === '/login';
-  return <StatusBar style={light ? 'light' : 'dark'} translucent backgroundColor="transparent" />;
+  return <StatusBar style="dark" translucent backgroundColor="transparent" />;
 }
 
 function GlobalAssistant() {
@@ -99,6 +112,36 @@ function GlobalAssistant() {
     /^\/rescue\/[^/]+(?:\/map)?$/.test(pathname);
   const aboveTabs = ['/', '/request', '/activity', '/operations', '/profile'].includes(pathname);
   return <AssistantBubble hidden={hidden} aboveTabs={aboveTabs} />;
+}
+
+function AppNavigator() {
+  const reduceMotion = useReduceMotion();
+  return (
+    <>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: Colors.background },
+          animation: reduceMotion ? 'none' : 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="index" options={{ animation: 'none' }} />
+        <Stack.Screen name="onboarding" options={{ animation: 'none', gestureEnabled: false }} />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="rescue/[id]" />
+        <Stack.Screen name="rescue/[id]/map" />
+        <Stack.Screen name="service" />
+        <Stack.Screen name="help" />
+        <Stack.Screen name="operator/teams" />
+        <Stack.Screen name="profile" />
+        <Stack.Screen name="legal/terms" />
+        <Stack.Screen name="legal/privacy" />
+      </Stack>
+      <GlobalAssistant />
+      <RouteStatusBar />
+    </>
+  );
 }
 
 export default function RootLayout() {
@@ -127,28 +170,7 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <AuthBootstrap>
               <AppErrorBoundary>
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    contentStyle: { backgroundColor: Colors.background },
-                    animation: 'slide_from_right',
-                  }}
-                >
-                  <Stack.Screen name="index" options={{ animation: 'none' }} />
-                  <Stack.Screen name="onboarding" options={{ animation: 'none', gestureEnabled: false }} />
-                  <Stack.Screen name="(auth)" />
-                  <Stack.Screen name="(tabs)" />
-                  <Stack.Screen name="rescue/[id]" />
-                  <Stack.Screen name="rescue/[id]/map" />
-                  <Stack.Screen name="service" />
-                  <Stack.Screen name="help" />
-                  <Stack.Screen name="operator/teams" />
-                  <Stack.Screen name="profile" />
-                  <Stack.Screen name="legal/terms" />
-                  <Stack.Screen name="legal/privacy" />
-                </Stack>
-                <GlobalAssistant />
-                <RouteStatusBar />
+                <AppNavigator />
               </AppErrorBoundary>
             </AuthBootstrap>
           </QueryClientProvider>
@@ -160,5 +182,5 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  boot: { flex: 1, backgroundColor: Colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
+  boot: { flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' },
 });

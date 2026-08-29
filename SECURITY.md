@@ -1,4 +1,4 @@
-# Bảo mật MotoRescue
+# Bảo mật Moki Rescue
 
 ## Mô hình tin cậy
 
@@ -32,6 +32,7 @@
 - Phản hồi Gemini được kiểm lại trước khi trả về; output ngoài phạm vi hoặc chứa dữ liệu nhạy cảm bị thay bằng phản hồi local. Gemini key không đi vào Expo config/bundle.
 - Consent chỉ hợp lệ khi `terms_version` khớp phiên bản backend hiện hành; thay đổi điều khoản buộc xác nhận lại.
 - Push token gắn với UUID cài đặt app và chỉ được xóa bằng đúng user + token + installation. Notification không chứa tọa độ hay số liên hệ.
+- Receipt worker chỉ lưu ticket/status/error code, không lưu payload; `DeviceNotRegistered` chỉ vô hiệu device row đã nhận ticket và token mới đăng ký sẽ tạo binding khác.
 - Lỗi OSRM không log URL vì URL chứa tọa độ chính xác.
 
 ## Secret và phát hành

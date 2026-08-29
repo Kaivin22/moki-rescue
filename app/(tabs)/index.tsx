@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { Colors } from '@/src/constants/colors';
@@ -22,11 +22,12 @@ const COPY = {
     request: 'Yêu cầu cứu hộ xe máy',
     operations: 'Mở màn hình vận hành',
     emergencyTitle: 'Có người bị thương hoặc nguy hiểm?',
-    emergencyBody: 'MotoRescue không thay thế cấp cứu. Nhấn để gọi',
+    emergencyBody: 'Moki Rescue không thay thế cấp cứu. Nhấn để gọi',
     active: 'Ca đang hoạt động',
     all: 'Xem tất cả',
     loading: 'Đang tải trạng thái…',
     loadActiveError: 'Không tải được ca đang hoạt động.',
+    retry: 'Thử tải lại',
     noActive: 'Hiện không có ca nào đang mở.',
     services: 'Dịch vụ đang vận hành',
     loadServicesError: 'Không tải được danh mục dịch vụ.',
@@ -43,11 +44,12 @@ const COPY = {
     request: 'Request motorcycle rescue',
     operations: 'Open operations',
     emergencyTitle: 'Is anyone injured or in danger?',
-    emergencyBody: 'MotoRescue is not an emergency service. Tap to call',
+    emergencyBody: 'Moki Rescue is not an emergency service. Tap to call',
     active: 'Active requests',
     all: 'View all',
     loading: 'Loading status…',
     loadActiveError: 'Could not load active requests.',
+    retry: 'Try again',
     noActive: 'There are no active requests.',
     services: 'Available services',
     loadServicesError: 'Could not load the service catalog.',
@@ -75,7 +77,13 @@ export default function HomeScreen() {
             </Text>
           </View>
           <View style={styles.shield}>
-            <Ionicons name="shield-checkmark" size={28} color={Colors.accent} />
+            <Image
+              source={require('../../assets/branding/moki-rescue-logo.png')}
+              style={styles.brandLogo}
+              resizeMode="contain"
+              accessible
+              accessibilityLabel="Moki Rescue"
+            />
           </View>
         </View>
         <Text style={styles.heroBody}>
@@ -93,6 +101,8 @@ export default function HomeScreen() {
         <Pressable
           style={styles.emergency}
           onPress={() => void Linking.openURL(emergencyCallUri(MEDICAL_EMERGENCY_NUMBER))}
+          accessibilityRole="button"
+          accessibilityLabel={`${c.emergencyTitle} ${c.emergencyBody} ${MEDICAL_EMERGENCY_NUMBER}`}
         >
           <Ionicons name="medical" size={22} color={Colors.error} />
           <View style={styles.flex}>
@@ -107,14 +117,26 @@ export default function HomeScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{c.active}</Text>
           {active.length > 0 ? (
-            <Pressable onPress={() => router.push('/(tabs)/activity')}>
+            <Pressable
+              onPress={() => router.push('/(tabs)/activity')}
+              accessibilityRole="button"
+              accessibilityLabel={`${c.all}: ${c.active}`}
+              style={styles.linkButton}
+            >
               <Text style={styles.link}>{c.all}</Text>
             </Pressable>
           ) : null}
         </View>
         {requests.isLoading ? <Text style={styles.muted}>{c.loading}</Text> : null}
-        {requests.isError ? <Text style={styles.error}>{c.loadActiveError}</Text> : null}
-        {active.length === 0 && !requests.isLoading ? (
+        {requests.isError ? (
+          <View style={styles.errorPanel}>
+            <Text accessibilityRole="alert" style={styles.error}>
+              {c.loadActiveError}
+            </Text>
+            <AppButton title={c.retry} variant="outline" onPress={() => void requests.refetch()} />
+          </View>
+        ) : null}
+        {active.length === 0 && !requests.isLoading && !requests.isError ? (
           <View style={styles.empty}>
             <Ionicons name="checkmark-circle-outline" size={30} color={Colors.success} />
             <Text style={styles.emptyText}>{c.noActive}</Text>
@@ -135,17 +157,31 @@ export default function HomeScreen() {
           <>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>{c.services}</Text>
-              <Pressable onPress={() => router.push('/service')}>
+              <Pressable
+                onPress={() => router.push('/service')}
+                accessibilityRole="button"
+                accessibilityLabel={`${c.all}: ${c.services}`}
+                style={styles.linkButton}
+              >
                 <Text style={styles.link}>{c.all}</Text>
               </Pressable>
             </View>
-            {services.isError ? <Text style={styles.error}>{c.loadServicesError}</Text> : null}
+            {services.isError ? (
+              <View style={styles.errorPanel}>
+                <Text accessibilityRole="alert" style={styles.error}>
+                  {c.loadServicesError}
+                </Text>
+                <AppButton title={c.retry} variant="outline" onPress={() => void services.refetch()} />
+              </View>
+            ) : null}
             <View style={styles.services}>
               {(services.data ?? []).map((service) => (
                 <Pressable
                   key={service.code}
                   style={styles.service}
                   onPress={() => router.push({ pathname: '/service/[code]', params: { code: service.code } })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${service.label}. ${c.serviceHint}`}
                 >
                   <Ionicons
                     name={service.iconName as keyof typeof Ionicons.glyphMap}
@@ -168,7 +204,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
-  hero: { backgroundColor: Colors.primaryDark, paddingBottom: Spacing.xl },
+  hero: { backgroundColor: Colors.brandBlue, paddingBottom: Spacing.xl },
   heroContent: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
@@ -176,19 +212,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  eyebrow: { ...Typography.label, color: Colors.accent },
-  greeting: { ...Typography.h1, color: Colors.white, marginTop: 3 },
+  eyebrow: { ...Typography.label, color: Colors.textPrimary },
+  greeting: { ...Typography.h1, color: Colors.textPrimary, marginTop: 3 },
   shield: {
     width: 50,
     height: 50,
-    borderRadius: 18,
-    backgroundColor: Colors.primary,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  brandLogo: { width: 46, height: 46 },
   heroBody: {
     ...Typography.body,
-    color: Colors.skyBlue,
+    color: Colors.textPrimary,
     paddingHorizontal: Spacing.lg,
     marginTop: Spacing.md,
   },
@@ -213,8 +250,10 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { ...Typography.h3, color: Colors.textPrimary, marginTop: Spacing.sm },
   link: { ...Typography.bodyBold, color: Colors.primary },
+  linkButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: Spacing.sm },
   muted: { ...Typography.body, color: Colors.textMuted },
   error: { ...Typography.body, color: Colors.error },
+  errorPanel: { gap: Spacing.sm },
   empty: {
     flexDirection: 'row',
     alignItems: 'center',

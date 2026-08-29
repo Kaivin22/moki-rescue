@@ -14,10 +14,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/src/constants/colors';
-import { Radius, Spacing, Typography } from '@/src/constants/spacing';
+import { Radius, Shadow, Spacing, Typography } from '@/src/constants/spacing';
 import { assistantApi } from '@/src/features/assistant/api/assistantApi';
 import { useI18n } from '@/src/i18n';
 import { useAuthStore } from '@/src/stores/authStore';
+import { useReduceMotion } from '@/src/hooks/useReduceMotion';
 
 interface ChatMessage {
   id: number;
@@ -38,6 +39,7 @@ export function AssistantBubble({
   const userId = useAuthStore((state) => state.user?.id ?? null);
   const language = useI18n((state) => state.language);
   const { t } = useI18n();
+  const reduceMotion = useReduceMotion();
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const nextId = useRef(1);
   const [visible, setVisible] = useState(false);
@@ -69,9 +71,9 @@ export function AssistantBubble({
 
   useEffect(() => {
     if (messages.length > 1) {
-      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: !reduceMotion }));
     }
-  }, [messages]);
+  }, [messages, reduceMotion]);
 
   const append = (role: ChatMessage['role'], text: string) => {
     const message = { id: nextId.current++, role, text };
@@ -115,7 +117,7 @@ export function AssistantBubble({
       <Modal
         transparent
         visible={visible}
-        animationType="fade"
+        animationType={reduceMotion ? 'none' : 'fade'}
         statusBarTranslucent
         onRequestClose={() => setVisible(false)}
       >
@@ -135,7 +137,7 @@ export function AssistantBubble({
           <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
             <View style={styles.header}>
               <View style={styles.headerIcon}>
-                <Ionicons name="sparkles" size={20} color={Colors.accent} />
+                <Ionicons name="sparkles" size={20} color={Colors.textPrimary} />
               </View>
               <View style={styles.headerCopy}>
                 <Text style={styles.title}>{t('assistant.title')}</Text>
@@ -152,7 +154,7 @@ export function AssistantBubble({
                 }}
                 style={styles.iconButton}
               >
-                <Ionicons name="trash-outline" size={20} color={Colors.textSecondary} />
+                <Ionicons name="trash-outline" size={20} color={Colors.primary} />
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -195,7 +197,15 @@ export function AssistantBubble({
             {messages.length === 1 ? (
               <View style={styles.suggestions}>
                 {suggestions.map((suggestion) => (
-                  <Pressable key={suggestion} style={styles.suggestion} onPress={() => void send(suggestion)}>
+                  <Pressable
+                    key={suggestion}
+                    style={styles.suggestion}
+                    onPress={() => void send(suggestion)}
+                    accessibilityRole="button"
+                    accessibilityLabel={suggestion}
+                    accessibilityState={{ disabled: sending }}
+                    disabled={sending}
+                  >
                     <Text style={styles.suggestionText}>{suggestion}</Text>
                   </Pressable>
                 ))}
@@ -248,7 +258,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: Spacing.lg,
     zIndex: 30,
-    elevation: 8,
+    ...Shadow.floating,
     width: 56,
     height: 56,
     borderRadius: Radius.full,
@@ -258,9 +268,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.white,
     shadowColor: Colors.primaryDark,
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
   },
   pressed: { opacity: 0.78 },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
@@ -279,19 +286,19 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: Colors.sky,
   },
   headerIcon: {
     width: 38,
     height: 38,
-    borderRadius: 14,
-    backgroundColor: Colors.primary,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.brandBlue,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerCopy: { flex: 1 },
-  title: { ...Typography.h3, color: Colors.white },
-  scope: { ...Typography.caption, color: Colors.skyBlue },
+  title: { ...Typography.h3, color: Colors.textPrimary },
+  scope: { ...Typography.caption, color: Colors.textSecondary },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   messages: { padding: Spacing.md, gap: Spacing.sm },
   message: {
@@ -313,6 +320,8 @@ const styles = StyleSheet.create({
   suggestions: { paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm, gap: Spacing.sm },
   suggestion: {
     alignSelf: 'flex-start',
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.full,

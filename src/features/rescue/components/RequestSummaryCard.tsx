@@ -38,6 +38,14 @@ export function RequestSummaryCard({ request, onPress }: { request: RequestCardD
           </Text>
         </View>
       </View>
+      {request.attentionRequired ? (
+        <Ionicons
+          name="warning-outline"
+          size={20}
+          color={Colors.warning}
+          accessibilityLabel={language === 'en' ? 'Needs operational attention' : 'Cần điều phối kiểm tra'}
+        />
+      ) : null}
       <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
     </Pressable>
   );
@@ -67,6 +75,6 @@ const styles = StyleSheet.create({
   title: { ...Typography.bodyBold, color: Colors.textPrimary },
   area: { ...Typography.caption, color: Colors.textSecondary },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  dot: { width: 8, height: 8, borderRadius: Radius.full },
   status: { ...Typography.caption, color: Colors.textSecondary, flex: 1 },
 });

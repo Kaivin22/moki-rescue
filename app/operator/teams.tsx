@@ -22,6 +22,16 @@ import type { AccountLookup } from '@/src/types/rescue';
 
 const COPY = {
   vi: {
+    roster: 'Danh sách cứu hộ viên',
+    noProviders: 'Đội chưa có cứu hộ viên.',
+    providerActive: 'Đang hoạt động',
+    providerSuspended: 'Đã đình chỉ',
+    providerLeft: 'Đã rời đơn vị',
+    providerAvailable: 'Đang sẵn sàng nhận ca',
+    activateProvider: 'Kích hoạt lại',
+    suspendProvider: 'Đình chỉ cứu hộ viên',
+    markProviderLeft: 'Đánh dấu đã rời đơn vị',
+    providerStatusWarning: 'Ca đang xử lý sẽ được chuyển về hàng đợi điều phối.',
     qualityTitle: 'Giám sát chất lượng',
     qualitySignal: 'Tín hiệu điểm thấp cần xác minh',
     qualityWarning: 'Cảnh báo đã gửi',
@@ -61,7 +71,7 @@ const COPY = {
     suspendTitle: 'Đình chỉ đội?',
     suspendBody: 'Cứu hộ viên của đội sẽ ngừng nhận ca mới.',
     no: 'Không',
-    suspend: 'Đình chỉ',
+    suspend: 'Đình chỉ đội',
     addSection: 'Thêm cứu hộ viên vào đội đã chọn',
     loginPhone: 'Số điện thoại đăng nhập',
     lookup: 'Tìm tài khoản',
@@ -80,6 +90,9 @@ const COPY = {
     grantProvider: 'Cấp quyền cứu hộ viên',
     staffSection: 'Phân quyền điều phối viên',
     grantStaff: 'Cấp quyền điều phối',
+    grantAdmin: 'Cấp quyền admin',
+    grantAdminTitle: 'Cấp toàn quyền quản trị?',
+    grantAdminBody: 'Tài khoản này có thể quản lý đội, phân quyền, danh mục và các quyết định vận hành.',
     revokeStaff: 'Thu hồi quyền điều phối',
     revokeTitle: 'Thu hồi quyền điều phối?',
     revokeBody: 'Tài khoản sẽ trở lại quyền khách hàng.',
@@ -88,6 +101,16 @@ const COPY = {
     suspended: 'Đình chỉ',
   },
   en: {
+    roster: 'Provider roster',
+    noProviders: 'This team has no providers.',
+    providerActive: 'Active',
+    providerSuspended: 'Suspended',
+    providerLeft: 'Left the organization',
+    providerAvailable: 'Available for requests',
+    activateProvider: 'Reactivate',
+    suspendProvider: 'Suspend provider',
+    markProviderLeft: 'Mark as left',
+    providerStatusWarning: 'Any active request will return to the dispatch queue.',
     qualityTitle: 'Quality monitoring',
     qualitySignal: 'Low-rating signal requires review',
     qualityWarning: 'Warning sent',
@@ -128,7 +151,7 @@ const COPY = {
     suspendTitle: 'Suspend team?',
     suspendBody: "This team's providers will stop receiving new requests.",
     no: 'No',
-    suspend: 'Suspend',
+    suspend: 'Suspend team',
     addSection: 'Add a provider to the selected team',
     loginPhone: 'Login phone number',
     lookup: 'Find account',
@@ -147,6 +170,9 @@ const COPY = {
     grantProvider: 'Grant provider access',
     staffSection: 'Dispatcher access',
     grantStaff: 'Grant dispatcher access',
+    grantAdmin: 'Grant admin access',
+    grantAdminTitle: 'Grant full administrator access?',
+    grantAdminBody: 'This account will be able to manage teams, access, catalog, and operational decisions.',
     revokeStaff: 'Remove dispatcher access',
     revokeTitle: 'Remove dispatcher access?',
     revokeBody: 'This account will return to customer access.',
@@ -183,11 +209,17 @@ export default function TeamManagementScreen() {
     queryFn: () => rescueApi.qualityReviews(selectedTeam),
     enabled: Boolean(selectedTeam),
   });
+  const providers = useQuery({
+    queryKey: rescueKeys.providers(selectedTeam),
+    queryFn: () => rescueApi.providers(selectedTeam),
+    enabled: Boolean(selectedTeam),
+  });
 
   const refreshTeams = (teamId?: string) => {
     void client.invalidateQueries({ queryKey: rescueKeys.teams });
     if (teamId) {
       void client.invalidateQueries({ queryKey: rescueKeys.teamVerification(teamId) });
+      void client.invalidateQueries({ queryKey: rescueKeys.providers(teamId) });
     }
   };
   const create = useMutation({
@@ -220,7 +252,7 @@ export default function TeamManagementScreen() {
     },
   });
   const staff = useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: 'dispatcher' | 'customer' }) =>
+    mutationFn: ({ userId, role }: { userId: string; role: 'admin' | 'dispatcher' | 'customer' }) =>
       rescueApi.setStaffRole(userId, role),
     onSuccess: () => {
       setStaffLoginPhone('');
@@ -245,6 +277,11 @@ export default function TeamManagementScreen() {
       void client.invalidateQueries({ queryKey: rescueKeys.qualityReviews(selectedTeam) });
       refreshTeams(selectedTeam);
     },
+  });
+  const providerStatus = useMutation({
+    mutationFn: ({ providerId, status }: { providerId: string; status: 'active' | 'suspended' | 'left' }) =>
+      rescueApi.setProviderStatus(selectedTeam, providerId, status),
+    onSuccess: () => refreshTeams(selectedTeam),
   });
 
   if (!profile || profile.role !== 'admin') return <Redirect href="/(tabs)/operations" />;
@@ -327,6 +364,21 @@ export default function TeamManagementScreen() {
     setMessage(null);
     void moderateReview.mutateAsync({ reviewId, hidden }).catch(report);
   };
+  const updateProviderStatus = (providerId: string, status: 'active' | 'suspended' | 'left') => {
+    const perform = () => void providerStatus.mutateAsync({ providerId, status }).catch(report);
+    if (status === 'active') {
+      perform();
+      return;
+    }
+    Alert.alert(status === 'suspended' ? c.suspendProvider : c.markProviderLeft, c.providerStatusWarning, [
+      { text: c.no, style: 'cancel' },
+      {
+        text: status === 'suspended' ? c.suspendProvider : c.markProviderLeft,
+        style: 'destructive',
+        onPress: perform,
+      },
+    ]);
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -363,19 +415,19 @@ export default function TeamManagementScreen() {
 
         <Text style={styles.section}>{c.teamList}</Text>
         {(teams.data ?? []).map((team) => (
-          <Pressable
-            key={team.id}
-            accessibilityRole="button"
-            accessibilityState={{ selected: selectedTeam === team.id }}
-            onPress={() => {
-              setSelectedTeam(team.id);
-              setCapabilities(team.capabilityCodes);
-              setQualityNote('');
-              setModerationNote('');
-            }}
-            style={[styles.team, selectedTeam === team.id && styles.selected]}
-          >
-            <View style={styles.teamTop}>
+          <View key={team.id} style={[styles.team, selectedTeam === team.id && styles.selected]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${team.name}. ${c[team.status]}`}
+              accessibilityState={{ selected: selectedTeam === team.id }}
+              onPress={() => {
+                setSelectedTeam(team.id);
+                setCapabilities(team.capabilityCodes);
+                setQualityNote('');
+                setModerationNote('');
+              }}
+              style={styles.teamSelection}
+            >
               <View style={styles.flex}>
                 <Text style={styles.teamName}>{team.name}</Text>
                 <Text style={styles.muted}>
@@ -386,24 +438,27 @@ export default function TeamManagementScreen() {
                   {c.warningCount}: {team.qualityWarningCount}
                 </Text>
               </View>
-              {team.status === 'verified' ? (
-                <Pressable
-                  style={styles.inlineDanger}
-                  onPress={() =>
-                    Alert.alert(c.suspendTitle, c.suspendBody, [
-                      { text: c.no, style: 'cancel' },
-                      {
-                        text: c.suspend,
-                        style: 'destructive',
-                        onPress: () => void suspendTeam(team.id),
-                      },
-                    ])
-                  }
-                >
-                  <Text style={styles.inlineDangerText}>{c.suspend}</Text>
-                </Pressable>
-              ) : null}
-            </View>
+              <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+            </Pressable>
+            {team.status === 'verified' ? (
+              <Pressable
+                style={styles.inlineDanger}
+                accessibilityRole="button"
+                accessibilityLabel={`${c.suspend}: ${team.name}`}
+                onPress={() =>
+                  Alert.alert(c.suspendTitle, c.suspendBody, [
+                    { text: c.no, style: 'cancel' },
+                    {
+                      text: c.suspend,
+                      style: 'destructive',
+                      onPress: () => void suspendTeam(team.id),
+                    },
+                  ])
+                }
+              >
+                <Text style={styles.inlineDangerText}>{c.suspend}</Text>
+              </Pressable>
+            ) : null}
             {team.activeQualityAlert ? (
               <Text
                 style={
@@ -415,7 +470,7 @@ export default function TeamManagementScreen() {
                 {team.activeQualityAlert.status === 'open' ? c.qualitySignal : c.qualityWarning}
               </Text>
             ) : null}
-          </Pressable>
+          </View>
         ))}
 
         {selectedTeamData?.activeQualityAlert ? (
@@ -508,6 +563,7 @@ export default function TeamManagementScreen() {
                 <Pressable
                   key={service.code}
                   accessibilityRole="checkbox"
+                  accessibilityLabel={service.label}
                   accessibilityState={{ checked: active }}
                   onPress={() =>
                     setCapabilities((current) =>
@@ -570,6 +626,55 @@ export default function TeamManagementScreen() {
         </View>
 
         {selectedTeam ? (
+          <View style={styles.card}>
+            <Text style={styles.section}>{c.roster}</Text>
+            {(providers.data ?? []).map((provider) => (
+              <View key={provider.userId} style={styles.reviewRow}>
+                <Text style={styles.teamName}>{provider.displayName}</Text>
+                <Text style={styles.muted}>{provider.contactPhone}</Text>
+                {provider.rescueVehicleLabel ? (
+                  <Text style={styles.muted}>{provider.rescueVehicleLabel}</Text>
+                ) : null}
+                <Text style={provider.status === 'active' ? styles.providerActive : styles.qualityDanger}>
+                  {provider.status === 'active'
+                    ? c.providerActive
+                    : provider.status === 'suspended'
+                      ? c.providerSuspended
+                      : c.providerLeft}
+                  {provider.available ? ` • ${c.providerAvailable}` : ''}
+                </Text>
+                {provider.status !== 'active' ? (
+                  <AppButton
+                    title={c.activateProvider}
+                    variant="outline"
+                    loading={providerStatus.isPending}
+                    onPress={() => updateProviderStatus(provider.userId, 'active')}
+                  />
+                ) : (
+                  <AppButton
+                    title={c.suspendProvider}
+                    variant="outline"
+                    loading={providerStatus.isPending}
+                    onPress={() => updateProviderStatus(provider.userId, 'suspended')}
+                  />
+                )}
+                {provider.status !== 'left' ? (
+                  <AppButton
+                    title={c.markProviderLeft}
+                    variant="ghost"
+                    disabled={providerStatus.isPending}
+                    onPress={() => updateProviderStatus(provider.userId, 'left')}
+                  />
+                ) : null}
+              </View>
+            ))}
+            {providers.isSuccess && providers.data.length === 0 ? (
+              <Text style={styles.muted}>{c.noProviders}</Text>
+            ) : null}
+          </View>
+        ) : null}
+
+        {selectedTeam ? (
           <PartnerVerificationEditor
             teamId={selectedTeam}
             onChanged={() => refreshTeams(selectedTeam)}
@@ -600,6 +705,24 @@ export default function TeamManagementScreen() {
               staffAccount
                 ? void staff.mutateAsync({ userId: staffAccount.id, role: 'dispatcher' }).catch(report)
                 : undefined
+            }
+          />
+          <AppButton
+            title={c.grantAdmin}
+            variant="outline"
+            disabled={!staffAccount}
+            loading={staff.isPending}
+            onPress={() =>
+              Alert.alert(c.grantAdminTitle, c.grantAdminBody, [
+                { text: c.no, style: 'cancel' },
+                {
+                  text: c.grantAdmin,
+                  onPress: () =>
+                    staffAccount
+                      ? void staff.mutateAsync({ userId: staffAccount.id, role: 'admin' }).catch(report)
+                      : undefined,
+                },
+              ])
             }
           />
           <AppButton
@@ -688,11 +811,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  teamTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  teamSelection: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   selected: { borderColor: Colors.primary, backgroundColor: Colors.accentSoft },
   teamName: { ...Typography.bodyBold, color: Colors.textPrimary },
   muted: { ...Typography.caption, color: Colors.textMuted },
-  inlineDanger: { padding: Spacing.sm },
+  inlineDanger: {
+    minHeight: 44,
+    alignSelf: 'flex-end',
+    padding: Spacing.sm,
+    justifyContent: 'center',
+  },
   inlineDangerText: { ...Typography.caption, color: Colors.error },
   qualityCard: {
     padding: Spacing.md,
@@ -716,6 +844,7 @@ const styles = StyleSheet.create({
   reviewComment: { ...Typography.body, color: Colors.textPrimary },
   chips: { gap: Spacing.sm, marginBottom: Spacing.md },
   chip: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
@@ -741,4 +870,5 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.errorSoft,
   },
   flex: { flex: 1 },
+  providerActive: { ...Typography.caption, color: Colors.success },
 });

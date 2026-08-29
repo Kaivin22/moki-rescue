@@ -32,7 +32,7 @@ const COPY = {
     quoteBody:
       'Từ chối báo giá ngay trong ca. Không xác nhận hoàn tất khi công việc chưa được thực hiện đúng.',
     contact: 'Liên hệ',
-    call: 'Gọi điều phối MotoRescue',
+    call: 'Gọi điều phối Moki Rescue',
     hotline: 'Hotline điều phối',
     unconfigured: 'Chưa được cấu hình cho môi trường này',
     terms: 'Điều khoản sử dụng',
@@ -62,7 +62,7 @@ const COPY = {
     quoteBody:
       'Reject the quote in the request. Do not confirm completion until the agreed work is actually complete.',
     contact: 'Contact',
-    call: 'Call MotoRescue dispatch',
+    call: 'Call Moki Rescue dispatch',
     hotline: 'Dispatch hotline',
     unconfigured: 'Not configured for this environment',
     terms: 'Terms of use',
@@ -88,6 +88,7 @@ function HelpRow({
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityLabel={`${title}. ${subtitle}`}
     >
       <View style={styles.icon}>
         <Ionicons name={icon} size={22} color={Colors.primary} />
@@ -196,18 +197,18 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     padding: Spacing.lg,
     borderRadius: Radius.xl,
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: Colors.sky,
   },
   heroIcon: {
     width: 58,
     height: 58,
-    borderRadius: 20,
+    borderRadius: Radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.accent,
   },
-  heroTitle: { ...Typography.h2, color: Colors.white },
-  heroBody: { ...Typography.caption, color: Colors.skyBlue, marginTop: 2 },
+  heroTitle: { ...Typography.h2, color: Colors.textPrimary },
+  heroBody: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
   section: { ...Typography.label, color: Colors.textSecondary, marginTop: Spacing.sm },
   card: {
     borderRadius: Radius.lg,
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
   icon: {
     width: 42,
     height: 42,
-    borderRadius: 14,
+    borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.sky,

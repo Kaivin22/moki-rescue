@@ -20,7 +20,8 @@ BEGIN
       WHERE jobname IN (
         'motorescue-purge-location-checkpoints',
         'motorescue-minimize-closed-requests',
-        'motorescue-purge-assistant-usage'
+        'motorescue-purge-assistant-usage',
+        'motorescue-purge-push-receipts'
       )
     $sql$;
   END IF;
@@ -44,4 +45,4 @@ GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
 GRANT ALL ON SCHEMA public TO postgres, service_role;
 
 COMMENT ON SCHEMA public IS
-  'MotoRescue - nền tảng điều phối cứu hộ xe máy cho mạng lưới đối tác được xác minh.';
+  'Moki Rescue - nền tảng điều phối cứu hộ xe máy cho mạng lưới đối tác được xác minh.';

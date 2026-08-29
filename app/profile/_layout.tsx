@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Redirect, router, Stack } from 'expo-router';
 import { Pressable, StyleSheet } from 'react-native';
 import { Colors } from '@/src/constants/colors';
+import { Fonts } from '@/src/constants/spacing';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useHasAppAccess } from '@/src/features/auth/access';
 import { useCopy } from '@/src/i18n';
@@ -34,7 +35,7 @@ export default function ProfileLayout() {
         headerStyle: { backgroundColor: Colors.cardBg },
         headerTintColor: Colors.textPrimary,
         headerShadowVisible: false,
-        headerTitleStyle: { fontFamily: 'BeVietnamPro_600SemiBold' },
+        headerTitleStyle: { fontFamily: Fonts.bodySemi },
         contentStyle: { backgroundColor: Colors.background },
         headerLeft: () => (
           <Pressable

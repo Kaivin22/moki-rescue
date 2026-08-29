@@ -1,0 +1,9 @@
+{
+  "CFBundleDisplayName": "Moki Rescue",
+  "NSLocationWhenInUseUsageDescription": "Moki Rescue dùng vị trí khi bạn tạo hoặc đang xử lý một yêu cầu cứu hộ. Vị trí không được theo dõi khi không có ca hoạt động.",
+  "NSLocationAlwaysAndWhenInUseUsageDescription": "Cứu hộ viên cho phép Moki Rescue cập nhật vị trí trong nền chỉ khi đang xử lý một ca. Khách hàng không cần cấp quyền này.",
+  "NSLocationAlwaysUsageDescription": "Moki Rescue chỉ cập nhật vị trí nền của cứu hộ viên trong ca đang hoạt động.",
+  "android": {
+    "app_name": "Moki Rescue"
+  }
+}

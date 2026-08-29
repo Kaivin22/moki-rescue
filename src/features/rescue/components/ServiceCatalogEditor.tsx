@@ -36,6 +36,7 @@ const COPY = {
     icon: 'Icon ứng dụng',
     order: 'Thứ tự hiển thị',
     quote: 'Cần báo giá sau khi kiểm tra xe',
+    destination: 'Yêu cầu khách chọn điểm giao xe',
     active: 'Đang nhận yêu cầu mới',
     inactive: 'Đang tắt',
     save: 'Lưu loại dịch vụ',
@@ -57,6 +58,7 @@ const COPY = {
     icon: 'App icon',
     order: 'Display order',
     quote: 'Requires a quote after inspection',
+    destination: 'Requires a customer-selected drop-off point',
     active: 'Accepting new requests',
     inactive: 'Disabled',
     save: 'Save service type',
@@ -142,6 +144,7 @@ export function ServiceCatalogEditor() {
           <Pressable
             key={service.code}
             accessibilityRole="radio"
+            accessibilityLabel={service.labelVi}
             accessibilityState={{ checked: draft?.code === service.code }}
             onPress={() => {
               setDraft({ ...service });
@@ -194,6 +197,7 @@ export function ServiceCatalogEditor() {
               <Pressable
                 key={icon}
                 accessibilityRole="radio"
+                accessibilityLabel={`${c.icon}: ${icon}`}
                 accessibilityState={{ checked: draft.iconName === icon }}
                 onPress={() => patchDraft({ iconName: icon })}
                 style={[styles.iconButton, draft.iconName === icon && styles.selectedIcon]}
@@ -213,6 +217,11 @@ export function ServiceCatalogEditor() {
             label={c.quote}
             value={draft.requiresQuote}
             onChange={(value) => patchDraft({ requiresQuote: value })}
+          />
+          <ToggleRow
+            label={c.destination}
+            value={draft.requiresDestination}
+            onChange={(value) => patchDraft({ requiresDestination: value })}
           />
           <ToggleRow
             label={c.active}
@@ -247,7 +256,8 @@ function ToggleRow({
         accessibilityLabel={label}
         value={value}
         onValueChange={onChange}
-        trackColor={{ false: Colors.mist, true: Colors.success }}
+        trackColor={{ false: Colors.borderStrong, true: Colors.success }}
+        thumbColor={Colors.white}
       />
     </View>
   );
@@ -259,6 +269,7 @@ const styles = StyleSheet.create({
   hint: { ...Typography.caption, color: Colors.textMuted },
   selector: { gap: Spacing.sm },
   serviceChip: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,

@@ -19,7 +19,7 @@ import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
 import { MapView, Marker, Polyline, PROVIDER_GOOGLE } from '@/src/components/MapWrapper';
 import { Colors } from '@/src/constants/colors';
-import { Radius, Spacing, Typography } from '@/src/constants/spacing';
+import { Fonts, Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { ApiClientError } from '@/src/features/rescue/api/client';
 import { rescueApi } from '@/src/features/rescue/api/rescueApi';
 import { RatingBadge } from '@/src/features/rescue/components/RatingBadge';
@@ -33,7 +33,7 @@ import {
 import { subscribeToProviderLocation } from '@/src/features/rescue/services/liveLocation';
 import { canCustomerCancel, isLiveStatus, statusLabel, statusColor } from '@/src/features/rescue/status';
 import { useAuthStore } from '@/src/stores/authStore';
-import type { LocationPoint, RequestDetails } from '@/src/types/rescue';
+import type { CancellationReasonCode, LocationPoint, RequestDetails } from '@/src/types/rescue';
 import { useCopy, useI18n } from '@/src/i18n';
 
 const SUPPORT_HOTLINE = String(Constants.expoConfig?.extra?.supportHotline ?? '').replace(/[^+\d]/g, '');
@@ -43,11 +43,13 @@ const COPY = {
     loadError: 'Không thể tải yêu cầu này.',
     back: 'Quay lại',
     pickupMarker: 'Vị trí cứu hộ',
+    destinationMarker: 'Điểm giao xe',
     provider: 'Cứu hộ viên',
     contact: 'Liên hệ',
     roadRoute: 'Tuyến đường xe máy',
     noRoute: 'Chưa có tuyến đường',
     landmark: 'Điểm nhận biết',
+    destination: 'Điểm giao xe',
     team: 'Đội đã xác minh',
     vehicle: 'Phương tiện nhận diện',
     initialEta: 'ETA ban đầu',
@@ -60,8 +62,16 @@ const COPY = {
     noProviderBody:
       'Hệ thống đã dừng tìm, không hiển thị chờ vô thời hạn. Liên hệ điều phối nếu bạn cần phương án khác.',
     callDispatch: 'Gọi điều phối',
+    requestDispatchSupport: 'Yêu cầu điều phối hỗ trợ',
+    supportRequested: 'Đã gửi yêu cầu. Điều phối viên sẽ kiểm tra ca này.',
+    supportError: 'Không thể gửi yêu cầu hỗ trợ.',
     dispatcher: 'Điều phối viên',
     retry: 'Tìm lại đội phù hợp',
+    gpsStaleTitle: 'Vị trí cứu hộ viên đã cũ',
+    gpsStaleBody: 'Tuyến đường và ETA tạm dừng cho đến khi thiết bị của cứu hộ viên gửi GPS mới.',
+    dispatchRequiredTitle: 'Điều phối viên đang xử lý lại ca',
+    dispatchRequiredBody: 'Đội trước không thể tiếp tục. Yêu cầu của bạn vẫn được giữ và chưa bị hủy.',
+    attentionRequired: 'Ca này có cảnh báo vận hành cần kiểm tra',
     progress: 'Tiến trình',
     callProvider: 'Gọi cứu hộ viên theo số',
     contactLabel: 'Số liên hệ trong ca',
@@ -84,16 +94,59 @@ const COPY = {
     quoteSuperseded: 'Đã thay thế',
     actionError: 'Không thể thực hiện thao tác.',
     cancelTitle: 'Hủy yêu cầu?',
-    cancelBody: 'Chỉ hủy nếu cứu hộ viên chưa có mặt. Thao tác được ghi vào lịch sử.',
+    cancelBody: 'Chọn lý do để điều phối hiểu đúng tình huống. Thao tác sẽ được ghi vào lịch sử.',
     no: 'Không',
     cancel: 'Hủy yêu cầu',
-    customerCancelReason: 'Khách chủ động hủy trước khi cứu hộ đến',
+    chooseCancelReason: 'Lý do hủy',
+    cancelReasonRequired: 'Hãy chọn một lý do hủy.',
+    otherReasonRequired: 'Hãy mô tả lý do bằng ít nhất 5 ký tự.',
+    cancelNote: 'Mô tả thêm (không bắt buộc)',
+    cancelOtherNote: 'Mô tả lý do',
+    lateCancelWarning:
+      'Đội cứu hộ đã xuất phát. Lần hủy này được ghi nhận là hủy muộn; nhiều lần hủy muộn có thể tạm giới hạn tạo ca mới.',
+    arrivalDisputeWarning:
+      'Đội cứu hộ đã báo đến nơi. Nếu bạn chưa thấy họ, lần hủy này sẽ được chuyển thành trường hợp cần điều phối kiểm tra.',
+    cancelAfterArrivalTitle: 'Cần dừng ca sau khi đã xác nhận đội đến?',
+    cancelAfterArrivalBody:
+      'Bạn không thể tự hủy ở giai đoạn đang xử lý. Hãy gọi điều phối để bảo vệ cả khách và đội cứu hộ, đồng thời lưu đúng diễn biến ca.',
+    cancellationRecorded: 'Thông tin hủy',
+    operationalCancellation: 'Ca đã được dừng bởi đội cứu hộ hoặc điều phối.',
+    lateCancellationRecorded: 'Đã ghi nhận hủy muộn',
+    gpsNearRecorded: 'GPS gần điểm cứu hộ khi hủy',
+    reasonLabels: {
+      issue_resolved: 'Xe đã tự hoạt động lại / không còn cần hỗ trợ',
+      changed_mind: 'Đổi ý hoặc đã chọn phương án khác',
+      wrong_location: 'Chọn sai vị trí',
+      duplicate_request: 'Gửi trùng yêu cầu',
+      provider_not_present: 'Chưa thấy đội cứu hộ tại điểm hẹn',
+      provider_unavailable: 'Đội cứu hộ không thể tiếp tục',
+      safety_issue: 'Có vấn đề an toàn',
+      customer_unreachable: 'Không liên lạc được với khách',
+      duplicate_or_fraud: 'Yêu cầu trùng hoặc có dấu hiệu bất thường',
+      other: 'Lý do khác',
+    },
     confirmArrival: 'Xác nhận cứu hộ viên đã đến',
     rejectArrival: 'Chưa thấy cứu hộ viên',
     approveQuote: 'Đồng ý báo giá',
     rejectQuote: 'Từ chối báo giá',
+    chooseDestination: 'Chọn điểm giao xe',
+    destinationBeforeQuote: 'Báo giá vận chuyển cần điểm giao xe trước khi bạn có thể duyệt.',
     confirmCompletion: 'Xác nhận đã hoàn tất',
     incomplete: 'Công việc chưa hoàn tất',
+    feedbackTitle: 'Cho biết điều gì chưa đúng',
+    feedbackReasonRequired: 'Hãy chọn lý do trước khi gửi.',
+    feedbackNote: 'Mô tả thêm',
+    sendFeedback: 'Gửi và yêu cầu xử lý lại',
+    closeFeedback: 'Quay lại',
+    feedbackReasons: {
+      provider_not_visible: 'Chưa thấy cứu hộ viên tại điểm hẹn',
+      wrong_meeting_point: 'Cứu hộ viên đang ở sai điểm',
+      cannot_contact_provider: 'Không liên lạc được với cứu hộ viên',
+      issue_persists: 'Xe vẫn còn lỗi',
+      work_not_as_agreed: 'Công việc không đúng nội dung đã thống nhất',
+      destination_not_reached: 'Xe chưa đến đúng điểm giao',
+      other: 'Lý do khác',
+    },
     stateError: 'Không thể cập nhật trạng thái.',
     quoteInvalid: 'Nhập nội dung và số tiền báo giá hợp lệ.',
     quoteError: 'Không thể gửi báo giá.',
@@ -108,6 +161,8 @@ const COPY = {
     sendQuote: 'Gửi báo giá cho khách',
     startRepair: 'Bắt đầu sửa tại chỗ',
     switchTransport: 'Chuyển sang chở xe',
+    startApprovedRepair: 'Bắt đầu công việc sửa xe đã duyệt',
+    startApprovedTransport: 'Bắt đầu vận chuyển đã duyệt',
     requestCompletion: 'Yêu cầu khách xác nhận hoàn tất',
     reasonRequired: 'Hãy nhập lý do cụ thể để lưu vào audit.',
     cancelError: 'Không thể hủy ca.',
@@ -115,6 +170,8 @@ const COPY = {
     auditCancel: 'Dừng ca có audit',
     auditBody:
       'Chỉ dùng khi có sự cố an toàn hoặc không thể tiếp tục. Hệ thống sẽ thông báo cho bên còn lại.',
+    withdrawBody:
+      'Hệ thống sẽ giữ nguyên yêu cầu của khách và tìm đội khác. Nếu công việc đã bắt đầu, ca được chuyển cho điều phối viên xử lý.',
     reason: 'Lý do',
     confirmCancel: 'Xác nhận dừng ca',
     keep: 'Giữ ca',
@@ -122,24 +179,45 @@ const COPY = {
     retryGeneric: 'Vui lòng thử lại.',
     deleteReviewTitle: 'Xóa đánh giá?',
     deleteReviewBody: 'Bạn có thể tạo đánh giá mới sau đó.',
-    delete: 'Xóa',
     deleteReviewError: 'Không thể xóa đánh giá',
     editReview: 'Chỉnh sửa đánh giá',
     review: 'Đánh giá ca cứu hộ',
     reviewPlaceholder: 'Nhận xét về thái độ và chất lượng xử lý',
     saveReview: 'Lưu đánh giá',
     deleteReview: 'Xóa đánh giá',
+    incidentTitle: 'Khiếu nại hoặc báo sự cố',
+    incidentIntro: 'Nội dung này tách biệt với đánh giá sao và chỉ khách, điều phối viên, admin được xem.',
+    reportIncident: 'Gửi khiếu nại / báo sự cố',
+    incidentCategory: 'Nhóm vấn đề',
+    incidentDescription: 'Mô tả sự việc',
+    incidentPlaceholder: 'Nêu diễn biến cụ thể, tránh ghi thông tin cá nhân không cần thiết',
+    incidentRequired: 'Hãy chọn nhóm và nhập mô tả ít nhất 10 ký tự.',
+    incidentSent: 'Đã gửi để điều phối viên kiểm tra.',
+    incidentError: 'Không thể gửi nội dung này.',
+    incidentResolution: 'Kết quả xử lý',
+    resolveIncident: 'Xác nhận đã xử lý',
+    dismissIncident: 'Bác bỏ có lý do',
+    incidentStatuses: { open: 'Đang xử lý', resolved: 'Đã xử lý', dismissed: 'Đã bác bỏ' },
+    incidentCategories: {
+      provider_conduct: 'Thái độ cứu hộ viên',
+      service_quality: 'Chất lượng dịch vụ',
+      safety: 'Vấn đề an toàn',
+      property_damage: 'Hư hại tài sản',
+      other: 'Vấn đề khác',
+    },
   },
   en: {
     retryError: 'Could not find another rescue team.',
     loadError: 'Could not load this request.',
     back: 'Go back',
     pickupMarker: 'Rescue location',
+    destinationMarker: 'Motorcycle drop-off',
     provider: 'Rescue provider',
     contact: 'Contact',
     roadRoute: 'Motorcycle road route',
     noRoute: 'Route unavailable',
     landmark: 'Landmark',
+    destination: 'Drop-off point',
     team: 'Verified team',
     vehicle: 'Identification vehicle',
     initialEta: 'Initial ETA',
@@ -152,8 +230,17 @@ const COPY = {
     noProviderBody:
       'The search has stopped instead of waiting forever. Contact dispatch if you need another option.',
     callDispatch: 'Call dispatch',
+    requestDispatchSupport: 'Request dispatch support',
+    supportRequested: 'Request sent. A dispatcher will review this case.',
+    supportError: 'Could not request dispatch support.',
     dispatcher: 'Dispatcher',
     retry: 'Find another suitable team',
+    gpsStaleTitle: 'Provider location is stale',
+    gpsStaleBody: 'Route and ETA are paused until the provider device sends a fresh GPS point.',
+    dispatchRequiredTitle: 'Dispatch is handling this request',
+    dispatchRequiredBody:
+      'The previous provider could not continue. Your request remains open and is not cancelled.',
+    attentionRequired: 'This request has an operational alert that needs review',
     progress: 'Progress',
     callProvider: 'Call rescue provider at',
     contactLabel: 'Contact number for this request',
@@ -176,16 +263,59 @@ const COPY = {
     quoteSuperseded: 'Superseded',
     actionError: 'Could not complete the action.',
     cancelTitle: 'Cancel request?',
-    cancelBody: 'Cancel only if the provider is not present. This action is recorded in history.',
+    cancelBody: 'Choose a reason so dispatch can understand the situation. This action is recorded.',
     no: 'No',
     cancel: 'Cancel request',
-    customerCancelReason: 'Customer cancelled before provider arrival',
+    chooseCancelReason: 'Cancellation reason',
+    cancelReasonRequired: 'Choose a cancellation reason.',
+    otherReasonRequired: 'Describe the reason using at least 5 characters.',
+    cancelNote: 'Additional details (optional)',
+    cancelOtherNote: 'Describe the reason',
+    lateCancelWarning:
+      'The rescue provider has departed. This will be recorded as a late cancellation; repeated late cancellations may temporarily limit new requests.',
+    arrivalDisputeWarning:
+      'The provider reported arriving. If you cannot see them, this cancellation will be flagged for dispatch review.',
+    cancelAfterArrivalTitle: 'Need to stop after confirming provider arrival?',
+    cancelAfterArrivalBody:
+      'Self-cancellation is disabled while work is in progress. Call dispatch so both parties are protected and the request history stays accurate.',
+    cancellationRecorded: 'Cancellation details',
+    operationalCancellation: 'The request was stopped by the rescue provider or dispatch staff.',
+    lateCancellationRecorded: 'Late cancellation recorded',
+    gpsNearRecorded: 'GPS was near the rescue point at cancellation',
+    reasonLabels: {
+      issue_resolved: 'The motorcycle works again / help is no longer needed',
+      changed_mind: 'Changed mind or chose another option',
+      wrong_location: 'Incorrect pickup location',
+      duplicate_request: 'Duplicate request',
+      provider_not_present: 'Provider is not visible at the meeting point',
+      provider_unavailable: 'Provider could not continue',
+      safety_issue: 'Safety issue',
+      customer_unreachable: 'Customer could not be reached',
+      duplicate_or_fraud: 'Duplicate or suspicious request',
+      other: 'Other reason',
+    },
     confirmArrival: 'Confirm provider arrival',
     rejectArrival: 'Provider not here',
     approveQuote: 'Approve quote',
     rejectQuote: 'Reject quote',
+    chooseDestination: 'Choose drop-off point',
+    destinationBeforeQuote: 'A transport quote needs a drop-off point before you can approve it.',
     confirmCompletion: 'Confirm completion',
     incomplete: 'Work is not complete',
+    feedbackTitle: 'Tell us what is wrong',
+    feedbackReasonRequired: 'Choose a reason before submitting.',
+    feedbackNote: 'Additional details',
+    sendFeedback: 'Submit and request correction',
+    closeFeedback: 'Go back',
+    feedbackReasons: {
+      provider_not_visible: 'Provider is not visible at the meeting point',
+      wrong_meeting_point: 'Provider is at the wrong point',
+      cannot_contact_provider: 'Provider cannot be contacted',
+      issue_persists: 'The motorcycle issue remains',
+      work_not_as_agreed: 'Work does not match what was agreed',
+      destination_not_reached: 'Motorcycle has not reached the drop-off',
+      other: 'Other reason',
+    },
     stateError: 'Could not update request status.',
     quoteInvalid: 'Enter a valid work description and quote amount.',
     quoteError: 'Could not send the quote.',
@@ -200,6 +330,8 @@ const COPY = {
     sendQuote: 'Send quote to customer',
     startRepair: 'Start on-site repair',
     switchTransport: 'Switch to transport',
+    startApprovedRepair: 'Start approved repair',
+    startApprovedTransport: 'Start approved transport',
     requestCompletion: 'Ask customer to confirm completion',
     reasonRequired: 'Enter a specific reason for the audit record.',
     cancelError: 'Could not cancel the request.',
@@ -207,6 +339,8 @@ const COPY = {
     auditCancel: 'Audited request stop',
     auditBody:
       'Use only for a safety issue or when work cannot continue. The other participant will be notified.',
+    withdrawBody:
+      'The customer request stays open and another team will be searched. If work already began, dispatch will take over.',
     reason: 'Reason',
     confirmCancel: 'Confirm request stop',
     keep: 'Keep request',
@@ -214,13 +348,32 @@ const COPY = {
     retryGeneric: 'Please try again.',
     deleteReviewTitle: 'Delete review?',
     deleteReviewBody: 'You can create another review later.',
-    delete: 'Delete',
     deleteReviewError: 'Could not delete review',
     editReview: 'Edit review',
     review: 'Review rescue request',
     reviewPlaceholder: 'Comment on attitude and service quality',
     saveReview: 'Save review',
     deleteReview: 'Delete review',
+    incidentTitle: 'Complaint or incident report',
+    incidentIntro: 'This is separate from star ratings and is visible only to you, dispatchers, and admins.',
+    reportIncident: 'Submit complaint / incident',
+    incidentCategory: 'Issue category',
+    incidentDescription: 'What happened',
+    incidentPlaceholder: 'Describe concrete events without unnecessary personal information',
+    incidentRequired: 'Choose a category and enter at least 10 characters.',
+    incidentSent: 'Submitted for dispatch review.',
+    incidentError: 'Could not submit this report.',
+    incidentResolution: 'Resolution result',
+    resolveIncident: 'Mark as resolved',
+    dismissIncident: 'Dismiss with reason',
+    incidentStatuses: { open: 'In review', resolved: 'Resolved', dismissed: 'Dismissed' },
+    incidentCategories: {
+      provider_conduct: 'Provider conduct',
+      service_quality: 'Service quality',
+      safety: 'Safety concern',
+      property_damage: 'Property damage',
+      other: 'Other issue',
+    },
   },
 } as const;
 
@@ -238,6 +391,7 @@ export default function RescueDetailsScreen() {
   const [liveLocation, setLiveLocation] = useState<LocationPoint | null>(null);
   const [screenMessage, setScreenMessage] = useState<string | null>(null);
   const [retryingDispatch, setRetryingDispatch] = useState(false);
+  const [requestingSupport, setRequestingSupport] = useState(false);
   const c = useCopy(COPY);
   const language = useI18n((state) => state.language);
   const request = requestQuery.data;
@@ -257,12 +411,27 @@ export default function RescueDetailsScreen() {
     setScreenMessage(null);
     setRetryingDispatch(true);
     try {
-      await rescueApi.retryDispatch(id);
+      if (role === 'customer') await rescueApi.retryCustomer(id);
+      else if (request?.status === 'needs_dispatch') await rescueApi.reassignDispatch(id);
+      else await rescueApi.retryDispatch(id);
       await requestQuery.refetch();
     } catch (error) {
       setScreenMessage(error instanceof ApiClientError ? error.message : c.retryError);
     } finally {
       setRetryingDispatch(false);
+    }
+  };
+
+  const requestDispatchSupport = async () => {
+    setScreenMessage(null);
+    setRequestingSupport(true);
+    try {
+      await rescueApi.requestSupport(id, 'no_provider');
+      setScreenMessage(c.supportRequested);
+    } catch (error) {
+      setScreenMessage(error instanceof ApiClientError ? error.message : c.supportError);
+    } finally {
+      setRequestingSupport(false);
     }
   };
 
@@ -275,13 +444,18 @@ export default function RescueDetailsScreen() {
   const region = useMemo(() => {
     if (!request) return undefined;
     const other = providerLocation;
+    const transportLeg =
+      request.activeWorkType === 'transport' &&
+      (request.status === 'transporting' || request.status === 'awaiting_completion');
+    const target =
+      transportLeg && request.destinationLatitude != null && request.destinationLongitude != null
+        ? { latitude: request.destinationLatitude, longitude: request.destinationLongitude }
+        : { latitude: request.pickupLatitude, longitude: request.pickupLongitude };
     return {
-      latitude: other ? (request.pickupLatitude + other.latitude) / 2 : request.pickupLatitude,
-      longitude: other ? (request.pickupLongitude + other.longitude) / 2 : request.pickupLongitude,
-      latitudeDelta: other ? Math.max(0.015, Math.abs(request.pickupLatitude - other.latitude) * 1.7) : 0.02,
-      longitudeDelta: other
-        ? Math.max(0.015, Math.abs(request.pickupLongitude - other.longitude) * 1.7)
-        : 0.02,
+      latitude: other ? (target.latitude + other.latitude) / 2 : target.latitude,
+      longitude: other ? (target.longitude + other.longitude) / 2 : target.longitude,
+      latitudeDelta: other ? Math.max(0.015, Math.abs(target.latitude - other.latitude) * 1.7) : 0.02,
+      longitudeDelta: other ? Math.max(0.015, Math.abs(target.longitude - other.longitude) * 1.7) : 0.02,
     };
   }, [providerLocation, request]);
 
@@ -321,6 +495,17 @@ export default function RescueDetailsScreen() {
             title={c.pickupMarker}
             pinColor={Colors.error}
           />
+          {request.destinationLatitude != null && request.destinationLongitude != null ? (
+            <Marker
+              coordinate={{
+                latitude: request.destinationLatitude,
+                longitude: request.destinationLongitude,
+              }}
+              title={c.destinationMarker}
+              description={request.destinationAreaLabel ?? undefined}
+              pinColor={Colors.success}
+            />
+          ) : null}
           {providerLocation ? (
             <Marker
               coordinate={providerLocation}
@@ -380,6 +565,9 @@ export default function RescueDetailsScreen() {
 
         <View style={styles.infoCard}>
           <Info icon="location-outline" label={c.landmark} value={request.pickupAreaLabel} />
+          {request.destinationAreaLabel ? (
+            <Info icon="flag-outline" label={c.destination} value={request.destinationAreaLabel} />
+          ) : null}
           {request.providerName ? (
             <Info icon="person-outline" label={c.provider} value={request.providerName} />
           ) : null}
@@ -423,10 +611,36 @@ export default function RescueDetailsScreen() {
             <Text style={styles.warningText}>{c.routingWarning}</Text>
           </View>
         ) : null}
+        {request.providerLocationStatus === 'stale' ? (
+          <View style={styles.warning}>
+            <Text style={styles.noProviderTitle}>{c.gpsStaleTitle}</Text>
+            <Text style={styles.warningText}>{c.gpsStaleBody}</Text>
+          </View>
+        ) : null}
+        {request.status === 'needs_dispatch' ? (
+          <View style={styles.noProviderCard}>
+            <Text style={styles.noProviderTitle}>{c.dispatchRequiredTitle}</Text>
+            <Text style={styles.infoLabel}>{c.dispatchRequiredBody}</Text>
+          </View>
+        ) : null}
+        {(role === 'dispatcher' || role === 'admin') && request.attentionCodes.length > 0 ? (
+          <View style={styles.warning}>
+            <Text style={styles.warningText}>
+              {c.attentionRequired}: {request.attentionCodes.join(', ')}
+            </Text>
+          </View>
+        ) : null}
         {role === 'customer' && request.status === 'no_provider' ? (
           <View style={styles.noProviderCard}>
             <Text style={styles.noProviderTitle}>{c.noProviderTitle}</Text>
             <Text style={styles.infoLabel}>{c.noProviderBody}</Text>
+            <AppButton title={c.retry} loading={retryingDispatch} onPress={() => void retryDispatch()} />
+            <AppButton
+              title={c.requestDispatchSupport}
+              variant="outline"
+              loading={requestingSupport}
+              onPress={() => void requestDispatchSupport()}
+            />
             {SUPPORT_HOTLINE ? (
               <AppButton
                 title={`${c.callDispatch} ${SUPPORT_HOTLINE}`}
@@ -438,14 +652,27 @@ export default function RescueDetailsScreen() {
         ) : null}
         {isAssignedProvider ? <TrackingNotice state={tracking} /> : null}
         {request.currentQuote ? <QuoteCard request={request} /> : null}
+        {request.status === 'cancelled' ? <CancellationSummary request={request} role={role} /> : null}
         {role === 'customer' && request.status === 'completed' ? <ReviewEditor request={request} /> : null}
+        {(role === 'customer' && request.assignedProviderId) ||
+        ((role === 'dispatcher' || role === 'admin') && request.incidentReports.length > 0) ? (
+          <IncidentReportPanel request={request} role={role} />
+        ) : null}
         {role === 'customer' ? <CustomerActions request={request} /> : null}
         {isAssignedProvider ? <ProviderActions request={request} /> : null}
-        {isAssignedProvider ? <OperationalCancel request={request} actorLabel={c.provider} /> : null}
-        {role === 'dispatcher' || role === 'admin' ? (
-          <OperationalCancel request={request} actorLabel={c.dispatcher} />
+        {isAssignedProvider ? (
+          <OperationalCancel
+            request={request}
+            actorLabel={c.provider}
+            reasonCode="provider_unavailable"
+            providerWithdrawal
+          />
         ) : null}
-        {(role === 'dispatcher' || role === 'admin') && request.status === 'no_provider' ? (
+        {role === 'dispatcher' || role === 'admin' ? (
+          <OperationalCancel request={request} actorLabel={c.dispatcher} reasonCode="other" />
+        ) : null}
+        {(role === 'dispatcher' || role === 'admin') &&
+        (request.status === 'no_provider' || request.status === 'needs_dispatch') ? (
           <AppButton title={c.retry} loading={retryingDispatch} onPress={() => void retryDispatch()} />
         ) : null}
 
@@ -560,10 +787,45 @@ function QuoteCard({ request }: { request: RequestDetails }) {
   );
 }
 
+function CancellationSummary({ request, role }: { request: RequestDetails; role: string }) {
+  const c = useCopy(COPY);
+  const reasonLabel = request.cancellationCode ? c.reasonLabels[request.cancellationCode] : null;
+  const canSeeOperationalEvidence = role === 'dispatcher' || role === 'admin';
+  return (
+    <View style={styles.cancellationSummary}>
+      <View style={styles.summaryTitleRow}>
+        <Ionicons name="document-text-outline" size={21} color={Colors.primary} />
+        <Text style={styles.section}>{c.cancellationRecorded}</Text>
+      </View>
+      {reasonLabel ? <Text style={styles.infoValue}>{reasonLabel}</Text> : null}
+      {!reasonLabel && request.cancellationStage === 'operational' ? (
+        <Text style={styles.infoValue}>{c.operationalCancellation}</Text>
+      ) : null}
+      {request.cancellationReason ? <Text style={styles.infoLabel}>{request.cancellationReason}</Text> : null}
+      {request.lateCancellation ? (
+        <Text style={styles.lateCancellationText}>{c.lateCancellationRecorded}</Text>
+      ) : null}
+      {canSeeOperationalEvidence && request.providerNearPickupOnCancel === true ? (
+        <Text style={styles.infoLabel}>{c.gpsNearRecorded}</Text>
+      ) : null}
+    </View>
+  );
+}
+
 function CustomerActions({ request }: { request: RequestDetails }) {
   const actions = useRequestMutation(request.id);
   const c = useCopy(COPY);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [reasonCode, setReasonCode] = useState<CancellationReasonCode | null>(null);
+  const [cancelNote, setCancelNote] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [feedbackAction, setFeedbackAction] = useState<
+    'reject_arrival' | 'reject_repair' | 'reject_transport' | null
+  >(null);
+  const [feedbackReason, setFeedbackReason] = useState<string | null>(null);
+  const [feedbackNote, setFeedbackNote] = useState('');
+  const [requestingSupport, setRequestingSupport] = useState(false);
+  const [supportRequested, setSupportRequested] = useState(false);
   const run = async (operation: Promise<unknown>) => {
     setMessage(null);
     try {
@@ -572,16 +834,68 @@ function CustomerActions({ request }: { request: RequestDetails }) {
       setMessage(error instanceof ApiClientError ? error.message : c.actionError);
     }
   };
-  const cancel = () =>
-    Alert.alert(c.cancelTitle, c.cancelBody, [
-      { text: c.no, style: 'cancel' },
-      {
-        text: c.cancel,
-        style: 'destructive',
-        onPress: () =>
-          void run(actions.cancel.mutateAsync({ reason: c.customerCancelReason, version: request.version })),
-      },
-    ]);
+  const cancellationReasons = customerCancellationReasons(request.status);
+  const late = request.status === 'en_route' || request.status === 'awaiting_arrival_confirmation';
+  const arrivalDispute = request.status === 'awaiting_arrival_confirmation';
+  const transportNeedsDestination =
+    request.status === 'awaiting_quote' &&
+    request.currentQuote?.status === 'pending' &&
+    request.currentQuote.workType === 'transport' &&
+    request.destinationLatitude == null;
+  const submitCancellation = async () => {
+    if (!reasonCode) return setMessage(c.cancelReasonRequired);
+    if (reasonCode === 'other' && cancelNote.trim().length < 5) {
+      return setMessage(c.otherReasonRequired);
+    }
+    setMessage(null);
+    try {
+      await actions.cancel.mutateAsync({
+        reasonCode,
+        note: cancelNote.trim() || undefined,
+        expectedVersion: request.version,
+      });
+      setCancelOpen(false);
+    } catch (error) {
+      setMessage(error instanceof ApiClientError ? error.message : c.cancelError);
+    }
+  };
+  const feedbackReasons =
+    feedbackAction === 'reject_arrival'
+      ? ['provider_not_visible', 'wrong_meeting_point', 'cannot_contact_provider', 'other']
+      : ['issue_persists', 'work_not_as_agreed', 'destination_not_reached', 'other'];
+  const submitFeedback = async () => {
+    if (!feedbackAction || !feedbackReason) return setMessage(c.feedbackReasonRequired);
+    if (feedbackReason === 'other' && feedbackNote.trim().length < 5) {
+      return setMessage(c.otherReasonRequired);
+    }
+    setMessage(null);
+    try {
+      await actions.action.mutateAsync({
+        action: feedbackAction,
+        version: request.version,
+        reasonCode: feedbackReason,
+        note: feedbackNote.trim() || undefined,
+      });
+      setFeedbackAction(null);
+      setFeedbackReason(null);
+      setFeedbackNote('');
+    } catch (error) {
+      setMessage(error instanceof ApiClientError ? error.message : c.actionError);
+    }
+  };
+  const requestDispatchSupport = async () => {
+    setMessage(null);
+    setRequestingSupport(true);
+    try {
+      await rescueApi.requestSupport(request.id, 'assisted_cancellation');
+      setSupportRequested(true);
+      setMessage(c.supportRequested);
+    } catch (error) {
+      setMessage(error instanceof ApiClientError ? error.message : c.supportError);
+    } finally {
+      setRequestingSupport(false);
+    }
+  };
   return (
     <View style={styles.actions}>
       {request.status === 'awaiting_arrival_confirmation' ? (
@@ -595,26 +909,35 @@ function CustomerActions({ request }: { request: RequestDetails }) {
           <AppButton
             title={c.rejectArrival}
             variant="outline"
-            onPress={() =>
-              void run(actions.action.mutateAsync({ action: 'reject_arrival', version: request.version }))
-            }
+            onPress={() => setFeedbackAction('reject_arrival')}
           />
         </>
       ) : null}
       {request.status === 'awaiting_quote' && request.currentQuote?.status === 'pending' ? (
         <>
-          <AppButton
-            title={c.approveQuote}
-            onPress={() =>
-              void run(
-                actions.decideQuote.mutateAsync({
-                  quoteId: request.currentQuote!.id,
-                  decision: 'approve',
-                  version: request.version,
-                }),
-              )
-            }
-          />
+          {transportNeedsDestination ? (
+            <View style={styles.destinationRequiredCard}>
+              <Text style={styles.infoLabel}>{c.destinationBeforeQuote}</Text>
+              <AppButton
+                title={c.chooseDestination}
+                variant="outline"
+                onPress={() => router.push(`/rescue/${request.id}/destination`)}
+              />
+            </View>
+          ) : (
+            <AppButton
+              title={c.approveQuote}
+              onPress={() =>
+                void run(
+                  actions.decideQuote.mutateAsync({
+                    quoteId: request.currentQuote!.id,
+                    decision: 'approve',
+                    version: request.version,
+                  }),
+                )
+              }
+            />
+          )}
           <AppButton
             title={c.rejectQuote}
             variant="outline"
@@ -642,22 +965,171 @@ function CustomerActions({ request }: { request: RequestDetails }) {
             title={c.incomplete}
             variant="outline"
             onPress={() =>
-              void run(
-                actions.action.mutateAsync({
-                  action: request.activeWorkType === 'transport' ? 'reject_transport' : 'reject_repair',
-                  version: request.version,
-                }),
-              )
+              setFeedbackAction(request.activeWorkType === 'transport' ? 'reject_transport' : 'reject_repair')
             }
           />
         </>
       ) : null}
-      {canCustomerCancel(request.status) ? (
-        <AppButton title={c.cancel} variant="ghost" onPress={cancel} />
+      {feedbackAction ? (
+        <View style={styles.feedbackPanel}>
+          <Text style={styles.section}>{c.feedbackTitle}</Text>
+          <View accessibilityRole="radiogroup" style={styles.reasonList}>
+            {feedbackReasons.map((code) => {
+              const selected = feedbackReason === code;
+              return (
+                <Pressable
+                  key={code}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected }}
+                  accessibilityLabel={c.feedbackReasons[code as keyof typeof c.feedbackReasons]}
+                  onPress={() => setFeedbackReason(code)}
+                  style={[styles.reasonOption, selected && styles.reasonOptionSelected]}
+                >
+                  <Ionicons
+                    name={selected ? 'radio-button-on' : 'radio-button-off'}
+                    size={21}
+                    color={selected ? Colors.primary : Colors.textMuted}
+                  />
+                  <Text style={styles.reasonOptionText}>
+                    {c.feedbackReasons[code as keyof typeof c.feedbackReasons]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <AppInput
+            label={c.feedbackNote}
+            value={feedbackNote}
+            onChangeText={setFeedbackNote}
+            maxLength={300}
+            multiline
+          />
+          <AppButton
+            title={c.sendFeedback}
+            onPress={() => void submitFeedback()}
+            loading={actions.action.isPending}
+          />
+          <AppButton
+            title={c.closeFeedback}
+            variant="ghost"
+            onPress={() => {
+              setFeedbackAction(null);
+              setFeedbackReason(null);
+              setFeedbackNote('');
+            }}
+          />
+        </View>
       ) : null}
-      {message ? <Text style={styles.error}>{message}</Text> : null}
+      {canCustomerCancel(request.status) ? (
+        cancelOpen ? (
+          <View style={styles.cancelPanel}>
+            <Text style={styles.section}>{c.cancelTitle}</Text>
+            <Text style={styles.infoLabel}>{c.cancelBody}</Text>
+            {late ? (
+              <View style={styles.cancelWarning}>
+                <Ionicons name="warning-outline" size={20} color={Colors.warning} />
+                <Text style={styles.cancelWarningText}>
+                  {arrivalDispute ? c.arrivalDisputeWarning : c.lateCancelWarning}
+                </Text>
+              </View>
+            ) : null}
+            <Text style={styles.fieldLabel}>{c.chooseCancelReason}</Text>
+            <View accessibilityRole="radiogroup" style={styles.reasonList}>
+              {cancellationReasons.map((code) => {
+                const selected = reasonCode === code;
+                return (
+                  <Pressable
+                    key={code}
+                    onPress={() => {
+                      setReasonCode(code);
+                      setMessage(null);
+                    }}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                    accessibilityLabel={c.reasonLabels[code]}
+                    style={[styles.reasonOption, selected && styles.reasonOptionSelected]}
+                  >
+                    <Ionicons
+                      name={selected ? 'radio-button-on' : 'radio-button-off'}
+                      size={21}
+                      color={selected ? Colors.primary : Colors.textMuted}
+                    />
+                    <Text style={styles.reasonOptionText}>{c.reasonLabels[code]}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <AppInput
+              label={reasonCode === 'other' ? c.cancelOtherNote : c.cancelNote}
+              value={cancelNote}
+              onChangeText={setCancelNote}
+              maxLength={300}
+              multiline
+            />
+            {message ? <Text style={styles.error}>{message}</Text> : null}
+            <AppButton
+              title={c.cancel}
+              variant="destructive"
+              onPress={() => void submitCancellation()}
+              loading={actions.cancel.isPending}
+            />
+            <AppButton
+              title={c.keep}
+              variant="ghost"
+              onPress={() => {
+                setCancelOpen(false);
+                setReasonCode(null);
+                setCancelNote('');
+                setMessage(null);
+              }}
+            />
+          </View>
+        ) : (
+          <AppButton title={c.cancel} variant="ghost" onPress={() => setCancelOpen(true)} />
+        )
+      ) : null}
+      {requiresAssistedCancellation(request.status) ? (
+        <View style={styles.assistedCancelCard}>
+          <Text style={styles.noProviderTitle}>{c.cancelAfterArrivalTitle}</Text>
+          <Text style={styles.infoLabel}>{c.cancelAfterArrivalBody}</Text>
+          <AppButton
+            title={supportRequested ? c.supportRequested : c.requestDispatchSupport}
+            loading={requestingSupport}
+            disabled={supportRequested}
+            onPress={() => void requestDispatchSupport()}
+          />
+          {SUPPORT_HOTLINE ? (
+            <AppButton
+              title={`${c.callDispatch} ${SUPPORT_HOTLINE}`}
+              variant="outline"
+              onPress={() => void Linking.openURL(`tel:${SUPPORT_HOTLINE}`)}
+            />
+          ) : null}
+        </View>
+      ) : null}
+      {!cancelOpen && message ? <Text style={styles.error}>{message}</Text> : null}
     </View>
   );
+}
+
+function customerCancellationReasons(status: RequestDetails['status']): CancellationReasonCode[] {
+  if (status === 'awaiting_arrival_confirmation') return ['provider_not_present'];
+  if (status === 'searching' || status === 'offered' || status === 'no_provider') {
+    return ['issue_resolved', 'changed_mind', 'wrong_location', 'duplicate_request', 'other'];
+  }
+  return ['issue_resolved', 'changed_mind', 'wrong_location', 'provider_not_present', 'other'];
+}
+
+function requiresAssistedCancellation(status: RequestDetails['status']) {
+  return [
+    'arrived',
+    'diagnosing',
+    'awaiting_quote',
+    'quote_approved',
+    'repairing',
+    'transporting',
+    'awaiting_completion',
+  ].includes(status);
 }
 
 function ProviderActions({ request }: { request: RequestDetails }) {
@@ -716,11 +1188,14 @@ function ProviderActions({ request }: { request: RequestDetails }) {
             onChangeText={(value) => setAmount(value.replace(/\D/g, ''))}
             keyboardType="number-pad"
           />
-          <View style={styles.workRow}>
+          <View style={styles.workRow} accessibilityRole="radiogroup">
             {(['repair', 'transport'] as const).map((value) => (
               <Pressable
                 key={value}
                 onPress={() => setWorkType(value)}
+                accessibilityRole="radio"
+                accessibilityLabel={value === 'repair' ? c.repairBike : c.transportBike}
+                accessibilityState={{ checked: workType === value }}
                 style={[styles.workChip, workType === value && styles.workChipActive]}
               >
                 <Text style={styles.workText}>{value === 'repair' ? c.repairBike : c.transportBike}</Text>
@@ -740,6 +1215,12 @@ function ProviderActions({ request }: { request: RequestDetails }) {
           />
         </>
       ) : null}
+      {request.status === 'quote_approved' && request.activeWorkType ? (
+        <AppButton
+          title={request.activeWorkType === 'transport' ? c.startApprovedTransport : c.startApprovedRepair}
+          onPress={() => void runAction('start_work', request.activeWorkType!)}
+        />
+      ) : null}
       {request.status === 'repairing' || request.status === 'transporting' ? (
         <AppButton title={c.requestCompletion} onPress={() => void runAction('request_completion')} />
       ) : null}
@@ -748,7 +1229,17 @@ function ProviderActions({ request }: { request: RequestDetails }) {
   );
 }
 
-function OperationalCancel({ request, actorLabel }: { request: RequestDetails; actorLabel: string }) {
+function OperationalCancel({
+  request,
+  actorLabel,
+  reasonCode,
+  providerWithdrawal = false,
+}: {
+  request: RequestDetails;
+  actorLabel: string;
+  reasonCode: CancellationReasonCode;
+  providerWithdrawal?: boolean;
+}) {
   const actions = useRequestMutation(request.id);
   const c = useCopy(COPY);
   const [open, setOpen] = useState(false);
@@ -759,7 +1250,16 @@ function OperationalCancel({ request, actorLabel }: { request: RequestDetails; a
     if (reason.trim().length < 5) return setMessage(c.reasonRequired);
     setMessage(null);
     try {
-      await actions.cancel.mutateAsync({ reason: reason.trim(), version: request.version });
+      if (providerWithdrawal) {
+        await rescueApi.withdrawProvider(request.id, reason.trim());
+        router.replace('/(tabs)/operations');
+      } else {
+        await actions.cancel.mutateAsync({
+          reasonCode,
+          note: reason.trim(),
+          expectedVersion: request.version,
+        });
+      }
       setOpen(false);
     } catch (error) {
       setMessage(error instanceof ApiClientError ? error.message : c.cancelError);
@@ -772,7 +1272,7 @@ function OperationalCancel({ request, actorLabel }: { request: RequestDetails; a
   return (
     <View style={styles.cancelPanel}>
       <Text style={styles.section}>{c.auditCancel}</Text>
-      <Text style={styles.infoLabel}>{c.auditBody}</Text>
+      <Text style={styles.infoLabel}>{providerWithdrawal ? c.withdrawBody : c.auditBody}</Text>
       <AppInput label={c.reason} value={reason} onChangeText={setReason} maxLength={300} multiline />
       {message ? <Text style={styles.error}>{message}</Text> : null}
       <AppButton
@@ -789,6 +1289,159 @@ function OperationalCancel({ request, actorLabel }: { request: RequestDetails; a
           setMessage(null);
         }}
       />
+    </View>
+  );
+}
+
+function IncidentReportPanel({ request, role }: { request: RequestDetails; role: string }) {
+  const client = useQueryClient();
+  const c = useCopy(COPY);
+  const isStaff = role === 'dispatcher' || role === 'admin';
+  const [open, setOpen] = useState(false);
+  const [category, setCategory] = useState<keyof typeof c.incidentCategories | null>(null);
+  const [description, setDescription] = useState('');
+  const [selectedIncident, setSelectedIncident] = useState<string | null>(null);
+  const [resolution, setResolution] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const categories = (Object.keys(c.incidentCategories) as (keyof typeof c.incidentCategories)[]).filter(
+    (value) => !request.incidentReports.some((report) => report.category === value),
+  );
+
+  const submit = async () => {
+    if (!category || description.trim().length < 10) {
+      setMessage(c.incidentRequired);
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      await rescueApi.reportIncident(request.id, category, description.trim());
+      await client.invalidateQueries({ queryKey: rescueKeys.request(request.id) });
+      setCategory(null);
+      setDescription('');
+      setOpen(false);
+      setMessage(c.incidentSent);
+    } catch (error) {
+      setMessage(error instanceof ApiClientError ? error.message : c.incidentError);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resolve = async (incidentId: string, decision: 'resolved' | 'dismissed') => {
+    if (resolution.trim().length < 5) {
+      setMessage(c.reasonRequired);
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      await rescueApi.resolveIncident(incidentId, decision, resolution.trim());
+      await Promise.all([
+        client.invalidateQueries({ queryKey: rescueKeys.request(request.id) }),
+        client.invalidateQueries({ queryKey: rescueKeys.attention(true) }),
+      ]);
+      setSelectedIncident(null);
+      setResolution('');
+    } catch (error) {
+      setMessage(error instanceof ApiClientError ? error.message : c.actionError);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View style={styles.incidentPanel}>
+      <Text style={styles.section}>{c.incidentTitle}</Text>
+      <Text style={styles.infoLabel}>{c.incidentIntro}</Text>
+      {request.incidentReports.map((incident) => (
+        <View key={incident.id} style={styles.incidentCard}>
+          <View style={styles.summaryTitleRow}>
+            <Ionicons name="shield-checkmark-outline" size={20} color={Colors.primary} />
+            <Text style={styles.infoValue}>{c.incidentCategories[incident.category]}</Text>
+          </View>
+          <Text style={styles.infoLabel}>{incident.description}</Text>
+          <Text style={styles.incidentStatus}>{c.incidentStatuses[incident.status]}</Text>
+          {incident.resolutionNote ? <Text style={styles.infoLabel}>{incident.resolutionNote}</Text> : null}
+          {isStaff && incident.status === 'open' ? (
+            selectedIncident === incident.id ? (
+              <View style={styles.actions}>
+                <AppInput
+                  label={c.incidentResolution}
+                  value={resolution}
+                  onChangeText={setResolution}
+                  maxLength={500}
+                  multiline
+                />
+                <AppButton
+                  title={c.resolveIncident}
+                  loading={busy}
+                  onPress={() => void resolve(incident.id, 'resolved')}
+                />
+                <AppButton
+                  title={c.dismissIncident}
+                  variant="outline"
+                  disabled={busy}
+                  onPress={() => void resolve(incident.id, 'dismissed')}
+                />
+              </View>
+            ) : (
+              <AppButton
+                title={c.incidentResolution}
+                variant="outline"
+                onPress={() => {
+                  setSelectedIncident(incident.id);
+                  setResolution('');
+                  setMessage(null);
+                }}
+              />
+            )
+          ) : null}
+        </View>
+      ))}
+      {!isStaff && categories.length > 0 ? (
+        open ? (
+          <View style={styles.actions}>
+            <Text style={styles.fieldLabel}>{c.incidentCategory}</Text>
+            <View accessibilityRole="radiogroup" style={styles.reasonList}>
+              {categories.map((value) => {
+                const selected = category === value;
+                return (
+                  <Pressable
+                    key={value}
+                    accessibilityRole="radio"
+                    accessibilityLabel={c.incidentCategories[value]}
+                    accessibilityState={{ checked: selected }}
+                    style={[styles.reasonOption, selected && styles.reasonOptionSelected]}
+                    onPress={() => setCategory(value)}
+                  >
+                    <Ionicons
+                      name={selected ? 'radio-button-on' : 'radio-button-off'}
+                      size={21}
+                      color={selected ? Colors.primary : Colors.textMuted}
+                    />
+                    <Text style={styles.reasonOptionText}>{c.incidentCategories[value]}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <AppInput
+              label={c.incidentDescription}
+              value={description}
+              onChangeText={setDescription}
+              placeholder={c.incidentPlaceholder}
+              maxLength={1000}
+              multiline
+            />
+            <AppButton title={c.reportIncident} loading={busy} onPress={() => void submit()} />
+            <AppButton title={c.keep} variant="ghost" onPress={() => setOpen(false)} />
+          </View>
+        ) : (
+          <AppButton title={c.reportIncident} variant="outline" onPress={() => setOpen(true)} />
+        )
+      ) : null}
+      {message ? <Text style={styles.infoLabel}>{message}</Text> : null}
     </View>
   );
 }
@@ -814,7 +1467,7 @@ function ReviewEditor({ request }: { request: RequestDetails }) {
     Alert.alert(c.deleteReviewTitle, c.deleteReviewBody, [
       { text: c.no, style: 'cancel' },
       {
-        text: c.delete,
+        text: c.deleteReview,
         style: 'destructive',
         onPress: () =>
           void rescueApi
@@ -831,9 +1484,17 @@ function ReviewEditor({ request }: { request: RequestDetails }) {
   return (
     <View style={styles.reviewCard}>
       <Text style={styles.section}>{request.review ? c.editReview : c.review}</Text>
-      <View style={styles.stars}>
+      <View style={styles.stars} accessibilityRole="radiogroup">
         {[1, 2, 3, 4, 5].map((value) => (
-          <Pressable key={value} onPress={() => setRating(value)} hitSlop={5}>
+          <Pressable
+            key={value}
+            onPress={() => setRating(value)}
+            hitSlop={5}
+            accessibilityRole="radio"
+            accessibilityLabel={`${c.review}: ${value}/5`}
+            accessibilityState={{ checked: value === rating }}
+            style={styles.starButton}
+          >
             <Ionicons name={value <= rating ? 'star' : 'star-outline'} size={32} color={Colors.accentDark} />
           </Pressable>
         ))}
@@ -868,7 +1529,7 @@ const styles = StyleSheet.create({
     left: Spacing.md,
     width: 44,
     height: 44,
-    borderRadius: 16,
+    borderRadius: Radius.lg,
     backgroundColor: Colors.glass,
     alignItems: 'center',
     justifyContent: 'center',
@@ -884,7 +1545,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
   },
-  liveDot: { width: 8, height: 8, borderRadius: 4 },
+  liveDot: { width: 8, height: 8, borderRadius: Radius.full },
   mapBadgeText: { ...Typography.caption, color: Colors.textPrimary },
   sheet: {
     flex: 1,
@@ -895,7 +1556,13 @@ const styles = StyleSheet.create({
   },
   content: { padding: Spacing.lg, gap: Spacing.md },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  statusIcon: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  statusIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: Radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   service: { ...Typography.h2, color: Colors.textPrimary },
   status: { ...Typography.bodyBold },
   infoCard: {
@@ -916,7 +1583,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     backgroundColor: Colors.accentSoft,
   },
-  callChipText: { ...Typography.caption, color: Colors.primaryDark, fontFamily: 'BeVietnamPro_600SemiBold' },
+  callChipText: { ...Typography.caption, color: Colors.primaryDark, fontFamily: Fonts.bodySemi },
   warning: { padding: Spacing.md, borderRadius: Radius.md, backgroundColor: Colors.warningSoft },
   warningText: { ...Typography.caption, color: Colors.warning },
   tracking: {
@@ -946,11 +1613,33 @@ const styles = StyleSheet.create({
   quoteDescription: { ...Typography.body, color: Colors.textPrimary, marginTop: Spacing.sm },
   quoteAmount: { ...Typography.h2, color: Colors.primaryDark, marginVertical: Spacing.sm },
   actions: { gap: Spacing.sm },
+  destinationRequiredCard: {
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.warningSoft,
+    borderWidth: 1,
+    borderColor: Colors.warning,
+  },
+  feedbackPanel: {
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.warning,
+    backgroundColor: Colors.warningSoft,
+  },
   section: { ...Typography.h3, color: Colors.textPrimary },
   timeline: { padding: Spacing.md, borderRadius: Radius.lg, backgroundColor: Colors.cardBg },
   event: { flexDirection: 'row', minHeight: 58 },
   eventRail: { width: 24, alignItems: 'center' },
-  eventDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: Colors.primary, marginTop: 5 },
+  eventDot: {
+    width: 12,
+    height: 12,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primary,
+    marginTop: 5,
+  },
   eventLine: { width: 2, flex: 1, backgroundColor: Colors.divider },
   eventBody: { flex: 1, paddingBottom: Spacing.md },
   eventTitle: { ...Typography.bodyBold, color: Colors.textPrimary },
@@ -979,10 +1668,69 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.accent,
   },
+  incidentPanel: {
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.cardBg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  incidentCard: {
+    padding: Spacing.md,
+    gap: Spacing.xs,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surface,
+  },
+  incidentStatus: { ...Typography.caption, color: Colors.primary, fontFamily: Fonts.bodySemi },
   stars: { flexDirection: 'row', gap: Spacing.sm },
+  starButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   error: { ...Typography.body, color: Colors.error },
   smallButton: { maxWidth: 220 },
   flex: { flex: 1 },
+  cancellationSummary: {
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.cardBg,
+    gap: Spacing.sm,
+  },
+  summaryTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  lateCancellationText: { ...Typography.bodyBold, color: Colors.warning },
+  fieldLabel: { ...Typography.bodyBold, color: Colors.textPrimary },
+  reasonList: { gap: Spacing.sm },
+  reasonOption: {
+    minHeight: 48,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.background,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  reasonOptionSelected: { borderColor: Colors.primary, backgroundColor: Colors.sky },
+  reasonOptionText: { ...Typography.body, color: Colors.textPrimary, flex: 1 },
+  cancelWarning: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.warningSoft,
+  },
+  cancelWarningText: { ...Typography.caption, color: Colors.warning, flex: 1 },
+  assistedCancelCard: {
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.warning,
+    backgroundColor: Colors.warningSoft,
+    gap: Spacing.sm,
+  },
   cancelPanel: {
     padding: Spacing.md,
     borderRadius: Radius.lg,

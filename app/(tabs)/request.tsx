@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Constants from 'expo-constants';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -17,23 +18,42 @@ import { AppInput } from '@/src/components/atoms/AppInput';
 import { ScreenHeader } from '@/src/components/atoms/ScreenHeader';
 import { MapView, Marker, PROVIDER_GOOGLE } from '@/src/components/MapWrapper';
 import { Colors } from '@/src/constants/colors';
-import { Radius, Spacing, Typography } from '@/src/constants/spacing';
+import { Fonts, Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { ApiClientError } from '@/src/features/rescue/api/client';
+import { rescueApi } from '@/src/features/rescue/api/rescueApi';
 import { useCreateRequest, useServiceTypes } from '@/src/features/rescue/hooks/useRescueQueries';
 import { useCurrentLocation } from '@/src/features/location/hooks/useCurrentLocation';
 import { emergencyCallUri, EMERGENCY_CONTACTS } from '@/src/features/safety/emergencyContacts';
 import { useCopy } from '@/src/i18n';
-import { createUuid } from '@/src/utils/uuid';
+import {
+  clearRequestSubmission,
+  getRequestSubmissionKey,
+} from '@/src/features/rescue/services/requestSubmission';
 
 type Step = 0 | 1 | 2;
+
+const configuredCenterLatitude = String(Constants.expoConfig?.extra?.serviceCenterLatitude ?? '').trim();
+const configuredCenterLongitude = String(Constants.expoConfig?.extra?.serviceCenterLongitude ?? '').trim();
+const configuredCenter = {
+  latitude: Number(configuredCenterLatitude),
+  longitude: Number(configuredCenterLongitude),
+};
+const DEFAULT_MAP_CENTER =
+  configuredCenterLatitude &&
+  configuredCenterLongitude &&
+  Number.isFinite(configuredCenter.latitude) &&
+  Number.isFinite(configuredCenter.longitude)
+    ? configuredCenter
+    : null;
 
 const COPY = {
   vi: {
     safetyRequired: 'Hãy trả lời cả hai câu hỏi an toàn.',
-    emergencyRequired: 'MotoRescue không phải lực lượng cứu nạn. Hãy liên hệ cơ quan khẩn cấp trước.',
+    emergencyRequired: 'Moki Rescue không phải lực lượng cứu nạn. Hãy liên hệ cơ quan khẩn cấp trước.',
     serviceRequired: 'Hãy chọn loại sự cố.',
     locationRequired: 'Hãy lấy hoặc chọn vị trí trên bản đồ.',
     labelRequired: 'Hãy nhập điểm nhận biết gần vị trí của bạn.',
+    destinationRequired: 'Hãy chọn và nhập điểm giao xe.',
     safeRequired: 'Hãy xác nhận bạn và xe đang ở vị trí an toàn.',
     createError: 'Không thể tạo yêu cầu.',
     title: 'Gọi cứu hộ',
@@ -63,11 +83,18 @@ const COPY = {
     denied: 'Quyền vị trí bị từ chối. Hãy bật quyền trong cài đặt hệ thống.',
     openSettings: 'Mở cài đặt hệ thống',
     locationError: 'Không thể lấy vị trí. Kiểm tra GPS và thử lại.',
-    mapEmpty: 'Chọn “Dùng vị trí hiện tại” để mở bản đồ và xác nhận điểm đón.',
+    mapEmpty: 'Chưa cấu hình tâm vùng phục vụ. Hãy dùng GPS để mở bản đồ.',
     manualPin: 'Ghim đã được điều chỉnh thủ công',
     gpsAccuracy: 'Sai số GPS khoảng',
     markerTitle: 'Điểm cứu hộ',
     markerDescription: 'Kéo ghim hoặc chạm bản đồ để điều chỉnh',
+    destinationMarker: 'Điểm giao xe',
+    pickupTab: 'Điểm đón',
+    destinationTab: 'Điểm giao',
+    destinationHint: 'Chạm bản đồ để đặt điểm giao xe. Điểm này phải cách điểm đón ít nhất 50 m.',
+    destinationNearby: 'Tên điểm giao xe',
+    destinationPlaceholder: 'Cửa hàng, trạm sạc hoặc địa chỉ giao xe',
+    destinationNote: 'Ghi chú tại điểm giao',
     mapHint: 'Kiểm tra đúng phía đường, đầu cầu hoặc lối vào hẻm trước khi gửi.',
     nearby: 'Điểm nhận biết gần bạn',
     nearbyPlaceholder: 'Tên đường, cửa hàng hoặc cổng gần nhất',
@@ -81,10 +108,11 @@ const COPY = {
   },
   en: {
     safetyRequired: 'Answer both safety questions.',
-    emergencyRequired: 'MotoRescue is not an emergency response service. Contact emergency services first.',
+    emergencyRequired: 'Moki Rescue is not an emergency response service. Contact emergency services first.',
     serviceRequired: 'Select an issue type.',
     locationRequired: 'Get or select a location on the map.',
     labelRequired: 'Enter a nearby landmark.',
+    destinationRequired: 'Select and name the motorcycle drop-off point.',
     safeRequired: 'Confirm that you and the motorcycle are in a safe position.',
     createError: 'Could not create the request.',
     title: 'Request rescue',
@@ -114,11 +142,18 @@ const COPY = {
     denied: 'Location permission was denied. Enable it in system settings.',
     openSettings: 'Open system settings',
     locationError: 'Could not get your location. Check GPS and try again.',
-    mapEmpty: 'Choose “Use current location” to open the map and confirm pickup.',
+    mapEmpty: 'The service-area map center is not configured. Use GPS to open the map.',
     manualPin: 'Pin adjusted manually',
     gpsAccuracy: 'GPS accuracy about',
     markerTitle: 'Rescue pickup',
     markerDescription: 'Drag the pin or tap the map to adjust',
+    destinationMarker: 'Motorcycle drop-off',
+    pickupTab: 'Pickup',
+    destinationTab: 'Drop-off',
+    destinationHint: 'Tap the map to set the drop-off point. It must be at least 50 m from pickup.',
+    destinationNearby: 'Drop-off name',
+    destinationPlaceholder: 'Repair shop, charging station, or delivery address',
+    destinationNote: 'Drop-off note',
     mapHint: 'Check the correct side of the road, bridge entrance, or alley entrance before sending.',
     nearby: 'Nearby landmark',
     nearbyPlaceholder: 'Nearest street, shop, or gate',
@@ -137,6 +172,7 @@ export default function CreateRequestScreen() {
   const services = useServiceTypes();
   const create = useCreateRequest();
   const location = useCurrentLocation();
+  const destination = useCurrentLocation();
   const [step, setStep] = useState<Step>(0);
   const [serviceCode, setServiceCode] = useState('');
   const [power, setPower] = useState<'gasoline' | 'electric' | 'unknown'>('gasoline');
@@ -145,8 +181,12 @@ export default function CreateRequestScreen() {
   const [hasInjury, setHasInjury] = useState<boolean | null>(null);
   const [hasImmediateHazard, setHasImmediateHazard] = useState<boolean | null>(null);
   const [safe, setSafe] = useState(false);
+  const [mapTarget, setMapTarget] = useState<'pickup' | 'destination'>('pickup');
+  const [destinationNote, setDestinationNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const c = useCopy(COPY);
+  const selectedService = services.data?.find((service) => service.code === serviceCode);
+  const needsDestination = Boolean(selectedService?.requiresDestination);
 
   useEffect(() => {
     if (params.service && services.data?.some((service) => service.code === params.service)) {
@@ -171,31 +211,56 @@ export default function CreateRequestScreen() {
     setStep(2);
   };
   const selectPickup = (latitude: number, longitude: number) => {
-    void location.selectCoordinate({ latitude, longitude, accuracy: null });
+    const target = mapTarget === 'destination' && needsDestination ? destination : location;
+    void target.selectCoordinate({ latitude, longitude, accuracy: null });
   };
   const submit = async () => {
     if (!location.coordinate) return setError(c.locationRequired);
     if (!location.label.trim()) return setError(c.labelRequired);
+    if (needsDestination && (!destination.coordinate || !destination.label.trim())) {
+      return setError(c.destinationRequired);
+    }
     if (!safe) return setError(c.safeRequired);
     setError(null);
+    const input = {
+      serviceCode,
+      vehiclePowerType: power,
+      vehicleDescription: vehicle.trim() || undefined,
+      pickupAreaLabel: location.label.trim(),
+      pickupNote: note.trim() || undefined,
+      latitude: location.coordinate.latitude,
+      longitude: location.coordinate.longitude,
+      pickupSource: location.coordinate.source,
+      pickupAccuracyM: location.coordinate.accuracy ?? undefined,
+      destinationAreaLabel: needsDestination ? destination.label.trim() : undefined,
+      destinationNote: needsDestination ? destinationNote.trim() || undefined : undefined,
+      destinationLatitude: needsDestination ? destination.coordinate?.latitude : undefined,
+      destinationLongitude: needsDestination ? destination.coordinate?.longitude : undefined,
+      hasInjury: false,
+      hasImmediateHazard: false,
+      safetyAcknowledged: true,
+    };
     try {
+      const idempotencyKey = await getRequestSubmissionKey(input);
       const request = await create.mutateAsync({
-        idempotencyKey: createUuid(),
-        input: {
-          serviceCode,
-          vehiclePowerType: power,
-          vehicleDescription: vehicle.trim() || undefined,
-          pickupAreaLabel: location.label.trim(),
-          pickupNote: note.trim() || undefined,
-          latitude: location.coordinate.latitude,
-          longitude: location.coordinate.longitude,
-          hasInjury: false,
-          hasImmediateHazard: false,
-          safetyAcknowledged: true,
-        },
+        idempotencyKey,
+        input,
       });
+      await clearRequestSubmission();
       router.replace(`/rescue/${request.id}`);
     } catch (submitError) {
+      if (submitError instanceof ApiClientError && submitError.code === 'ACTIVE_REQUEST_EXISTS') {
+        await clearRequestSubmission();
+        try {
+          const requests = await rescueApi.requests(false);
+          if (requests[0]) {
+            router.replace(`/rescue/${requests[0].id}`);
+            return;
+          }
+        } catch {
+          // Keep the original server error when the active request cannot be fetched.
+        }
+      }
       setError(submitError instanceof ApiClientError ? submitError.message : c.createError);
     }
   };
@@ -247,7 +312,8 @@ export default function CreateRequestScreen() {
                     key={service.code}
                     onPress={() => setServiceCode(service.code)}
                     accessibilityRole="radio"
-                    accessibilityState={{ selected }}
+                    accessibilityLabel={`${service.label}. ${service.description}`}
+                    accessibilityState={{ checked: selected }}
                     style={[styles.service, selected && styles.selected]}
                   >
                     <View style={[styles.serviceIcon, selected && styles.serviceIconSelected]}>
@@ -283,7 +349,8 @@ export default function CreateRequestScreen() {
                   key={value}
                   onPress={() => setPower(value)}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected: power === value }}
+                  accessibilityLabel={label}
+                  accessibilityState={{ checked: power === value }}
                   style={[styles.segment, power === value && styles.segmentActive]}
                 >
                   <Text style={[styles.segmentText, power === value && styles.segmentTextActive]}>
@@ -307,13 +374,19 @@ export default function CreateRequestScreen() {
         {step === 2 ? (
           <View style={styles.locationLayout}>
             <View style={styles.mapArea}>
-              {location.coordinate ? (
+              {location.coordinate || DEFAULT_MAP_CENTER ? (
                 <MapView
                   style={StyleSheet.absoluteFill}
                   provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
                   region={{
-                    latitude: location.coordinate.latitude,
-                    longitude: location.coordinate.longitude,
+                    latitude:
+                      mapTarget === 'destination' && destination.coordinate
+                        ? destination.coordinate.latitude
+                        : (location.coordinate ?? DEFAULT_MAP_CENTER!).latitude,
+                    longitude:
+                      mapTarget === 'destination' && destination.coordinate
+                        ? destination.coordinate.longitude
+                        : (location.coordinate ?? DEFAULT_MAP_CENTER!).longitude,
                     latitudeDelta: 0.012,
                     longitudeDelta: 0.012,
                   }}
@@ -327,18 +400,36 @@ export default function CreateRequestScreen() {
                     )
                   }
                 >
-                  <Marker
-                    coordinate={location.coordinate}
-                    title={c.markerTitle}
-                    description={c.markerDescription}
-                    draggable
-                    onDragEnd={(event) =>
-                      selectPickup(
-                        event.nativeEvent.coordinate.latitude,
-                        event.nativeEvent.coordinate.longitude,
-                      )
-                    }
-                  />
+                  {location.coordinate ? (
+                    <Marker
+                      coordinate={location.coordinate}
+                      title={c.markerTitle}
+                      description={c.markerDescription}
+                      draggable
+                      onDragEnd={(event) =>
+                        selectPickup(
+                          event.nativeEvent.coordinate.latitude,
+                          event.nativeEvent.coordinate.longitude,
+                        )
+                      }
+                    />
+                  ) : null}
+                  {needsDestination && destination.coordinate ? (
+                    <Marker
+                      coordinate={destination.coordinate}
+                      title={c.destinationMarker}
+                      description={destination.label || c.markerDescription}
+                      pinColor={Colors.primary}
+                      draggable
+                      onDragEnd={(event) =>
+                        void destination.selectCoordinate({
+                          latitude: event.nativeEvent.coordinate.latitude,
+                          longitude: event.nativeEvent.coordinate.longitude,
+                          accuracy: null,
+                        })
+                      }
+                    />
+                  ) : null}
                 </MapView>
               ) : (
                 <View style={styles.mapEmpty}>
@@ -358,57 +449,108 @@ export default function CreateRequestScreen() {
                 showsVerticalScrollIndicator={false}
               >
                 <Text style={styles.sheetTitle}>{c.locationTitle}</Text>
-                <AppButton
-                  title={
-                    location.status === 'loading'
-                      ? c.loadingLocation
-                      : location.coordinate
-                        ? c.updateLocation
-                        : c.useLocation
-                  }
-                  variant="outline"
-                  loading={location.status === 'loading'}
-                  onPress={() => void location.requestLocation()}
-                />
-                {location.status === 'denied' ? (
-                  <View style={styles.permissionError}>
-                    <Text style={styles.error}>{c.denied}</Text>
-                    <AppButton
-                      title={c.openSettings}
-                      variant="outline"
-                      onPress={() => void Linking.openSettings()}
-                    />
+                {needsDestination && location.coordinate ? (
+                  <View style={styles.segmentRow} accessibilityRole="radiogroup">
+                    {(
+                      [
+                        ['pickup', c.pickupTab],
+                        ['destination', c.destinationTab],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <Pressable
+                        key={value}
+                        accessibilityRole="radio"
+                        accessibilityLabel={label}
+                        accessibilityState={{ checked: mapTarget === value }}
+                        onPress={() => setMapTarget(value)}
+                        style={[styles.segment, mapTarget === value && styles.segmentActive]}
+                      >
+                        <Text style={[styles.segmentText, mapTarget === value && styles.segmentTextActive]}>
+                          {label}
+                        </Text>
+                      </Pressable>
+                    ))}
                   </View>
                 ) : null}
-                {location.status === 'error' ? <Text style={styles.error}>{c.locationError}</Text> : null}
-                {location.coordinate ? (
-                  <Text style={styles.coordinate}>
-                    {location.coordinate.accuracy == null
-                      ? c.manualPin
-                      : `${c.gpsAccuracy} ${Math.round(location.coordinate.accuracy)} m`}
-                  </Text>
+                {mapTarget === 'pickup' ? (
+                  <>
+                    <AppButton
+                      title={
+                        location.status === 'loading'
+                          ? c.loadingLocation
+                          : location.coordinate
+                            ? c.updateLocation
+                            : c.useLocation
+                      }
+                      variant="outline"
+                      loading={location.status === 'loading'}
+                      onPress={() => void location.requestLocation()}
+                    />
+                    {location.status === 'denied' ? (
+                      <View style={styles.permissionError}>
+                        <Text style={styles.error}>{c.denied}</Text>
+                        <AppButton
+                          title={c.openSettings}
+                          variant="outline"
+                          onPress={() => void Linking.openSettings()}
+                        />
+                      </View>
+                    ) : null}
+                    {location.status === 'error' ? <Text style={styles.error}>{c.locationError}</Text> : null}
+                    {location.coordinate ? (
+                      <Text style={styles.coordinate}>
+                        {location.coordinate.source !== 'gps' || location.coordinate.accuracy == null
+                          ? c.manualPin
+                          : `${c.gpsAccuracy} ${Math.round(location.coordinate.accuracy)} m`}
+                      </Text>
+                    ) : null}
+                  </>
                 ) : null}
                 <Text style={styles.mapHint}>{c.mapHint}</Text>
-                <AppInput
-                  label={c.nearby}
-                  value={location.label}
-                  onChangeText={location.setLabel}
-                  maxLength={160}
-                  placeholder={c.nearbyPlaceholder}
-                />
-                <AppInput
-                  label={c.note}
-                  value={note}
-                  onChangeText={setNote}
-                  maxLength={500}
-                  multiline
-                  numberOfLines={3}
-                  placeholder={c.notePlaceholder}
-                />
+                {mapTarget === 'destination' && needsDestination ? (
+                  <>
+                    <Text style={styles.mapHint}>{c.destinationHint}</Text>
+                    <AppInput
+                      label={c.destinationNearby}
+                      value={destination.label}
+                      onChangeText={destination.setLabel}
+                      maxLength={160}
+                      placeholder={c.destinationPlaceholder}
+                    />
+                    <AppInput
+                      label={c.destinationNote}
+                      value={destinationNote}
+                      onChangeText={setDestinationNote}
+                      maxLength={500}
+                      multiline
+                      numberOfLines={3}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <AppInput
+                      label={c.nearby}
+                      value={location.label}
+                      onChangeText={location.setLabel}
+                      maxLength={160}
+                      placeholder={c.nearbyPlaceholder}
+                    />
+                    <AppInput
+                      label={c.note}
+                      value={note}
+                      onChangeText={setNote}
+                      maxLength={500}
+                      multiline
+                      numberOfLines={3}
+                      placeholder={c.notePlaceholder}
+                    />
+                  </>
+                )}
                 <Pressable
                   onPress={() => setSafe((value) => !value)}
                   style={[styles.safety, safe && styles.safetyChecked]}
                   accessibilityRole="checkbox"
+                  accessibilityLabel={c.safe}
                   accessibilityState={{ checked: safe }}
                 >
                   <Ionicons
@@ -466,7 +608,7 @@ function InlineError({ value }: { value: string | null }) {
 
 function EmergencyCard({ copy }: { copy: { stop: string; stopBody: string; call: string } }) {
   return (
-    <View style={styles.emergencyCard}>
+    <View style={styles.emergencyCard} accessibilityRole="alert">
       <Text style={styles.emergencyTitle}>{copy.stop}</Text>
       <Text style={styles.emergencyBody}>{copy.stopBody}</Text>
       <View style={styles.emergencyButtons}>
@@ -474,6 +616,7 @@ function EmergencyCard({ copy }: { copy: { stop: string; stopBody: string; call:
           <Pressable
             key={contact.number}
             accessibilityRole="button"
+            accessibilityLabel={`${copy.call} ${contact.number}`}
             style={styles.emergencyButton}
             onPress={() => void Linking.openURL(emergencyCallUri(contact.number))}
           >
@@ -509,7 +652,8 @@ function SafetyQuestion({
             key={String(answer)}
             onPress={() => onChange(answer)}
             accessibilityRole="radio"
-            accessibilityState={{ selected: value === answer }}
+            accessibilityLabel={`${label}: ${answer ? yes : no}`}
+            accessibilityState={{ checked: value === answer }}
             style={[styles.answer, value === answer && styles.answerSelected]}
           >
             <Text style={[styles.answerText, value === answer && styles.answerTextSelected]}>
@@ -552,7 +696,7 @@ const styles = StyleSheet.create({
   progressNumber: { ...Typography.caption, color: Colors.textMuted },
   progressNumberActive: { color: Colors.textOnAccent },
   progressLabel: { ...Typography.caption, color: Colors.textMuted },
-  progressLabelActive: { color: Colors.textPrimary, fontFamily: 'BeVietnamPro_600SemiBold' },
+  progressLabelActive: { color: Colors.textPrimary, fontFamily: Fonts.bodySemi },
   serviceList: { gap: Spacing.sm },
   service: {
     flexDirection: 'row',
@@ -587,7 +731,7 @@ const styles = StyleSheet.create({
   },
   segmentActive: { backgroundColor: Colors.primary },
   segmentText: { ...Typography.caption, color: Colors.textSecondary },
-  segmentTextActive: { color: Colors.white, fontFamily: 'BeVietnamPro_600SemiBold' },
+  segmentTextActive: { color: Colors.white, fontFamily: Fonts.bodySemi },
   locationLayout: { flex: 1, backgroundColor: Colors.surface },
   mapArea: { flex: 1, minHeight: 150 },
   mapEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl, gap: Spacing.md },
@@ -687,5 +831,5 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     backgroundColor: Colors.error,
   },
-  emergencyButtonText: { ...Typography.caption, color: Colors.white, fontFamily: 'BeVietnamPro_600SemiBold' },
+  emergencyButtonText: { ...Typography.caption, color: Colors.white, fontFamily: Fonts.bodySemi },
 });

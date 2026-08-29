@@ -13,6 +13,11 @@ import com.danang.motorescue.model.ApiModels.TeamVerificationCheckResponse;
 import com.danang.motorescue.model.ApiModels.TeamVerificationResponse;
 import com.danang.motorescue.model.ApiModels.UpdateServiceTypeRequest;
 import com.danang.motorescue.model.ApiModels.UpdateTeamVerificationRequest;
+import com.danang.motorescue.model.ApiModels.AttentionFlagResponse;
+import com.danang.motorescue.model.ApiModels.AttentionResolutionRequest;
+import com.danang.motorescue.model.ApiModels.IncidentResolutionRequest;
+import com.danang.motorescue.model.ApiModels.ProviderMemberResponse;
+import com.danang.motorescue.model.ApiModels.AuditLogResponse;
 import com.danang.motorescue.service.ActorService.Actor;
 import com.danang.motorescue.web.ApiException;
 import java.util.Arrays;
@@ -153,6 +158,128 @@ public class OperatorService {
         dispatch.match(requestId);
     }
 
+    public void reassign(Actor actor, UUID requestId) {
+        requireStaff(actor);
+        transactions.executeWithoutResult(status -> {
+            jdbc.queryForObject("SELECT set_config('app.actor_id', ?, TRUE)", String.class, actor.id().toString());
+            dispatch.reassign(requestId);
+            audit.record(actor.id(), "dispatch.reassign", "rescue_request", requestId);
+        });
+        dispatch.match(requestId);
+    }
+
+    public List<AttentionFlagResponse> attentionFlags(Actor actor, boolean openOnly) {
+        requireStaff(actor);
+        return jdbc.query("""
+                SELECT flag.id, flag.request_id,
+                       CASE WHEN ? = 'en' THEN service.label_en ELSE service.label_vi END AS service_label,
+                       rr.status AS request_status, flag.code, flag.context_note, flag.status,
+                       flag.detected_at, flag.resolution_note, flag.resolved_at
+                FROM public.case_attention_flags flag
+                JOIN public.rescue_requests rr ON rr.id = flag.request_id
+                JOIN public.service_types service ON service.code = rr.service_code
+                WHERE (NOT ? OR flag.status = 'open')
+                ORDER BY CASE WHEN flag.status = 'open' THEN 0 ELSE 1 END, flag.detected_at DESC
+                LIMIT 200
+                """, (rs, rowNum) -> new AttentionFlagResponse(
+                rs.getObject("id", UUID.class), rs.getObject("request_id", UUID.class),
+                rs.getString("service_label"), rs.getString("request_status"), rs.getString("code"),
+                rs.getString("context_note"), rs.getString("status"),
+                rs.getTimestamp("detected_at").toInstant(), rs.getString("resolution_note"),
+                rs.getTimestamp("resolved_at") == null ? null : rs.getTimestamp("resolved_at").toInstant()),
+                actor.locale(), openOnly);
+    }
+
+    public void resolveAttention(Actor actor, UUID flagId, AttentionResolutionRequest input) {
+        requireStaff(actor);
+        int changed = transactions.execute(status -> {
+            int updated = jdbc.update("""
+                    UPDATE public.case_attention_flags
+                    SET status = 'resolved', resolution_note = ?, resolved_at = NOW(), resolved_by = ?
+                    WHERE id = ? AND status = 'open'
+                    """, input.note().trim(), actor.id(), flagId);
+            if (updated > 0) audit.record(actor.id(), "attention.resolved", "case_attention_flag", flagId);
+            return updated;
+        });
+        if (changed == 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "ATTENTION_ALREADY_RESOLVED",
+                    "Cảnh báo đã được xử lý hoặc không còn tồn tại.");
+        }
+    }
+
+    public void resolveIncident(Actor actor, UUID incidentId, IncidentResolutionRequest input) {
+        requireStaff(actor);
+        int changed = transactions.execute(status -> {
+            UUID requestId = jdbc.query("""
+                    SELECT request_id FROM public.incident_reports
+                    WHERE id = ? AND status = 'open' FOR UPDATE
+                    """, rs -> rs.next() ? rs.getObject("request_id", UUID.class) : null, incidentId);
+            if (requestId == null) return 0;
+            int updated = jdbc.update("""
+                    UPDATE public.incident_reports
+                    SET status = ?, resolution_note = ?, resolved_at = NOW(), resolved_by = ?
+                    WHERE id = ? AND status = 'open'
+                    """, input.decision(), input.note().trim(), actor.id(), incidentId);
+            Boolean hasOpen = jdbc.queryForObject("""
+                    SELECT EXISTS(
+                      SELECT 1 FROM public.incident_reports
+                      WHERE request_id = ? AND status = 'open'
+                    )
+                    """, Boolean.class, requestId);
+            if (updated > 0 && !Boolean.TRUE.equals(hasOpen)) {
+                jdbc.update("""
+                        UPDATE public.case_attention_flags
+                        SET status = 'resolved', resolution_note = ?, resolved_at = NOW(), resolved_by = ?
+                        WHERE request_id = ? AND code = 'customer_incident_reported' AND status = 'open'
+                        """, input.note().trim(), actor.id(), requestId);
+            }
+            if (updated > 0) audit.record(actor.id(), "incident." + input.decision(), "incident_report", incidentId);
+            return updated;
+        });
+        if (changed == 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "INCIDENT_ALREADY_RESOLVED",
+                    "Khiếu nại không tồn tại hoặc đã được xử lý.");
+        }
+    }
+
+    public List<AuditLogResponse> auditLogs(
+            Actor actor,
+            java.time.Instant before,
+            Long beforeId,
+            int requestedLimit) {
+        requireAdmin(actor);
+        if ((before == null) != (beforeId == null)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CURSOR",
+                    "Cursor audit phải có đủ thời gian và mã bản ghi.");
+        }
+        int limit = Math.max(1, Math.min(requestedLimit, 100));
+        if (before == null) {
+            return jdbc.query("""
+                    SELECT log.id, profile.display_name, log.action, log.entity_type,
+                           log.entity_id, log.created_at
+                    FROM public.audit_logs log
+                    LEFT JOIN public.profiles profile ON profile.id = log.actor_id
+                    ORDER BY log.created_at DESC, log.id DESC
+                    LIMIT ?
+                    """, (rs, rowNum) -> new AuditLogResponse(
+                    rs.getLong("id"), rs.getString("display_name"), rs.getString("action"),
+                    rs.getString("entity_type"), rs.getString("entity_id"),
+                    rs.getTimestamp("created_at").toInstant()), limit);
+        }
+        return jdbc.query("""
+                SELECT log.id, profile.display_name, log.action, log.entity_type,
+                       log.entity_id, log.created_at
+                FROM public.audit_logs log
+                LEFT JOIN public.profiles profile ON profile.id = log.actor_id
+                WHERE (log.created_at, log.id) < (?, ?)
+                ORDER BY log.created_at DESC, log.id DESC
+                LIMIT ?
+                """, (rs, rowNum) -> new AuditLogResponse(
+                rs.getLong("id"), rs.getString("display_name"), rs.getString("action"),
+                rs.getString("entity_type"), rs.getString("entity_id"),
+                rs.getTimestamp("created_at").toInstant()), java.sql.Timestamp.from(before), beforeId, limit);
+    }
+
     public UUID createTeam(Actor actor, CreateTeamRequest input) {
         requireAdmin(actor);
         if ((input.baseLatitude() == null) != (input.baseLongitude() == null)) {
@@ -286,6 +413,7 @@ public class OperatorService {
     public void setTeamStatus(Actor actor, UUID teamId, String nextStatus) {
         requireAdmin(actor);
         int changed = transactions.execute(status -> {
+            jdbc.queryForObject("SELECT set_config('app.actor_id', ?, TRUE)", String.class, actor.id().toString());
             List<String> lockedStatuses = jdbc.query(
                     "SELECT status FROM public.rescue_teams WHERE id = ? FOR UPDATE",
                     (rs, rowNum) -> rs.getString("status"), teamId);
@@ -313,7 +441,30 @@ public class OperatorService {
                 updated = jdbc.update("UPDATE public.rescue_teams SET status = 'suspended' WHERE id = ?", teamId);
             }
             if (updated > 0 && !"verified".equals(nextStatus)) {
-                jdbc.update("UPDATE public.provider_members SET is_available = FALSE WHERE team_id = ?", teamId);
+                jdbc.update("""
+                        UPDATE public.provider_members
+                        SET is_available = FALSE, last_latitude = NULL, last_longitude = NULL,
+                            location_accuracy_m = NULL
+                        WHERE team_id = ?
+                        """, teamId);
+                List<UUID> affected = jdbc.query("""
+                        UPDATE public.rescue_requests
+                        SET status = 'needs_dispatch', assigned_team_id = NULL, assigned_provider_id = NULL,
+                            routing_status = 'pending'
+                        WHERE assigned_team_id = ? AND status NOT IN ('completed', 'cancelled')
+                        RETURNING id
+                        """, (rs, rowNum) -> rs.getObject("id", UUID.class), teamId);
+                for (UUID requestId : affected) {
+                    jdbc.update("""
+                            INSERT INTO public.case_attention_flags(request_id, code, context_note)
+                            VALUES (?, 'provider_withdrew', ?)
+                            ON CONFLICT (request_id, code) WHERE status = 'open' DO NOTHING
+                            """, requestId, "Admin changed team status to " + nextStatus);
+                    jdbc.update("""
+                            UPDATE public.dispatch_offers SET status = 'withdrawn'
+                            WHERE request_id = ? AND status = 'pending'
+                            """, requestId);
+                }
             }
             if (updated > 0) audit.record(actor.id(), "team.status." + nextStatus, "rescue_team", teamId);
             return updated;
@@ -394,18 +545,89 @@ public class OperatorService {
         });
     }
 
+    public List<ProviderMemberResponse> providers(Actor actor, UUID teamId) {
+        requireAdmin(actor);
+        return jdbc.query("""
+                SELECT user_id, display_name, contact_phone_e164, status, is_available,
+                       rescue_vehicle_label, location_updated_at
+                FROM public.provider_members
+                WHERE team_id = ?
+                ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'suspended' THEN 1 ELSE 2 END,
+                         display_name, user_id
+                """, (rs, rowNum) -> new ProviderMemberResponse(
+                rs.getObject("user_id", UUID.class), rs.getString("display_name"),
+                rs.getString("contact_phone_e164"), rs.getString("status"),
+                rs.getBoolean("is_available"), rs.getString("rescue_vehicle_label"),
+                rs.getTimestamp("location_updated_at") == null
+                        ? null : rs.getTimestamp("location_updated_at").toInstant()), teamId);
+    }
+
+    public void setProviderStatus(Actor actor, UUID teamId, UUID providerId, String nextStatus) {
+        requireAdmin(actor);
+        int changed = transactions.execute(status -> {
+            jdbc.queryForObject("SELECT set_config('app.actor_id', ?, TRUE)", String.class, actor.id().toString());
+            List<String> current = jdbc.query("""
+                    SELECT status FROM public.provider_members
+                    WHERE user_id = ? AND team_id = ? FOR UPDATE
+                    """, (rs, rowNum) -> rs.getString("status"), providerId, teamId);
+            if (current.isEmpty()) return 0;
+            int updated = jdbc.update("""
+                    UPDATE public.provider_members
+                    SET status = ?, is_available = FALSE, last_latitude = NULL, last_longitude = NULL,
+                        location_accuracy_m = NULL
+                    WHERE user_id = ? AND team_id = ?
+                    """, nextStatus, providerId, teamId);
+            if (updated > 0 && !"active".equals(nextStatus)) {
+                List<UUID> affected = jdbc.query("""
+                        UPDATE public.rescue_requests
+                        SET status = 'needs_dispatch', assigned_team_id = NULL, assigned_provider_id = NULL,
+                            routing_status = 'pending'
+                        WHERE assigned_provider_id = ? AND status NOT IN ('completed', 'cancelled')
+                        RETURNING id
+                        """, (rs, rowNum) -> rs.getObject("id", UUID.class), providerId);
+                for (UUID requestId : affected) {
+                    jdbc.update("""
+                            INSERT INTO public.case_attention_flags(request_id, code, context_note)
+                            VALUES (?, 'provider_withdrew', ?)
+                            ON CONFLICT (request_id, code) WHERE status = 'open' DO NOTHING
+                            """, requestId, "Admin changed provider status to " + nextStatus);
+                    jdbc.update("""
+                            UPDATE public.dispatch_offers SET status = 'withdrawn'
+                            WHERE request_id = ? AND status = 'pending'
+                            """, requestId);
+                }
+            }
+            if (updated > 0) audit.record(actor.id(), "provider.status." + nextStatus, "provider", providerId);
+            return updated;
+        });
+        if (changed == 0) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "PROVIDER_NOT_FOUND",
+                    "Không tìm thấy cứu hộ viên trong đội đã chọn.");
+        }
+    }
+
     public void setStaffRole(Actor actor, StaffRoleRequest input) {
         requireAdmin(actor);
-        if (actor.id().equals(input.userId()) && "customer".equals(input.role())) {
+        if (actor.id().equals(input.userId()) && !"admin".equals(input.role())) {
             throw new ApiException(HttpStatus.CONFLICT, "CANNOT_DEMOTE_SELF", "Admin không thể tự hạ quyền tài khoản đang dùng.");
         }
         int changed = transactions.execute(status -> {
             String currentRole = lockActiveRole(input.userId());
-            if ("admin".equals(currentRole) || "provider".equals(currentRole)) {
+            if ("provider".equals(currentRole)) {
                 throw new ApiException(HttpStatus.CONFLICT, "ROLE_ASSIGNMENT_CONFLICT",
-                        "Chỉ có thể cấp hoặc thu hồi quyền điều phối cho tài khoản khách hàng và điều phối viên.");
+                        "Hãy kết thúc vai trò cứu hộ viên trước khi cấp quyền vận hành.");
             }
             if (currentRole.equals(input.role())) return 1;
+            if ("admin".equals(currentRole)) {
+                Integer adminCount = jdbc.queryForObject("""
+                        SELECT COUNT(*) FROM public.profiles
+                        WHERE role = 'admin' AND is_active
+                        """, Integer.class);
+                if (adminCount == null || adminCount <= 1) {
+                    throw new ApiException(HttpStatus.CONFLICT, "CANNOT_DEMOTE_LAST_ADMIN",
+                            "Phải có ít nhất một admin khác trước khi hạ quyền admin này.");
+                }
+            }
             int updated = jdbc.update("UPDATE public.profiles SET role = ? WHERE id = ?", input.role(), input.userId());
             audit.record(actor.id(), "profile.role." + input.role(), "profile", input.userId());
             return updated;
@@ -417,13 +639,14 @@ public class OperatorService {
         requireAdmin(actor);
         return jdbc.query("""
                 SELECT code, label_vi, description_vi, label_en, description_en,
-                       icon_name, requires_quote, sort_order, is_active
+                       icon_name, requires_quote, requires_destination, sort_order, is_active
                 FROM public.service_types
                 ORDER BY sort_order, code
                 """, (rs, rowNum) -> new AdminServiceTypeResponse(
                 rs.getString("code"), rs.getString("label_vi"), rs.getString("description_vi"),
                 rs.getString("label_en"), rs.getString("description_en"), rs.getString("icon_name"),
-                rs.getBoolean("requires_quote"), rs.getShort("sort_order"), rs.getBoolean("is_active")));
+                rs.getBoolean("requires_quote"), rs.getBoolean("requires_destination"),
+                rs.getShort("sort_order"), rs.getBoolean("is_active")));
     }
 
     public void updateServiceType(Actor actor, String code, UpdateServiceTypeRequest input) {
@@ -438,11 +661,11 @@ public class OperatorService {
             int updated = jdbc.update("""
                     UPDATE public.service_types
                     SET label_vi = ?, description_vi = ?, label_en = ?, description_en = ?,
-                        icon_name = ?, requires_quote = ?, sort_order = ?, is_active = ?
+                        icon_name = ?, requires_quote = ?, requires_destination = ?, sort_order = ?, is_active = ?
                     WHERE code = ?
                     """, input.labelVi().trim(), input.descriptionVi().trim(), input.labelEn().trim(),
-                    input.descriptionEn().trim(), input.iconName(), input.requiresQuote(), input.sortOrder(),
-                    input.active(), code);
+                    input.descriptionEn().trim(), input.iconName(), input.requiresQuote(),
+                    input.requiresDestination(), input.sortOrder(), input.active(), code);
             if (updated > 0) audit.record(actor.id(), "service_type.updated", "service_type", code);
             return updated;
         });

@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import * as Location from 'expo-location';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/src/constants/colors';
-import { Radius, Spacing, Typography } from '@/src/constants/spacing';
+import { Fonts, Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { rescueApi } from '@/src/features/rescue/api/rescueApi';
 import { ApiClientError } from '@/src/features/rescue/api/client';
 import { RequestSummaryCard } from '@/src/features/rescue/components/RequestSummaryCard';
@@ -19,12 +20,16 @@ import { useCopy } from '@/src/i18n';
 
 const COPY = {
   vi: {
+    attentionQueue: 'Ca cần chú ý',
+    auditLog: 'Nhật ký quản trị',
     teamReputation: 'Uy tín đội',
     qualityNotice: 'Cảnh báo chất lượng từ đơn vị điều phối',
     suspensionReview: 'Đội đã nhận nhiều cảnh báo; admin đang xem xét trạng thái hợp tác.',
     warningCount: 'cảnh báo',
     availabilityError: 'Không thể cập nhật trạng thái sẵn sàng.',
     offerError: 'Đề nghị không còn khả dụng. Hãy tải lại danh sách.',
+    declineError: 'Không thể từ chối đề nghị. Hãy tải lại danh sách.',
+    locationRequired: 'Cần cấp quyền và lấy được GPS chính xác trước khi bật sẵn sàng.',
     retryError: 'Không thể tìm lại đội cứu hộ.',
     title: 'Vận hành',
     requestError: 'Không tải được danh sách ca. Kéo xuống để thử lại.',
@@ -43,6 +48,8 @@ const COPY = {
     byRoad: 'km theo đường bộ',
     accepting: 'Đang nhận…',
     accept: 'Nhận ca',
+    declining: 'Đang từ chối…',
+    decline: 'Từ chối',
     noOffers: 'Chưa có đề nghị phù hợp.',
     active: 'Ca đang xử lý',
     staffSubtitle: 'Hàng đợi điều phối và mạng lưới đối tác đã xác minh.',
@@ -58,12 +65,16 @@ const COPY = {
     suspended: 'Đình chỉ',
   },
   en: {
+    attentionQueue: 'Requests needing attention',
+    auditLog: 'Administration audit log',
     teamReputation: 'Team reputation',
     qualityNotice: 'Quality warning from dispatch',
     suspensionReview: 'The team has multiple warnings; an admin is reviewing partner status.',
     warningCount: 'warnings',
     availabilityError: 'Could not update availability.',
     offerError: 'This offer is no longer available. Refresh the list.',
+    declineError: 'Could not decline this offer. Refresh the list.',
+    locationRequired: 'A precise GPS location is required before availability can be enabled.',
     retryError: 'Could not find another rescue team.',
     title: 'Operations',
     requestError: 'Could not load requests. Pull down to try again.',
@@ -82,6 +93,8 @@ const COPY = {
     byRoad: 'km by road',
     accepting: 'Accepting…',
     accept: 'Accept request',
+    declining: 'Declining…',
+    decline: 'Decline',
     noOffers: 'No suitable offers.',
     active: 'Active request',
     staffSubtitle: 'Dispatch queue and verified partner network.',
@@ -128,8 +141,16 @@ export default function OperationsScreen() {
       router.push(`/rescue/${requestId}`);
     },
   });
+  const decline = useMutation({
+    mutationFn: rescueApi.declineOffer,
+    onSuccess: () => void offers.refetch(),
+  });
   const retry = useMutation({
     mutationFn: rescueApi.retryDispatch,
+    onSuccess: () => void client.invalidateQueries({ queryKey: rescueKeys.requests(false) }),
+  });
+  const reassign = useMutation({
+    mutationFn: rescueApi.reassignDispatch,
     onSuccess: () => void client.invalidateQueries({ queryKey: rescueKeys.requests(false) }),
   });
   const availabilityLocation = useAvailableProviderLocation(Boolean(isProvider && provider.data?.available));
@@ -143,9 +164,38 @@ export default function OperationsScreen() {
   const setProviderAvailability = async (value: boolean) => {
     setMessage(null);
     try {
-      await availability.mutateAsync(value);
+      if (!value) {
+        await availability.mutateAsync({ available: false });
+        return;
+      }
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status !== Location.PermissionStatus.GRANTED) {
+        setMessage(c.locationRequired);
+        return;
+      }
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      if (position.coords.accuracy == null) {
+        setMessage(c.locationRequired);
+        return;
+      }
+      await availability.mutateAsync({
+        available: true,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracyM: position.coords.accuracy,
+      });
     } catch (error) {
       report(error, c.availabilityError);
+    }
+  };
+
+  const declineOffer = async (id: string) => {
+    setMessage(null);
+    try {
+      await decline.mutateAsync(id);
+    } catch (error) {
+      report(error, c.declineError);
+      void offers.refetch();
     }
   };
 
@@ -212,10 +262,12 @@ export default function OperationsScreen() {
                 ) : null}
               </View>
               <Switch
+                accessibilityLabel={c.available}
                 value={provider.data?.available ?? false}
                 disabled={provider.isLoading || availability.isPending}
                 onValueChange={(value) => void setProviderAvailability(value)}
-                trackColor={{ false: Colors.mist, true: Colors.success }}
+                trackColor={{ false: Colors.borderStrong, true: Colors.success }}
+                thumbColor={Colors.white}
               />
             </View>
             {provider.isError ? (
@@ -267,15 +319,28 @@ export default function OperationsScreen() {
                 <Text style={styles.distance}>
                   {(offer.roadDistanceM / 1000).toFixed(1)} {c.byRoad}
                 </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: accept.isPending }}
-                  disabled={accept.isPending}
-                  style={[styles.acceptButton, accept.isPending && styles.disabled]}
-                  onPress={() => void acceptOffer(offer.id, offer.requestVersion)}
-                >
-                  <Text style={styles.acceptText}>{accept.isPending ? c.accepting : c.accept}</Text>
-                </Pressable>
+                <View style={styles.offerActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={accept.isPending ? c.accepting : c.accept}
+                    accessibilityState={{ disabled: accept.isPending || decline.isPending }}
+                    disabled={accept.isPending || decline.isPending}
+                    style={[styles.acceptButton, (accept.isPending || decline.isPending) && styles.disabled]}
+                    onPress={() => void acceptOffer(offer.id, offer.requestVersion)}
+                  >
+                    <Text style={styles.acceptText}>{accept.isPending ? c.accepting : c.accept}</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={decline.isPending ? c.declining : c.decline}
+                    accessibilityState={{ disabled: accept.isPending || decline.isPending }}
+                    disabled={accept.isPending || decline.isPending}
+                    style={[styles.declineButton, (accept.isPending || decline.isPending) && styles.disabled]}
+                    onPress={() => void declineOffer(offer.id)}
+                  >
+                    <Text style={styles.declineText}>{decline.isPending ? c.declining : c.decline}</Text>
+                  </Pressable>
+                </View>
               </View>
             ))}
             {!offers.isLoading && offers.data?.length === 0 ? (
@@ -288,11 +353,36 @@ export default function OperationsScreen() {
         {isStaff ? (
           <>
             <Text style={styles.subtitle}>{c.staffSubtitle}</Text>
+            <Pressable
+              style={styles.manageButton}
+              onPress={() => router.push('/operator/attention')}
+              accessibilityRole="button"
+              accessibilityLabel={c.attentionQueue}
+            >
+              <Ionicons name="warning-outline" size={19} color={Colors.primary} />
+              <Text style={styles.manageText}>{c.attentionQueue}</Text>
+            </Pressable>
             {role === 'admin' ? (
-              <Pressable style={styles.manageButton} onPress={() => router.push('/operator/teams')}>
-                <Ionicons name="settings-outline" size={19} color={Colors.primary} />
-                <Text style={styles.manageText}>{c.manage}</Text>
-              </Pressable>
+              <>
+                <Pressable
+                  style={styles.manageButton}
+                  onPress={() => router.push('/operator/teams')}
+                  accessibilityRole="button"
+                  accessibilityLabel={c.manage}
+                >
+                  <Ionicons name="settings-outline" size={19} color={Colors.primary} />
+                  <Text style={styles.manageText}>{c.manage}</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.manageButton}
+                  onPress={() => router.push('/operator/audit')}
+                  accessibilityRole="button"
+                  accessibilityLabel={c.auditLog}
+                >
+                  <Ionicons name="document-text-outline" size={19} color={Colors.primary} />
+                  <Text style={styles.manageText}>{c.auditLog}</Text>
+                </Pressable>
+              </>
             ) : null}
             <Text style={styles.section}>{c.teams}</Text>
             {teams.isError ? (
@@ -334,6 +424,7 @@ export default function OperationsScreen() {
             {isStaff && request.status === 'no_provider' ? (
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel={retry.isPending ? c.retrying : c.retry}
                 accessibilityState={{ disabled: retry.isPending }}
                 disabled={retry.isPending}
                 style={[styles.retryButton, retry.isPending && styles.disabled]}
@@ -341,6 +432,21 @@ export default function OperationsScreen() {
               >
                 <Ionicons name="refresh" size={17} color={Colors.primary} />
                 <Text style={styles.retryText}>{retry.isPending ? c.retrying : c.retry}</Text>
+              </Pressable>
+            ) : null}
+            {isStaff && request.status === 'needs_dispatch' ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={reassign.isPending ? c.retrying : c.retry}
+                accessibilityState={{ disabled: reassign.isPending }}
+                disabled={reassign.isPending}
+                style={[styles.retryButton, reassign.isPending && styles.disabled]}
+                onPress={() =>
+                  void reassign.mutateAsync(request.id).catch((error) => report(error, c.retryError))
+                }
+              >
+                <Ionicons name="git-compare-outline" size={17} color={Colors.primary} />
+                <Text style={styles.retryText}>{reassign.isPending ? c.retrying : c.retry}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -393,12 +499,24 @@ const styles = StyleSheet.create({
   eta: { ...Typography.bodyBold, color: Colors.success },
   distance: { ...Typography.caption, color: Colors.primary },
   acceptButton: {
+    flex: 1,
     alignItems: 'center',
     padding: 12,
     borderRadius: Radius.md,
     backgroundColor: Colors.accent,
   },
   acceptText: { ...Typography.bodyBold, color: Colors.textOnAccent },
+  offerActions: { flexDirection: 'row', gap: Spacing.sm },
+  declineButton: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.borderStrong,
+    backgroundColor: Colors.surface,
+  },
+  declineText: { ...Typography.bodyBold, color: Colors.textSecondary },
   teamGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   teamCard: {
     width: '48%',
@@ -424,12 +542,13 @@ const styles = StyleSheet.create({
   requestWrap: { gap: Spacing.xs },
   retryButton: {
     alignSelf: 'flex-end',
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    padding: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
   },
-  retryText: { ...Typography.caption, color: Colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
+  retryText: { ...Typography.caption, color: Colors.primary, fontFamily: Fonts.bodySemi },
   manageButton: {
     flexDirection: 'row',
     alignItems: 'center',

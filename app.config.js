@@ -6,7 +6,13 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env
 const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
 const mapsKey = process.env.GOOGLE_MAPS_KEY || '';
 const supportHotline = process.env.EXPO_PUBLIC_SUPPORT_HOTLINE || '';
+const serviceCenterLatitude = process.env.EXPO_PUBLIC_SERVICE_CENTER_LATITUDE || '';
+const serviceCenterLongitude = process.env.EXPO_PUBLIC_SERVICE_CENTER_LONGITUDE || '';
 const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID || '';
+const brand = {
+  canvas: '#F7FBFD',
+  lime: '#DDF186',
+};
 
 function isHttpsUrl(value) {
   try {
@@ -24,6 +30,8 @@ if (isProductionBuild) {
     ['EXPO_PUBLIC_API_URL', apiUrl],
     ['GOOGLE_MAPS_KEY', mapsKey],
     ['EXPO_PUBLIC_SUPPORT_HOTLINE', supportHotline],
+    ['EXPO_PUBLIC_SERVICE_CENTER_LATITUDE', serviceCenterLatitude],
+    ['EXPO_PUBLIC_SERVICE_CENTER_LONGITUDE', serviceCenterLongitude],
     ['EXPO_PUBLIC_EAS_PROJECT_ID', easProjectId],
   ]
     .filter(([, value]) => !value)
@@ -41,17 +49,34 @@ if (isProductionBuild) {
   if (!/^\+?[0-9]{6,15}$/.test(supportHotline)) {
     throw new Error('EXPO_PUBLIC_SUPPORT_HOTLINE must contain 6-15 digits, with an optional leading +.');
   }
+  const centerLatitude = Number(serviceCenterLatitude);
+  const centerLongitude = Number(serviceCenterLongitude);
+  if (
+    !Number.isFinite(centerLatitude) ||
+    centerLatitude < -90 ||
+    centerLatitude > 90 ||
+    !Number.isFinite(centerLongitude) ||
+    centerLongitude < -180 ||
+    centerLongitude > 180
+  ) {
+    throw new Error('The public service center must contain valid latitude and longitude values.');
+  }
 }
 
 export default {
   expo: {
-    name: 'MotoRescue Đà Nẵng',
-    slug: 'motorescue-danang',
+    name: 'Moki Rescue',
+    slug: 'moki-rescue',
     description: 'Điều phối cứu hộ xe máy theo thời gian thực cho mạng lưới đối tác được xác minh.',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/motorescue-icon-opaque.png',
+    icon: './assets/branding/moki-rescue-logo.png',
     userInterfaceStyle: 'light',
+    locales: {
+      vi: './locales/vi.json',
+      en: './locales/en.json',
+    },
+    // Preserve installed-app identity and existing deep links across the visual rebrand.
     scheme: 'motorescue',
     ios: {
       supportsTablet: true,
@@ -60,8 +85,8 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        backgroundColor: '#0B1F33',
-        foregroundImage: './assets/motorescue-icon-opaque.png',
+        backgroundColor: brand.canvas,
+        foregroundImage: './assets/branding/moki-rescue-logo.png',
       },
       package: 'com.danang.motorescue',
       versionCode: 1,
@@ -70,7 +95,7 @@ export default {
         googleMaps: { apiKey: mapsKey },
       },
     },
-    web: { favicon: './assets/motorescue-icon-opaque.png' },
+    web: { favicon: './assets/branding/moki-rescue-logo.png' },
     plugins: [
       'expo-router',
       'expo-font',
@@ -79,9 +104,9 @@ export default {
         'expo-location',
         {
           locationWhenInUsePermission:
-            'MotoRescue dùng vị trí khi bạn tạo hoặc đang xử lý một yêu cầu cứu hộ. Vị trí không được theo dõi khi không có ca hoạt động.',
+            'Moki Rescue dùng vị trí khi bạn tạo hoặc đang xử lý một yêu cầu cứu hộ. Vị trí không được theo dõi khi không có ca hoạt động.',
           locationAlwaysAndWhenInUsePermission:
-            'Cứu hộ viên cho phép MotoRescue cập nhật vị trí trong nền chỉ khi đang xử lý một ca. Khách hàng không cần cấp quyền này.',
+            'Cứu hộ viên cho phép Moki Rescue cập nhật vị trí trong nền chỉ khi đang xử lý một ca. Khách hàng không cần cấp quyền này.',
           isIosBackgroundLocationEnabled: true,
           isAndroidBackgroundLocationEnabled: true,
           isAndroidForegroundServiceEnabled: true,
@@ -90,8 +115,8 @@ export default {
       [
         'expo-notifications',
         {
-          icon: './assets/motorescue-notification-icon.png',
-          color: '#F5B942',
+          icon: './assets/branding/moki-rescue-notification-icon.png',
+          color: brand.lime,
           defaultChannel: 'rescue-updates',
         },
       ],
@@ -101,6 +126,8 @@ export default {
       supabaseAnonKey,
       apiUrl,
       supportHotline,
+      serviceCenterLatitude,
+      serviceCenterLongitude,
       appEnvironment: process.env.APP_ENV || 'development',
       ...(easProjectId ? { eas: { projectId: easProjectId } } : {}),
     },

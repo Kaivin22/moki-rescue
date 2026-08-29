@@ -20,6 +20,7 @@ const COPY = {
     warningTitle: 'Yêu cầu không thể hoàn tác trong ứng dụng',
     warningBody:
       'Bạn phải hoàn tất hoặc hủy mọi ca đang hoạt động. Tài khoản sẽ bị vô hiệu hóa ngay, sau đó đơn vị vận hành xóa dữ liệu nhận dạng theo thời hạn chính sách; sự kiện audit tối thiểu có thể được giữ để chống gian lận và giải quyết tranh chấp.',
+    confirmation: 'XOA',
     label: 'Nhập XOA để xác nhận',
     submit: 'Gửi yêu cầu xóa',
     back: 'Quay lại',
@@ -30,7 +31,8 @@ const COPY = {
     warningTitle: 'This request cannot be undone in the app',
     warningBody:
       'You must complete or cancel every active rescue request. The account is disabled immediately, then the operator removes identifying data within the policy period. Minimal audit events may be retained to prevent fraud and resolve disputes.',
-    label: 'Enter XOA to confirm',
+    confirmation: 'DELETE',
+    label: 'Enter DELETE to confirm',
     submit: 'Request deletion',
     back: 'Go back',
   },
@@ -43,7 +45,7 @@ export default function DeleteAccountScreen() {
   const c = useCopy(COPY);
 
   const requestDeletion = async () => {
-    if (confirmation !== 'XOA') return;
+    if (confirmation !== c.confirmation) return;
     setBusy(true);
     try {
       await rescueApi.requestAccountDeletion();
@@ -74,7 +76,7 @@ export default function DeleteAccountScreen() {
         <AppButton
           title={c.submit}
           variant="destructive"
-          disabled={confirmation !== 'XOA'}
+          disabled={confirmation !== c.confirmation}
           loading={busy}
           onPress={() => void requestDeletion()}
         />

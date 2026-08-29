@@ -11,9 +11,9 @@
     </parent>
 
     <groupId>com.danang</groupId>
-    <artifactId>motorescue</artifactId>
+    <artifactId>moki-rescue</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>motorescue-api</name>
+    <name>moki-rescue-api</name>
     <description>API điều phối cứu hộ xe máy theo thời gian thực</description>
 
     <properties>

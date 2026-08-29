@@ -45,7 +45,12 @@ public class AccountService {
                     SET deletion_requested_at = NOW(), is_active = FALSE
                     WHERE id = ? AND deletion_requested_at IS NULL
                     """, actor.id());
-            jdbc.update("UPDATE public.provider_members SET is_available = FALSE WHERE user_id = ?", actor.id());
+            jdbc.update("""
+                    UPDATE public.provider_members
+                    SET is_available = FALSE, last_latitude = NULL, last_longitude = NULL,
+                        location_accuracy_m = NULL
+                    WHERE user_id = ?
+                    """, actor.id());
             jdbc.update("UPDATE public.push_devices SET is_active = FALSE WHERE user_id = ?", actor.id());
         });
     }
@@ -74,5 +79,12 @@ public class AccountService {
                 DELETE FROM public.push_devices
                 WHERE user_id = ? AND expo_push_token = ? AND installation_id = ?
                 """, actor.id(), token, installationId);
+    }
+
+    public void unregisterAllPushDevices(Actor actor) {
+        int changed = jdbc.update(
+                "UPDATE public.push_devices SET is_active = FALSE WHERE user_id = ? AND is_active",
+                actor.id());
+        audit.record(actor.id(), "push_devices.revoked_all", "profile", actor.id());
     }
 }

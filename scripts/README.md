@@ -1,4 +1,4 @@
-# Cài mới cơ sở dữ liệu MotoRescue
+# Cài mới cơ sở dữ liệu Moki Rescue
 
 Bộ SQL này dành cho một Supabase project mới hoặc staging. Không chạy `00_reset.sql` trên môi trường có dữ liệu cần giữ.
 
@@ -19,7 +19,8 @@ Bộ SQL này dành cho một Supabase project mới hoặc staging. Không ch�
 
 4. Chạy `02_verify_rls.sql`. Script chỉ kiểm tra metadata bảo mật, không tạo fixture và không sửa dữ liệu nghiệp vụ.
 5. Đăng nhập OTP bằng tài khoản vận hành đầu tiên, sửa đúng **một số điện thoại E.164** trong `03_bootstrap_operator.sql`, rồi chạy script đó. Script dừng nếu còn giá trị mẫu hoặc số điện thoại không khớp đúng một tài khoản.
-6. Trên production, chạy `04_schedule_retention.sql` để xóa checkpoint GPS sau 24 giờ, làm mờ vị trí/nội dung nhạy cảm của ca đã đóng sau 30 ngày và xóa dấu quota trợ lý sau 2 ngày.
+6. Kiểm tra và hiệu chỉnh polygon `service_zones` cho đúng phạm vi vận hành thật; tọa độ tâm trong `.env` mobile không thay thế bước này.
+7. Trên production, chạy `04_schedule_retention.sql` để xóa checkpoint GPS sau 24 giờ, làm mờ vị trí/nội dung nhạy cảm của ca đã đóng sau 30 ngày và xóa dấu quota trợ lý/metadata push receipt sau 2 ngày.
 
 Không còn migration `05`: lần reset này đã hợp nhất số liên hệ công việc và mọi thay đổi vào `01_schema.sql`. Không chạy lại bất kỳ SQL cũ nào ngoài các tệp đang có trong thư mục này.
 
@@ -40,5 +41,6 @@ Không có seed đội cứu hộ, vị trí, yêu cầu hay đánh giá giả. 
 - RLS là lớp giới hạn truy cập, không thay cho kiểm tra vai trò và state machine ở backend.
 - `assistant_usage_events` chỉ lưu tài khoản + thời điểm để giới hạn quota; không lưu câu hỏi/câu trả lời ChatBox.
 - `push_devices` dùng `installation_id` ngẫu nhiên của cài đặt app; không dùng số điện thoại hay hardware identifier làm khóa thiết bị.
+- `push_delivery_receipts` chỉ lưu ticket/status/error code tối thiểu để xử lý `DeviceNotRegistered`; không lưu nội dung thông báo, token bản sao hay dữ liệu ca.
 - Catalog baseline có thể được admin sửa qua backend sau khi bootstrap; mã service giữ bất biến để bảo toàn khóa ngoại và lịch sử ca.
 - Review lưu cả provider và đội tại thời điểm phục vụ. `team_quality_alerts` chỉ là tín hiệu; admin phải kiểm tra review, ghi lý do cảnh báo/kiểm duyệt và tự quyết định trạng thái đội. Database không tự đình chỉ theo điểm sao.

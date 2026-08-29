@@ -28,6 +28,8 @@ export function AppInput({ label, error, leftIcon, isPassword, style, ...props }
           {...props}
           style={[styles.input, Typography.body]}
           accessibilityLabel={props.accessibilityLabel ?? label}
+          accessibilityHint={error ?? props.accessibilityHint}
+          aria-invalid={Boolean(error)}
           placeholderTextColor={props.placeholderTextColor ?? Colors.secondary}
           secureTextEntry={isPassword && !showPassword}
           onFocus={(e) => {
@@ -84,15 +86,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: Colors.borderStrong,
     minHeight: 52,
     paddingHorizontal: Spacing.md,
   },
   inputFocused: {
-    borderColor: Colors.accent,
+    borderColor: Colors.focus,
+    borderWidth: 2,
   },
   inputError: {
     borderColor: Colors.error,
+    borderWidth: 2,
   },
   leftIcon: {
     marginRight: Spacing.sm,
@@ -103,7 +107,11 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   eyeIcon: {
-    padding: Spacing.xs,
+    width: 44,
+    height: 44,
+    marginRight: -Spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   errorText: {
     color: Colors.error,

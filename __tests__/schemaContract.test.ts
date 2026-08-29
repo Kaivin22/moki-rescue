@@ -19,7 +19,7 @@ const qualityService = fs.readFileSync(
   'utf8',
 );
 
-describe('MotoRescue schema contract', () => {
+describe('Moki Rescue schema contract', () => {
   it('contains the rescue state machine and atomic acceptance function', () => {
     expect(schema).toContain('awaiting_arrival_confirmation');
     expect(schema).toContain('awaiting_completion');
@@ -46,6 +46,7 @@ describe('MotoRescue schema contract', () => {
     expect(schema).not.toContain('vote_shared_itinerary');
     expect(schema).not.toContain('vip_subscriptions');
     expect(schema).not.toContain('itineraries');
+    expect(schema).not.toContain('evidence_path');
   });
 
   it('stores only an operator-approved provider contact number', () => {
@@ -66,6 +67,15 @@ describe('MotoRescue schema contract', () => {
     expect(verify).toContain('MOTORESCUE_API_ACCOUNT_LOOKUP_GRANT_MISSING');
   });
 
+  it('records structured cancellation policy without retaining a cancellation location', () => {
+    expect(schema).toContain('cancellation_code TEXT');
+    expect(schema).toContain('cancellation_stage TEXT');
+    expect(schema).toContain('is_late_cancellation BOOLEAN NOT NULL DEFAULT FALSE');
+    expect(schema).toContain('provider_near_pickup_on_cancel BOOLEAN');
+    expect(schema).not.toContain('cancellation_latitude');
+    expect(verify).toContain("('rescue_requests', 'cancellation_code')");
+  });
+
   it('uses a least-privilege backend login and stores no assistant content', () => {
     expect(schema).toContain('CREATE ROLE motorescue_api');
     expect(schema).toContain('NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS');
@@ -78,6 +88,18 @@ describe('MotoRescue schema contract', () => {
   it('binds push tokens to a stable app installation', () => {
     expect(schema).toContain('installation_id UUID NOT NULL UNIQUE');
     expect(verify).toContain("('push_devices', 'installation_id')");
+  });
+
+  it('tracks Expo push receipts without exposing message content to clients', () => {
+    expect(schema).toContain('CREATE TABLE public.push_delivery_receipts');
+    expect(schema).toContain('expo_ticket_id TEXT NOT NULL UNIQUE');
+    expect(schema).toContain('push_delivery_receipts_no_client_access');
+    expect(schema).not.toMatch(
+      /push_delivery_receipts[\s\S]{0,500}\b(title|body|message|payload|expo_push_token)\s+TEXT/i,
+    );
+    expect(verify).toContain('MOTORESCUE_API_PUSH_RECEIPT_GRANT_MISSING');
+    expect(verify).toContain('PUSH_RECEIPT_SENSITIVE_COLUMN_FOUND');
+    expect(verify).toContain('purge_push_delivery_receipts');
   });
 
   it('allows only the backend role to maintain the service catalog', () => {

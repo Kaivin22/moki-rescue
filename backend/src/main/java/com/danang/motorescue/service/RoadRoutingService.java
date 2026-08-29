@@ -125,7 +125,16 @@ public class RoadRoutingService {
             if (includeGeometry) {
                 for (JsonNode point : route.path("geometry").path("coordinates")) {
                     if (point.isArray() && point.size() >= 2) {
-                        points.add(new RoadPoint(point.get(1).asDouble(), point.get(0).asDouble()));
+                        JsonNode longitudeNode = point.get(0);
+                        JsonNode latitudeNode = point.get(1);
+                        if (!longitudeNode.isNumber() || !latitudeNode.isNumber()) continue;
+                        double longitude = longitudeNode.asDouble();
+                        double latitude = latitudeNode.asDouble();
+                        if (Double.isFinite(latitude) && Double.isFinite(longitude)
+                                && latitude >= -90 && latitude <= 90
+                                && longitude >= -180 && longitude <= 180) {
+                            points.add(new RoadPoint(latitude, longitude));
+                        }
                     }
                 }
                 if (points.size() < 2) return Optional.empty();

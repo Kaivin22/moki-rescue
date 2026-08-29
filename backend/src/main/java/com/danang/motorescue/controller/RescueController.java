@@ -2,18 +2,22 @@ package com.danang.motorescue.controller;
 
 import com.danang.motorescue.model.ApiModels.CancelRequest;
 import com.danang.motorescue.model.ApiModels.CreateRequest;
+import com.danang.motorescue.model.ApiModels.DestinationRequest;
+import com.danang.motorescue.model.ApiModels.IncidentReportRequest;
 import com.danang.motorescue.model.ApiModels.QuoteDecisionRequest;
 import com.danang.motorescue.model.ApiModels.QuoteRequest;
 import com.danang.motorescue.model.ApiModels.RequestCard;
 import com.danang.motorescue.model.ApiModels.RequestDetails;
 import com.danang.motorescue.model.ApiModels.ReviewRequest;
 import com.danang.motorescue.model.ApiModels.StateActionRequest;
+import com.danang.motorescue.model.ApiModels.SupportRequest;
 import com.danang.motorescue.model.ApiModels.RoadRouteResponse;
 import com.danang.motorescue.service.ActorService;
 import com.danang.motorescue.service.ActorService.Actor;
 import com.danang.motorescue.service.RescueService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.time.Instant;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -53,8 +57,11 @@ public class RescueController {
     @GetMapping
     List<RequestCard> list(
             @AuthenticationPrincipal Jwt jwt,
-            @RequestParam(defaultValue = "false") boolean history) {
-        return rescue.list(actors.require(jwt), history);
+            @RequestParam(defaultValue = "false") boolean history,
+            @RequestParam(required = false) Instant before,
+            @RequestParam(required = false) UUID beforeId,
+            @RequestParam(defaultValue = "50") int limit) {
+        return rescue.list(actors.require(jwt), history, before, beforeId, limit);
     }
 
     @GetMapping("/{requestId}")
@@ -75,6 +82,29 @@ public class RescueController {
         return rescue.cancel(actors.require(jwt), requestId, input);
     }
 
+    @PostMapping("/{requestId}/retry")
+    RequestDetails retry(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID requestId) {
+        return rescue.retryDispatch(actors.requireRole(jwt, "customer"), requestId);
+    }
+
+    @PostMapping("/{requestId}/support")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void requestSupport(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID requestId,
+            @Valid @RequestBody SupportRequest input) {
+        rescue.requestSupport(actors.requireRole(jwt, "customer"), requestId, input);
+    }
+
+    @PostMapping("/{requestId}/incidents")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void reportIncident(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID requestId,
+            @Valid @RequestBody IncidentReportRequest input) {
+        rescue.reportIncident(actors.requireRole(jwt, "customer"), requestId, input);
+    }
+
     @PostMapping("/{requestId}/actions")
     RequestDetails action(
             @AuthenticationPrincipal Jwt jwt,
@@ -82,6 +112,14 @@ public class RescueController {
             @Valid @RequestBody StateActionRequest input) {
         Actor actor = actors.require(jwt);
         return rescue.act(actor, requestId, input);
+    }
+
+    @PutMapping("/{requestId}/destination")
+    RequestDetails updateDestination(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID requestId,
+            @Valid @RequestBody DestinationRequest input) {
+        return rescue.updateDestination(actors.requireRole(jwt, "customer"), requestId, input);
     }
 
     @PostMapping("/{requestId}/quotes")

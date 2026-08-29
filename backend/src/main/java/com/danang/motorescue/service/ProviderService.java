@@ -7,6 +7,7 @@ import com.danang.motorescue.model.ApiModels.AvailabilityRequest;
 import com.danang.motorescue.model.ApiModels.OfferResponse;
 import com.danang.motorescue.model.ApiModels.ProviderLocationRequest;
 import com.danang.motorescue.model.ApiModels.ProviderStatusResponse;
+import com.danang.motorescue.model.ApiModels.ProviderWithdrawalResponse;
 import com.danang.motorescue.model.ApiModels.RatingSummary;
 import com.danang.motorescue.service.ActorService.Actor;
 import com.danang.motorescue.web.ApiException;
@@ -21,6 +22,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 public class ProviderService {
     private record AcceptedOffer(UUID requestId, UUID customerId) {}
+    private record Withdrawal(UUID requestId, UUID customerId, String previousStatus, String nextStatus) {}
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transactions;
     private final DispatchService dispatch;
@@ -93,6 +95,11 @@ public class ProviderService {
     public ProviderStatusResponse setAvailability(Actor actor, AvailabilityRequest input) {
         requireProvider(actor);
         if (input.available()) {
+            if (input.latitude() == null || input.longitude() == null || input.accuracyM() == null) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "PROVIDER_LOCATION_REQUIRED",
+                        "Cần vị trí GPS hợp lệ trước khi bật trạng thái sẵn sàng.");
+            }
+            validateAccuracy(new ProviderLocationRequest(input.latitude(), input.longitude(), input.accuracyM()));
             Boolean busy = jdbc.queryForObject("""
                     SELECT EXISTS(
                       SELECT 1 FROM public.rescue_requests
@@ -107,13 +114,14 @@ public class ProviderService {
             int updated = jdbc.update("""
                     UPDATE public.provider_members pm
                     SET is_available = ?,
-                        last_latitude = CASE WHEN ? THEN last_latitude ELSE NULL END,
-                        last_longitude = CASE WHEN ? THEN last_longitude ELSE NULL END,
-                        location_accuracy_m = CASE WHEN ? THEN location_accuracy_m ELSE NULL END
+                        last_latitude = CASE WHEN ? THEN ? ELSE NULL END,
+                        last_longitude = CASE WHEN ? THEN ? ELSE NULL END,
+                        location_accuracy_m = CASE WHEN ? THEN ? ELSE NULL END
                     FROM public.rescue_teams team
                     WHERE pm.user_id = ? AND pm.status = 'active'
                       AND team.id = pm.team_id AND team.status = 'verified'
-                    """, input.available(), input.available(), input.available(), input.available(), actor.id());
+                    """, input.available(), input.available(), input.latitude(),
+                    input.available(), input.longitude(), input.available(), input.accuracyM(), actor.id());
             if (updated > 0) {
                 audit.record(actor.id(), input.available() ? "provider.available" : "provider.unavailable", "provider", actor.id());
             }
@@ -172,6 +180,98 @@ public class ProviderService {
         }
     }
 
+    public void decline(Actor actor, UUID offerId) {
+        requireProvider(actor);
+        UUID requestId = transactions.execute(status -> {
+            UUID declinedRequestId = jdbc.query("""
+                    UPDATE public.dispatch_offers
+                    SET status = 'declined', responded_at = NOW()
+                    WHERE id = ? AND provider_id = ? AND status = 'pending' AND expires_at > NOW()
+                    RETURNING request_id
+                    """, rs -> rs.next() ? rs.getObject("request_id", UUID.class) : null,
+                    offerId, actor.id());
+            if (declinedRequestId != null) {
+                audit.record(actor.id(), "offer.declined", "dispatch_offer", offerId);
+            }
+            return declinedRequestId;
+        });
+        if (requestId == null) {
+            throw new ApiException(HttpStatus.CONFLICT, "OFFER_NOT_AVAILABLE",
+                    "Đề nghị đã hết hạn hoặc không còn dành cho bạn.");
+        }
+        dispatch.continueAfterDecline(requestId);
+    }
+
+    public ProviderWithdrawalResponse withdraw(Actor actor, UUID requestId, String reason) {
+        requireProvider(actor);
+        String cleanReason = reason == null ? "" : reason.trim();
+        if (cleanReason.length() < 5 || cleanReason.length() > 300) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "WITHDRAWAL_REASON_REQUIRED",
+                    "Hãy nhập lý do không thể tiếp tục từ 5 đến 300 ký tự.");
+        }
+        Withdrawal withdrawal = transactions.execute(status -> {
+            Withdrawal locked = jdbc.query("""
+                    SELECT id, customer_id, status
+                    FROM public.rescue_requests
+                    WHERE id = ? AND assigned_provider_id = ?
+                      AND status NOT IN ('completed', 'cancelled', 'no_provider', 'needs_dispatch')
+                    FOR UPDATE
+                    """, rs -> {
+                if (!rs.next()) return null;
+                String previous = rs.getString("status");
+                String next = List.of("assigned", "en_route", "awaiting_arrival_confirmation").contains(previous)
+                        ? "searching" : "needs_dispatch";
+                return new Withdrawal(rs.getObject("id", UUID.class), rs.getObject("customer_id", UUID.class),
+                        previous, next);
+            }, requestId, actor.id());
+            if (locked == null) return null;
+
+            int updated = jdbc.update("""
+                    UPDATE public.rescue_requests
+                    SET status = ?, assigned_team_id = NULL, assigned_provider_id = NULL,
+                        road_distance_m = NULL, eta_minutes = NULL, routing_status = 'pending', work_type = NULL
+                    WHERE id = ? AND assigned_provider_id = ? AND status = ?
+                    """, locked.nextStatus(), requestId, actor.id(), locked.previousStatus());
+            if (updated == 0) return null;
+            jdbc.update("""
+                    UPDATE public.dispatch_offers SET status = 'declined', responded_at = NOW()
+                    WHERE request_id = ? AND provider_id = ? AND status = 'accepted'
+                    """, requestId, actor.id());
+            jdbc.update("UPDATE public.quotes SET status = 'superseded' WHERE request_id = ? AND status = 'pending'",
+                    requestId);
+            jdbc.update("""
+                    UPDATE public.provider_members
+                    SET is_available = FALSE, last_latitude = NULL, last_longitude = NULL,
+                        location_accuracy_m = NULL
+                    WHERE user_id = ?
+                    """, actor.id());
+            if ("needs_dispatch".equals(locked.nextStatus())) {
+                jdbc.update("""
+                        INSERT INTO public.case_attention_flags(request_id, code, context_note)
+                        VALUES (?, 'provider_withdrew', ?)
+                        ON CONFLICT (request_id, code) WHERE status = 'open' DO NOTHING
+                        """, requestId, cleanReason);
+            }
+            jdbc.update("""
+                    UPDATE public.case_attention_flags
+                    SET status = 'resolved', resolved_at = NOW(),
+                        resolution_note = 'Cứu hộ viên đã dừng chia sẻ vị trí.'
+                    WHERE request_id = ? AND code = 'provider_gps_stale' AND status = 'open'
+                    """, requestId);
+            audit.record(actor.id(), "request.provider_withdrew." + locked.nextStatus(),
+                    "rescue_request", requestId);
+            return locked;
+        });
+        if (withdrawal == null) {
+            throw new ApiException(HttpStatus.CONFLICT, "REQUEST_NOT_WITHDRAWABLE",
+                    "Ca đã thay đổi hoặc không còn được phân công cho bạn.");
+        }
+        push.notifyUser(withdrawal.customerId(), NotificationKind.STATUS_CHANGED,
+                withdrawal.nextStatus(), requestId);
+        if ("searching".equals(withdrawal.nextStatus())) dispatch.match(requestId);
+        return new ProviderWithdrawalResponse(requestId, withdrawal.nextStatus());
+    }
+
     public boolean saveLocation(Actor actor, UUID requestId, ProviderLocationRequest input) {
         requireProvider(actor);
         validateAccuracy(input);
@@ -180,7 +280,7 @@ public class ProviderService {
                   SELECT 1 FROM public.rescue_requests
                   WHERE id = ? AND assigned_provider_id = ?
                     AND status IN ('assigned', 'en_route', 'awaiting_arrival_confirmation', 'arrived',
-                      'diagnosing', 'awaiting_quote', 'repairing', 'transporting', 'awaiting_completion')
+                      'diagnosing', 'awaiting_quote', 'quote_approved', 'repairing', 'transporting', 'awaiting_completion')
                 )
                 """, Boolean.class, requestId, actor.id());
         if (!Boolean.TRUE.equals(assigned)) {
@@ -205,6 +305,11 @@ public class ProviderService {
                     )
                     """, requestId, actor.id(), input.latitude(), input.longitude(), input.accuracyM(),
                     requestId, actor.id(), policy.checkpointDedupeSeconds());
+            jdbc.update("""
+                    UPDATE public.case_attention_flags
+                    SET status = 'resolved', resolved_at = NOW(), resolution_note = 'GPS đã cập nhật trở lại.'
+                    WHERE request_id = ? AND code = 'provider_gps_stale' AND status = 'open'
+                    """, requestId);
             return inserted > 0;
         }));
     }

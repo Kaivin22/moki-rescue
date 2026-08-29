@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { ScreenHeader } from '@/src/components/atoms/ScreenHeader';
 import { Colors } from '@/src/constants/colors';
-import { Radius, Spacing, Typography } from '@/src/constants/spacing';
+import { Fonts, Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { useServiceTypes } from '@/src/features/rescue/hooks/useRescueQueries';
 import { useCopy } from '@/src/i18n';
 
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   quoteLabel: {
     ...Typography.caption,
     color: Colors.primary,
-    fontFamily: 'BeVietnamPro_600SemiBold',
+    fontFamily: Fonts.bodySemi,
     marginTop: Spacing.xs,
   },
   stateCard: {

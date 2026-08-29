@@ -15,6 +15,12 @@ import com.danang.motorescue.model.ApiModels.TeamStatusRequest;
 import com.danang.motorescue.model.ApiModels.TeamVerificationResponse;
 import com.danang.motorescue.model.ApiModels.UpdateServiceTypeRequest;
 import com.danang.motorescue.model.ApiModels.UpdateTeamVerificationRequest;
+import com.danang.motorescue.model.ApiModels.AttentionFlagResponse;
+import com.danang.motorescue.model.ApiModels.AttentionResolutionRequest;
+import com.danang.motorescue.model.ApiModels.IncidentResolutionRequest;
+import com.danang.motorescue.model.ApiModels.ProviderMemberResponse;
+import com.danang.motorescue.model.ApiModels.ProviderMemberStatusRequest;
+import com.danang.motorescue.model.ApiModels.AuditLogResponse;
 import com.danang.motorescue.service.ActorService;
 import com.danang.motorescue.service.ActorService.Actor;
 import com.danang.motorescue.service.OperatorService;
@@ -23,6 +29,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -32,6 +39,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -66,6 +74,46 @@ public class OperatorController {
         operator.retry(staff(jwt), requestId);
     }
 
+    @PostMapping("/requests/{requestId}/reassign")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void reassign(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID requestId) {
+        operator.reassign(staff(jwt), requestId);
+    }
+
+    @GetMapping("/attention")
+    List<AttentionFlagResponse> attention(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(defaultValue = "true") boolean openOnly) {
+        return operator.attentionFlags(staff(jwt), openOnly);
+    }
+
+    @PostMapping("/attention/{flagId}/resolve")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void resolveAttention(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID flagId,
+            @Valid @RequestBody AttentionResolutionRequest input) {
+        operator.resolveAttention(staff(jwt), flagId, input);
+    }
+
+    @PostMapping("/incidents/{incidentId}/resolve")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void resolveIncident(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID incidentId,
+            @Valid @RequestBody IncidentResolutionRequest input) {
+        operator.resolveIncident(staff(jwt), incidentId, input);
+    }
+
+    @GetMapping("/audit-logs")
+    List<AuditLogResponse> auditLogs(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(required = false) Instant before,
+            @RequestParam(required = false) Long beforeId,
+            @RequestParam(defaultValue = "50") int limit) {
+        return operator.auditLogs(staff(jwt), before, beforeId, limit);
+    }
+
     @PostMapping("/teams")
     Map<String, UUID> createTeam(
             @AuthenticationPrincipal Jwt jwt,
@@ -80,6 +128,23 @@ public class OperatorController {
             @PathVariable UUID teamId,
             @Valid @RequestBody TeamStatusRequest input) {
         operator.setTeamStatus(staff(jwt), teamId, input.status());
+    }
+
+    @GetMapping("/teams/{teamId}/providers")
+    List<ProviderMemberResponse> providers(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID teamId) {
+        return operator.providers(staff(jwt), teamId);
+    }
+
+    @PutMapping("/teams/{teamId}/providers/{providerId}/status")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void setProviderStatus(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID teamId,
+            @PathVariable UUID providerId,
+            @Valid @RequestBody ProviderMemberStatusRequest input) {
+        operator.setProviderStatus(staff(jwt), teamId, providerId, input.status());
     }
 
     @GetMapping("/teams/{teamId}/verification")

@@ -1,19 +1,23 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { useAuthStore } from '@/src/stores/authStore';
 import { type Language, useCopy, useI18n } from '@/src/i18n';
+import { rescueApi } from '@/src/features/rescue/api/rescueApi';
+import { clearStoredPushToken } from '@/src/features/notifications/pushNotifications';
+import { stopProviderBackgroundTracking } from '@/src/features/rescue/services/backgroundLocation';
 
 const COPY = {
   vi: {
     noData: 'Chưa có dữ liệu',
     hidden: 'Không hiển thị',
     title: 'Bảo vệ bằng OTP',
-    subtitle: 'MotoRescue dùng phiên đăng nhập Supabase và không lưu mật khẩu riêng trong ứng dụng.',
+    subtitle: 'Moki Rescue dùng phiên đăng nhập Supabase và không lưu mật khẩu riêng trong ứng dụng.',
     account: 'Trạng thái tài khoản',
     phone: 'Số điện thoại',
     otp: 'Xác minh OTP',
@@ -23,17 +27,23 @@ const COPY = {
     created: 'Tạo tài khoản',
     principles: 'Nguyên tắc an toàn',
     guideOtp: 'Không cung cấp mã OTP cho điều phối viên, cứu hộ viên hoặc bất kỳ người nào gọi đến.',
-    guideMoney: 'MotoRescue không yêu cầu chuyển tiền để “mở khóa” tài khoản hay ưu tiên nhận ca.',
+    guideMoney: 'Moki Rescue không yêu cầu chuyển tiền để “mở khóa” tài khoản hay ưu tiên nhận ca.',
     guidePhone:
       'Nếu mất quyền kiểm soát số điện thoại, hãy đăng xuất và liên hệ nhà mạng trước khi tiếp tục sử dụng.',
     privacy: 'Xem dữ liệu được xử lý',
+    signOutAll: 'Đăng xuất trên tất cả thiết bị',
+    signOutAllTitle: 'Thu hồi tất cả phiên đăng nhập?',
+    signOutAllBody:
+      'Tất cả refresh token và đăng ký nhận thông báo sẽ bị thu hồi. Bạn cần đăng nhập OTP lại trên từng thiết bị.',
+    signOutAllError: 'Không thể thu hồi toàn bộ phiên. Vui lòng thử lại.',
+    cancel: 'Không',
     note: 'Ứng dụng chỉ hiển thị phiên hiện tại. Việc thay đổi số điện thoại cần quy trình xác minh riêng và không được giả lập trong bản production.',
   },
   en: {
     noData: 'No data',
     hidden: 'Not displayed',
     title: 'Protected by OTP',
-    subtitle: 'MotoRescue uses Supabase sessions and does not store a separate password in the app.',
+    subtitle: 'Moki Rescue uses Supabase sessions and does not store a separate password in the app.',
     account: 'Account status',
     phone: 'Phone number',
     otp: 'OTP verification',
@@ -43,10 +53,16 @@ const COPY = {
     created: 'Account created',
     principles: 'Safety principles',
     guideOtp: 'Never share your OTP with a dispatcher, rescue provider, or anyone who calls you.',
-    guideMoney: 'MotoRescue never asks for a transfer to “unlock” an account or prioritize a request.',
+    guideMoney: 'Moki Rescue never asks for a transfer to “unlock” an account or prioritize a request.',
     guidePhone:
       'If you lose control of your phone number, sign out and contact your carrier before continuing.',
     privacy: 'View processed data',
+    signOutAll: 'Sign out on all devices',
+    signOutAllTitle: 'Revoke all sign-in sessions?',
+    signOutAllBody:
+      'All refresh tokens and push registrations will be revoked. Each device must sign in with OTP again.',
+    signOutAllError: 'Could not revoke all sessions. Please try again.',
+    cancel: 'Cancel',
     note: 'The app only shows the current session. Changing a phone number requires a separate verification process and is not simulated in the production app.',
   },
 } as const;
@@ -90,6 +106,29 @@ export default function AccountSecurityScreen() {
   const user = useAuthStore((state) => state.user);
   const language = useI18n((state) => state.language);
   const c = useCopy(COPY);
+  const signOutEverywhere = useAuthStore((state) => state.signOutEverywhere);
+  const [busy, setBusy] = useState(false);
+
+  const revokeAllSessions = () =>
+    Alert.alert(c.signOutAllTitle, c.signOutAllBody, [
+      { text: c.cancel, style: 'cancel' },
+      {
+        text: c.signOutAll,
+        style: 'destructive',
+        onPress: () => {
+          setBusy(true);
+          void Promise.allSettled([rescueApi.unregisterAllPushDevices(), stopProviderBackgroundTracking()])
+            .then(async (results) => {
+              if (results[0].status === 'rejected') throw results[0].reason;
+              await clearStoredPushToken();
+              await signOutEverywhere();
+              router.replace('/(auth)/login');
+            })
+            .catch(() => Alert.alert(c.signOutAllTitle, c.signOutAllError))
+            .finally(() => setBusy(false));
+        },
+      },
+    ]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -135,6 +174,7 @@ export default function AccountSecurityScreen() {
         </View>
 
         <AppButton title={c.privacy} variant="outline" onPress={() => router.push('/legal/privacy')} />
+        <AppButton title={c.signOutAll} variant="destructive" loading={busy} onPress={revokeAllSessions} />
         <Text style={styles.note}>{c.note}</Text>
       </ScrollView>
     </SafeAreaView>
@@ -158,18 +198,18 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     padding: Spacing.xl,
     borderRadius: Radius.xl,
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: Colors.sky,
   },
   shield: {
     width: 64,
     height: 64,
-    borderRadius: 22,
+    borderRadius: Radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.accent,
   },
-  title: { ...Typography.h2, color: Colors.white },
-  subtitle: { ...Typography.body, color: Colors.skyBlue, textAlign: 'center' },
+  title: { ...Typography.h2, color: Colors.textPrimary },
+  subtitle: { ...Typography.body, color: Colors.textSecondary, textAlign: 'center' },
   section: { ...Typography.label, color: Colors.textSecondary, marginTop: Spacing.sm },
   card: {
     borderRadius: Radius.lg,
@@ -190,7 +230,7 @@ const styles = StyleSheet.create({
   icon: {
     width: 40,
     height: 40,
-    borderRadius: 14,
+    borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.sky,

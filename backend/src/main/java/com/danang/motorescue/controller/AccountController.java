@@ -62,4 +62,10 @@ public class AccountController {
     void unregisterPushDevice(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PushDeviceDeleteRequest input) {
         accounts.unregisterPushDevice(actors.require(jwt), input.token(), input.installationId());
     }
+
+    @DeleteMapping("/me/push-devices")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void unregisterAllPushDevices(@AuthenticationPrincipal Jwt jwt) {
+        accounts.unregisterAllPushDevices(actors.require(jwt));
+    }
 }

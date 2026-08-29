@@ -58,4 +58,20 @@ class RoadRoutingServiceTest {
                 .containsExactly(Optional.empty());
         server.verify();
     }
+
+    @Test
+    void rejectsInvalidRoadGeometryInsteadOfPassingItToTheMap() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        RoadRoutingService service = new RoadRoutingService(
+                builder.build(), new RoutingProperties("https://router.example", "driving", 500, 80));
+        server.expect(requestTo(containsString("overview=full")))
+                .andRespond(withSuccess(
+                        "{\"code\":\"Ok\",\"routes\":[{\"distance\":1200,\"duration\":300,"
+                                + "\"geometry\":{\"coordinates\":[[108.1,16.1],[999,16.2]]}}]}",
+                        MediaType.APPLICATION_JSON));
+
+        assertThat(service.routeWithGeometry(16.01, 108.01, 16.02, 108.02)).isEmpty();
+        server.verify();
+    }
 }

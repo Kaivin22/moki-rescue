@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Colors } from '@/src/constants/colors';
 import { Spacing, Radius, Typography as Typo } from '@/src/constants/spacing';
-import { Spring, Scale } from '@/src/constants/motion';
+import { Duration, Spring, Scale } from '@/src/constants/motion';
 import { useReduceMotion } from '@/src/hooks/useReduceMotion';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline' | 'destructive';
@@ -50,12 +50,12 @@ export function AppButton({
   useEffect(() => {
     Animated.timing(textOpacity, {
       toValue: loading ? 0 : 1,
-      duration: reduceMotion ? 0 : 160,
+      duration: reduceMotion ? 0 : Duration.fast,
       useNativeDriver: true,
     }).start();
     Animated.timing(spinnerOpacity, {
       toValue: loading ? 1 : 0,
-      duration: reduceMotion ? 0 : 160,
+      duration: reduceMotion ? 0 : Duration.fast,
       useNativeDriver: true,
     }).start();
   }, [loading, reduceMotion, textOpacity, spinnerOpacity]);
@@ -63,7 +63,7 @@ export function AppButton({
   useEffect(() => {
     Animated.timing(containerOpacity, {
       toValue: disabled ? 0.5 : 1,
-      duration: reduceMotion ? 0 : 200,
+      duration: reduceMotion ? 0 : Duration.normal,
       useNativeDriver: true,
     }).start();
   }, [disabled, containerOpacity, reduceMotion]);
@@ -137,9 +137,9 @@ export function AppButton({
         return { backgroundColor: Colors.accent };
       case 'secondary':
         return {
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.cardBg,
           borderWidth: 1.5,
-          borderColor: Colors.border,
+          borderColor: Colors.borderStrong,
         };
       case 'outline':
         return {
@@ -154,6 +154,12 @@ export function AppButton({
       default:
         return { backgroundColor: Colors.accent };
     }
+  };
+
+  const getSpinnerColor = () => {
+    if (variant === 'destructive') return Colors.white;
+    if (variant === 'primary') return Colors.textOnAccent;
+    return Colors.primary;
   };
 
   const getTextStyle = (): TextStyle => {
@@ -193,7 +199,7 @@ export function AppButton({
       >
         {/* Spinner nằm chồng, crossfade với text */}
         <Animated.View style={[styles.spinnerLayer, { opacity: spinnerOpacity }]} pointerEvents="none">
-          <ActivityIndicator color={Colors.primary} />
+          <ActivityIndicator color={getSpinnerColor()} />
         </Animated.View>
 
         <Animated.Text

@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { ScreenHeader } from '@/src/components/atoms/ScreenHeader';
 import { Colors } from '@/src/constants/colors';
-import { Radius, Spacing, Typography } from '@/src/constants/spacing';
+import { Fonts, Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { useServiceTypes } from '@/src/features/rescue/hooks/useRescueQueries';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useCopy, useI18n } from '@/src/i18n';
@@ -184,18 +184,18 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     gap: Spacing.sm,
     borderRadius: Radius.xl,
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: Colors.sky,
   },
   heroIcon: {
     width: 68,
     height: 68,
-    borderRadius: 24,
+    borderRadius: Radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.accent,
   },
-  title: { ...Typography.h1, color: Colors.white, textAlign: 'center' },
-  description: { ...Typography.body, color: Colors.skyBlue, textAlign: 'center' },
+  title: { ...Typography.h1, color: Colors.textPrimary, textAlign: 'center' },
+  description: { ...Typography.body, color: Colors.textSecondary, textAlign: 'center' },
   notice: {
     flexDirection: 'row',
     gap: Spacing.md,
@@ -214,12 +214,12 @@ const styles = StyleSheet.create({
   stepNumber: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.primary,
   },
-  stepNumberText: { ...Typography.caption, color: Colors.white, fontFamily: 'BeVietnamPro_600SemiBold' },
+  stepNumberText: { ...Typography.caption, color: Colors.white, fontFamily: Fonts.bodySemi },
   stepLine: { width: 2, flex: 1, backgroundColor: Colors.divider },
   stepText: {
     ...Typography.body,

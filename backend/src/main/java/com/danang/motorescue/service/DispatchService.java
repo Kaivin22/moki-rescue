@@ -95,6 +95,44 @@ public class DispatchService {
         }
     }
 
+    public void continueAfterDecline(UUID requestId) {
+        int changed = jdbc.update("""
+                UPDATE public.rescue_requests rr
+                SET status = 'searching', routing_status = 'pending'
+                WHERE rr.id = ? AND rr.status = 'offered'
+                  AND NOT EXISTS (
+                    SELECT 1 FROM public.dispatch_offers offer
+                    WHERE offer.request_id = rr.id AND offer.status = 'pending' AND offer.expires_at > NOW()
+                  )
+                """, requestId);
+        if (changed > 0) match(requestId);
+    }
+
+    public void reassign(UUID requestId) {
+        int changed = transactions.execute(status -> {
+            int updated = jdbc.update("""
+                    UPDATE public.rescue_requests
+                    SET status = 'searching', assigned_team_id = NULL, assigned_provider_id = NULL,
+                        road_distance_m = NULL, eta_minutes = NULL, routing_status = 'pending', work_type = NULL
+                    WHERE id = ? AND status = 'needs_dispatch'
+                    """, requestId);
+            if (updated > 0) {
+                jdbc.update("UPDATE public.quotes SET status = 'superseded' WHERE request_id = ? AND status = 'pending'",
+                        requestId);
+                jdbc.update("""
+                        UPDATE public.case_attention_flags
+                        SET status = 'resolved', resolved_at = NOW(), resolution_note = 'Điều phối viên đã tìm đội thay thế.'
+                        WHERE request_id = ? AND status = 'open'
+                        """, requestId);
+            }
+            return updated;
+        });
+        if (changed == 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "REQUEST_NOT_REASSIGNABLE",
+                    "Ca không ở trạng thái cần điều phối lại.");
+        }
+    }
+
     public void expireOffers() {
         List<ExpiredRequest> expired = transactions.execute(status -> {
             jdbc.update("""
@@ -150,6 +188,12 @@ public class DispatchService {
                     SELECT 1 FROM public.rescue_requests active_request
                     WHERE active_request.assigned_provider_id = pm.user_id
                       AND active_request.status NOT IN ('completed', 'cancelled')
+                  )
+                  AND NOT EXISTS (
+                    SELECT 1 FROM public.dispatch_offers previous_offer
+                    WHERE previous_offer.request_id = rr.id
+                      AND previous_offer.provider_id = pm.user_id
+                      AND previous_offer.status = 'declined'
                   )
                 ORDER BY pm.user_id
                 """, (rs, rowNum) -> new Candidate(

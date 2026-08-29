@@ -8,5 +8,5 @@ export function getAppVersionLabel(): string {
   const configuredBuild = Platform.OS === 'ios' ? config?.ios?.buildNumber : config?.android?.versionCode;
   const version = expoGo ? config?.version : Application.nativeApplicationVersion;
   const build = expoGo ? configuredBuild : Application.nativeBuildVersion;
-  return `${config?.name ?? 'MotoRescue'} v${version ?? '1.0.0'}${build ? ` (${build})` : ''}`;
+  return `${config?.name ?? 'Moki Rescue'} v${version ?? '1.0.0'}${build ? ` (${build})` : ''}`;
 }

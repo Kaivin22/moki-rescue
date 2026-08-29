@@ -14,6 +14,8 @@ import { isLiveStatus } from '@/src/features/rescue/status';
 import type { LocationPoint } from '@/src/types/rescue';
 import type NativeMapView from 'react-native-maps';
 import { useCopy, useI18n } from '@/src/i18n';
+import { useReduceMotion } from '@/src/hooks/useReduceMotion';
+import { useAuthStore } from '@/src/stores/authStore';
 
 const COPY = {
   vi: {
@@ -26,6 +28,7 @@ const COPY = {
     loadingRoute: 'Đang lấy tuyến đường giao thông…',
     waitingProvider: 'Đang chờ vị trí cứu hộ viên',
     pickup: 'Điểm nhận cứu hộ',
+    destination: 'Điểm giao xe',
     provider: 'Cứu hộ viên',
     backDetails: 'Quay lại chi tiết ca',
     title: 'Theo dõi đội cứu hộ',
@@ -33,6 +36,11 @@ const COPY = {
     verifiedTeam: 'Đội cứu hộ đã xác minh',
     updated: 'GPS cập nhật',
     call: 'Gọi',
+    navigate: 'Mở chỉ đường',
+    navigationHint: 'Mở Google Maps tới điểm cứu hộ. Tuyến bên ngoài có thể khác tuyến đang hiển thị.',
+    destinationNavigationHint:
+      'Mở Google Maps tới điểm giao xe. Tuyến bên ngoài có thể khác tuyến đang hiển thị.',
+    navigationError: 'Không thể mở ứng dụng bản đồ. Hãy kiểm tra kết nối và thử lại.',
   },
   en: {
     loading: 'Loading request map…',
@@ -44,6 +52,7 @@ const COPY = {
     loadingRoute: 'Loading road route…',
     waitingProvider: 'Waiting for provider location',
     pickup: 'Rescue pickup',
+    destination: 'Motorcycle drop-off',
     provider: 'Rescue provider',
     backDetails: 'Back to request details',
     title: 'Track rescue team',
@@ -51,6 +60,11 @@ const COPY = {
     verifiedTeam: 'Verified rescue team',
     updated: 'GPS updated',
     call: 'Call',
+    navigate: 'Open navigation',
+    navigationHint: 'Open Google Maps to the pickup. Its route may differ from the route shown here.',
+    destinationNavigationHint:
+      'Open Google Maps to the drop-off. Its route may differ from the route shown here.',
+    navigationError: 'Could not open the map app. Check your connection and try again.',
   },
 } as const;
 
@@ -79,6 +93,24 @@ export default function RescueMapScreen() {
   const [mapReady, setMapReady] = useState(false);
   const c = useCopy(COPY);
   const language = useI18n((state) => state.language);
+  const reduceMotion = useReduceMotion();
+  const profile = useAuthStore((state) => state.profile);
+  const [navigationError, setNavigationError] = useState(false);
+  const transportLeg = Boolean(
+    request?.activeWorkType === 'transport' &&
+    (request.status === 'transporting' || request.status === 'awaiting_completion') &&
+    request.destinationLatitude != null &&
+    request.destinationLongitude != null,
+  );
+  const routeTarget = useMemo(
+    () =>
+      request
+        ? transportLeg
+          ? { latitude: request.destinationLatitude!, longitude: request.destinationLongitude! }
+          : { latitude: request.pickupLatitude, longitude: request.pickupLongitude }
+        : null,
+    [request, transportLeg],
+  );
 
   useEffect(() => setLiveLocation(request?.providerLocation ?? null), [request?.providerLocation]);
   useEffect(() => {
@@ -88,34 +120,45 @@ export default function RescueMapScreen() {
 
   const region = useMemo(() => {
     if (!request) return undefined;
-    if (!providerLocation) {
+    if (!providerLocation || !routeTarget) {
       return {
-        latitude: request.pickupLatitude,
-        longitude: request.pickupLongitude,
+        latitude: routeTarget?.latitude ?? request.pickupLatitude,
+        longitude: routeTarget?.longitude ?? request.pickupLongitude,
         latitudeDelta: 0.018,
         longitudeDelta: 0.018,
       };
     }
     return {
-      latitude: (request.pickupLatitude + providerLocation.latitude) / 2,
-      longitude: (request.pickupLongitude + providerLocation.longitude) / 2,
-      latitudeDelta: Math.max(0.018, Math.abs(request.pickupLatitude - providerLocation.latitude) * 1.8),
-      longitudeDelta: Math.max(0.018, Math.abs(request.pickupLongitude - providerLocation.longitude) * 1.8),
+      latitude: (routeTarget.latitude + providerLocation.latitude) / 2,
+      longitude: (routeTarget.longitude + providerLocation.longitude) / 2,
+      latitudeDelta: Math.max(0.018, Math.abs(routeTarget.latitude - providerLocation.latitude) * 1.8),
+      longitudeDelta: Math.max(0.018, Math.abs(routeTarget.longitude - providerLocation.longitude) * 1.8),
     };
-  }, [providerLocation, request]);
+  }, [providerLocation, request, routeTarget]);
 
   useEffect(() => {
     if (!mapReady || !request) return;
     const coordinates = route.data?.coordinates.length
       ? route.data.coordinates
-      : providerLocation
-        ? [providerLocation, { latitude: request.pickupLatitude, longitude: request.pickupLongitude }]
-        : [{ latitude: request.pickupLatitude, longitude: request.pickupLongitude }];
+      : providerLocation && routeTarget
+        ? [providerLocation, routeTarget]
+        : routeTarget
+          ? [routeTarget]
+          : [{ latitude: request.pickupLatitude, longitude: request.pickupLongitude }];
     mapRef.current?.fitToCoordinates(coordinates, {
-      animated: true,
+      animated: !reduceMotion,
       edgePadding: { top: insets.top + 82, right: 36, bottom: insets.bottom + 255, left: 36 },
     });
-  }, [insets.bottom, insets.top, mapReady, providerLocation, request, route.data?.coordinates]);
+  }, [
+    insets.bottom,
+    insets.top,
+    mapReady,
+    providerLocation,
+    reduceMotion,
+    request,
+    route.data?.coordinates,
+    routeTarget,
+  ]);
 
   if (requestQuery.isLoading) {
     return (
@@ -153,6 +196,23 @@ export default function RescueMapScreen() {
       : providerLocation
         ? c.loadingRoute
         : c.waitingProvider;
+  const canNavigate =
+    profile?.role === 'provider' && profile.id === request.assignedProviderId && isLiveStatus(request.status);
+
+  const openNavigation = async () => {
+    setNavigationError(false);
+    const navigationTarget = routeTarget ?? {
+      latitude: request.pickupLatitude,
+      longitude: request.pickupLongitude,
+    };
+    const destination = `${navigationTarget.latitude.toFixed(6)},${navigationTarget.longitude.toFixed(6)}`;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=two-wheeler`;
+    try {
+      await Linking.openURL(url);
+    } catch {
+      setNavigationError(true);
+    }
+  };
 
   return (
     <View style={styles.screen}>
@@ -173,6 +233,17 @@ export default function RescueMapScreen() {
           description={request.pickupAreaLabel}
           pinColor={Colors.error}
         />
+        {request.destinationLatitude != null && request.destinationLongitude != null ? (
+          <Marker
+            coordinate={{
+              latitude: request.destinationLatitude,
+              longitude: request.destinationLongitude,
+            }}
+            title={c.destination}
+            description={request.destinationAreaLabel ?? undefined}
+            pinColor={Colors.success}
+          />
+        ) : null}
         {providerLocation ? (
           <Marker
             coordinate={providerLocation}
@@ -244,6 +315,19 @@ export default function RescueMapScreen() {
             ) : null}
           </View>
         ) : null}
+        {canNavigate ? (
+          <View style={styles.navigation}>
+            <Text style={styles.caption}>
+              {transportLeg ? c.destinationNavigationHint : c.navigationHint}
+            </Text>
+            {navigationError ? (
+              <Text accessibilityRole="alert" style={styles.navigationError}>
+                {c.navigationError}
+              </Text>
+            ) : null}
+            <AppButton title={c.navigate} variant="outline" onPress={() => void openNavigation()} />
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -257,7 +341,7 @@ const styles = StyleSheet.create({
     left: Spacing.md,
     width: 46,
     height: 46,
-    borderRadius: 17,
+    borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.glass,
@@ -271,7 +355,7 @@ const styles = StyleSheet.create({
     minHeight: 46,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 17,
+    borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
     backgroundColor: Colors.glass,
     borderWidth: 1,
@@ -292,7 +376,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  handle: { alignSelf: 'center', width: 48, height: 5, borderRadius: 3, backgroundColor: Colors.mist },
+  handle: {
+    alignSelf: 'center',
+    width: 48,
+    height: 5,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.mist,
+  },
   statusRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
   statusText: { ...Typography.bodyBold, color: Colors.textPrimary },
   caption: { ...Typography.caption, color: Colors.textMuted },
@@ -307,7 +397,7 @@ const styles = StyleSheet.create({
   providerIcon: {
     width: 44,
     height: 44,
-    borderRadius: 16,
+    borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.primary,
@@ -317,11 +407,13 @@ const styles = StyleSheet.create({
   call: {
     width: 46,
     height: 46,
-    borderRadius: 17,
+    borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.accent,
   },
+  navigation: { gap: Spacing.sm },
+  navigationError: { ...Typography.caption, color: Colors.error },
   center: {
     flex: 1,
     alignItems: 'center',

@@ -1,8 +1,8 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ĐẶC TẢ KỸ THUẬT — MOTORESCUE ĐÀ NẴNG
+ĐẶC TẢ KỸ THUẬT — MOKI RESCUE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Tên sản phẩm : MotoRescue Đà Nẵng
+Tên sản phẩm : Moki Rescue Đà Nẵng
 Mục tiêu     : Điều phối cứu hộ xe máy theo thời gian thực
 Android ID   : com.danang.motorescue
 iOS Bundle ID: com.danang.motorescue
@@ -22,7 +22,7 @@ dữ liệu production.
 1. BÀI TOÁN VÀ PHẠM VI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-MotoRescue hỗ trợ khách gặp sự cố kỹ thuật xe máy tại vùng phục vụ Đà Nẵng:
+Moki Rescue hỗ trợ khách gặp sự cố kỹ thuật xe máy tại vùng phục vụ Đà Nẵng:
   - phân loại nguy cơ trước khi tạo ca;
   - xác nhận/kéo ghim vị trí nhận cứu hộ;
   - tìm đội đối tác đã được xác minh, có đúng năng lực;
@@ -48,7 +48,7 @@ Mô hình vận hành:
 Ngoài phạm vi v1:
   - thanh toán, ví, hoa hồng;
   - AI chẩn đoán xe;
-  - chatbot kiến thức chung hoặc trả lời câu hỏi ngoài MotoRescue;
+  - chatbot kiến thức chung hoặc trả lời câu hỏi ngoài Moki Rescue;
   - dashboard web và CMS giao diện;
   - marketplace mở cho thợ tự do;
   - cứu hộ ô tô;
@@ -194,7 +194,7 @@ Quy tắc phụ thuộc:
   team_verification_checks, service_types, provider_members,
   team_capabilities, rescue_requests, dispatch_offers, quotes,
   request_status_events, provider_location_checkpoints, reviews, team_quality_alerts,
-  push_devices, audit_logs, assistant_usage_events.
+  push_devices, push_delivery_receipts, audit_logs, assistant_usage_events.
 
 `assistant_usage_events` chỉ lưu user_id và created_at để giới hạn quota theo
 tài khoản. Không lưu prompt, câu trả lời hoặc lịch sử hội thoại.
@@ -209,6 +209,10 @@ Sáu requirement xác minh baseline là policy/reference data; không seed check
 completed cho bất kỳ đội nào.
 `push_devices` liên kết Expo token với UUID cài đặt app để xử lý token refresh,
 đổi tài khoản và cài lại app mà không gửi nhầm binding cũ.
+Mobile lắng nghe token rollover và đăng ký lại Expo token mà không tự bật prompt.
+Backend chia batch gửi tối đa 100 message, lưu ticket tối thiểu, hỏi receipt sau
+15 phút theo lô tối đa 1.000, retry có giới hạn và chỉ vô hiệu device nhận lỗi
+`DeviceNotRegistered`. Receipt không lưu title/body/payload/token bản sao/dữ liệu ca.
 
 Ràng buộc quan trọng:
   - một customer chỉ có một request chưa completed/cancelled;
@@ -325,7 +329,7 @@ Assistant (mọi tài khoản đã xác thực và đang active):
 
 Endpoint assistant nhận tối đa 500 ký tự. Bộ lọc local xử lý lời chào, câu ngoài
 phạm vi, yêu cầu chẩn đoán xe, prompt injection rõ ràng và tình huống khẩn cấp
-trước khi gọi Gemini. Chỉ câu thuộc cách dùng MotoRescue/quy trình trong app mới
+trước khi gọi Gemini. Chỉ câu thuộc cách dùng Moki Rescue/quy trình trong app mới
 được giữ quota và gửi đi; nội dung không được ghi database/log.
 
 Customer/participants:
@@ -421,7 +425,7 @@ backend/src/test và không được import vào app/backend main.
 13. UI, ACCESSIBILITY VÀ I18N
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  - 70 frame Figma nghiệp vụ, chi tiết ở MotoRescue_UI_Stitch.txt.
+  - 70 frame Figma nghiệp vụ, chi tiết ở Moki_Rescue_UI_Stitch.txt.
   - Safe area bắt buộc cho iOS notch/Dynamic Island và Android cutout.
   - Touch target tối thiểu 44×44 pt; nút chính không bị tab bar/keyboard che.
   - Map phải có status scrim/header đọc được trên nền bản đồ.

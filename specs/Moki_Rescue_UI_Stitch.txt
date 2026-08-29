@@ -1,4 +1,4 @@
-Design a complete production mobile UI for “MotoRescue Đà Nẵng” —
+Design a complete production mobile UI for “Moki Rescue” —
 a real-time motorcycle roadside-assistance dispatch application.
 
 Platform : React Native / Expo (iOS + Android)
@@ -20,30 +20,31 @@ Visual direction: “Operational Calm”. Trustworthy, high contrast, compact en
 for roadside use, but not a police/emergency-service impersonation.
 
 Core colors (match src/constants/colors.ts):
-  #123A5A  Primary navy       actions, icons, selected controls
-  #0B1F33  Primary dark       hero, tab bar, operational emphasis
-  #F5B942  Safety amber       primary highlights, important CTA
-  #FFF1CF  Amber soft         quote/info background
-  #DDECF5  Sky surface        icon wells and informational panels
-  #F4F7F9  App background
-  #FFFFFF  Cards
-  #13283A  Primary text
-  #456276  Secondary text
-  #718898  Muted text
-  #2F8A59  Success
-  #B87512  Warning
-  #C63F3F  Error/destructive
+  #F7FBFD  Cloud canvas       page background and text on strong status colors
+  #282E30  Ink                primary text and icons only; never a background
+  #92C5FD  Brand blue         icon wells, informational emphasis
+  #DDF186  Brand lime         primary CTA and active navigation
+  #2B659B  Accessible blue    links, focus, routes and selected controls
+  #465154  Secondary text
+  #5C686C  Muted text
+  #28744B  Success
+  #875400  Warning
+  #B4232C  Error/destructive
+
+Brand blue and brand lime always use ink text/icons on top. They are not used
+as body text on the cloud canvas because those pairings do not meet WCAG AA.
+No page, hero, navigation bar, card or modal header uses #282E30 as a fill.
 
 Typography: Be Vietnam Pro.
   Display 34/42 Bold; H1 28/36 Bold; H2 22/28 Bold; H3 18/24 Semibold;
-  Body 15/22 Regular; Caption 13/18; Label 12/16 uppercase.
+  Body 15/22 Regular; Caption 13/18; Label 12/16 sentence case.
 
 Spacing: 4, 8, 16, 24, 32, 48, 64.
-Radius: 8, 12, 16, 22, 28; avoid excessive pill shapes.
+Radius: 8, 12, 16, 24, 28; avoid excessive pill shapes.
 
 Status bar and safe area:
   - Never place content under iOS notch/Dynamic Island or Android cutout.
-  - Dark hero uses light status icons; light pages use dark icons.
+  - All light app pages use dark status icons.
   - Full-screen map includes a readable top scrim and controls below top inset.
   - Bottom CTA includes tab-bar/gesture inset and remains visible with keyboard.
 
@@ -62,7 +63,7 @@ Motion:
   - reduce-motion removes scale/bounce and keeps state changes immediate.
 
 Map rules:
-  - red marker = customer pickup; navy marker = assigned provider;
+  - red marker = customer pickup; accessible-blue marker = assigned provider;
   - Polyline is drawn only from backend RoadRoute.coordinates;
   - never draw a straight line between markers as fallback;
   - show “Chưa có tuyến đường giao thông hợp lệ” when router fails;
@@ -74,11 +75,11 @@ Shared components:
   loading/error/empty panel, permission notice and destructive confirmation.
 
 Bottom navigation:
-  Dark #0B1F33, safe-area aware.
+  Light card surface with a subtle top divider, safe-area aware.
   Customer: Trang chủ | Cứu hộ | Hoạt động | Tài khoản.
   Provider: Trang chủ | Hoạt động | Vận hành | Tài khoản.
   Dispatcher/admin: Trang chủ | Hoạt động | Vận hành | Tài khoản.
-  Amber active icon/label; sky-blue inactive icon/label.
+  Accessible-blue active icon/label; muted-ink inactive icon/label.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 70 BUSINESS FRAMES
@@ -87,12 +88,13 @@ Bottom navigation:
 ═══ BOOTSTRAP & ONBOARDING — 4 FRAMES ═════════════
 
 FRAME 01 — Bootstrap
-Full dark navy screen, centered MotoRescue shield/road mark and native loading
-indicator. No fake progress percentage. Route decision waits for fonts, session
-and onboarding flag. Status bar light and safe-area clean.
+Cloud-canvas screen, centered approved Moki Rescue monkey/motorcycle logo and
+native loading indicator. No fake progress percentage. Route decision waits for
+fonts, session and onboarding flag. Status bar dark and safe-area clean.
 
 FRAME 02 — Onboarding: đúng loại sự cố
-Dark background, amber construct icon in navy tile. Title “Gửi đúng loại sự cố”.
+Cloud-canvas background with the approved monkey logo as a low-opacity watermark;
+dark construct icon in a brand-blue tile. Title “Gửi đúng loại sự cố”.
 Explain that short description, vehicle type and location support capability
 matching. Skip in top-right; progress 1/3; “Tiếp tục” at safe bottom.
 
@@ -108,7 +110,7 @@ two-sided confirmation and no personal documents. Progress 3/3; CTA “Bắt đ�
 ═══ AUTH — 4 FRAMES ═══════════════════════════════
 
 FRAME 05 — Login: phone
-Dark hero “Đăng nhập an toàn”, white form sheet. Display-name input for first-time
+Light canvas, approved logo, title “Đăng nhập an toàn” and card form. Display-name input for first-time
 profile, Vietnamese phone input, terms/privacy links, required consent checkbox,
 CTA “Gửi mã OTP”. Explain that new accounts receive customer role.
 
@@ -127,7 +129,7 @@ Differentiate expired/too-many-attempts in text, not only color.
 ═══ HOME BY ROLE — 3 FRAMES ═══════════════════════
 
 FRAME 09 — Customer home
-Dark hero greeting + “Khách hàng”. Primary CTA “Yêu cầu cứu hộ xe máy”. Red-soft
+Brand-blue hero greeting + “Khách hàng” using ink text. Primary CTA “Yêu cầu cứu hộ xe máy”. Red-soft
 115 handoff card, active request list, backend service cards and “Xem tất cả”.
 Empty active-request state is honest, not populated with mock cards.
 
@@ -147,7 +149,7 @@ questions and one bottom CTA. Do not show service or location fields yet.
 
 FRAME 13 — Emergency handoff
 When injury/fire/fuel leak/continuing danger is true, insert red safety panel and
-three call buttons 115/114/113. Explain MotoRescue technical request is stopped.
+three call buttons 115/114/113. Explain Moki Rescue technical request is stopped.
 
 FRAME 14 — Request step 2: issue and vehicle
 Visible 2/3 progress, backend service radio cards, vehicle-power segments and
@@ -201,7 +203,7 @@ reason, system-settings action and last-known-state warning without fake locatio
 ═══ PROFILE, SETTINGS, LEGAL, ADMIN — 8 FRAMES ════
 
 FRAME 25 — Customer profile
-Dark identity card with minimal display name, masked phone and customer role.
+Brand-blue identity card with ink text, minimal display name, masked phone and customer role.
 Rows: edit, security, settings, help, privacy, terms, logout.
 
 FRAME 26 — Internal profile
@@ -374,7 +376,7 @@ disclaimer. Calls open the OS dialer; app never claims the call succeeded.
 ═══ ACCOUNT SECURITY — 2 FRAMES ═══════════════════
 
 FRAME 63 — OTP verified
-Dark shield hero, masked phone, verified state, real last-sign-in/account-created
+Light sky shield hero, masked phone, verified state, real last-sign-in/account-created
 timestamps and anti-phishing guidance from the current Supabase session.
 
 FRAME 64 — OTP unverified/unavailable state
@@ -401,8 +403,8 @@ single safe back-to-activity action.
 
 ═══ RESTRICTED APP ASSISTANT — 2 FRAMES ════════════
 
-FRAME 69 — MotoRescue assistant ready/in-scope
-Authenticated app surface with a 56 pt floating amber chat button above bottom
+FRAME 69 — Moki Rescue assistant ready/in-scope
+Authenticated app surface with a 56 pt floating lime chat button above bottom
 navigation and gesture inset. Open state is a safe-area bottom sheet with scope
 label “Hỗ trợ cách dùng app · Không chẩn đoán xe”, session-only messages, three
 real feature prompts, multiline 500-character composer, sending state and clear/
@@ -423,7 +425,7 @@ DELIVERY RULES
 3. Every frame includes top/bottom safe-area annotation.
 4. Map frames include status-bar scrim and no straight-line fallback.
 5. Loading, error and empty frames use no sample business records.
-6. Payment, AI diagnosis, general-purpose AI chat, hotel/tourism, VIP and travel-place UI are forbidden. The restricted MotoRescue app-support assistant in frames 69–70 is allowed.
+6. Payment, AI diagnosis, general-purpose AI chat, hotel/tourism, VIP and travel-place UI are forbidden. The restricted Moki Rescue app-support assistant in frames 69–70 is allowed.
 7. Customer never browses or selects nearby providers.
 8. Provider contact is absent before assignment and after case closure.
 9. All Vietnamese text must be proofread with full diacritics.

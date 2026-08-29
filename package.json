@@ -1,5 +1,5 @@
 {
-  "name": "motorescue-danang",
+  "name": "moki-rescue",
   "version": "1.0.0",
   "engines": {
     "node": ">=20.19.0"
@@ -56,10 +56,10 @@
     "test:ci": "jest --runInBand --ci",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
-    "format": "prettier --write \"app/**/*.{ts,tsx}\" \"src/**/*.{ts,tsx}\" \"__tests__/**/*.ts\" \"*.{js,json}\"",
-    "format:check": "prettier --check \"app/**/*.{ts,tsx}\" \"src/**/*.{ts,tsx}\" \"__tests__/**/*.ts\" \"*.{js,json}\"",
+    "format": "prettier --write \"app/**/*.{ts,tsx}\" \"src/**/*.{ts,tsx}\" \"__tests__/**/*.ts\" \"locales/*.json\" \"*.{js,json}\"",
+    "format:check": "prettier --check \"app/**/*.{ts,tsx}\" \"src/**/*.{ts,tsx}\" \"__tests__/**/*.ts\" \"locales/*.json\" \"*.{js,json}\"",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:ci && expo install --check && expo config --type public",
-    "dev:backend": "cd backend && mvnw package -DskipTests && dotenv -e ../.env -- java -Dfile.encoding=UTF-8 -jar target/motorescue-0.0.1-SNAPSHOT.jar",
+    "dev:backend": "cd backend && mvnw package -DskipTests && dotenv -e ../.env -- java -Dfile.encoding=UTF-8 -jar target/moki-rescue-0.0.1-SNAPSHOT.jar",
     "dev:frontend": "expo start",
     "dev": "start cmd /k \"title SpringBoot Backend && npm run dev:backend\" && expo start"
   },

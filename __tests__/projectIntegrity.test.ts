@@ -24,19 +24,29 @@ describe('project integrity', () => {
       'utf8',
     );
     expect(pushRegistration).toContain('installationId');
+    expect(pushRegistration).toContain('addPushTokenListener');
+    expect(pushRegistration).toContain('startPushNotificationSync');
+    expect(pushRegistration).toContain('IosAuthorizationStatus.PROVISIONAL');
     expect(pushRegistration).not.toContain('.catch(() => undefined)');
   });
 
   it('uses the new backend artifact and product identity', () => {
-    expect(packageJson.scripts['dev:backend']).toContain('motorescue-0.0.1-SNAPSHOT.jar');
-    expect(config).toContain("name: 'MotoRescue Đà Nẵng'");
+    expect(packageJson.name).toBe('moki-rescue');
+    expect(packageJson.scripts['dev:backend']).toContain('moki-rescue-0.0.1-SNAPSHOT.jar');
+    expect(config).toContain("name: 'Moki Rescue'");
+    expect(config).toContain("slug: 'moki-rescue'");
     expect(config).toContain("['EXPO_PUBLIC_EAS_PROJECT_ID', easProjectId]");
     expect(config).toContain('Production Supabase and API URLs must use HTTPS');
   });
 
-  it('uses MotoRescue assets and keeps one CI workflow', () => {
-    expect(fs.existsSync(path.join(process.cwd(), 'assets', 'motorescue-icon-opaque.png'))).toBe(true);
-    expect(fs.existsSync(path.join(process.cwd(), 'assets', 'motorescue-notification-icon.png'))).toBe(true);
+  it('uses Moki Rescue assets and keeps one CI workflow', () => {
+    expect(fs.existsSync(path.join(process.cwd(), 'assets', 'branding', 'moki-rescue-logo.png'))).toBe(true);
+    expect(
+      fs.existsSync(path.join(process.cwd(), 'assets', 'branding', 'moki-rescue-notification-icon.png')),
+    ).toBe(true);
+    expect(config).toContain("icon: './assets/branding/moki-rescue-logo.png'");
+    expect(fs.existsSync(path.join(process.cwd(), 'logo'))).toBe(false);
+    expect(fs.existsSync(path.join(process.cwd(), 'assets', 'motorescue-icon-brand.png'))).toBe(false);
     expect(fs.existsSync(path.join(process.cwd(), 'assets', 'images', 'danang_city_panorama.jpg'))).toBe(
       false,
     );
@@ -44,6 +54,14 @@ describe('project integrity', () => {
       .readdirSync(path.join(process.cwd(), '.github', 'workflows'))
       .filter((file) => file.endsWith('.yml') || file.endsWith('.yaml'));
     expect(workflows).toEqual(['ci.yml']);
+  });
+
+  it('keeps the SDK 54 web resolver scoped to the incompatible Zustand entry', () => {
+    const metroConfig = fs.readFileSync(path.join(process.cwd(), 'metro.config.js'), 'utf8');
+    expect(metroConfig).toContain("platform === 'web'");
+    expect(metroConfig).toContain("moduleName === 'zustand/middleware'");
+    expect(metroConfig).toContain("path.join(zustandRoot, 'middleware.js')");
+    expect(metroConfig).not.toContain('unstable_enablePackageExports = false');
   });
 
   it('guards authenticated route groups', () => {
@@ -92,7 +110,7 @@ describe('project integrity', () => {
       });
     const routes = collectRoutes(path.join(process.cwd(), 'app'));
     const inventory = fs.readFileSync(path.join(process.cwd(), 'docs', 'FIGMA_SCREEN_INVENTORY.md'), 'utf8');
-    expect(routes).toHaveLength(21);
+    expect(routes).toHaveLength(24);
     expect(inventory).toContain('**70 frame Figma nghiệp vụ**');
   });
 
@@ -104,15 +122,15 @@ describe('project integrity', () => {
     expect(map).toContain('Không dùng đường thẳng');
   });
 
-  it('keeps project specifications synchronized with MotoRescue', () => {
-    const technicalPath = path.join(process.cwd(), 'specs', 'MotoRescue_ky_thuat.txt');
-    const uiPath = path.join(process.cwd(), 'specs', 'MotoRescue_UI_Stitch.txt');
+  it('keeps project specifications synchronized with Moki Rescue', () => {
+    const technicalPath = path.join(process.cwd(), 'specs', 'Moki_Rescue_ky_thuat.txt');
+    const uiPath = path.join(process.cwd(), 'specs', 'Moki_Rescue_UI_Stitch.txt');
     expect(fs.existsSync(path.join(process.cwd(), 'cuuho.txt'))).toBe(false);
     expect(fs.existsSync(path.join(process.cwd(), 'specs', 'DaNang_RN_ky_thuat.txt'))).toBe(false);
     expect(fs.existsSync(path.join(process.cwd(), 'specs', 'DaNang_RN_UI_Stitch.txt'))).toBe(false);
     const technical = fs.readFileSync(technicalPath, 'utf8');
     const ui = fs.readFileSync(uiPath, 'utf8');
-    expect(technical).toContain('ĐẶC TẢ KỸ THUẬT — MOTORESCUE ĐÀ NẴNG');
+    expect(technical).toContain('ĐẶC TẢ KỸ THUẬT — MOKI RESCUE');
     expect(ui.match(/^FRAME \d{2} —/gm)).toHaveLength(70);
     expect(`${technical}\n${ui}`).not.toContain('Lịch Trình Đà Nẵng');
     expect(fs.existsSync(path.join(process.cwd(), 'docs', 'HARDCODE_AND_MOCK_AUDIT.md'))).toBe(true);

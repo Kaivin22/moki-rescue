@@ -1,12 +1,12 @@
-# Danh mục giao diện MotoRescue cho Figma
+# Danh mục giao diện Moki Rescue cho Figma
 
 > Rà soát ngày 22/08/2026. Danh mục được suy ra từ toàn bộ route trong `app/`, không tính `_layout.tsx` là màn hình. Chỉ trạng thái làm thay đổi quyết định hoặc hành động của người dùng mới được tách thành frame.
 
 ## Kết luận số lượng
 
-- **20 màn hình điều hướng thực tế**: người dùng có thể tới bằng route.
+- **23 màn hình điều hướng thực tế**: người dùng có thể tới bằng route.
 - **1 màn hình khởi động/điều hướng** tại `app/index.tsx`.
-- **21 màn hình ở cấp mã nguồn** nếu tính cả màn hình khởi động.
+- **24 màn hình ở cấp mã nguồn** nếu tính cả màn hình khởi động.
 - **70 frame Figma nghiệp vụ** nếu thể hiện đủ vai trò, trạng thái ca, trợ lý và lỗi production quan trọng.
 
 Con số 70 không có nghĩa là phải tạo 70 route hoặc 70 file code. Một route chi tiết ca phải có nhiều frame vì quyền, nội dung và nút hành động thay đổi theo role/trạng thái. ChatBox là modal toàn cục, không phải route. Không tính các biến thể thuần trang trí như pressed, màu icon hoặc spinner dùng chung để độn số lượng.
@@ -29,9 +29,12 @@ Con số 70 không có nghĩa là phải tạo 70 route hoặc 70 file code. M�
 | Quyền riêng tư | `/legal/privacy` | 1 | Nội dung chính sách |
 | Điều khoản | `/legal/terms` | 1 | Nội dung điều khoản |
 | Đội, quyền, chất lượng và catalog | `/operator/teams` | 1 | Tạo đội với mã hồ sơ nội bộ, cấp tài khoản OTP, capability, checklist/tiến độ/người xác minh, kích hoạt hoặc đình chỉ, điểm thật/review/cảnh báo, quyền dispatcher và catalog song ngữ |
-| Chi tiết ca - customer | `/rescue/[id]` | 10 | Tìm/đã phát offer; không có đội; đã gán; đang đến; xác nhận đã đến; đã đến/đang chẩn đoán; duyệt báo giá; đang sửa/chở; xác nhận hoàn tất; hoàn tất + review |
-| Chi tiết ca - provider | `/rescue/[id]` | 8 | Đã gán; đang đến; chờ khách xác nhận đến; đã đến; chẩn đoán không báo giá; chẩn đoán cần báo giá; đang sửa/chở; chờ khách xác nhận hoàn tất |
-| Chi tiết ca - staff | `/rescue/[id]` | 2 | Theo dõi ca hoạt động; `no_provider` và tìm lại đội |
+| Hàng đợi cần can thiệp | `/operator/attention` | 1 | Cảnh báo mở, mở chi tiết ca, ghi kết quả và đóng cảnh báo |
+| Nhật ký quản trị | `/operator/audit` | 1 | Admin xem audit tối thiểu, phân trang và không lộ dữ liệu nhạy cảm |
+| Chi tiết ca - customer | `/rescue/[id]` | 9 | Tìm/đã phát offer/không có đội; đã gán; đang đến; xác nhận đã đến; đã đến/đang chẩn đoán; duyệt báo giá; đang sửa/chở; xác nhận hoàn tất; hoàn tất + review |
+| Chi tiết ca - provider | `/rescue/[id]` | 7 | Đã gán/đang đến; chờ khách xác nhận đến; đã đến; chẩn đoán không báo giá; chẩn đoán cần báo giá; đang sửa/chở; chờ khách xác nhận hoàn tất |
+| Chi tiết ca - staff | `/rescue/[id]` | 1 | Theo dõi ca hoạt động, cảnh báo và tìm/điều phối lại đội trong cùng frame |
+| Chọn điểm giao xe | `/rescue/[id]/destination` | 1 | Khách xác nhận điểm giao cho ca vận chuyển sau chẩn đoán |
 | **Tạm tính A** |  | **46** |  |
 
 ## B. Giao diện khai thác thêm — 16 frame
@@ -60,7 +63,7 @@ Các frame này nằm trên route đã có nhưng làm thay đổi hành động
 | C06 | `/(tabs)/operations` | Provider mất/từ chối GPS nên không thể bật sẵn sàng an toàn |
 | **Tạm tính C** |  | **6** |
 
-## D. Trợ lý MotoRescue có giới hạn — 2 frame
+## D. Trợ lý Moki Rescue có giới hạn — 2 frame
 
 | Mã | Bề mặt | Frame |
 |---|---|---|
@@ -75,7 +78,7 @@ Các frame này nằm trên route đã có nhưng làm thay đổi hành động
 | A. Luồng nghiệp vụ nền tảng | 46 |
 | B. Giao diện khai thác thêm | 16 |
 | C. Trạng thái production | 6 |
-| D. Trợ lý MotoRescue | 2 |
+| D. Trợ lý Moki Rescue | 2 |
 | **Tổng** | **70** |
 
 ## Cấu trúc file Figma đề nghị
@@ -111,4 +114,4 @@ Các frame này nằm trên route đã có nhưng làm thay đổi hành động
 - Polyline chỉ dùng geometry do router đường bộ trả về; không thiết kế fallback đường thẳng giữa hai marker.
 - Catalog dịch vụ lấy từ backend. Figma phải có trạng thái backend lỗi/rỗng, không giả bằng mock data.
 - Dispatcher và admin dùng cùng hệ thống component; admin chỉ có thêm quyền quản trị, không cần một visual language khác.
-- Trợ lý chỉ hỗ trợ cách dùng MotoRescue/quy trình cứu hộ, không chẩn đoán xe và không giả làm dịch vụ khẩn cấp.
+- Trợ lý chỉ hỗ trợ cách dùng Moki Rescue/quy trình cứu hộ, không chẩn đoán xe và không giả làm dịch vụ khẩn cấp.

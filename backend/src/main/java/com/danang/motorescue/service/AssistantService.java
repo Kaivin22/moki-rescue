@@ -28,9 +28,16 @@ public class AssistantService {
         }
         gemini.requireConfigured();
         AssistantQuotaService.Reservation reservation = quota.reserve(actor.id());
-        String generated = gemini.generate(message);
+        String generated;
+        try {
+            generated = gemini.generate(message);
+        } catch (RuntimeException exception) {
+            quota.release(reservation);
+            throw exception;
+        }
         if (!scope.allowsGeneratedReply(generated)) {
-            return new Reply(scope.outOfScopeReply(message), "local", reservation.remainingToday());
+            quota.release(reservation);
+            return new Reply(scope.outOfScopeReply(message), "local", reservation.remainingToday() + 1);
         }
         return new Reply(generated, "gemini", reservation.remainingToday());
     }

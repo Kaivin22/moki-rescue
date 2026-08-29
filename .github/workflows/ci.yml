@@ -1,4 +1,4 @@
-name: CI - MotoRescue validation
+name: CI - Moki Rescue validation
 
 on:
   push:
@@ -22,6 +22,8 @@ env:
   EXPO_PUBLIC_API_URL: https://api.example.com
   EXPO_PUBLIC_EAS_PROJECT_ID: 00000000-0000-4000-8000-000000000000
   EXPO_PUBLIC_SUPPORT_HOTLINE: '19000000'
+  EXPO_PUBLIC_SERVICE_CENTER_LATITUDE: '16.0544'
+  EXPO_PUBLIC_SERVICE_CENTER_LONGITUDE: '108.2022'
   GOOGLE_MAPS_KEY: ci-placeholder
 
 jobs:

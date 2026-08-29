@@ -4,6 +4,8 @@ import com.danang.motorescue.model.ApiModels.AvailabilityRequest;
 import com.danang.motorescue.model.ApiModels.OfferResponse;
 import com.danang.motorescue.model.ApiModels.ProviderLocationRequest;
 import com.danang.motorescue.model.ApiModels.ProviderStatusResponse;
+import com.danang.motorescue.model.ApiModels.ProviderWithdrawalRequest;
+import com.danang.motorescue.model.ApiModels.ProviderWithdrawalResponse;
 import com.danang.motorescue.service.ActorService;
 import com.danang.motorescue.service.ActorService.Actor;
 import com.danang.motorescue.service.ProviderService;
@@ -59,6 +61,20 @@ public class ProviderController {
             @PathVariable UUID offerId,
             @RequestParam @Min(1) int expectedVersion) {
         return Map.of("requestId", providers.accept(provider(jwt), offerId, expectedVersion));
+    }
+
+    @PostMapping("/offers/{offerId}/decline")
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    void decline(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID offerId) {
+        providers.decline(provider(jwt), offerId);
+    }
+
+    @PostMapping("/requests/{requestId}/withdraw")
+    ProviderWithdrawalResponse withdraw(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID requestId,
+            @Valid @RequestBody ProviderWithdrawalRequest input) {
+        return providers.withdraw(provider(jwt), requestId, input.reason());
     }
 
     @PostMapping("/requests/{requestId}/location")

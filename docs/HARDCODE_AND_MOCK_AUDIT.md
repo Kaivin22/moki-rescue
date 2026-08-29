@@ -1,6 +1,6 @@
 # Audit hardcode, mock data và độ sạch code
 
-> Rà soát ngày 22/08/2026. Phạm vi gồm mobile, Spring backend, SQL, test và cấu hình. Theo yêu cầu, cấu hình Supabase và dữ liệu người dùng thật không bị xem là mock.
+> Rà soát ngày 29/08/2026. Phạm vi gồm mobile, Spring backend, SQL, test và cấu hình. Theo yêu cầu, cấu hình Supabase và dữ liệu người dùng thật không bị xem là mock.
 
 ## Kết luận hiện tại
 
@@ -20,6 +20,7 @@
 | Chu kỳ API/refetch/GPS rải rác | Gom vào `src/features/rescue/config/operational.ts`; ngưỡng backend có environment override và clamp |
 | UUID idempotency dùng `Math.random()` fallback | Dùng `expo-crypto.randomUUID()` |
 | Token push chỉ định danh bằng Expo token | Thêm `installation_id`, khóa giao dịch và ràng buộc unique; logout chỉ xóa đúng user/token/installation |
+| Không theo dõi token rollover hoặc Expo receipt | Mobile lắng nghe native token đổi và đăng ký lại Expo token; backend lưu ticket tối thiểu, hỏi receipt bất đồng bộ và vô hiệu đúng device khi `DeviceNotRegistered` |
 | Catalog chỉ sửa bằng SQL | Thêm giao diện admin giới hạn field, API role admin và audit log |
 | Locale đổi nhưng cache giữ label cũ | Invalidate toàn bộ query rescue sau khi cập nhật locale |
 | Consent chỉ kiểm timestamp | Mobile và backend đều kiểm đúng `LEGAL_VERSION`/`TERMS_VERSION` |
@@ -33,6 +34,9 @@
 | Copy vi/en và status team không đồng nhất | Runtime UI, backend catalog, API error mapping và push đã có vi/en |
 | Nhiều file TSX nén thành dòng rất dài | Thêm Prettier, `format:check` và gate CI; TypeScript strict + no-unused vẫn bật |
 | Dependency `concurrently` không dùng | Đã gỡ khỏi package/lockfile |
+| Bounding box vùng phục vụ trong backend | Chuyển sang polygon PostGIS `service_zones`; tâm bản đồ public chỉ là viewport |
+| Rate limit lưu trong RAM từng instance | Chuyển sang cửa sổ đếm nguyên tử trong PostgreSQL, có cleanup định kỳ |
+| GPS cuối còn sau khi provider rời ca | Xóa tọa độ matching khi hoàn tất, hủy, thu hồi, đình chỉ hoặc vô hiệu tài khoản |
 
 ## Hardcode được giữ có chủ đích
 
@@ -53,14 +57,13 @@
 
 ## Cấu hình môi trường, không phải hardcode runtime
 
-Các giá trị sau đi qua `.env`/Spring configuration: Supabase, API origin, EAS project, Maps key, hotline, database login, OSRM URL/profile/snap radius/table batch, vùng phục vụ, offer TTL, GPS freshness/accuracy, rate limit, ngưỡng/cỡ mẫu/nhịp cảnh báo chất lượng, CORS, Expo Push, Gemini model/key/quota và `TERMS_VERSION`.
+Các giá trị sau đi qua `.env`/Spring configuration: Supabase, API origin, EAS project, Maps key, hotline, tâm viewport bản đồ, database login, OSRM URL/profile/snap radius/table batch, offer TTL, GPS freshness/accuracy, rate limit, ngưỡng/cỡ mẫu/nhịp cảnh báo chất lượng, CORS, Expo Push send/receipt/retry, Gemini model/key/quota và `TERMS_VERSION`. Polygon vùng phục vụ là cấu hình database được review, không phải hằng số mobile.
 
 Production Expo config fail-fast khi thiếu public config bắt buộc hoặc dùng URL không phải HTTPS/localhost. Backend secret không có prefix `EXPO_PUBLIC_` và không được đưa vào Expo `extra`.
 
 ## Giới hạn còn lại — không được gọi là mock
 
 - Router xe máy, Supabase OTP/Realtime, Expo Push credential, cron và đối tác thật là external gate; source code không thể chứng minh chúng đã vận hành.
-- Push receipt bất đồng bộ để tự vô hiệu token `DeviceNotRegistered` chưa triển khai; cần trước khi có lượng thiết bị lớn.
 - Help/legal vẫn bundle trong binary. Chỉ xây content service versioned khi đơn vị vận hành thật cần sửa thường xuyên; không xây CMS tổng quát cho MVP.
 - Dữ liệu demo bảo vệ phải nằm ở Supabase staging riêng và được gắn nhãn demo, không đưa vào schema production.
 

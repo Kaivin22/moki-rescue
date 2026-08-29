@@ -14,8 +14,9 @@ export const Radius = {
   sm: 8,
   md: 12,
   lg: 16,
-  xl: 22,
+  xl: 24,
   xxl: 28,
+  display: 54,
   full: 9999,
 } as const;
 
@@ -70,7 +71,20 @@ export const Typography = {
     fontFamily: Fonts.bodyBold,
     fontSize: 12,
     lineHeight: 16,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase' as const,
+    letterSpacing: 0.2,
+  },
+  nav: {
+    fontFamily: Fonts.bodySemi,
+    fontSize: 10,
+    lineHeight: 14,
+  },
+} as const;
+
+export const Shadow = {
+  floating: {
+    elevation: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
 } as const;

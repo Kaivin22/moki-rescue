@@ -1,0 +1,9 @@
+{
+  "CFBundleDisplayName": "Moki Rescue",
+  "NSLocationWhenInUseUsageDescription": "Moki Rescue uses your location only while you create or handle a rescue request. Your location is not tracked when no request is active.",
+  "NSLocationAlwaysAndWhenInUseUsageDescription": "Rescue providers can let Moki Rescue update their location in the background only while handling an active request. Customers do not need this permission.",
+  "NSLocationAlwaysUsageDescription": "Moki Rescue updates a rescue provider's background location only during an active request.",
+  "android": {
+    "app_name": "Moki Rescue"
+  }
+}

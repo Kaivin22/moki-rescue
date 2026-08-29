@@ -6,25 +6,22 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.UUID;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 public class ApiRateLimitFilter extends OncePerRequestFilter {
-    private record Counter(long minute, int count) {}
-
     private final ApiRateLimitProperties properties;
-    private final Map<String, Counter> counters = new ConcurrentHashMap<>();
-    private final AtomicLong requests = new AtomicLong();
+    private final JdbcTemplate jdbc;
 
-    public ApiRateLimitFilter(ApiRateLimitProperties properties) {
+    public ApiRateLimitFilter(ApiRateLimitProperties properties, JdbcTemplate jdbc) {
         this.properties = properties;
+        this.jdbc = jdbc;
     }
 
     @Override
@@ -38,25 +35,31 @@ public class ApiRateLimitFilter extends OncePerRequestFilter {
             return;
         }
 
-        long minute = System.currentTimeMillis() / 60_000L;
         String category = category(request.getRequestURI());
         int limit = limit(category);
-        String key = authentication.getName() + ':' + category;
-        AtomicBoolean allowed = new AtomicBoolean(false);
-        counters.compute(key, (ignored, current) -> {
-            if (current == null || current.minute() != minute) {
-                allowed.set(true);
-                return new Counter(minute, 1);
-            }
-            if (current.count() >= limit) return current;
-            allowed.set(true);
-            return new Counter(minute, current.count() + 1);
-        });
-
-        if (requests.incrementAndGet() % 1_000 == 0 && counters.size() > 2_000) {
-            counters.entrySet().removeIf(entry -> entry.getValue().minute() < minute - 1);
+        int count;
+        try {
+            UUID subjectId = UUID.fromString(authentication.getName());
+            Integer stored = jdbc.queryForObject("""
+                    INSERT INTO public.api_rate_limit_windows(
+                      subject_id, category, window_start, request_count
+                    ) VALUES (?, ?, date_trunc('minute', NOW()), 1)
+                    ON CONFLICT (subject_id, category, window_start)
+                    DO UPDATE SET request_count = public.api_rate_limit_windows.request_count + 1
+                    RETURNING request_count
+                    """, Integer.class, subjectId, category);
+            count = stored == null ? limit + 1 : stored;
+        } catch (IllegalArgumentException exception) {
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return;
+        } catch (DataAccessException exception) {
+            response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write("{\"code\":\"DATABASE_UNAVAILABLE\",\"message\":\"Dịch vụ tạm thời không khả dụng.\"}");
+            return;
         }
-        if (!allowed.get()) {
+        if (count > limit) {
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setHeader("Retry-After", "60");
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);

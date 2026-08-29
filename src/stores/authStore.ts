@@ -16,6 +16,7 @@ interface AuthState {
   initialize: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
+  signOutEverywhere: () => Promise<void>;
 }
 
 async function fetchProfile(userId: string): Promise<Profile | null> {
@@ -85,6 +86,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       await supabase.auth.signOut({ scope: 'local' });
+    } finally {
+      set({ user: null, profile: null, isLoading: false, isProfileLoading: false, isHydrated: true });
+    }
+  },
+  signOutEverywhere: async () => {
+    set({ isLoading: true });
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
     } finally {
       set({ user: null, profile: null, isLoading: false, isProfileLoading: false, isHydrated: true });
     }

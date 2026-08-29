@@ -29,12 +29,12 @@ const COPY = {
         'Dữ liệu được dùng để xác thực, tìm đội phù hợp, tính tuyến đường, cập nhật trạng thái, báo giá, chống nhận trùng và giải quyết tranh chấp. Supabase xử lý xác thực/dữ liệu; nhà cung cấp bản đồ và định tuyến nhận tọa độ cần thiết để tính tuyến.',
       ],
       [
-        'Trợ lý MotoRescue',
-        'Khi bạn hỏi cách dùng ứng dụng hoặc quy trình cứu hộ, backend gửi câu hỏi tới Gemini để tạo câu trả lời. Câu ngoài phạm vi, chẩn đoán xe và tình huống khẩn cấp được xử lý cục bộ trước khi gọi Gemini. MotoRescue không lưu câu hỏi, câu trả lời hoặc lịch sử ChatBox; chỉ lưu mã tài khoản và thời điểm dùng quota tối đa 2 ngày.',
+        'Trợ lý Moki Rescue',
+        'Khi bạn hỏi cách dùng ứng dụng hoặc quy trình cứu hộ, backend gửi câu hỏi tới Gemini để tạo câu trả lời. Câu ngoài phạm vi, chẩn đoán xe và tình huống khẩn cấp được xử lý cục bộ trước khi gọi Gemini. Moki Rescue không lưu câu hỏi, câu trả lời hoặc lịch sử ChatBox; chỉ lưu mã tài khoản và thời điểm dùng quota tối đa 2 ngày.',
       ],
       [
         'Chia sẻ',
-        'Vị trí và nội dung ca không công khai. Đội chỉ thấy khu vực gần đúng trước khi nhận; cứu hộ viên trúng ca mới nhận vị trí chính xác. MotoRescue không bán dữ liệu cá nhân hoặc dùng hồ sơ cứu hộ để quảng cáo.',
+        'Vị trí và nội dung ca không công khai. Đội chỉ thấy khu vực gần đúng trước khi nhận; cứu hộ viên trúng ca mới nhận vị trí chính xác. Moki Rescue không bán dữ liệu cá nhân hoặc dùng hồ sơ cứu hộ để quảng cáo.',
       ],
       [
         'Lưu giữ và xóa',
@@ -68,12 +68,12 @@ const COPY = {
         'Data is used to authenticate users, find a suitable team, calculate road routes, update status, handle quotes, prevent duplicate acceptance, and resolve disputes. Supabase processes authentication and data. Map and routing providers receive coordinates required for route calculation.',
       ],
       [
-        'MotoRescue assistant',
-        'When you ask how to use the app or its rescue process, the backend sends the question to Gemini to generate a reply. Off-topic questions, vehicle diagnosis requests, and emergencies are handled locally before any Gemini call. MotoRescue does not store questions, replies, or ChatBox history; only the account ID and quota-use timestamp are retained for at most two days.',
+        'Moki Rescue assistant',
+        'When you ask how to use the app or its rescue process, the backend sends the question to Gemini to generate a reply. Off-topic questions, vehicle diagnosis requests, and emergencies are handled locally before any Gemini call. Moki Rescue does not store questions, replies, or ChatBox history; only the account ID and quota-use timestamp are retained for at most two days.',
       ],
       [
         'Sharing',
-        'Request location and content are not public. Teams see only an approximate area before acceptance; only the assigned provider receives the exact location. MotoRescue does not sell personal data or use rescue profiles for advertising.',
+        'Request location and content are not public. Teams see only an approximate area before acceptance; only the assigned provider receives the exact location. Moki Rescue does not sell personal data or use rescue profiles for advertising.',
       ],
       [
         'Retention and deletion',

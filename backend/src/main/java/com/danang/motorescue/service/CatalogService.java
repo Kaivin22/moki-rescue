@@ -18,10 +18,11 @@ public class CatalogService {
                 SELECT code,
                        CASE WHEN ? = 'en' THEN label_en ELSE label_vi END AS label,
                        CASE WHEN ? = 'en' THEN description_en ELSE description_vi END AS description,
-                       icon_name, requires_quote
+                       icon_name, requires_quote, requires_destination
                 FROM public.service_types WHERE is_active ORDER BY sort_order, code
                 """, (rs, index) -> new ServiceTypeResponse(
                 rs.getString("code"), rs.getString("label"), rs.getString("description"),
-                rs.getString("icon_name"), rs.getBoolean("requires_quote")), locale, locale);
+                rs.getString("icon_name"), rs.getBoolean("requires_quote"),
+                rs.getBoolean("requires_destination")), locale, locale);
     }
 }
