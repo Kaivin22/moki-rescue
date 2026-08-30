@@ -37,9 +37,27 @@ phải liên hệ điều phối để dừng ca.
 .\mvnw.cmd spring-boot:run
 ```
 
+### Integration test PostgreSQL/PostGIS
+
+Docker phải đang chạy trước khi thực thi test backend. Testcontainers khởi tạo
+`postgis/postgis:16-3.5`, chạy toàn bộ Flyway migration thật rồi kiểm tra các service
+trên transaction PostgreSQL thật; không kết nối Supabase cloud và không mock database.
+Chỉ các hệ thống ngoài database như OSRM và Expo Push được thay bằng test double.
+
+```powershell
+# Toàn bộ test backend, gồm integration test database
+.\mvnw.cmd test
+
+# Chỉ migration và nghiệp vụ database
+.\mvnw.cmd "-Dtest=DatabaseMigrationIntegrationTest,RescueDatabaseIntegrationTest" test
+```
+
+CI kiểm tra Docker trước khi chạy Maven để không thể vô tình bỏ qua integration test
+do thiếu Docker daemon.
+
 ## Database migration
 
-Flyway đọc migration từ `src/main/resources/db/migration`. `B1__initial_schema.sql` là baseline tích lũy cho database PostgreSQL/PostGIS sạch; thay đổi sau này phải dùng `V2__...`, `V3__...` và không sửa file đã applied.
+Flyway đọc migration từ `src/main/resources/db/migration`. `B1__initial_schema.sql` là baseline tích lũy cho database PostgreSQL/PostGIS sạch và `V2__prevent_offer_accept_deadlock.sql` chuẩn hóa thứ tự khóa khi nhận offer. Thay đổi tiếp theo phải bắt đầu từ `V3__...` và không sửa file đã applied.
 
 Migration được chạy như một deployment job bằng database owner riêng:
 

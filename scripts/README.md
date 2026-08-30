@@ -5,9 +5,10 @@ Schema được quản lý bằng Flyway và PostgreSQL/PostGIS. Nguồn chuẩn
 ```text
 backend/src/main/resources/db/migration/
   B1__initial_schema.sql
+  V2__prevent_offer_accept_deadlock.sql
 ```
 
-`B1` là baseline migration tích lũy từ schema đã được squash trước đây. Nó dựng đầy đủ tables, indexes, constraints, triggers, RLS, grants, functions và dữ liệu cấu hình bắt buộc trên database mới. Những thay đổi tiếp theo phải là `V2__...sql`, `V3__...sql`, tăng tuần tự và có mô tả rõ ràng.
+`B1` là baseline migration tích lũy từ schema đã được squash trước đây. Nó dựng đầy đủ tables, indexes, constraints, triggers, RLS, grants, functions và dữ liệu cấu hình bắt buộc trên database mới. `V2` sửa thứ tự khóa transaction khi provider nhận offer để tránh deadlock. Những thay đổi tiếp theo phải bắt đầu từ `V3__...sql`, tăng tuần tự và có mô tả rõ ràng.
 
 Sau khi một migration đã chạy trên bất kỳ môi trường dùng chung nào, không được sửa, đổi tên hoặc xóa file đó. Mọi sửa đổi phải nằm trong migration có version mới. Không dùng `flyway repair` để che checksum mismatch nếu chưa điều tra và phê duyệt nguyên nhân.
 
@@ -36,7 +37,7 @@ cd backend
 .\mvnw.cmd flyway:validate
 ```
 
-`migrate` sẽ chạy `B1__initial_schema.sql` và tạo `flyway_schema_history`. Sau đó:
+`migrate` sẽ chạy `B1__initial_schema.sql`, các migration version tiếp theo (hiện tại là `V2`) và tạo `flyway_schema_history`. Sau đó:
 
 1. Đặt password ngẫu nhiên riêng cho role backend, lưu trong secret manager và không commit câu lệnh đã điền secret:
 

@@ -94,7 +94,10 @@ public class RescueCreationService {
     }
 
     private Created createInTransaction(UUID customerId, UUID idempotencyKey, CreateRequest input) {
-        jdbc.queryForObject("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", Long.class, customerId.toString());
+        jdbc.query(
+                "SELECT pg_advisory_xact_lock(hashtextextended(?, 0))",
+                resultSet -> null,
+                customerId.toString());
 
         Created existing = jdbc.query("""
                 SELECT id, service_code, vehicle_power_type, vehicle_description,

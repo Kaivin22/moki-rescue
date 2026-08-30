@@ -3,6 +3,7 @@ package com.danang.motorescue.migration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.danang.motorescue.support.PostgisIntegrationTestSupport;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -14,36 +15,21 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers(disabledWithoutDocker = true)
-class DatabaseMigrationIntegrationTest {
-
-    private static final DockerImageName POSTGIS_IMAGE = DockerImageName
-            .parse("postgis/postgis:16-3.5")
-            .asCompatibleSubstituteFor("postgres");
+class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
 
     @Container
-    private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(POSTGIS_IMAGE)
-            .withDatabaseName("moki_rescue")
-            .withUsername("postgres")
-            .withPassword("postgres")
-            .withInitScript("db/test/supabase-compatibility.sql");
+    private static final PostgreSQLContainer<?> POSTGRES = newPostgisContainer();
 
     @Test
     void cleanPostgisDatabaseMigratesAndRemainsIdempotent() throws SQLException {
-        Flyway flyway = Flyway.configure()
-                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
-                .locations("classpath:db/migration")
-                .baselineOnMigrate(false)
-                .cleanDisabled(true)
-                .validateMigrationNaming(true)
-                .load();
+        Flyway flyway = flywayFor(POSTGRES);
 
         MigrateResult firstRun = flyway.migrate();
 
         assertTrue(firstRun.success);
-        assertEquals(1, firstRun.migrationsExecuted);
+        assertEquals(2, firstRun.migrationsExecuted);
         assertTrue(flyway.validateWithResult().validationSuccessful);
         assertEquals(0, flyway.migrate().migrationsExecuted);
 

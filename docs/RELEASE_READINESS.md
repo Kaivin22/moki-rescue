@@ -1,4 +1,4 @@
-# Release readiness - 29/08/2026
+# Release readiness - 30/08/2026
 
 ## Kết luận
 
@@ -8,8 +8,8 @@ Repository đã được chuyển hoàn toàn từ app lập lịch du lịch sa
 
 - TypeScript strict: đạt.
 - ESLint và Prettier check: đạt, không còn warning.
-- Frontend local: 9 suite, 66 test đạt; CI vẫn là nguồn quyết định của commit phát hành.
-- Backend local: 36 test đạt, gồm state machine, routing/matching/policy, scope guard AI, push protocol và correlation filter.
+- Frontend local: 11 suite, 73 test đạt; CI vẫn là nguồn quyết định của commit phát hành.
+- Backend local: 51 test đạt, 0 fail và 0 skip. Trong đó 8 integration test chạy Flyway trên PostgreSQL 16/PostGIS thật bằng Testcontainers, gồm migration, tạo ca/idempotency, chặn ca active trùng, state/version, constraint/trigger, matching theo GPS, tranh chấp nhận ca và RLS profile.
 - Expo SDK 54 được giữ nguyên; package native mới được cài theo ma trận SDK 54.
 - `npm audit`: 0 critical, 9 high, 10 moderate. Các bản sửa npm đề xuất ép Expo 57 nên chưa áp dụng `--force`; CI chặn critical và theo dõi phần còn lại.
 - Public config không chứa secret backend và export Android/iOS/web: đạt ngày 22/08/2026. Hai bản vá đã được chủ dự án phê duyệt và áp dụng: `expo ~54.0.37`, `expo-constants ~18.0.14`; dự án vẫn ở SDK 54.
@@ -20,11 +20,11 @@ Repository đã được chuyển hoàn toàn từ app lập lịch du lịch sa
 
 ## External gate bắt buộc
 
-1. Trên Supabase staging mới, chạy Flyway `info` → `migrate` → `validate`, xác nhận `B1` success trong `flyway_schema_history`, rồi chạy `02_verify_rls.sql`; database trống không được dùng lệnh `baseline`.
+1. Trên Supabase staging mới, chạy Flyway `info` → `migrate` → `validate`, xác nhận `B1` và `V2` success trong `flyway_schema_history`, rồi chạy `02_verify_rls.sql`; database trống không được dùng lệnh `baseline`.
 2. Bật phone OTP với SMS provider thật, rate limit và bot protection; test số Việt Nam hợp lệ/không hợp lệ/quá nhiều OTP.
 3. Bootstrap đúng một admin theo số E.164. Với mỗi provider, tự đăng nhập OTP một lần rồi dùng giao diện admin để tra tài khoản; tạo đội bằng mã hồ sơ nội bộ, cấp provider, khai báo capability, hoàn tất checklist và chỉ sau đó kích hoạt. Thử bỏ từng điều kiện phải bị chặn; kiểm `verified_by`, `verified_at` và audit.
 4. Dùng OSRM xe máy thật: chứng minh mọi candidate hợp lệ được route theo lô, ETA/Polyline bám tuyến đường và `NoRoute` không sinh đường thẳng.
-5. Chạy cạnh tranh hai provider nhận cùng offer; chỉ một transaction thành công.
+5. Lặp lại trên Supabase staging kịch bản cạnh tranh hai provider nhận cùng ca; chỉ một transaction thành công và trạng thái request/offer/provider phải nhất quán như integration test local.
 6. Dùng preview build Android/iOS: background location, push, private realtime, notification deep link, kill/resume app, token rollover, xóa token khi logout và xác minh receipt `DeviceNotRegistered` vô hiệu đúng installation.
 7. Sau khi nhận ca, customer thấy tên và số công việc đúng của provider, gọi được bằng trình gọi hệ thống; tài khoản ngoài ca và ca đã đóng không nhận được số.
 8. Kiểm RLS với customer A, customer B, provider không liên quan, assigned provider, dispatcher và admin. Không bên lạ nào xem được exact GPS.

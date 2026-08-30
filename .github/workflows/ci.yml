@@ -2,7 +2,7 @@ name: CI - Moki Rescue validation
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -49,6 +49,8 @@ jobs:
           cache: maven
       - name: Install locked dependencies
         run: npm ci
+      - name: Verify Docker for database integration tests
+        run: docker info
       - name: Run backend tests
         working-directory: backend
         # Repository is maintained on Windows, so do not rely on the POSIX
