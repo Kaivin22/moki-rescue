@@ -181,10 +181,8 @@ public class RescueQueryService {
                 row.workType(),
                 row.pickupAreaLabel(), maskClosedProviderLocation ? null : row.pickupNote(), visibleLatitude, visibleLongitude,
                 row.destinationAreaLabel(), maskClosedProviderLocation ? null : row.destinationNote(),
-                maskClosedProviderLocation && row.destinationLatitude() != null
-                        ? roundCoordinate(row.destinationLatitude()) : row.destinationLatitude(),
-                maskClosedProviderLocation && row.destinationLongitude() != null
-                        ? roundCoordinate(row.destinationLongitude()) : row.destinationLongitude(),
+                visibleDestinationCoordinate(row.destinationLatitude(), maskClosedProviderLocation),
+                visibleDestinationCoordinate(row.destinationLongitude(), maskClosedProviderLocation),
                 row.assignedProviderId(), row.providerName(), visibleProviderContactPhone,
                 row.providerTeamName(), row.rescueVehicleLabel(),
                 row.roadDistanceM(), row.etaMinutes(),
@@ -274,6 +272,11 @@ public class RescueQueryService {
     private boolean isTrackable(String status) {
         return List.of("assigned", "en_route", "awaiting_arrival_confirmation", "arrived", "diagnosing",
                 "awaiting_quote", "quote_approved", "repairing", "transporting", "awaiting_completion").contains(status);
+    }
+
+    private Double visibleDestinationCoordinate(Double value, boolean mask) {
+        if (value == null) return null;
+        return mask ? roundCoordinate(value) : value;
     }
 
     private double roundCoordinate(double value) {
