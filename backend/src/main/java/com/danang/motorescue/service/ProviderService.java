@@ -165,10 +165,10 @@ public class ProviderService {
                 audit.record(actor.id(), "offer.accepted", "dispatch_offer", offerId);
                 UUID customerId = jdbc.queryForObject(
                         "SELECT customer_id FROM public.rescue_requests WHERE id = ?", UUID.class, requestId);
+                push.notifyUser(customerId, NotificationKind.PROVIDER_ASSIGNED, null, requestId);
                 return new AcceptedOffer(requestId, customerId);
             });
             if (accepted == null) throw new IllegalStateException("Accepted offer transaction returned no result");
-            push.notifyUser(accepted.customerId(), NotificationKind.PROVIDER_ASSIGNED, null, accepted.requestId());
             return accepted.requestId();
         } catch (DataAccessException ex) {
             String detail = ex.getMostSpecificCause().getMessage();
@@ -260,14 +260,13 @@ public class ProviderService {
                     """, requestId);
             audit.record(actor.id(), "request.provider_withdrew." + locked.nextStatus(),
                     "rescue_request", requestId);
+            push.notifyUser(locked.customerId(), NotificationKind.STATUS_CHANGED, locked.nextStatus(), requestId);
             return locked;
         });
         if (withdrawal == null) {
             throw new ApiException(HttpStatus.CONFLICT, "REQUEST_NOT_WITHDRAWABLE",
                     "Ca đã thay đổi hoặc không còn được phân công cho bạn.");
         }
-        push.notifyUser(withdrawal.customerId(), NotificationKind.STATUS_CHANGED,
-                withdrawal.nextStatus(), requestId);
         if ("searching".equals(withdrawal.nextStatus())) dispatch.match(requestId);
         return new ProviderWithdrawalResponse(requestId, withdrawal.nextStatus());
     }

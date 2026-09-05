@@ -29,17 +29,17 @@ class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
         MigrateResult firstRun = flyway.migrate();
 
         assertTrue(firstRun.success);
-        assertEquals(3, firstRun.migrationsExecuted);
+        assertEquals(4, firstRun.migrationsExecuted);
         assertTrue(flyway.validateWithResult().validationSuccessful);
         assertEquals(0, flyway.migrate().migrationsExecuted);
 
         try (Connection connection = DriverManager.getConnection(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())) {
-            assertEquals(24, queryForInt(connection,
+            assertEquals(25, queryForInt(connection,
                     "SELECT COUNT(*) FROM information_schema.tables "
                             + "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
                             + "AND table_name <> 'flyway_schema_history'"));
-            assertEquals(24, queryForInt(connection,
+            assertEquals(25, queryForInt(connection,
                     "SELECT COUNT(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
                             + "WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity"));
             assertEquals(6, queryForInt(connection, "SELECT COUNT(*) FROM public.service_types"));

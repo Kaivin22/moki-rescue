@@ -150,10 +150,10 @@ public class RescueLifecycleService {
                 }
             }
             if (updated > 0) audit.record(actor.id(), "request." + input.action(), "rescue_request", requestId);
+            if (updated > 0) notifications.notifyCounterparty(actor, requestId, NotificationKind.STATUS_CHANGED, next);
             return updated;
         });
         if (changed == 0) throw access.stale();
-        notifications.notifyCounterparty(actor, requestId, NotificationKind.STATUS_CHANGED, next);
     }
 
     public void updateDestination(Actor actor, UUID requestId, DestinationRequest input) {
@@ -183,10 +183,10 @@ public class RescueLifecycleService {
                     """, input.areaLabel().trim(), clean(input.note()), input.latitude(), input.longitude(),
                     requestId, actor.id(), input.expectedRequestVersion());
             if (updated > 0) audit.record(actor.id(), "request.destination.updated", "rescue_request", requestId);
+            if (updated > 0) notifications.notifyCounterparty(actor, requestId, NotificationKind.STATUS_CHANGED, "destination_updated");
             return updated;
         });
         if (changed == 0) throw access.stale();
-        notifications.notifyCounterparty(actor, requestId, NotificationKind.STATUS_CHANGED, "destination_updated");
     }
 
     private void validateDestinationInput(String label, Double latitude, Double longitude) {

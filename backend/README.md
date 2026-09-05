@@ -69,6 +69,15 @@ dùng lease/`SKIP LOCKED`, retry có backoff và tự xóa job khi ca rời `sea
 Migration cũng backfill ca đang tìm từ phiên bản cũ. Không chạy migration lên cloud
 trước khi staging đã được phê duyệt; file migration cũ giữ nguyên.
 
+`V4__durable_push_outbox.sql` thêm hàng đợi push theo installation. Các mutation ghi
+notification trong cùng transaction; worker dùng lease/`SKIP LOCKED` và gửi ngoài
+transaction. `PUSH_SEND_MAX_ATTEMPTS`/`PUSH_SEND_INITIAL_BACKOFF` nay áp dụng retry
+qua database, không sleep trong request. Offer hết hạn/đã nhận không được gửi lại.
+Metadata outbox giữ tối đa hai ngày, không chứa token, GPS hay ghi chú tự do.
+Delivery là at-least-once: crash sau khi Expo nhận nhưng trước khi lưu kết quả có
+thể gửi lặp cùng `notificationId`; không cam kết exactly-once. Theo dõi bản ghi
+`failed`, `expired`, backlog và receipt khi vận hành.
+
 Flyway đọc migration từ `src/main/resources/db/migration`. `B1__initial_schema.sql` là baseline tích lũy cho database PostgreSQL/PostGIS sạch và `V2__prevent_offer_accept_deadlock.sql` chuẩn hóa thứ tự khóa khi nhận offer. Thay đổi tiếp theo phải bắt đầu từ `V3__...` và không sửa file đã applied.
 
 Migration được chạy như một deployment job bằng database owner riêng:

@@ -21,7 +21,6 @@ public class DispatchService {
     private record RequestPoint(UUID id, String status, String serviceCode, double latitude, double longitude) {}
     record Candidate(UUID providerId, UUID teamId, double latitude, double longitude) {}
     record Ranked(Candidate candidate, RoadRoute route) {}
-    private record ExpiredRequest(UUID id, UUID customerId) {}
 
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transactions;
@@ -66,11 +65,12 @@ public class DispatchService {
             markNoProvider(requestId, true);
             return;
         }
-        Boolean written = transactions.execute(status -> writeOffers(requestId, selected));
-        if (!Boolean.TRUE.equals(written)) return;
-        for (Ranked offer : selected) {
-            push.notifyUser(offer.candidate().providerId(), NotificationKind.NEW_OFFER, null, requestId);
-        }
+        transactions.executeWithoutResult(status -> {
+            if (!writeOffers(requestId, selected)) return;
+            for (Ranked offer : selected) {
+                push.notifyUser(offer.candidate().providerId(), NotificationKind.NEW_OFFER, null, requestId);
+            }
+        });
     }
 
     static List<Ranked> selectFastest(List<Ranked> candidates, int limit) {
@@ -134,28 +134,27 @@ public class DispatchService {
     }
 
     public void expireOffers() {
-        List<ExpiredRequest> expired = transactions.execute(status -> {
-            jdbc.update("""
-                    UPDATE public.dispatch_offers
-                    SET status = 'expired', responded_at = NOW()
-                    WHERE status = 'pending' AND expires_at <= NOW()
-                    """);
-            return jdbc.query("""
-                    UPDATE public.rescue_requests rr
-                    SET status = 'no_provider'
-                    WHERE rr.status = 'offered'
-                      AND NOT EXISTS (
-                        SELECT 1 FROM public.dispatch_offers offer
-                        WHERE offer.request_id = rr.id AND offer.status = 'pending' AND offer.expires_at > NOW()
-                      )
-                    RETURNING rr.id, rr.customer_id
-                    """, (rs, rowNum) -> new ExpiredRequest(
-                    rs.getObject("id", UUID.class), rs.getObject("customer_id", UUID.class)));
+        transactions.executeWithoutResult(status -> {
+            // Same lock order as offer acceptance: request -> offers -> provider.
+            List<UUID> requests = jdbc.query("""
+                    SELECT id FROM public.rescue_requests WHERE status = 'offered'
+                    ORDER BY id FOR UPDATE SKIP LOCKED LIMIT 100
+                    """, (rs, rowNum) -> rs.getObject(1, UUID.class));
+            for (UUID requestId : requests) {
+                jdbc.update("""
+                        UPDATE public.dispatch_offers SET status = 'expired', responded_at = NOW()
+                        WHERE request_id = ? AND status = 'pending' AND expires_at <= NOW()
+                        """, requestId);
+                UUID customerId = jdbc.query("""
+                        UPDATE public.rescue_requests rr SET status = 'no_provider'
+                        WHERE rr.id = ? AND rr.status = 'offered' AND NOT EXISTS (
+                          SELECT 1 FROM public.dispatch_offers offer
+                          WHERE offer.request_id = rr.id AND offer.status = 'pending' AND offer.expires_at > NOW())
+                        RETURNING customer_id
+                        """, rs -> rs.next() ? rs.getObject(1, UUID.class) : null, requestId);
+                if (customerId != null) push.notifyUser(customerId, NotificationKind.NO_PROVIDER, null, requestId);
+            }
         });
-        if (expired == null) return;
-        for (ExpiredRequest request : expired) {
-            push.notifyUser(request.customerId(), NotificationKind.NO_PROVIDER, null, request.id());
-        }
     }
 
     private RequestPoint loadRequest(UUID requestId) {
@@ -239,6 +238,7 @@ public class DispatchService {
     }
 
     private void markNoProvider(UUID requestId, boolean routingUnavailable) {
+        transactions.executeWithoutResult(status -> {
         UUID customerId = jdbc.query("""
                 UPDATE public.rescue_requests
                 SET status = 'no_provider', routing_status = ?
@@ -249,5 +249,6 @@ public class DispatchService {
         if (customerId != null) {
             push.notifyUser(customerId, NotificationKind.NO_PROVIDER, null, requestId);
         }
+        });
     }
 }

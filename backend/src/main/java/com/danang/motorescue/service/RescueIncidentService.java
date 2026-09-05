@@ -55,11 +55,9 @@ public class RescueIncidentService {
                     ON CONFLICT (request_id, code) WHERE status = 'open' DO NOTHING
                     """, requestId, context);
             if (changed > 0) audit.record(actor.id(), "support.requested", "rescue_request", requestId);
+            if (changed > 0) push.notifyStaff(NotificationKind.SUPPORT_REQUESTED, input.reasonCode(), requestId);
             return changed;
         });
-        if (inserted > 0) {
-            push.notifyStaff(NotificationKind.SUPPORT_REQUESTED, input.reasonCode(), requestId);
-        }
     }
 
     public void reportIncident(Actor actor, UUID requestId, IncidentReportRequest input) {
@@ -87,6 +85,7 @@ public class RescueIncidentService {
                         ON CONFLICT (request_id, code) WHERE status = 'open' DO NOTHING
                         """, requestId, input.category());
                 audit.record(actor.id(), "incident.reported", "rescue_request", requestId);
+                push.notifyStaff(NotificationKind.SUPPORT_REQUESTED, "incident_report", requestId);
             }
             return changed;
         });
@@ -94,6 +93,5 @@ public class RescueIncidentService {
             throw new ApiException(HttpStatus.CONFLICT, "INCIDENT_ALREADY_REPORTED",
                     "Bạn đã gửi nội dung thuộc nhóm này cho ca hiện tại.");
         }
-        push.notifyStaff(NotificationKind.SUPPORT_REQUESTED, "incident_report", requestId);
     }
 }

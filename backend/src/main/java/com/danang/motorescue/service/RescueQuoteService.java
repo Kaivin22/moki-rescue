@@ -58,10 +58,10 @@ public class RescueQuoteService {
                     WHERE id = ? AND status = 'diagnosing' AND version = ?
                     """, requestId, input.expectedRequestVersion());
             if (updated > 0) audit.record(actor.id(), "quote.submitted", "rescue_request", requestId);
+            if (updated > 0) notifications.notifyCounterparty(actor, requestId, NotificationKind.QUOTE_SUBMITTED, null);
             return updated;
         });
         if (changed == 0) throw access.stale();
-        notifications.notifyCounterparty(actor, requestId, NotificationKind.QUOTE_SUBMITTED, null);
     }
 
     public void decideQuote(Actor actor, UUID requestId, UUID quoteId, QuoteDecisionRequest input) {
@@ -94,9 +94,9 @@ public class RescueQuoteService {
                     """, next, approved ? quoteDecision.workType() : null, requestId,
                     input.expectedRequestVersion());
             if (updated > 0) audit.record(actor.id(), "quote." + input.decision(), "rescue_request", requestId);
+            if (updated > 0) notifications.notifyCounterparty(actor, requestId, NotificationKind.QUOTE_DECIDED, null);
             return updated;
         });
         if (changed == 0) throw access.stale();
-        notifications.notifyCounterparty(actor, requestId, NotificationKind.QUOTE_DECIDED, null);
     }
 }

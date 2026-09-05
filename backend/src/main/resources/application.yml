@@ -1,6 +1,10 @@
 spring:
   application:
     name: moki-rescue-api
+  task:
+    scheduling:
+      pool:
+        size: 4
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}

@@ -80,17 +80,18 @@ public class CaseLifecycleService {
                         WHERE user_id = ?
                         """, row.providerId());
                 audit.record(null, "request.provider_start_timeout", "rescue_request", row.requestId());
+                push.notifyUser(row.customerId(), NotificationKind.STATUS_CHANGED, "rematching", row.requestId());
             }
             return rows;
         });
         if (timedOut == null) return;
         for (AssignmentTimeout row : timedOut) {
-            push.notifyUser(row.customerId(), NotificationKind.STATUS_CHANGED, "rematching", row.requestId());
             dispatch.match(row.requestId());
         }
     }
 
     private void flagGpsStale() {
+        transactions.executeWithoutResult(status -> {
         List<AttentionTarget> targets = jdbc.query("""
                 WITH candidates AS (
                   SELECT rr.id, rr.assigned_provider_id AS target_id
@@ -114,9 +115,11 @@ public class CaseLifecycleService {
                 rs.getObject("request_id", UUID.class), rs.getObject("target_id", UUID.class)),
                 properties.providerGpsStaleAfter().toSeconds());
         notifyAttentionTargets(targets, "provider_gps_stale");
+        });
     }
 
     private void flagStateTimeout(String code, String requestStatus, long timeoutSeconds, String targetRole) {
+        transactions.executeWithoutResult(status -> {
         List<AttentionTarget> targets = jdbc.query("""
                 WITH candidates AS (
                   SELECT id,
@@ -135,9 +138,11 @@ public class CaseLifecycleService {
                 rs.getObject("request_id", UUID.class), rs.getObject("target_id", UUID.class)),
                 targetRole, requestStatus, timeoutSeconds, code);
         notifyAttentionTargets(targets, code);
+        });
     }
 
     private void flagWorkProgressOverdue() {
+        transactions.executeWithoutResult(status -> {
         List<AttentionTarget> targets = jdbc.query("""
                 WITH candidates AS (
                   SELECT id, assigned_provider_id AS target_id
@@ -156,6 +161,7 @@ public class CaseLifecycleService {
                 rs.getObject("request_id", UUID.class), rs.getObject("target_id", UUID.class)),
                 properties.workProgressTimeout().toSeconds());
         notifyAttentionTargets(targets, "work_progress_overdue");
+        });
     }
 
     private void notifyAttentionTargets(List<AttentionTarget> targets, String detail) {
