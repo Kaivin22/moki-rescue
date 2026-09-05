@@ -78,7 +78,7 @@ Delivery là at-least-once: crash sau khi Expo nhận nhưng trước khi lưu k
 thể gửi lặp cùng `notificationId`; không cam kết exactly-once. Theo dõi bản ghi
 `failed`, `expired`, backlog và receipt khi vận hành.
 
-Flyway đọc migration từ `src/main/resources/db/migration`. `B1__initial_schema.sql` là baseline tích lũy cho database PostgreSQL/PostGIS sạch và `V2__prevent_offer_accept_deadlock.sql` chuẩn hóa thứ tự khóa khi nhận offer. Thay đổi tiếp theo phải bắt đầu từ `V3__...` và không sửa file đã applied.
+Flyway đọc migration từ `src/main/resources/db/migration`. `B1__initial_schema.sql` là baseline tích lũy cho database PostgreSQL/PostGIS sạch; V2 sửa khóa khi nhận offer, V3 phục hồi điều phối và V4 thêm push outbox. Thay đổi tiếp theo phải bắt đầu từ `V5__...` và không sửa file đã applied.
 
 Migration được chạy như một deployment job bằng database owner riêng:
 
@@ -96,3 +96,8 @@ Auto-migration khi application startup mặc định tắt. Chỉ bật `SPRING_
 `OSRM_MOTORBIKE_BASE_URL` phải trỏ tới dataset đã preprocess bằng profile xe máy được kiểm chứng. Chuỗi `driving` trong URL không tự biến dataset ô tô thành xe máy. Khi router không trả tuyến hợp lệ, API trả trạng thái không khả dụng thay vì bịa Polyline thẳng.
 
 Runtime database phải dùng `SPRING_DATASOURCE_USERNAME=motorescue_api`, không dùng `postgres`. `GEMINI_API_KEY` là secret backend bắt buộc nếu bật trợ lý và không bao giờ dùng prefix `EXPO_PUBLIC_`.
+
+Dockerfile multi-stage, Compose và smoke script nằm trong `backend`; xem
+[`DEPLOYMENT`](../docs/DEPLOYMENT.md) và [`STAGING_VALIDATION`](../docs/STAGING_VALIDATION.md).
+API integration test khởi tạo toàn bộ Spring context, controller/security filter và
+runtime JDBC thật; chỉ giả lập JWT decoder. Chữ ký/JWKS/OTP thật vẫn phải test staging.

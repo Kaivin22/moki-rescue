@@ -1,0 +1,30 @@
+name: moki-rescue-backend
+services:
+  api:
+    build:
+      context: .
+    image: moki-rescue-api:local
+    env_file:
+      - ${BACKEND_ENV_FILE:-.env.runtime}
+    environment:
+      PORT: '8080'
+      SPRING_FLYWAY_ENABLED: 'false'
+    ports:
+      - '${API_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-8080}:8080'
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 768m
+    pids_limit: 200
+    stop_grace_period: 30s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'

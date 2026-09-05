@@ -1,4 +1,4 @@
-# Release readiness - 30/08/2026
+# Release readiness - 05/09/2026
 
 ## Kết luận
 
@@ -8,19 +8,23 @@ Repository đã được chuyển hoàn toàn từ app lập lịch du lịch sa
 
 - TypeScript strict: đạt.
 - ESLint và Prettier check: đạt, không còn warning.
-- Frontend local: 11 suite, 73 test đạt; CI vẫn là nguồn quyết định của commit phát hành.
-- Backend local: 51 test đạt, 0 fail và 0 skip. Trong đó 8 integration test chạy Flyway trên PostgreSQL 16/PostGIS thật bằng Testcontainers, gồm migration, tạo ca/idempotency, chặn ca active trùng, state/version, constraint/trigger, matching theo GPS, tranh chấp nhận ca và RLS profile.
+- Frontend local: 12 suite, 80 test đạt; CI vẫn là nguồn quyết định của commit phát hành.
+- Backend local: 69 test đạt, 0 fail và 0 skip. Trong đó 26 integration test chạy Flyway trên PostgreSQL 16/PostGIS thật bằng Testcontainers, gồm API/Spring context, runtime role, account/quota/push, migration, ca/idempotency, state/version, matching, recovery và RLS. JWT decoder/OSRM/Expo được giả lập; chưa kiểm chứng dịch vụ thật.
+- Docker image build và smoke đạt: API non-root/read-only, B1/V2/V3/V4 và readiness với PostGIS tạm trên mạng internal. Database/container thử nghiệm đã được dọn; không chạy SQL lên Supabase.
+- Test API phát hiện và đã sửa lỗi destination null gây HTTP 500; smoke khởi động phát hiện và đã sửa vòng phụ thuộc của lịch quét push receipt. Test Spring context hiện khởi tạo cả scheduled jobs thật.
+- Test 101 ca xác nhận offer hết hạn không bị bỏ sót sau 100 ca còn hạn; quét lại không gửi thông báo trùng.
 - Expo SDK 54 được giữ nguyên; package native mới được cài theo ma trận SDK 54.
-- `npm audit`: 0 critical, 9 high, 10 moderate. Các bản sửa npm đề xuất ép Expo 57 nên chưa áp dụng `--force`; CI chặn critical và theo dõi phần còn lại.
+- `npm audit` lần ghi nhận 30/08/2026: 0 critical, 9 high, 10 moderate; chưa audit lại trong đợt này. Các bản sửa npm đề xuất ép Expo 57 nên chưa áp dụng `--force`; CI chặn critical và theo dõi phần còn lại.
 - Public config không chứa secret backend và export Android/iOS/web: đạt ngày 22/08/2026. Hai bản vá đã được chủ dự án phê duyệt và áp dụng: `expo ~54.0.37`, `expo-constants ~18.0.14`; dự án vẫn ở SDK 54.
-- Không cò route, package Java, schema, API hay tài liệu nghiệp vụ du lịch.
+- Không còn route, package Java, schema, API hay tài liệu nghiệp vụ du lịch.
 - App icon opaque và Android notification icon alpha/monochrome đã được kiểm tra kích thước/alpha.
 - Push token rollover, ticket/receipt polling, retry có giới hạn, `DeviceNotRegistered` và retention metadata đã có code/test; vẫn phải smoke với credential và thiết bị thật.
 - Cursor lịch sử/audit dùng cặp thời gian + ID, rate limit dùng PostgreSQL dùng chung và readiness kiểm kết nối database.
+- Recovery điều phối và push outbox lưu cùng transaction, có lease/retry; push vẫn có thể gửi lặp khi crash đúng lúc. Availability GPS có task nền và cảnh báo foreground-only; kết quả Jest không thay thế kiểm thử native.
 
 ## External gate bắt buộc
 
-1. Trên Supabase staging mới, chạy Flyway `info` → `migrate` → `validate`, xác nhận `B1` và `V2` success trong `flyway_schema_history`, rồi chạy `02_verify_rls.sql`; database trống không được dùng lệnh `baseline`.
+1. Trên Supabase staging mới đã được chủ dự án phê duyệt, chạy Flyway `info` → `migrate` → `validate`, xác nhận `B1`, `V2`, `V3`, `V4` success trong `flyway_schema_history`, rồi chạy `02_verify_rls.sql`; database trống không được dùng lệnh `baseline`. Database đã có B1/V2 chỉ áp dụng V3/V4 trước rollout backend mới.
 2. Bật phone OTP với SMS provider thật, rate limit và bot protection; test số Việt Nam hợp lệ/không hợp lệ/quá nhiều OTP.
 3. Bootstrap đúng một admin theo số E.164. Với mỗi provider, tự đăng nhập OTP một lần rồi dùng giao diện admin để tra tài khoản; tạo đội bằng mã hồ sơ nội bộ, cấp provider, khai báo capability, hoàn tất checklist và chỉ sau đó kích hoạt. Thử bỏ từng điều kiện phải bị chặn; kiểm `verified_by`, `verified_at` và audit.
 4. Dùng OSRM xe máy thật: chứng minh mọi candidate hợp lệ được route theo lô, ETA/Polyline bám tuyến đường và `NoRoute` không sinh đường thẳng.
@@ -35,6 +39,9 @@ Repository đã được chuyển hoàn toàn từ app lập lịch du lịch sa
 13. Kiểm ChatBox với câu trong app/ngoài lề/chẩn đoán/khẩn cấp, quota theo hai tài khoản; xác nhận Gemini key không có trong Expo public config/bundle và database/log không có nội dung chat.
 
 ## Kịch bản demo bảo vệ
+
+Checklist có thể ghi bằng chứng kiểm thử, giới hạn còn lại và điều kiện phê duyệt:
+[`STAGING_VALIDATION.md`](STAGING_VALIDATION.md). Chưa đánh dấu các external gate đạt.
 
 - Một customer, hai provider cùng capability, một provider không có capability và một dispatcher.
 - Trước ca cứu hộ, chứng minh tài khoản mới luôn là customer; đội pending không thể nhận ca; admin chỉ kích hoạt được sau khi đủ checklist/capability/provider mà không upload giấy tờ.

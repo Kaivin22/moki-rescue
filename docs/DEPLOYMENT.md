@@ -19,7 +19,7 @@ Sao chép `.env.example` thành `.env`. Client chỉ nhận Supabase URL + publi
 Với project mới:
 
 1. Dùng direct connection Supabase port `5432` (hoặc session pooler port `5432` khi chỉ có IPv4) và database owner riêng để chạy `flyway:info`, `flyway:migrate`, `flyway:validate` từ thư mục `backend`. Database chưa từng chạy SQL **không được** dùng `flyway:baseline`.
-2. Xác nhận `B1__initial_schema.sql` thành công trong `flyway_schema_history`, sau đó chạy `scripts/02_verify_rls.sql`.
+2. Xác nhận B1/V2/V3/V4 thành công trong `flyway_schema_history`, sau đó chạy `scripts/02_verify_rls.sql`.
 3. Đặt mật khẩu ngẫu nhiên cho role `motorescue_api` bằng câu lệnh trong `scripts/README.md`, lưu vào secret manager và cấu hình `SPRING_DATASOURCE_USERNAME=motorescue_api`. Không dùng database owner hoặc `postgres` cho runtime.
 4. Bật phone auth và SMS provider. Đặt OTP expiry ngắn, rate limit, CAPTCHA/bot protection theo gói Supabase.
 5. Đăng nhập OTP cho tài khoản operator đầu tiên. Thay đúng một số E.164 trong `03_bootstrap_operator.sql` rồi chạy. Không dùng UPDATE không có `WHERE`.
@@ -38,6 +38,35 @@ Chi tiết biến môi trường Flyway, bootstrap database sạch, cách baseli
 - OSRM tĩnh không có traffic live. UI dùng từ “ETA theo tuyến”, không cam kết thời gian đến tuyệt đối.
 
 ## 5. Backend
+
+### Docker local/staging
+
+Từ repository root:
+
+```powershell
+docker build --tag moki-rescue-api:local backend
+& ./backend/docker/Test-Container.ps1
+```
+
+Smoke script dùng PostGIS và mạng Docker internal tạm thời, credential giả, không
+publish port hay kết nối Supabase. Script bật startup Flyway **chỉ trong container
+smoke**, kiểm non-root/readiness và tự dọn tài nguyên có label của chính lần chạy.
+Không dùng script này với database thật.
+
+Để chạy API kết nối staging đã chuẩn bị, tạo `backend/.env.runtime` theo
+`backend/.env.runtime.example`, rồi chạy `docker compose -f backend/compose.yaml up --build -d`.
+File chứa secret được gitignore; Docker build context dùng allowlist, không copy env
+vào image. Compose mặc định bind `127.0.0.1:8080`, filesystem read-only và user 10001.
+Muốn điện thoại trong LAN truy cập, đặt `API_BIND_ADDRESS=0.0.0.0` cho Compose và cấu
+hình firewall/mạng tin cậy; mobile dùng IP LAN của máy, không dùng localhost.
+Database trên máy host dùng `host.docker.internal` trên Docker Desktop, không phải localhost trong container.
+
+Image chỉ chứa JRE/JAR/health probe; base image khóa digest, cần cập nhật digest có
+review khi vá bảo mật. Build image không chạy test; phải chạy đầy đủ Maven/Jest trước
+phát hành. Healthcheck gọi `/api/health/ready`; production vẫn cần HTTPS reverse proxy.
+CI có build và smoke image nhưng không tự publish image hay deploy môi trường thật.
+
+### Migration và rollout
 
 Chạy một Flyway migration job duy nhất và hoàn tất validate/verify trước khi rollout JAR cần schema mới. Auto-migration lúc startup mặc định tắt để các replica runtime không giữ DDL credential. Deploy JAR sau reverse proxy HTTPS. Cấu hình database TLS, Supabase issuer/JWKS, CORS allowlist, connection pool, OSRM, push access token, Gemini key/model/quota và `TERMS_VERSION` khớp `LEGAL_VERSION`. Hiệu chỉnh polygon `service_zones` bằng SQL được review trước khi nhận ca thật. Chỉ chạy một replica cho đến khi đã kiểm chứng scheduled expiry job/locking dưới nhiều replica. Rate limit trong API dùng PostgreSQL chung giữa các replica, nhưng reverse proxy vẫn phải có request/body limit để chặn tải trước khi vào ứng dụng.
 
@@ -67,6 +96,6 @@ vẫn có thể ngừng GPS; backend tiếp tục loại GPS quá 180 giây, kh�
 
 ## 7. CI/CD và release
 
-Repository có đúng một workflow `ci.yml`. Một lần push commit lên `main` tạo một run, một job tuần tự: backend test, audit critical, secret scan, lint, format check, typecheck, Jest, Expo config/package check và export bundle. Concurrency hủy run cũ cùng ref.
+Repository có đúng một workflow `ci.yml`, chạy khi push `develop`/`main` hoặc mở PR vào `main`. Mỗi run có một job tuần tự: backend test, audit critical, secret scan, lint, format check, typecheck, Jest, Expo config/package check, export bundle, build và smoke image backend. Concurrency hủy run cũ cùng ref.
 
 CI không deploy Supabase, backend hay EAS. Release có thay đổi bên ngoài chỉ được thêm sau khi EAS credential/project và staging gate đã tồn tại, qua GitHub Environment có reviewer.

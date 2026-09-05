@@ -81,6 +81,11 @@ jobs:
         run: npx expo install --check
       - name: Export Android, iOS and web bundles
         run: npx expo export --platform all --output-dir dist
+      - name: Build non-root backend image
+        run: docker build --tag moki-rescue-api:local backend
+      - name: Smoke backend image with disposable PostGIS
+        shell: pwsh
+        run: ./backend/docker/Test-Container.ps1
       - name: Upload Expo export from main
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
