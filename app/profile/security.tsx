@@ -10,7 +10,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { type Language, useCopy, useI18n } from '@/src/i18n';
 import { rescueApi } from '@/src/features/rescue/api/rescueApi';
 import { clearStoredPushToken } from '@/src/features/notifications/pushNotifications';
-import { stopProviderBackgroundTracking } from '@/src/features/rescue/services/backgroundLocation';
+import { stopAllProviderBackgroundTracking } from '@/src/features/rescue/services/backgroundLocation';
 
 const COPY = {
   vi: {
@@ -117,7 +117,7 @@ export default function AccountSecurityScreen() {
         style: 'destructive',
         onPress: () => {
           setBusy(true);
-          void Promise.allSettled([rescueApi.unregisterAllPushDevices(), stopProviderBackgroundTracking()])
+          void Promise.allSettled([rescueApi.unregisterAllPushDevices(), stopAllProviderBackgroundTracking()])
             .then(async (results) => {
               if (results[0].status === 'rejected') throw results[0].reason;
               await clearStoredPushToken();

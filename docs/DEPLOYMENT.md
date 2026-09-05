@@ -57,6 +57,14 @@ npx eas-cli build --platform ios --profile production
 
 Kiểm tra status bar/cutout trên map, quyền location deny/allow, kill/resume app, pin notification, deep link từ push và dừng tracking sau khi đóng ca.
 
+Availability từ 05/09/2026: provider có task nền riêng khi bật sẵn sàng, gắn với
+user của installation. Khi nhận ca, task này dừng và chuyển sang tracking ca;
+tắt sẵn sàng/đăng xuất phải dừng task. Không cấp quyền nền hoặc Expo Go thì UI báo
+foreground-only. Cần build native mới vì nội dung quyền location đã thay đổi.
+Test trên thiết bị: đứng yên và khóa màn hình trên 3 phút, chuyển app, thu hồi quyền,
+đổi tài khoản, tắt sẵn sàng khi prompt đang mở. Force-stop/hệ điều hành chặn chạy nền
+vẫn có thể ngừng GPS; backend tiếp tục loại GPS quá 180 giây, không giả lập heartbeat.
+
 ## 7. CI/CD và release
 
 Repository có đúng một workflow `ci.yml`. Một lần push commit lên `main` tạo một run, một job tuần tự: backend test, audit critical, secret scan, lint, format check, typecheck, Jest, Expo config/package check và export bundle. Concurrency hủy run cũ cùng ref.

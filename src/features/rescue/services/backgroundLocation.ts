@@ -9,6 +9,7 @@ import { flushProviderLocation, queueProviderLocation } from './providerLocation
 import { isValidProviderAccuracy } from './locationAccuracy';
 import { Colors } from '@/src/constants/colors';
 import { useI18n } from '@/src/i18n';
+import { stopAvailabilityBackgroundTracking } from './availabilityBackgroundLocation';
 
 const TASK_NAME = 'motorescue-provider-location-v1';
 const ACTIVE_REQUEST_KEY = 'motorescue:provider-location:active-request:v1';
@@ -46,6 +47,7 @@ export function isExpoGoRuntime() {
 }
 
 export async function startProviderBackgroundTracking(requestId: string): Promise<boolean> {
+  await stopAvailabilityBackgroundTracking();
   if (Platform.OS === 'web' || isExpoGoRuntime()) return false;
   const foreground = await Location.getForegroundPermissionsAsync();
   if (foreground.status !== Location.PermissionStatus.GRANTED) return false;
@@ -82,4 +84,8 @@ export async function stopProviderBackgroundTracking() {
   if (await Location.hasStartedLocationUpdatesAsync(TASK_NAME)) {
     await Location.stopLocationUpdatesAsync(TASK_NAME);
   }
+}
+
+export async function stopAllProviderBackgroundTracking() {
+  await Promise.all([stopProviderBackgroundTracking(), stopAvailabilityBackgroundTracking()]);
 }

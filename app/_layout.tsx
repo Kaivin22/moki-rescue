@@ -17,7 +17,7 @@ import { AssistantBubble } from '@/src/features/assistant/components/AssistantBu
 import { AppErrorBoundary } from '@/src/components/AppErrorBoundary';
 import { hasCurrentConsent } from '@/src/features/auth/access';
 import { useI18n } from '@/src/i18n';
-import '@/src/features/rescue/services/backgroundLocation';
+import { stopAllProviderBackgroundTracking } from '@/src/features/rescue/services/backgroundLocation';
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -44,12 +44,19 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUserId = session?.user.id ?? null;
-      if (lastUserId.current && lastUserId.current !== nextUserId) queryClient.clear();
+      if (lastUserId.current && lastUserId.current !== nextUserId) {
+        queryClient.clear();
+        void stopAllProviderBackgroundTracking().catch(() => undefined);
+      }
       lastUserId.current = nextUserId;
       void syncUser(session?.user ?? null);
     });
     return () => subscription.unsubscribe();
   }, [initialize, syncUser]);
+
+  useEffect(() => {
+    if (isHydrated && !userId) void stopAllProviderBackgroundTracking().catch(() => undefined);
+  }, [isHydrated, userId]);
 
   useEffect(() => {
     if (!profileLocale) return undefined;

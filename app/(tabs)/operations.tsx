@@ -37,8 +37,9 @@ const COPY = {
     loadingTeam: 'Đang tải đội cứu hộ…',
     providerError: 'Không tải được trạng thái cứu hộ viên.',
     notice:
-      'Khi bật sẵn sàng, chỉ vị trí còn mới mới được dùng để ghép ca. Trước khi nhận ca, khách không thấy tọa độ của bạn. GPS hiện tại:',
+      'Khi bật sẵn sàng, vị trí được dùng để ghép ca, kể cả trong nền nếu bạn cấp quyền. Tắt sẵn sàng để dừng. Trước khi nhận ca, khách không thấy tọa độ của bạn. GPS hiện tại:',
     gpsTracking: 'đang cập nhật',
+    gpsForegroundOnly: 'chỉ cập nhật khi mở app; khi chạy nền lâu bạn có thể không được ghép ca',
     gpsDenied: 'chưa được cấp quyền',
     gpsError: 'mất kết nối',
     gpsStarting: 'đang khởi tạo',
@@ -82,8 +83,9 @@ const COPY = {
     loadingTeam: 'Loading rescue team…',
     providerError: 'Could not load provider status.',
     notice:
-      'When availability is on, only a recent location is used for matching. Customers cannot see your coordinates before you accept a request. Current GPS:',
+      'While available, location is used for matching, including in the background if permitted. Turn availability off to stop. Customers cannot see your coordinates before acceptance. Current GPS:',
     gpsTracking: 'updating',
+    gpsForegroundOnly: 'foreground only; you may stop receiving offers while the app is backgrounded',
     gpsDenied: 'permission not granted',
     gpsError: 'connection lost',
     gpsStarting: 'starting',
@@ -294,11 +296,13 @@ export default function OperationsScreen() {
               {c.notice}{' '}
               {availabilityLocation === 'tracking'
                 ? c.gpsTracking
-                : availabilityLocation === 'denied'
-                  ? c.gpsDenied
-                  : availabilityLocation === 'error'
-                    ? c.gpsError
-                    : c.gpsStarting}
+                : availabilityLocation === 'foreground_only'
+                  ? c.gpsForegroundOnly
+                  : availabilityLocation === 'denied'
+                    ? c.gpsDenied
+                    : availabilityLocation === 'error'
+                      ? c.gpsError
+                      : c.gpsStarting}
               .
             </Text>
             <Text style={styles.section}>{c.offers}</Text>

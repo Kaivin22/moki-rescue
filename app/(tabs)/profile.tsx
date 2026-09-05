@@ -7,7 +7,7 @@ import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { useAuthStore } from '@/src/stores/authStore';
 import { getAppVersionLabel } from '@/src/utils/appInfo';
 import { unregisterPushNotifications } from '@/src/features/notifications/pushNotifications';
-import { stopProviderBackgroundTracking } from '@/src/features/rescue/services/backgroundLocation';
+import { stopAllProviderBackgroundTracking } from '@/src/features/rescue/services/backgroundLocation';
 import { roleLabel } from '@/src/features/auth/roles';
 import { useCopy, useI18n } from '@/src/i18n';
 
@@ -93,7 +93,7 @@ export default function ProfileScreen() {
   const language = useI18n((state) => state.language);
   const maskedPhone = user?.phone ? `${user.phone.slice(0, 4)}••••${user.phone.slice(-3)}` : c.hidden;
   const logout = async () => {
-    await Promise.allSettled([unregisterPushNotifications(), stopProviderBackgroundTracking()]);
+    await Promise.allSettled([unregisterPushNotifications(), stopAllProviderBackgroundTracking()]);
     await signOut();
     router.replace('/(auth)/login');
   };

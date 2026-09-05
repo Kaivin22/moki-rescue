@@ -8,7 +8,7 @@ import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { ApiClientError } from '@/src/features/rescue/api/client';
 import { rescueApi } from '@/src/features/rescue/api/rescueApi';
-import { stopProviderBackgroundTracking } from '@/src/features/rescue/services/backgroundLocation';
+import { stopAllProviderBackgroundTracking } from '@/src/features/rescue/services/backgroundLocation';
 import { useAuthStore } from '@/src/stores/authStore';
 import { clearStoredPushToken } from '@/src/features/notifications/pushNotifications';
 import { useCopy } from '@/src/i18n';
@@ -49,7 +49,7 @@ export default function DeleteAccountScreen() {
     setBusy(true);
     try {
       await rescueApi.requestAccountDeletion();
-      await stopProviderBackgroundTracking().catch(() => undefined);
+      await stopAllProviderBackgroundTracking().catch(() => undefined);
       await clearStoredPushToken();
       await signOut();
       router.replace('/(auth)/login');

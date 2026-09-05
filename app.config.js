@@ -104,9 +104,9 @@ export default {
         'expo-location',
         {
           locationWhenInUsePermission:
-            'Moki Rescue dùng vị trí khi bạn tạo hoặc đang xử lý một yêu cầu cứu hộ. Vị trí không được theo dõi khi không có ca hoạt động.',
+            'Moki Rescue dùng vị trí khi khách tạo ca hoặc khi cứu hộ viên bật sẵn sàng nhận ca hay đang xử lý ca. Tắt sẵn sàng và kết thúc ca để dừng theo dõi.',
           locationAlwaysAndWhenInUsePermission:
-            'Cứu hộ viên cho phép Moki Rescue cập nhật vị trí trong nền chỉ khi đang xử lý một ca. Khách hàng không cần cấp quyền này.',
+            'Cứu hộ viên có thể cho phép cập nhật vị trí trong nền khi bật sẵn sàng nhận ca hoặc đang xử lý ca. Tắt sẵn sàng để dừng vị trí chờ ca. Khách hàng không cần quyền này.',
           isIosBackgroundLocationEnabled: true,
           isAndroidBackgroundLocationEnabled: true,
           isAndroidForegroundServiceEnabled: true,
