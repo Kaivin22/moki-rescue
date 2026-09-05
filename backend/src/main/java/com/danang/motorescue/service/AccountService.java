@@ -27,7 +27,7 @@ public class AccountService {
                     "Admin phải bàn giao quyền vận hành trước khi yêu cầu xóa tài khoản.");
         }
         transactions.executeWithoutResult(status -> {
-            jdbc.queryForObject("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", Long.class, actor.id().toString());
+            jdbc.query("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", rs -> null, actor.id().toString());
             Boolean hasActiveWork = jdbc.queryForObject("""
                     SELECT EXISTS(
                       SELECT 1 FROM public.rescue_requests
@@ -57,9 +57,9 @@ public class AccountService {
 
     public void registerPushDevice(Actor actor, PushDeviceRequest input) {
         transactions.executeWithoutResult(status -> {
-            jdbc.queryForObject("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", Long.class,
+            jdbc.query("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", rs -> null,
                     "push-installation:" + input.installationId());
-            jdbc.queryForObject("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", Long.class,
+            jdbc.query("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", rs -> null,
                     "push-token:" + input.token());
             // A token may survive account switching or an app reinstall. Possession of
             // the current Expo token plus an authenticated session is the registration proof.

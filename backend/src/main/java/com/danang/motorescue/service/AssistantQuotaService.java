@@ -22,9 +22,9 @@ public class AssistantQuotaService {
 
     @Transactional
     public Reservation reserve(UUID userId) {
-        jdbc.queryForObject(
+        jdbc.query(
                 "SELECT pg_advisory_xact_lock(hashtextextended(?, 0))",
-                Long.class,
+                rs -> null,
                 "assistant:" + userId);
 
         Long minuteCount = jdbc.queryForObject("""

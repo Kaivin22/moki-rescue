@@ -50,7 +50,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
 
     private static final double PICKUP_LATITUDE = 16.0544;

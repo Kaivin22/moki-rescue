@@ -55,6 +55,12 @@ Chỉ các hệ thống ngoài database như OSRM và Expo Push được thay b�
 CI kiểm tra Docker trước khi chạy Maven để không thể vô tình bỏ qua integration test
 do thiếu Docker daemon.
 
+Từ 05/09/2026, chạy toàn bộ test local cũng **fail** nếu thiếu Docker, không tự skip.
+Nếu chỉ muốn chạy unit test, phải chọn rõ `./mvnw "-Dtest=!*IntegrationTest" test`
+(Windows: `.\mvnw.cmd "-Dtest=!*IntegrationTest" test`). Kết quả này không thay thế full test.
+Test account/push/quota dùng role runtime `motorescue_api`; fixture/migration dùng owner
+trong container tạm thời. Không dùng credential hoặc database Supabase thật cho test.
+
 ## Database migration
 
 Flyway đọc migration từ `src/main/resources/db/migration`. `B1__initial_schema.sql` là baseline tích lũy cho database PostgreSQL/PostGIS sạch và `V2__prevent_offer_accept_deadlock.sql` chuẩn hóa thứ tự khóa khi nhận offer. Thay đổi tiếp theo phải bắt đầu từ `V3__...` và không sửa file đã applied.
