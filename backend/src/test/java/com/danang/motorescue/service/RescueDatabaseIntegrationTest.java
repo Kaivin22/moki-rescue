@@ -63,6 +63,8 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     private static DataSource dataSource;
     private static JdbcTemplate jdbc;
     private static TransactionTemplate transactions;
+    private static JdbcTemplate runtimeJdbc;
+    private static TransactionTemplate runtimeTransactions;
 
     private MatchingProperties matchingPolicy;
     private RescuePolicyProperties rescuePolicy;
@@ -79,6 +81,9 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         dataSource = dataSourceFor(POSTGRES);
         jdbc = new JdbcTemplate(dataSource);
         transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+        var runtimeDataSource = runtimeDataSourceFor(POSTGRES);
+        runtimeJdbc = new JdbcTemplate(runtimeDataSource);
+        runtimeTransactions = new TransactionTemplate(new DataSourceTransactionManager(runtimeDataSource));
     }
 
     @BeforeEach
@@ -94,10 +99,10 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         qualityPolicy = new QualityProperties(5, 3.5, 3.0, 3, 3, 30);
         push = mock(PushNotificationService.class);
         routing = mock(RoadRoutingService.class);
-        matchingDispatch = new DispatchService(jdbc, transactions, routing, matchingPolicy, push);
+        matchingDispatch = new DispatchService(runtimeJdbc, runtimeTransactions, routing, matchingPolicy, push);
         creationDispatch = mock(DispatchService.class);
         providers = new ProviderService(
-                jdbc, transactions, matchingDispatch, new AuditService(jdbc), push,
+                runtimeJdbc, runtimeTransactions, matchingDispatch, new AuditService(runtimeJdbc), push,
                 matchingPolicy, rescuePolicy, qualityPolicy);
     }
 
@@ -368,16 +373,63 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
 
     private RescueCreationService creationService() {
         return new RescueCreationService(
-                jdbc, transactions, creationDispatch, new ServiceAreaService(jdbc),
-                new AuditService(jdbc), rescuePolicy, new RescueRequestAccess(jdbc));
+                runtimeJdbc, runtimeTransactions, creationDispatch, new ServiceAreaService(runtimeJdbc),
+                new AuditService(runtimeJdbc), rescuePolicy, new RescueRequestAccess(runtimeJdbc));
     }
 
     private RescueLifecycleService lifecycleService() {
         return new RescueLifecycleService(
-                jdbc, transactions, matchingDispatch, new RequestStateMachine(),
-                new ServiceAreaService(jdbc), new AuditService(jdbc),
+                runtimeJdbc, runtimeTransactions, matchingDispatch, new RequestStateMachine(),
+                new ServiceAreaService(runtimeJdbc), new AuditService(runtimeJdbc),
                 new CaseLifecycleProperties(null, null, null, null, null, null, null, 3),
-                new RescueRequestAccess(jdbc), new RescueNotificationService(jdbc, push));
+                new RescueRequestAccess(runtimeJdbc), new RescueNotificationService(runtimeJdbc, push));
+    }
+
+    @Test
+    void committedSearchingCaseIsRecoveredWithoutOriginalProcess() {
+        UUID requestId = creationService().create(createActor("customer"), UUID.randomUUID(), validCreateRequest("Test"));
+        assertThat(count("public.dispatch_recovery_jobs")).isEqualTo(1);
+        jdbc.update("UPDATE public.dispatch_recovery_jobs SET available_at = NOW() - INTERVAL '1 second'");
+        new DispatchRecoveryJob(runtimeJdbc, matchingDispatch).recover();
+        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, requestId))
+                .isEqualTo("no_provider");
+        assertThat(count("public.dispatch_recovery_jobs")).isZero();
+    }
+
+    @Test
+    void recoveryJobRollsBackWithRequestAndRetriesAfterExpiredLease() {
+        Actor customer = createActor("customer");
+        transactions.executeWithoutResult(status -> {
+            insertRequest(customer, "searching", null);
+            assertThat(count("public.dispatch_recovery_jobs")).isEqualTo(1);
+            status.setRollbackOnly();
+        });
+        assertThat(count("public.dispatch_recovery_jobs")).isZero();
+        UUID requestId = insertRequest(customer, "searching", null);
+        jdbc.update("UPDATE public.dispatch_recovery_jobs SET available_at = NOW() + INTERVAL '2 minutes', lease_id = ?",
+                UUID.randomUUID());
+        var job = new DispatchRecoveryJob(runtimeJdbc, matchingDispatch);
+        job.recover();
+        assertThat(count("public.dispatch_recovery_jobs")).isEqualTo(1);
+        jdbc.update("UPDATE public.dispatch_recovery_jobs SET available_at = NOW() - INTERVAL '1 second'");
+        job.recover();
+        assertThat(count("public.dispatch_recovery_jobs")).isZero();
+        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, requestId))
+                .isEqualTo("no_provider");
+    }
+
+    @Test
+    void failedRecoveryKeepsWorkForRetryAndClosedRequestRemovesIt() {
+        UUID requestId = insertRequest(createActor("customer"), "searching", null);
+        jdbc.update("UPDATE public.dispatch_recovery_jobs SET available_at = NOW() - INTERVAL '1 second'");
+        org.mockito.Mockito.doThrow(new IllegalStateException("private diagnostic"))
+                .when(creationDispatch).match(requestId);
+        new DispatchRecoveryJob(runtimeJdbc, creationDispatch).recover();
+        assertThat(jdbc.queryForObject("SELECT attempts FROM public.dispatch_recovery_jobs", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT last_error_type FROM public.dispatch_recovery_jobs", String.class))
+                .isEqualTo("IllegalStateException");
+        jdbc.update("UPDATE public.rescue_requests SET status = 'cancelled', cancellation_reason = 'test' WHERE id = ?", requestId);
+        assertThat(count("public.dispatch_recovery_jobs")).isZero();
     }
 
     private void stubSuccessfulRoutes() {

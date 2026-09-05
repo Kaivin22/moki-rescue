@@ -63,6 +63,12 @@ trong container tạm thời. Không dùng credential hoặc database Supabase t
 
 ## Database migration
 
+`V3__durable_dispatch_recovery.sql` lưu recovery job cùng transaction khi ca vào
+`searching`. Fast path vẫn ghép ca ngay; sau 30 giây worker nhận lại job bị bỏ dở,
+dùng lease/`SKIP LOCKED`, retry có backoff và tự xóa job khi ca rời `searching`.
+Migration cũng backfill ca đang tìm từ phiên bản cũ. Không chạy migration lên cloud
+trước khi staging đã được phê duyệt; file migration cũ giữ nguyên.
+
 Flyway đọc migration từ `src/main/resources/db/migration`. `B1__initial_schema.sql` là baseline tích lũy cho database PostgreSQL/PostGIS sạch và `V2__prevent_offer_accept_deadlock.sql` chuẩn hóa thứ tự khóa khi nhận offer. Thay đổi tiếp theo phải bắt đầu từ `V3__...` và không sửa file đã applied.
 
 Migration được chạy như một deployment job bằng database owner riêng:
