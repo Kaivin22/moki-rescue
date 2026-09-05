@@ -137,8 +137,15 @@ public class DispatchService {
         transactions.executeWithoutResult(status -> {
             // Same lock order as offer acceptance: request -> offers -> provider.
             List<UUID> requests = jdbc.query("""
-                    SELECT id FROM public.rescue_requests WHERE status = 'offered'
-                    ORDER BY id FOR UPDATE SKIP LOCKED LIMIT 100
+                    SELECT rr.id FROM public.rescue_requests rr WHERE rr.status = 'offered'
+                      AND (EXISTS (
+                        SELECT 1 FROM public.dispatch_offers offer
+                        WHERE offer.request_id = rr.id AND offer.status = 'pending' AND offer.expires_at <= NOW()
+                      ) OR NOT EXISTS (
+                        SELECT 1 FROM public.dispatch_offers offer
+                        WHERE offer.request_id = rr.id AND offer.status = 'pending' AND offer.expires_at > NOW()
+                      ))
+                    ORDER BY rr.id FOR UPDATE OF rr SKIP LOCKED LIMIT 100
                     """, (rs, rowNum) -> rs.getObject(1, UUID.class));
             for (UUID requestId : requests) {
                 jdbc.update("""
@@ -239,16 +246,16 @@ public class DispatchService {
 
     private void markNoProvider(UUID requestId, boolean routingUnavailable) {
         transactions.executeWithoutResult(status -> {
-        UUID customerId = jdbc.query("""
-                UPDATE public.rescue_requests
-                SET status = 'no_provider', routing_status = ?
-                WHERE id = ? AND status = 'searching'
-                RETURNING customer_id
-                """, rs -> rs.next() ? rs.getObject(1, UUID.class) : null,
-                routingUnavailable ? "unavailable" : "pending", requestId);
-        if (customerId != null) {
-            push.notifyUser(customerId, NotificationKind.NO_PROVIDER, null, requestId);
-        }
+            UUID customerId = jdbc.query("""
+                    UPDATE public.rescue_requests
+                    SET status = 'no_provider', routing_status = ?
+                    WHERE id = ? AND status = 'searching'
+                    RETURNING customer_id
+                    """, rs -> rs.next() ? rs.getObject(1, UUID.class) : null,
+                    routingUnavailable ? "unavailable" : "pending", requestId);
+            if (customerId != null) {
+                push.notifyUser(customerId, NotificationKind.NO_PROVIDER, null, requestId);
+            }
         });
     }
 }

@@ -252,6 +252,43 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     }
 
     @Test
+    void expiryDoesNotStarveBehindOneHundredUnexpiredRequests() {
+        transactions.executeWithoutResult(status -> {
+            UUID teamId = createTeam();
+            ProviderFixture provider = createProvider(teamId, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+            for (int index = 0; index < 101; index++) {
+                insertRequest(createActor("customer"), "offered", null);
+            }
+            jdbc.update("""
+                    INSERT INTO public.dispatch_offers(
+                      request_id, provider_id, team_id, road_distance_m, eta_seconds, expires_at)
+                    SELECT id, ?, ?, 1000, 300, NOW() + INTERVAL '30 minutes'
+                    FROM public.rescue_requests
+                    """, provider.actor().id(), teamId);
+        });
+        UUID expiredRequest = jdbc.queryForObject(
+                "SELECT id FROM public.rescue_requests ORDER BY id DESC LIMIT 1", UUID.class);
+        jdbc.update("""
+                UPDATE public.dispatch_offers
+                SET offered_at = NOW() - INTERVAL '2 minutes', expires_at = NOW() - INTERVAL '1 minute'
+                WHERE request_id = ?
+                """, expiredRequest);
+
+        matchingDispatch.expireOffers();
+        matchingDispatch.expireOffers();
+
+        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?",
+                String.class, expiredRequest)).isEqualTo("no_provider");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.dispatch_offers WHERE status = 'pending'",
+                Integer.class)).isEqualTo(100);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.dispatch_offers WHERE status = 'expired'",
+                Integer.class)).isEqualTo(1);
+        UUID customer = jdbc.queryForObject("SELECT customer_id FROM public.rescue_requests WHERE id = ?",
+                UUID.class, expiredRequest);
+        verify(push, times(1)).notifyUser(customer, NotificationKind.NO_PROVIDER, null, expiredRequest);
+    }
+
+    @Test
     @Timeout(30)
     void concurrentProvidersLeaveExactlyOneAcceptedOfferAndConsistentAssignment() throws Exception {
         Actor customer = createActor("customer");

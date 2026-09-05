@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.danang.motorescue.service.*;
 import com.danang.motorescue.support.PostgisIntegrationTestSupport;
 import java.time.Instant;
 import java.util.UUID;
@@ -34,7 +33,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
         "app.routing.motorbike-base-url=https://routing.example.invalid", "app.assistant.enabled=false",
         "spring.security.oauth2.resourceserver.jwt.issuer-uri=https://auth.example.invalid/auth/v1",
         "spring.security.oauth2.resourceserver.jwt.jwk-set-uri=https://auth.example.invalid/jwks",
-        "app.legal.current-version=2026-08-22"
+        "app.legal.current-version=2026-08-22",
+        "app.matching.recovery-scan-interval-ms=3600000", "app.matching.expiry-scan-interval-ms=3600000",
+        "app.case-lifecycle.scan-interval-ms=3600000", "app.push.outbox-scan-interval-ms=3600000"
 })
 @AutoConfigureMockMvc
 @Testcontainers
@@ -44,12 +45,7 @@ class ApiDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate runtime;
     @MockitoBean JwtDecoder decoder;
-    // Separate database tests exercise these workers; never run background jobs or external HTTP here.
-    @MockitoBean DispatchRecoveryJob recovery;
-    @MockitoBean DispatchOfferExpiryJob expiry;
-    @MockitoBean CaseLifecycleJob lifecycle;
-    @MockitoBean PushOutboxJob pushJob;
-    @MockitoBean PushReceiptJob receipts;
+    // All application beans/jobs are real. Only JWT decoding is replaced; no live identity provider.
 
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry properties) {
