@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.danang.motorescue.support.PostgisIntegrationTestSupport;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -24,7 +26,7 @@ class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
     private static final PostgreSQLContainer<?> POSTGRES = newPostgisContainer();
 
     @Test
-    void cleanPostgisDatabaseMigratesLegacyDispatcherAndRemainsIdempotent() throws SQLException {
+    void cleanPostgisDatabaseMigratesLegacyDispatcherAndRemainsIdempotent() throws Exception {
         Flyway beforeRoleMerge = Flyway.configure()
                 .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
                 .locations("classpath:db/migration")
@@ -61,6 +63,11 @@ class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
 
         try (Connection connection = DriverManager.getConnection(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())) {
+            String verificationSql = Files.readString(
+                    Path.of(System.getProperty("user.dir"), "..", "scripts", "02_verify_rls.sql").normalize());
+            try (Statement verification = connection.createStatement()) {
+                verification.execute(verificationSql);
+            }
             assertEquals(25, queryForInt(connection,
                     "SELECT COUNT(*) FROM information_schema.tables "
                             + "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "

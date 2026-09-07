@@ -4,18 +4,18 @@
 
 DO $$
 DECLARE
-  operator_phone CONSTANT TEXT := 'CHANGE_ME_E164_PHONE';
+  admin_phone CONSTANT TEXT := 'CHANGE_ME_E164_PHONE';
   matched_user_id UUID;
   matched_count INTEGER;
 BEGIN
-  IF operator_phone = 'CHANGE_ME_E164_PHONE' OR operator_phone !~ '^\+[1-9][0-9]{7,14}$' THEN
-    RAISE EXCEPTION 'OPERATOR_PHONE_NOT_CONFIGURED';
+  IF admin_phone = 'CHANGE_ME_E164_PHONE' OR admin_phone !~ '^\+[1-9][0-9]{7,14}$' THEN
+    RAISE EXCEPTION 'ADMIN_PHONE_NOT_CONFIGURED';
   END IF;
 
   SELECT COUNT(*), MIN(id)
   INTO matched_count, matched_user_id
   FROM auth.users
-  WHERE phone = operator_phone;
+  WHERE phone = admin_phone;
 
   IF matched_count <> 1 THEN
     RAISE EXCEPTION 'EXPECTED_ONE_AUTH_USER_FOR_PHONE, FOUND_%', matched_count;

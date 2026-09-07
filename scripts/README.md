@@ -8,9 +8,10 @@ backend/src/main/resources/db/migration/
   V2__prevent_offer_accept_deadlock.sql
   V3__durable_dispatch_recovery.sql
   V4__durable_push_outbox.sql
+  V5__merge_dispatcher_into_admin.sql
 ```
 
-`B1` là baseline migration tích lũy từ schema đã được squash trước đây. Nó dựng đầy đủ tables, indexes, constraints, triggers, RLS, grants, functions và dữ liệu cấu hình bắt buộc trên database mới. `V2` sửa thứ tự khóa transaction khi provider nhận offer để tránh deadlock. `V3` phục hồi điều phối bị gián đoạn; `V4` lưu push outbox cùng transaction nghiệp vụ. Những thay đổi tiếp theo phải bắt đầu từ `V5__...sql`, tăng tuần tự và có mô tả rõ ràng.
+`B1` là baseline migration tích lũy từ schema đã được squash trước đây. Nó dựng đầy đủ tables, indexes, constraints, triggers, RLS, grants, functions và dữ liệu cấu hình bắt buộc trên database mới. `V2` sửa thứ tự khóa transaction khi provider nhận offer để tránh deadlock. `V3` phục hồi điều phối bị gián đoạn; `V4` lưu push outbox cùng transaction nghiệp vụ; `V5` chuyển tài khoản điều phối cũ sang admin và giới hạn hệ thống còn ba vai trò. Những thay đổi tiếp theo phải bắt đầu từ `V6__...sql`, tăng tuần tự và có mô tả rõ ràng.
 
 Sau khi một migration đã chạy trên bất kỳ môi trường dùng chung nào, không được sửa, đổi tên hoặc xóa file đó. Mọi sửa đổi phải nằm trong migration có version mới. Không dùng `flyway repair` để che checksum mismatch nếu chưa điều tra và phê duyệt nguyên nhân.
 
@@ -39,7 +40,7 @@ cd backend
 .\mvnw.cmd flyway:validate
 ```
 
-`migrate` sẽ chạy `B1__initial_schema.sql`, các migration version tiếp theo (hiện tại là `V2`, `V3`, `V4`) và tạo `flyway_schema_history`. Sau đó:
+`migrate` sẽ chạy `B1__initial_schema.sql`, các migration version tiếp theo (hiện tại là `V2`, `V3`, `V4`, `V5`) và tạo `flyway_schema_history`. Sau đó:
 
 1. Đặt password ngẫu nhiên riêng cho role backend, lưu trong secret manager và không commit câu lệnh đã điền secret:
 
@@ -49,11 +50,11 @@ cd backend
 
 2. Cấu hình runtime với `SPRING_DATASOURCE_USERNAME=motorescue_api`; không dùng migration owner hoặc `postgres`.
 3. Chạy `scripts/02_verify_rls.sql` để kiểm tra metadata bảo mật. Script này chỉ đọc metadata.
-4. Bật phone auth/SMS, đăng nhập OTP cho operator đầu tiên, thay đúng một số E.164 trong `scripts/03_bootstrap_operator.sql`, rồi chạy script.
+4. Bật phone auth/SMS, đăng nhập OTP cho admin đầu tiên, thay đúng một số E.164 trong `scripts/03_bootstrap_operator.sql`, rồi chạy script.
 5. Review polygon `service_zones` theo phạm vi vận hành thật.
 6. Trên production, bật Supabase Cron/`pg_cron` rồi chạy `scripts/04_schedule_retention.sql`.
 
-`03_bootstrap_operator.sql` và `04_schedule_retention.sql` là bước vận hành theo từng môi trường, không phải migration: operator phải tồn tại trong Supabase Auth trước, còn lịch cron phụ thuộc cấu hình production.
+`03_bootstrap_operator.sql` và `04_schedule_retention.sql` là bước vận hành theo từng môi trường, không phải migration: admin phải tồn tại trong Supabase Auth trước, còn lịch cron phụ thuộc cấu hình production.
 
 ## Đưa database legacy vào Flyway
 
@@ -72,7 +73,7 @@ Chỉ dùng luồng này cho database đã được dựng trước đây bằng
 
 4. Chạy lại `flyway:info`, `flyway:validate`, `02_verify_rls.sql` và smoke test backend.
 
-`baselineOnMigrate` luôn để `false`: baseline là thao tác một lần, có chủ đích, sau khi đã xác minh đúng database. Từ đó, Flyway chỉ áp dụng tuần tự `V2`, `V3`, ...
+`baselineOnMigrate` luôn để `false`: baseline là thao tác một lần, có chủ đích, sau khi đã xác minh đúng database. Từ đó, Flyway chỉ áp dụng tuần tự các migration còn thiếu đến version hiện hành.
 
 ## Quy trình staging và production
 
@@ -95,7 +96,7 @@ Spring Boot có thể tự migrate khi đặt `SPRING_FLYWAY_ENABLED=true` cùng
 
 - `00_reset.sql`: xóa schema ứng dụng, chỉ dành cho local/staging được phép mất dữ liệu. Sau reset phải chạy lại Flyway từ đầu; không chạy trên production.
 - `02_verify_rls.sql`: kiểm tra read-only sau migration.
-- `03_bootstrap_operator.sql`: cấp operator đầu tiên sau khi tài khoản Auth đã tồn tại.
+- `03_bootstrap_operator.sql`: cấp admin đầu tiên sau khi tài khoản Auth đã tồn tại.
 - `04_schedule_retention.sql`: cấu hình cron retention theo môi trường.
 
 Không có seed đội cứu hộ, vị trí, yêu cầu hay đánh giá giả. Catalog trong `B1` là cấu hình chính thức của sản phẩm, không phải mock data.

@@ -179,6 +179,33 @@ $$;
 
 DO $$
 DECLARE
+  role_constraint TEXT;
+BEGIN
+  SELECT pg_get_constraintdef(constraint_record.oid)
+  INTO role_constraint
+  FROM pg_constraint constraint_record
+  WHERE constraint_record.conrelid = 'public.profiles'::regclass
+    AND constraint_record.conname = 'profiles_role_check';
+
+  IF role_constraint IS NULL
+    OR role_constraint LIKE '%dispatcher%'
+    OR role_constraint NOT LIKE '%customer%'
+    OR role_constraint NOT LIKE '%provider%'
+    OR role_constraint NOT LIKE '%admin%' THEN
+    RAISE EXCEPTION 'UNEXPECTED_PROFILE_ROLE_CONSTRAINT: %', role_constraint;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE role NOT IN ('customer', 'provider', 'admin')
+  ) THEN
+    RAISE EXCEPTION 'UNEXPECTED_PROFILE_ROLE_VALUE';
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
   unsafe_grants TEXT;
 BEGIN
   SELECT string_agg(table_name || ':' || privilege_type, ', ' ORDER BY table_name, privilege_type)

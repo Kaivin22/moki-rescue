@@ -79,6 +79,11 @@ describe('Moki Rescue schema contract', () => {
     expect(verify).toContain('MOTORESCUE_API_ACCOUNT_LOOKUP_GRANT_MISSING');
   });
 
+  it('verifies that the migrated profile schema exposes only three roles', () => {
+    expect(verify).toContain('UNEXPECTED_PROFILE_ROLE_CONSTRAINT');
+    expect(verify).toContain("role NOT IN ('customer', 'provider', 'admin')");
+  });
+
   it('records structured cancellation policy without retaining a cancellation location', () => {
     expect(schema).toContain('cancellation_code TEXT');
     expect(schema).toContain('cancellation_stage TEXT');

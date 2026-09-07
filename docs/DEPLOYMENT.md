@@ -22,7 +22,7 @@ Với project mới:
 2. Xác nhận B1/V2/V3/V4 thành công trong `flyway_schema_history`, sau đó chạy `scripts/02_verify_rls.sql`.
 3. Đặt mật khẩu ngẫu nhiên cho role `motorescue_api` bằng câu lệnh trong `scripts/README.md`, lưu vào secret manager và cấu hình `SPRING_DATASOURCE_USERNAME=motorescue_api`. Không dùng database owner hoặc `postgres` cho runtime.
 4. Bật phone auth và SMS provider. Đặt OTP expiry ngắn, rate limit, CAPTCHA/bot protection theo gói Supabase.
-5. Đăng nhập OTP cho tài khoản operator đầu tiên. Thay đúng một số E.164 trong `03_bootstrap_operator.sql` rồi chạy. Không dùng UPDATE không có `WHERE`.
+5. Đăng nhập OTP cho tài khoản admin đầu tiên. Thay đúng một số E.164 trong `03_bootstrap_operator.sql` rồi chạy. Không dùng UPDATE không có `WHERE`.
 6. Bật Supabase Cron/`pg_cron`, sau đó chạy `04_schedule_retention.sql`.
 7. Trong Realtime Settings, tắt public access và kiểm tra private topic `request:<uuid>` bằng hai tài khoản không liên quan.
 8. Với đối tác thật, dùng mã hồ sơ nội bộ không chứa số CCCD/số điện thoại. Từng provider tự đăng nhập OTP trước; admin cấp quyền, khai báo capability, hoàn tất checklist và kích hoạt đội. Không đưa tài liệu pháp lý hoặc ảnh giấy tờ vào Supabase Storage.
