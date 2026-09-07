@@ -22,7 +22,7 @@ export function getRescuePermissions(
   profileId: string | undefined,
   request: RescuePermissionRequest | undefined,
 ): RescuePermissions {
-  const isStaff = role === 'dispatcher' || role === 'admin';
+  const isStaff = role === 'admin';
   const isAssignedProvider =
     role === 'provider' && request?.assignedProviderId != null && request.assignedProviderId === profileId;
   return {

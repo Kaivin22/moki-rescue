@@ -30,7 +30,7 @@ const COPY = {
       ],
       [
         'Xác nhận hai phía',
-        'Cứu hộ viên gửi yêu cầu xác nhận khi đến và khi hoàn tất; khách chỉ xác nhận khi sự kiện thực sự xảy ra. Điều phối viên có thể can thiệp khi mất mạng hoặc có tranh chấp, và thao tác quan trọng được ghi audit.',
+        'Cứu hộ viên gửi yêu cầu xác nhận khi đến và khi hoàn tất; khách chỉ xác nhận khi sự kiện thực sự xảy ra. Quản trị viên vận hành có thể can thiệp khi mất mạng hoặc có tranh chấp, và thao tác quan trọng được ghi audit.',
       ],
       [
         'Đánh giá',
@@ -69,7 +69,7 @@ const COPY = {
       ],
       [
         'Two-sided confirmation',
-        'The provider requests confirmation on arrival and completion; the customer confirms only when the event actually occurs. Dispatch staff may intervene during connectivity problems or disputes, and important actions are audited.',
+        'The provider requests confirmation on arrival and completion; the customer confirms only when the event actually occurs. Operations administrators may intervene during connectivity problems or disputes, and important actions are audited.',
       ],
       [
         'Reviews',

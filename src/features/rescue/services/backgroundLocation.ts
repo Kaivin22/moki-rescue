@@ -69,8 +69,8 @@ export async function startProviderBackgroundTracking(requestId: string): Promis
           ? 'Moki Rescue is tracking an active request'
           : 'Moki Rescue đang theo dõi ca cứu hộ',
         notificationBody: english
-          ? 'Location is shared only with the customer and dispatch staff for the active request.'
-          : 'Vị trí chỉ được chia sẻ với khách và điều phối viên của ca đang hoạt động.',
+          ? 'Location is shared only with the customer and operations administrators for the active request.'
+          : 'Vị trí chỉ được chia sẻ với khách và quản trị viên vận hành của ca đang hoạt động.',
         notificationColor: Colors.accent,
       },
     });

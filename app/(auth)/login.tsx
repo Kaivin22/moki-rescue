@@ -34,7 +34,7 @@ const COPY = {
     start: 'Bắt đầu an toàn',
     enterOtp: 'Nhập mã xác minh',
     intro:
-      'Một tài khoản dùng chung cho khách, cứu hộ viên và điều phối viên. Quyền do đơn vị vận hành xác minh.',
+      'Một tài khoản dùng chung cho khách, cứu hộ viên và quản trị viên vận hành. Quyền nội bộ do đơn vị vận hành xác minh.',
     sent: 'Mã 6 số đã được gửi đến',
     name: 'Tên hiển thị',
     namePlaceholder: 'Ví dụ: Minh',
@@ -62,7 +62,7 @@ const COPY = {
     start: 'Start safely',
     enterOtp: 'Enter verification code',
     intro:
-      'One account is used for customers, rescue providers, and dispatchers. The operator verifies internal roles.',
+      'One account is used for customers, rescue providers, and operations administrators. The operator verifies internal roles.',
     sent: 'A 6-digit code was sent to',
     name: 'Display name',
     namePlaceholder: 'Example: Minh',

@@ -6,8 +6,7 @@
 
 - **Khách đi xe máy** tạo yêu cầu, xác nhận vị trí, theo dõi cứu hộ viên, duyệt báo giá và đánh giá 1–5 sao cho ca đã hoàn thành.
 - **Cứu hộ viên** là thành viên của một đội đối tác đã được xác minh ngoại tuyến; họ bật sẵn sàng, nhận đề nghị phù hợp và cập nhật quy trình xử lý.
-- **Điều phối viên** là nhân sự của đơn vị vận hành trung tâm, theo dõi ca và tìm lại đội khi hệ thống chưa ghép được.
-- **Admin** là quản trị vận hành của chính đơn vị trung tâm. Admin quản lý đội, năng lực, catalog, quyền nhân sự và cảnh báo chất lượng; admin không mặc nhiên là cứu hộ viên và không có khái niệm VIP.
+- **Admin** là quản trị viên vận hành của đơn vị trung tâm. Admin xử lý ca ngoại lệ, quản lý đội, năng lực, catalog, quyền nhân sự và cảnh báo chất lượng; admin không mặc nhiên là cứu hộ viên và không có khái niệm VIP.
 
 Đây là sản phẩm cho **một đơn vị điều phối trung tâm quản lý mạng lưới kín nhiều đội cứu hộ nhỏ**, không phải ứng dụng riêng của một đội và cũng không phải marketplace để doanh nghiệp tự đăng ký hoặc đấu giá công khai. Thuật toán tự gửi đề nghị đến các cứu hộ viên đủ điều kiện theo ETA đường thực tế.
 
@@ -17,7 +16,7 @@ MVP chưa thu tiền trong ứng dụng. Cứu hộ viên gửi báo giá, khác
 
 - Đăng nhập bằng số điện thoại và OTP qua Supabase; tài khoản mới luôn là khách hàng.
 - Đơn vị cứu hộ không có trang tự đăng ký. Sau khi ký hợp tác ngoại tuyến, admin tạo đội với mã hồ sơ nội bộ, cấp quyền cho các tài khoản đã tự đăng nhập OTP và chỉ kích hoạt khi đủ checklist, năng lực và nhân sự.
-- Giao diện theo bốn vai trò: khách, cứu hộ viên, điều phối và admin vận hành.
+- Giao diện theo ba vai trò: khách hàng, cứu hộ viên và quản trị viên vận hành.
 - Phân loại nguy cơ trước khi tạo ca; ca khẩn cấp được chuyển sang trình gọi hệ thống.
 - Khách xác nhận hoặc kéo ghim điểm cứu hộ trên bản đồ trước khi gửi; không chỉ tin vào GPS thô.
 - Catalog/chi tiết dịch vụ lấy từ backend; có trung tâm trợ giúp, hướng dẫn an toàn và trạng thái bảo mật tài khoản.
@@ -35,7 +34,7 @@ MVP chưa thu tiền trong ứng dụng. Cứu hộ viên gửi báo giá, khác
 - Điểm uy tín cứu hộ viên/đội chỉ tính từ đánh giá thật không bị ẩn. Hệ thống mở tín hiệu khi đủ mẫu và điểm thấp; admin kiểm tra review, gửi cảnh báo hoặc đình chỉ thủ công. Không tự khóa đội chỉ bằng điểm sao.
 - Push notification theo cài đặt thiết bị, tự đồng bộ token rollover, kiểm tra Expo receipt để dừng token không còn hợp lệ; onboarding, giao diện vi/en, consent versioned, yêu cầu xóa tài khoản và quy trình xác minh đội đối tác có audit.
 - Admin chỉnh được nội dung catalog nghiệp vụ song ngữ và trạng thái nhận ca; layout giao diện vẫn được kiểm soát trong codebase.
-- Admin có danh sách nhân sự đội, khiếu nại, cờ cần can thiệp và audit phân trang; dispatcher chỉ nhận quyền vận hành cần thiết.
+- Admin có danh sách nhân sự đội, khiếu nại, cờ cần can thiệp và audit phân trang.
 - ChatBox Gemini dạng bong bóng nổi chỉ hướng dẫn cách dùng Moki Rescue/quy trình trong app; câu ngoài lề, chẩn đoán xe và khẩn cấp được chặn cục bộ trước khi dùng quota.
 
 Thanh toán, ví, AI chẩn đoán, chatbot kiến thức chung, dashboard web và marketplace mở không thuộc MVP.

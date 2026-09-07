@@ -18,22 +18,22 @@ Con số 70 không có nghĩa là phải tạo 70 route hoặc 70 file code. M�
 | Khởi động | `/` | 1 | Splash/loading trước khi redirect |
 | Onboarding | `/onboarding` | 3 | Loại sự cố; tuyến đường thật; quyền riêng tư |
 | Đăng nhập | `/(auth)/login` | 2 | Nhập số điện thoại; nhập OTP |
-| Trang chủ | `/(tabs)` | 3 | Customer; provider; dispatcher/admin |
+| Trang chủ | `/(tabs)` | 3 | Khách hàng; cứu hộ viên; admin |
 | Tạo yêu cầu | `/(tabs)/request` | 4 | Bước an toàn; chuyển giao khẩn cấp; bước sự cố/xe; bước bản đồ + bottom sheet xác nhận |
 | Hoạt động | `/(tabs)/activity` | 2 | Ca đang mở; lịch sử đã kết thúc |
-| Vận hành | `/(tabs)/operations` | 3 | Provider; dispatcher; admin có lối vào quản lý đội |
+| Vận hành | `/(tabs)/operations` | 3 | Cứu hộ viên; admin theo dõi; admin xử lý ca ngoại lệ và có lối vào quản lý đội |
 | Hồ sơ | `/(tabs)/profile` | 2 | Customer; tài khoản nội bộ |
 | Cài đặt | `/profile/settings` | 1 | Ngôn ngữ, quyền vị trí, push và dữ liệu |
 | Sửa hồ sơ | `/profile/edit` | 1 | Tên hiển thị |
 | Xóa tài khoản | `/profile/delete-account` | 1 | Xác nhận phá hủy |
 | Quyền riêng tư | `/legal/privacy` | 1 | Nội dung chính sách |
 | Điều khoản | `/legal/terms` | 1 | Nội dung điều khoản |
-| Đội, quyền, chất lượng và catalog | `/operator/teams` | 1 | Tạo đội với mã hồ sơ nội bộ, cấp tài khoản OTP, capability, checklist/tiến độ/người xác minh, kích hoạt hoặc đình chỉ, điểm thật/review/cảnh báo, quyền dispatcher và catalog song ngữ |
+| Đội, quyền, chất lượng và catalog | `/operator/teams` | 1 | Tạo đội với mã hồ sơ nội bộ, cấp tài khoản OTP, capability, checklist/tiến độ/người xác minh, kích hoạt hoặc đình chỉ, điểm thật/review/cảnh báo, quyền admin và catalog song ngữ |
 | Hàng đợi cần can thiệp | `/operator/attention` | 1 | Cảnh báo mở, mở chi tiết ca, ghi kết quả và đóng cảnh báo |
 | Nhật ký quản trị | `/operator/audit` | 1 | Admin xem audit tối thiểu, phân trang và không lộ dữ liệu nhạy cảm |
 | Chi tiết ca - customer | `/rescue/[id]` | 9 | Tìm/đã phát offer/không có đội; đã gán; đang đến; xác nhận đã đến; đã đến/đang chẩn đoán; duyệt báo giá; đang sửa/chở; xác nhận hoàn tất; hoàn tất + review |
 | Chi tiết ca - provider | `/rescue/[id]` | 7 | Đã gán/đang đến; chờ khách xác nhận đến; đã đến; chẩn đoán không báo giá; chẩn đoán cần báo giá; đang sửa/chở; chờ khách xác nhận hoàn tất |
-| Chi tiết ca - staff | `/rescue/[id]` | 1 | Theo dõi ca hoạt động, cảnh báo và tìm/điều phối lại đội trong cùng frame |
+| Chi tiết ca - admin | `/rescue/[id]` | 1 | Theo dõi ca hoạt động, cảnh báo và tìm/điều phối lại đội trong cùng frame |
 | Chọn điểm giao xe | `/rescue/[id]/destination` | 1 | Khách xác nhận điểm giao cho ca vận chuyển sau chẩn đoán |
 | **Tạm tính A** |  | **46** |  |
 
@@ -88,7 +88,7 @@ Các frame này nằm trên route đã có nhưng làm thay đổi hành động
 3. `02 Onboarding & Auth`: bootstrap, onboarding, nhập điện thoại, OTP và hai trạng thái lỗi xác thực.
 4. `03 Customer`: home, dịch vụ, trợ giúp, tạo yêu cầu, activity, profile, bảo mật và trạng thái chi tiết ca.
 5. `04 Provider`: operations, lỗi GPS, bản đồ theo dõi và trạng thái xử lý ca.
-6. `05 Dispatcher & Admin`: operations, đội/phân quyền và trạng thái theo dõi/tìm lại đội.
+6. `05 Admin`: vận hành, đội/phân quyền và trạng thái theo dõi/tìm lại đội.
 7. `06 Assistant`: bong bóng nổi, sheet, scope guard, quota và upstream error.
 8. `07 Prototype`: happy path, khẩn cấp, không có provider, router lỗi, GPS lỗi và cạnh tranh nhận ca.
 
@@ -113,5 +113,5 @@ Các frame này nằm trên route đã có nhưng làm thay đổi hành động
 - Tên, số công việc, đội và phương tiện của provider chỉ xuất hiện sau khi nhận ca; số bị ẩn khi ca đóng.
 - Polyline chỉ dùng geometry do router đường bộ trả về; không thiết kế fallback đường thẳng giữa hai marker.
 - Catalog dịch vụ lấy từ backend. Figma phải có trạng thái backend lỗi/rỗng, không giả bằng mock data.
-- Dispatcher và admin dùng cùng hệ thống component; admin chỉ có thêm quyền quản trị, không cần một visual language khác.
+- Admin dùng chung hệ thống component với các vai trò khác; quyền quản trị được thể hiện bằng hành động và nhãn rõ ràng, không cần một ngôn ngữ hình ảnh riêng.
 - Trợ lý chỉ hỗ trợ cách dùng Moki Rescue/quy trình cứu hộ, không chẩn đoán xe và không giả làm dịch vụ khẩn cấp.

@@ -14,12 +14,12 @@ Chưa triển khai hoặc chạy SQL lên Supabase trong đợt sửa 05/09/2026
 ## Database và API
 
 - [ ] Backup nếu staging đã có dữ liệu; chạy `flyway:info`, `migrate`, `validate` bằng
-  migration owner. Database sạch chạy B1 -> V2 -> V3 -> V4, không dùng baseline.
-  Database đã có B1/V2 chỉ nhận V3/V4. Không sửa checksum của migration cũ.
+  migration owner. Database sạch chạy B1 -> V2 -> V3 -> V4 -> V5, không dùng baseline.
+  Database đang ở phiên bản cũ chỉ nhận các migration còn thiếu đến V5. Không sửa checksum của migration cũ.
 - [ ] API chạy bằng `motorescue_api`, không dùng owner; readiness đạt. Runtime không
   được tạo bảng, đổi role hoặc đọc danh tính ngoài API được cấp quyền.
 - [ ] Test JWT thật: hết hạn, sai issuer/audience/chữ ký; thiếu consent, tài khoản bị đình chỉ.
-- [ ] Test customer A/B, assigned/unrelated provider, dispatcher/admin qua API và private Realtime.
+- [ ] Test customer A/B, cứu hộ viên được phân công/không liên quan và admin qua API cùng private Realtime.
 - [ ] Tạo ca không có điểm giao, retry cùng idempotency key, hai provider cùng nhận ca,
   báo giá, từ chối/duyệt, hoàn tất và hủy theo đúng giai đoạn.
 - [ ] Gián đoạn backend sau khi ca đã commit: `dispatch_recovery_jobs` phải xử lý lại;

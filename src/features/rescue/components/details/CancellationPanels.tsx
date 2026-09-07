@@ -16,7 +16,7 @@ import { rescueDetailsStyles as styles } from './rescueDetailsStyles';
 export function CancellationSummary({ request, role }: { request: RequestDetails; role: ProfileRole }) {
   const c = useRescueDetailsCopy();
   const reasonLabel = request.cancellationCode ? c.reasonLabels[request.cancellationCode] : null;
-  const canSeeOperationalEvidence = role === 'dispatcher' || role === 'admin';
+  const canSeeOperationalEvidence = role === 'admin';
   return (
     <View style={styles.cancellationSummary}>
       <View style={styles.summaryTitleRow}>

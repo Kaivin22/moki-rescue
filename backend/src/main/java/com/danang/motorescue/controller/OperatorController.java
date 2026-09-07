@@ -8,7 +8,7 @@ import com.danang.motorescue.model.ApiModels.CreateTeamRequest;
 import com.danang.motorescue.model.ApiModels.QualityAlertActionRequest;
 import com.danang.motorescue.model.ApiModels.QualityReviewResponse;
 import com.danang.motorescue.model.ApiModels.ReviewVisibilityRequest;
-import com.danang.motorescue.model.ApiModels.StaffRoleRequest;
+import com.danang.motorescue.model.ApiModels.AdminRoleRequest;
 import com.danang.motorescue.model.ApiModels.TeamCapabilitiesRequest;
 import com.danang.motorescue.model.ApiModels.TeamResponse;
 import com.danang.motorescue.model.ApiModels.TeamStatusRequest;
@@ -58,33 +58,33 @@ public class OperatorController {
 
     @GetMapping("/teams")
     List<TeamResponse> teams(@AuthenticationPrincipal Jwt jwt) {
-        return operator.teams(staff(jwt));
+        return operator.teams(admin(jwt));
     }
 
     @PostMapping("/account-lookup")
     AccountLookupResponse lookupAccount(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody AccountLookupRequest input) {
-        return operator.lookupAccount(staff(jwt), input.phone());
+        return operator.lookupAccount(admin(jwt), input.phone());
     }
 
     @PostMapping("/requests/{requestId}/retry")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void retry(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID requestId) {
-        operator.retry(staff(jwt), requestId);
+        operator.retry(admin(jwt), requestId);
     }
 
     @PostMapping("/requests/{requestId}/reassign")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void reassign(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID requestId) {
-        operator.reassign(staff(jwt), requestId);
+        operator.reassign(admin(jwt), requestId);
     }
 
     @GetMapping("/attention")
     List<AttentionFlagResponse> attention(
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam(defaultValue = "true") boolean openOnly) {
-        return operator.attentionFlags(staff(jwt), openOnly);
+        return operator.attentionFlags(admin(jwt), openOnly);
     }
 
     @PostMapping("/attention/{flagId}/resolve")
@@ -93,7 +93,7 @@ public class OperatorController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID flagId,
             @Valid @RequestBody AttentionResolutionRequest input) {
-        operator.resolveAttention(staff(jwt), flagId, input);
+        operator.resolveAttention(admin(jwt), flagId, input);
     }
 
     @PostMapping("/incidents/{incidentId}/resolve")
@@ -102,7 +102,7 @@ public class OperatorController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID incidentId,
             @Valid @RequestBody IncidentResolutionRequest input) {
-        operator.resolveIncident(staff(jwt), incidentId, input);
+        operator.resolveIncident(admin(jwt), incidentId, input);
     }
 
     @GetMapping("/audit-logs")
@@ -111,14 +111,14 @@ public class OperatorController {
             @RequestParam(required = false) Instant before,
             @RequestParam(required = false) Long beforeId,
             @RequestParam(defaultValue = "50") int limit) {
-        return operator.auditLogs(staff(jwt), before, beforeId, limit);
+        return operator.auditLogs(admin(jwt), before, beforeId, limit);
     }
 
     @PostMapping("/teams")
     Map<String, UUID> createTeam(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreateTeamRequest input) {
-        return Map.of("teamId", operator.createTeam(staff(jwt), input));
+        return Map.of("teamId", operator.createTeam(admin(jwt), input));
     }
 
     @PutMapping("/teams/{teamId}/status")
@@ -127,14 +127,14 @@ public class OperatorController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID teamId,
             @Valid @RequestBody TeamStatusRequest input) {
-        operator.setTeamStatus(staff(jwt), teamId, input.status());
+        operator.setTeamStatus(admin(jwt), teamId, input.status());
     }
 
     @GetMapping("/teams/{teamId}/providers")
     List<ProviderMemberResponse> providers(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID teamId) {
-        return operator.providers(staff(jwt), teamId);
+        return operator.providers(admin(jwt), teamId);
     }
 
     @PutMapping("/teams/{teamId}/providers/{providerId}/status")
@@ -144,14 +144,14 @@ public class OperatorController {
             @PathVariable UUID teamId,
             @PathVariable UUID providerId,
             @Valid @RequestBody ProviderMemberStatusRequest input) {
-        operator.setProviderStatus(staff(jwt), teamId, providerId, input.status());
+        operator.setProviderStatus(admin(jwt), teamId, providerId, input.status());
     }
 
     @GetMapping("/teams/{teamId}/verification")
     TeamVerificationResponse teamVerification(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID teamId) {
-        return operator.teamVerification(staff(jwt), teamId);
+        return operator.teamVerification(admin(jwt), teamId);
     }
 
     @PutMapping("/teams/{teamId}/verification")
@@ -160,7 +160,7 @@ public class OperatorController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID teamId,
             @Valid @RequestBody UpdateTeamVerificationRequest input) {
-        operator.updateTeamVerification(staff(jwt), teamId, input);
+        operator.updateTeamVerification(admin(jwt), teamId, input);
     }
 
     @PostMapping("/quality-alerts/{alertId}/warn")
@@ -169,7 +169,7 @@ public class OperatorController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID alertId,
             @Valid @RequestBody QualityAlertActionRequest input) {
-        quality.warn(staff(jwt), alertId, input.note());
+        quality.warn(admin(jwt), alertId, input.note());
     }
 
     @PostMapping("/quality-alerts/{alertId}/resolve")
@@ -178,14 +178,14 @@ public class OperatorController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID alertId,
             @Valid @RequestBody QualityAlertActionRequest input) {
-        quality.resolve(staff(jwt), alertId, input.note());
+        quality.resolve(admin(jwt), alertId, input.note());
     }
 
     @GetMapping("/teams/{teamId}/reviews")
     List<QualityReviewResponse> qualityReviews(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID teamId) {
-        return quality.reviews(staff(jwt), teamId);
+        return quality.reviews(admin(jwt), teamId);
     }
 
     @PutMapping("/reviews/{reviewId}/visibility")
@@ -194,7 +194,7 @@ public class OperatorController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID reviewId,
             @Valid @RequestBody ReviewVisibilityRequest input) {
-        quality.setReviewVisibility(staff(jwt), reviewId, input.hidden(), input.note());
+        quality.setReviewVisibility(admin(jwt), reviewId, input.hidden(), input.note());
     }
 
     @PutMapping("/teams/{teamId}/capabilities")
@@ -203,7 +203,7 @@ public class OperatorController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID teamId,
             @Valid @RequestBody TeamCapabilitiesRequest input) {
-        operator.setTeamCapabilities(staff(jwt), teamId, input.capabilityCodes());
+        operator.setTeamCapabilities(admin(jwt), teamId, input.capabilityCodes());
     }
 
     @PutMapping("/teams/{teamId}/providers")
@@ -212,20 +212,20 @@ public class OperatorController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID teamId,
             @Valid @RequestBody AddProviderRequest input) {
-        operator.addProvider(staff(jwt), teamId, input);
+        operator.addProvider(admin(jwt), teamId, input);
     }
 
-    @PutMapping("/staff-role")
+    @PutMapping("/admin-role")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void staffRole(
+    void adminRole(
             @AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestBody StaffRoleRequest input) {
-        operator.setStaffRole(staff(jwt), input);
+            @Valid @RequestBody AdminRoleRequest input) {
+        operator.setAdminRole(admin(jwt), input);
     }
 
     @GetMapping("/service-types")
     List<AdminServiceTypeResponse> serviceTypes(@AuthenticationPrincipal Jwt jwt) {
-        return operator.serviceTypes(staff(jwt));
+        return operator.serviceTypes(admin(jwt));
     }
 
     @PutMapping("/service-types/{code}")
@@ -234,10 +234,10 @@ public class OperatorController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable String code,
             @Valid @RequestBody UpdateServiceTypeRequest input) {
-        operator.updateServiceType(staff(jwt), code, input);
+        operator.updateServiceType(admin(jwt), code, input);
     }
 
-    private Actor staff(Jwt jwt) {
-        return actors.requireRole(jwt, "dispatcher", "admin");
+    private Actor admin(Jwt jwt) {
+        return actors.requireRole(jwt, "admin");
     }
 }

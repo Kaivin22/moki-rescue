@@ -141,7 +141,7 @@ export default function RescueDetailsScreen() {
           />
         ) : null}
         {permissions.isStaff ? (
-          <OperationalCancellationPanel request={request} actorLabel={c.dispatcher} reasonCode="other" />
+          <OperationalCancellationPanel request={request} actorLabel={c.admin} reasonCode="other" />
         ) : null}
         {permissions.showStaffRetry ? (
           <AppButton title={c.retry} loading={dispatchRetry.isPending} onPress={() => void retryDispatch()} />

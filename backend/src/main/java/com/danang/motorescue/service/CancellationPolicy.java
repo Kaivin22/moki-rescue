@@ -36,7 +36,7 @@ public class CancellationPolicy {
             };
         }
 
-        if ("provider".equals(role) || "dispatcher".equals(role) || "admin".equals(role)) {
+        if ("provider".equals(role) || "admin".equals(role)) {
             if (!OPERATIONS_REASONS.contains(code)) throw invalidReason();
             if (cleanNote.length() < 5) throw reasonNoteRequired();
             return new Decision("operational", false, false);

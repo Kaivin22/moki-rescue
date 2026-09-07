@@ -4,7 +4,7 @@ a real-time motorcycle roadside-assistance dispatch application.
 Platform : React Native / Expo (iOS + Android)
 Language : Vietnamese (vi-VN authoritative)
 Frame    : 390×844 px base; also validate 360×800 and tall Android devices
-Scope    : customer, verified provider, dispatcher, operations admin
+Scope    : customer, verified provider, operations admin
 Total    : exactly 70 business frames below
 
 Do not invent provider names, teams, prices, requests, routes or user data.
@@ -78,7 +78,7 @@ Bottom navigation:
   Light card surface with a subtle top divider, safe-area aware.
   Customer: Trang chủ | Cứu hộ | Hoạt động | Tài khoản.
   Provider: Trang chủ | Hoạt động | Vận hành | Tài khoản.
-  Dispatcher/admin: Trang chủ | Hoạt động | Vận hành | Tài khoản.
+  Admin: Trang chủ | Hoạt động | Vận hành | Tài khoản.
   Accessible-blue active icon/label; muted-ink inactive icon/label.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -137,9 +137,9 @@ FRAME 10 — Provider home
 Hero identifies “Cứu hộ viên”. CTA opens Vận hành. Show only provider’s active ca;
 do not show customer service catalog as a creation flow.
 
-FRAME 11 — Dispatcher/admin home
+FRAME 11 — Admin home
 Operational summary copy and CTA to Vận hành. Active requests use real backend
-cards. Admin is visually same as dispatcher with role label, not a fake VIP theme.
+cards. The admin role is identified clearly without a fake VIP theme.
 
 ═══ CREATE REQUEST — 7 FRAMES ═════════════════════
 
@@ -188,13 +188,13 @@ FRAME 21 — Provider operations
 Verified team/status card, availability switch, GPS tracking state, expiring offer
 cards with road distance/ETA and atomic “Nhận ca”. Show active ca link when busy.
 
-FRAME 22 — Dispatcher operations
-List operational requests, no-provider indicators and links to detail. No team
-mutation controls reserved for admin.
+FRAME 22 — Admin operations: monitoring
+List operational requests, no-provider indicators and links to detail. Normal
+matching remains automatic; this view supports monitoring rather than manual assignment.
 
-FRAME 23 — Admin operations
-Same dispatcher monitoring plus entry to “Đội và phân quyền”. Role boundaries are
-visible; admin does not receive provider availability controls.
+FRAME 23 — Admin operations: intervention
+Show requests that require intervention plus entry to “Đội và phân quyền”. Role
+boundaries are visible; admin does not receive provider availability controls.
 
 FRAME 24 — Provider GPS denied/stale/error
 Availability cannot be represented as safely active. Show permission/network/GPS
@@ -207,7 +207,7 @@ Brand-blue identity card with ink text, minimal display name, masked phone and c
 Rows: edit, security, settings, help, privacy, terms, logout.
 
 FRAME 26 — Internal profile
-Same information architecture with verified provider/dispatcher/admin role label.
+Same information architecture with verified provider/admin role label.
 Do not display fabricated ratings, revenue, completed jobs or rank.
 
 FRAME 27 — Settings
@@ -239,7 +239,7 @@ provider password, shared team login or ask the admin to copy a UUID. Configure 
 capabilities, then show the database-driven offline checklist, progress, minimal notes,
 provider/capability prerequisites and verified-by/time. The activate action stays
 disabled until saved data is ready; never upload legal or identity documents.
-Verify/suspend and dispatcher grant/revoke remain admin-only. Include an inline
+Verify/suspend and admin grant/revoke remain admin-only. Include an inline
 bilingual service-catalog editor. Catalog code is
 immutable; admin may edit approved icon, labels, descriptions, order, quote policy
 and active state. Show real team rating/count, recent reviews, hidden-review state,

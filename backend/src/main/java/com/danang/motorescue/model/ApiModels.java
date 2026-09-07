@@ -359,9 +359,9 @@ public final class ApiModels {
     public record ProviderMemberStatusRequest(
             @NotBlank @Pattern(regexp = "active|suspended|left") String status) {}
 
-    public record StaffRoleRequest(
+    public record AdminRoleRequest(
             @NotNull UUID userId,
-            @NotBlank @Pattern(regexp = "admin|dispatcher|customer") String role) {}
+            @NotBlank @Pattern(regexp = "admin|customer") String role) {}
 
     public record PushDeviceRequest(
             @NotBlank @Pattern(regexp = "^(ExponentPushToken|ExpoPushToken)\\[[A-Za-z0-9_-]+]$") String token,

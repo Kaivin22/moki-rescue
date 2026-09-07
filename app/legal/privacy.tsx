@@ -18,7 +18,7 @@ const COPY = {
       ],
       [
         'Vị trí',
-        'Vị trí chính xác của khách chỉ được gửi khi khách chủ động tạo yêu cầu. Vị trí cứu hộ viên chỉ cập nhật khi sẵn sàng hoặc đang xử lý ca. Chỉ khách, cứu hộ viên được phân công và điều phối viên được xem vị trí ca tương ứng. Checkpoint vị trí được xóa tự động theo thời hạn vận hành.',
+        'Vị trí chính xác của khách chỉ được gửi khi khách chủ động tạo yêu cầu. Vị trí cứu hộ viên chỉ cập nhật khi sẵn sàng hoặc đang xử lý ca. Chỉ khách, cứu hộ viên được phân công và quản trị viên vận hành được xem vị trí ca tương ứng. Checkpoint vị trí được xóa tự động theo thời hạn vận hành.',
       ],
       [
         'Đối tác cứu hộ',
@@ -57,7 +57,7 @@ const COPY = {
       ],
       [
         'Location',
-        "A customer's exact location is sent only when they actively create a request. A provider location is updated only while available or handling a request. Only the customer, assigned provider, and dispatch staff can see the corresponding request location. Location checkpoints are automatically deleted after the operational retention period.",
+        "A customer's exact location is sent only when they actively create a request. A provider location is updated only while available or handling a request. Only the customer, assigned provider, and operations administrators can see the corresponding request location. Location checkpoints are automatically deleted after the operational retention period.",
       ],
       [
         'Rescue partners',

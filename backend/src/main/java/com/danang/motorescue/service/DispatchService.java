@@ -121,7 +121,7 @@ public class DispatchService {
                         requestId);
                 jdbc.update("""
                         UPDATE public.case_attention_flags
-                        SET status = 'resolved', resolved_at = NOW(), resolution_note = 'Điều phối viên đã tìm đội thay thế.'
+                        SET status = 'resolved', resolved_at = NOW(), resolution_note = 'Quản trị viên vận hành đã tìm đội thay thế.'
                         WHERE request_id = ? AND status = 'open'
                         """, requestId);
             }

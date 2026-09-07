@@ -12,6 +12,10 @@ const migrationNames = fs
     return leftVersion - rightVersion;
   });
 const initialMigration = fs.readFileSync(path.join(migrationDirectory, 'B1__initial_schema.sql'), 'utf8');
+const roleMergeMigration = fs.readFileSync(
+  path.join(migrationDirectory, 'V5__merge_dispatcher_into_admin.sql'),
+  'utf8',
+);
 const applicationConfig = fs.readFileSync(
   path.join(root, 'backend', 'src', 'main', 'resources', 'application.yml'),
   'utf8',
@@ -33,6 +37,12 @@ describe('versioned database migrations', () => {
     const versions = migrationNames.map((name) => Number(name.match(/^[BV](\d+)__/)?.[1]));
     expect(new Set(versions).size).toBe(versions.length);
     expect(versions).toEqual([...versions].sort((left, right) => left - right));
+  });
+
+  it('migrates legacy dispatchers and restricts profiles to three roles', () => {
+    expect(roleMergeMigration).toContain("SET role = 'admin'");
+    expect(roleMergeMigration).toContain("WHERE role = 'dispatcher'");
+    expect(roleMergeMigration).toContain("CHECK (role IN ('customer', 'provider', 'admin'))");
   });
 
   it('does not silently baseline or permit Flyway clean', () => {

@@ -29,7 +29,7 @@ class RequestStateMachineTest {
     void rejectsActionsFromWrongStateOrRole() {
         assertThatThrownBy(() -> machine.next("customer", "searching", "confirm_completion"))
                 .isInstanceOf(ApiException.class);
-        assertThatThrownBy(() -> machine.next("dispatcher", "assigned", "start_trip"))
+        assertThatThrownBy(() -> machine.next("admin", "assigned", "start_trip"))
                 .isInstanceOf(ApiException.class);
     }
 }

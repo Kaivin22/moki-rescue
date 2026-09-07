@@ -70,7 +70,7 @@ public class RescueLifecycleService {
         });
         if (changed == 0) {
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "REQUEST_RETRY_LIMITED",
-                    "Chưa thể tìm lại đội. Hãy đợi hết thời gian chờ hoặc liên hệ điều phối viên.");
+                    "Chưa thể tìm lại đội. Hãy đợi hết thời gian chờ hoặc liên hệ quản trị viên vận hành.");
         }
         dispatch.match(requestId);
     }

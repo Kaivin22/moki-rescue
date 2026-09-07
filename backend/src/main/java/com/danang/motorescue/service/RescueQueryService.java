@@ -61,7 +61,7 @@ public class RescueQueryService {
         String visibility = switch (actor.role()) {
             case "customer" -> "rr.customer_id = ?";
             case "provider" -> "rr.assigned_provider_id = ?";
-            case "dispatcher", "admin" -> "TRUE";
+            case "admin" -> "TRUE";
             default -> "FALSE";
         };
         String statusFilter = history
@@ -138,7 +138,7 @@ public class RescueQueryService {
                 rs.getString("action"), rs.getString("reason_code"), rs.getString("note"),
                 rs.getTimestamp("created_at").toInstant()), requestId);
 
-        boolean staff = "dispatcher".equals(actor.role()) || "admin".equals(actor.role());
+        boolean staff = "admin".equals(actor.role());
         List<IncidentReportSummary> incidents = "provider".equals(actor.role())
                 ? List.of()
                 : jdbc.query("""

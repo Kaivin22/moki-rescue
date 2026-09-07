@@ -7,7 +7,7 @@ import com.danang.motorescue.model.ApiModels.AdminServiceTypeResponse;
 import com.danang.motorescue.model.ApiModels.CreateTeamRequest;
 import com.danang.motorescue.model.ApiModels.QualityAlertSummary;
 import com.danang.motorescue.model.ApiModels.RatingSummary;
-import com.danang.motorescue.model.ApiModels.StaffRoleRequest;
+import com.danang.motorescue.model.ApiModels.AdminRoleRequest;
 import com.danang.motorescue.model.ApiModels.TeamResponse;
 import com.danang.motorescue.model.ApiModels.TeamVerificationCheckResponse;
 import com.danang.motorescue.model.ApiModels.TeamVerificationResponse;
@@ -71,7 +71,7 @@ public class OperatorService {
     }
 
     public List<TeamResponse> teams(Actor actor) {
-        requireStaff(actor);
+        requireAdmin(actor);
         return jdbc.query("""
                 SELECT team.id, team.name, team.status,
                        (SELECT COUNT(*) FROM public.provider_members pm
@@ -149,7 +149,7 @@ public class OperatorService {
     }
 
     public void retry(Actor actor, UUID requestId) {
-        requireStaff(actor);
+        requireAdmin(actor);
         transactions.executeWithoutResult(status -> {
             jdbc.queryForObject("SELECT set_config('app.actor_id', ?, TRUE)", String.class, actor.id().toString());
             dispatch.retry(requestId);
@@ -159,7 +159,7 @@ public class OperatorService {
     }
 
     public void reassign(Actor actor, UUID requestId) {
-        requireStaff(actor);
+        requireAdmin(actor);
         transactions.executeWithoutResult(status -> {
             jdbc.queryForObject("SELECT set_config('app.actor_id', ?, TRUE)", String.class, actor.id().toString());
             dispatch.reassign(requestId);
@@ -169,7 +169,7 @@ public class OperatorService {
     }
 
     public List<AttentionFlagResponse> attentionFlags(Actor actor, boolean openOnly) {
-        requireStaff(actor);
+        requireAdmin(actor);
         return jdbc.query("""
                 SELECT flag.id, flag.request_id,
                        CASE WHEN ? = 'en' THEN service.label_en ELSE service.label_vi END AS service_label,
@@ -191,7 +191,7 @@ public class OperatorService {
     }
 
     public void resolveAttention(Actor actor, UUID flagId, AttentionResolutionRequest input) {
-        requireStaff(actor);
+        requireAdmin(actor);
         int changed = transactions.execute(status -> {
             int updated = jdbc.update("""
                     UPDATE public.case_attention_flags
@@ -208,7 +208,7 @@ public class OperatorService {
     }
 
     public void resolveIncident(Actor actor, UUID incidentId, IncidentResolutionRequest input) {
-        requireStaff(actor);
+        requireAdmin(actor);
         int changed = transactions.execute(status -> {
             UUID requestId = jdbc.query("""
                     SELECT request_id FROM public.incident_reports
@@ -504,7 +504,7 @@ public class OperatorService {
         requireAdmin(actor);
         transactions.executeWithoutResult(status -> {
             String currentRole = lockActiveRole(input.userId());
-            if ("admin".equals(currentRole) || "dispatcher".equals(currentRole)) {
+            if ("admin".equals(currentRole)) {
                 throw new ApiException(HttpStatus.CONFLICT, "ROLE_ASSIGNMENT_CONFLICT",
                         "Không thể chuyển trực tiếp tài khoản vận hành thành cứu hộ viên.");
             }
@@ -606,7 +606,7 @@ public class OperatorService {
         }
     }
 
-    public void setStaffRole(Actor actor, StaffRoleRequest input) {
+    public void setAdminRole(Actor actor, AdminRoleRequest input) {
         requireAdmin(actor);
         if (actor.id().equals(input.userId()) && !"admin".equals(input.role())) {
             throw new ApiException(HttpStatus.CONFLICT, "CANNOT_DEMOTE_SELF", "Admin không thể tự hạ quyền tài khoản đang dùng.");
@@ -713,12 +713,6 @@ public class OperatorService {
                 .findFirst()
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND, "TEAM_NOT_FOUND", "Không tìm thấy đội cứu hộ."));
-    }
-
-    private void requireStaff(Actor actor) {
-        if (!"dispatcher".equals(actor.role()) && !"admin".equals(actor.role())) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "STAFF_ROLE_REQUIRED", "Chức năng chỉ dành cho điều phối viên.");
-        }
     }
 
     private void requireAdmin(Actor actor) {

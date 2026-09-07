@@ -88,13 +88,12 @@ const COPY = {
     capabilities: 'Năng lực của đội đã chọn',
     saveCapabilities: 'Lưu năng lực đội',
     grantProvider: 'Cấp quyền cứu hộ viên',
-    staffSection: 'Phân quyền điều phối viên',
-    grantStaff: 'Cấp quyền điều phối',
+    adminSection: 'Phân quyền quản trị viên vận hành',
     grantAdmin: 'Cấp quyền admin',
     grantAdminTitle: 'Cấp toàn quyền quản trị?',
     grantAdminBody: 'Tài khoản này có thể quản lý đội, phân quyền, danh mục và các quyết định vận hành.',
-    revokeStaff: 'Thu hồi quyền điều phối',
-    revokeTitle: 'Thu hồi quyền điều phối?',
+    revokeAdmin: 'Thu hồi quyền admin',
+    revokeTitle: 'Thu hồi quyền admin?',
     revokeBody: 'Tài khoản sẽ trở lại quyền khách hàng.',
     pending: 'Chờ xác minh',
     verified: 'Đã xác minh',
@@ -168,13 +167,12 @@ const COPY = {
     capabilities: 'Selected team capabilities',
     saveCapabilities: 'Save team capabilities',
     grantProvider: 'Grant provider access',
-    staffSection: 'Dispatcher access',
-    grantStaff: 'Grant dispatcher access',
+    adminSection: 'Operations administrator access',
     grantAdmin: 'Grant admin access',
     grantAdminTitle: 'Grant full administrator access?',
     grantAdminBody: 'This account will be able to manage teams, access, catalog, and operational decisions.',
-    revokeStaff: 'Remove dispatcher access',
-    revokeTitle: 'Remove dispatcher access?',
+    revokeAdmin: 'Remove admin access',
+    revokeTitle: 'Remove admin access?',
     revokeBody: 'This account will return to customer access.',
     pending: 'Pending verification',
     verified: 'Verified',
@@ -198,8 +196,8 @@ export default function TeamManagementScreen() {
   const [providerName, setProviderName] = useState('');
   const [providerPhone, setProviderPhone] = useState('');
   const [vehicle, setVehicle] = useState('');
-  const [staffLoginPhone, setStaffLoginPhone] = useState('');
-  const [staffAccount, setStaffAccount] = useState<AccountLookup | null>(null);
+  const [adminLoginPhone, setAdminLoginPhone] = useState('');
+  const [adminAccount, setAdminAccount] = useState<AccountLookup | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [qualityNote, setQualityNote] = useState('');
   const [moderationNote, setModerationNote] = useState('');
@@ -251,12 +249,12 @@ export default function TeamManagementScreen() {
       refreshTeams(selectedTeam);
     },
   });
-  const staff = useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: 'admin' | 'dispatcher' | 'customer' }) =>
-      rescueApi.setStaffRole(userId, role),
+  const adminRole = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: 'admin' | 'customer' }) =>
+      rescueApi.setAdminRole(userId, role),
     onSuccess: () => {
-      setStaffLoginPhone('');
-      setStaffAccount(null);
+      setAdminLoginPhone('');
+      setAdminAccount(null);
     },
   });
   const qualityAction = useMutation({
@@ -682,63 +680,55 @@ export default function TeamManagementScreen() {
           />
         ) : null}
 
-        <Text style={styles.section}>{c.staffSection}</Text>
+        <Text style={styles.section}>{c.adminSection}</Text>
         <View style={styles.card}>
           <AccountSearch
             label={c.loginPhone}
             button={c.lookup}
-            value={staffLoginPhone}
-            account={staffAccount}
+            value={adminLoginPhone}
+            account={adminAccount}
             found={c.accountFound}
             role={c.accountRole}
             onChange={(value) => {
-              setStaffLoginPhone(value);
-              setStaffAccount(null);
+              setAdminLoginPhone(value);
+              setAdminAccount(null);
             }}
-            onSearch={() => void lookupAccount(staffLoginPhone, setStaffAccount)}
-          />
-          <AppButton
-            title={c.grantStaff}
-            disabled={!staffAccount}
-            loading={staff.isPending}
-            onPress={() =>
-              staffAccount
-                ? void staff.mutateAsync({ userId: staffAccount.id, role: 'dispatcher' }).catch(report)
-                : undefined
-            }
+            onSearch={() => void lookupAccount(adminLoginPhone, setAdminAccount)}
           />
           <AppButton
             title={c.grantAdmin}
             variant="outline"
-            disabled={!staffAccount}
-            loading={staff.isPending}
+            disabled={!adminAccount}
+            loading={adminRole.isPending}
             onPress={() =>
               Alert.alert(c.grantAdminTitle, c.grantAdminBody, [
                 { text: c.no, style: 'cancel' },
                 {
                   text: c.grantAdmin,
                   onPress: () =>
-                    staffAccount
-                      ? void staff.mutateAsync({ userId: staffAccount.id, role: 'admin' }).catch(report)
+                    adminAccount
+                      ? void adminRole.mutateAsync({ userId: adminAccount.id, role: 'admin' }).catch(report)
                       : undefined,
                 },
               ])
             }
           />
           <AppButton
-            title={c.revokeStaff}
+            title={c.revokeAdmin}
             variant="outline"
-            disabled={!staffAccount}
-            loading={staff.isPending}
+            disabled={!adminAccount}
+            loading={adminRole.isPending}
             onPress={() =>
               Alert.alert(c.revokeTitle, c.revokeBody, [
                 { text: c.no, style: 'cancel' },
                 {
-                  text: c.revokeStaff,
+                  text: c.revokeAdmin,
                   style: 'destructive',
                   onPress: () =>
-                    staffAccount
-                      ? void staff.mutateAsync({ userId: staffAccount.id, role: 'customer' }).catch(report)
+                    adminAccount
+                      ? void adminRole
+                          .mutateAsync({ userId: adminAccount.id, role: 'customer' })
+                          .catch(report)
                       : undefined,
                 },
               ])

@@ -3,7 +3,7 @@
 ## Biên hệ thống
 
 ```text
-Expo / React Native (customer, provider, dispatcher, admin)
+Expo / React Native (customer, provider, admin)
              | HTTPS + Supabase JWT
              v
 Spring Boot API (authorization, state machine, matching, quote, audit)
@@ -25,7 +25,7 @@ app/
   rescue/[id]/map.tsx Bản đồ ca toàn màn hình, chỉ dùng route geometry backend
   service/             Catalog và chi tiết dịch vụ từ backend
   help/                Trợ giúp và an toàn bên đường
-  operator/           Quản lý đội và vai trò
+  operator/           Quản lý đội và quyền quản trị
   profile/, legal/    Hồ sơ, cài đặt, xóa dữ liệu, pháp lý
 src/
   components/         UI atoms và map adapter native/web
@@ -76,7 +76,7 @@ Mỗi transition được kiểm tra hai lần: service xác định action hợ
 - Provider bật sẵn sàng: foreground GPS cập nhật vị trí nội bộ dùng matching; khách không thấy.
 - Điểm GPS provider thiếu `accuracy` bị bỏ; backend và database đều buộc checkpoint phải có độ chính xác hợp lệ.
 - Sau khi nhận ca: foreground tracking hoạt động trong Expo Go; background tracking chỉ khởi động trên development/production build.
-- App gửi private Broadcast topic `request:<uuid>`. RLS chỉ cho assigned provider ghi và participant/staff đọc.
+- App gửi private Broadcast topic `request:<uuid>`. RLS chỉ cho cứu hộ viên được phân công ghi và khách/cứu hộ viên được phân công/admin đọc.
 - Mất mạng: outbox chỉ giữ điểm GPS mới nhất, chỉ retry nếu chưa quá hai phút; không phát lại hành trình cũ.
 - Khi ca kết thúc hoặc provider không sẵn sàng, tracking dừng và vị trí matching bị xóa.
 
@@ -90,7 +90,7 @@ Catalog là dữ liệu database; chỉ admin được sửa field nghiệp vụ
 
 Danh sách lịch sử ca và audit dùng cursor `(timestamp, id)` thay vì tải toàn bộ. Rate limit mutation được ghi nguyên tử trong PostgreSQL nên không bị đặt lại theo từng replica; lớp rate limit tại reverse proxy vẫn cần thiết để chặn lưu lượng trước khi vào ứng dụng.
 
-RLS dùng quan hệ customer/assigned provider/staff. Client không có grant INSERT/UPDATE/DELETE trên bảng nghiệp vụ; ngoại lệ duy nhất là các cột hồ sơ tự phục vụ đã allowlist. Privileged SQL function bị revoke khỏi `anon` và `authenticated`. Hàm tra tài khoản theo đúng số đăng nhập chỉ trả UUID/tên/vai trò và chỉ backend được gọi sau khi kiểm tra quyền admin. Spring đăng nhập bằng role `motorescue_api` có grant theo bảng nhưng không có DDL/superuser; không dùng `postgres` lúc runtime.
+RLS dùng quan hệ khách hàng/cứu hộ viên được phân công/admin. Client không có grant INSERT/UPDATE/DELETE trên bảng nghiệp vụ; ngoại lệ duy nhất là các cột hồ sơ tự phục vụ đã allowlist. Privileged SQL function bị revoke khỏi `anon` và `authenticated`. Hàm tra tài khoản theo đúng số đăng nhập chỉ trả UUID/tên/vai trò và chỉ backend được gọi sau khi kiểm tra quyền admin. Spring đăng nhập bằng role `motorescue_api` có grant theo bảng nhưng không có DDL/superuser; không dùng `postgres` lúc runtime.
 
 ## Vòng đời đối tác khép kín
 
@@ -100,7 +100,7 @@ RLS dùng quan hệ customer/assigned provider/staff. Client không có grant IN
 4. Admin khai báo capability và hoàn tất checklist lấy từ `team_verification_requirements`. `team_verification_checks` chỉ lưu kết quả, ghi chú tối thiểu, người và thời điểm kiểm tra.
 5. Backend chỉ cho chuyển đội sang `verified` khi đủ mọi requirement bắt buộc đang hoạt động, có capability và có provider active. Dấu `verified_by/verified_at` cùng audit log cho biết ai chịu trách nhiệm kích hoạt.
 
-Dispatcher được theo dõi đội/ca nhưng không đọc hoặc sửa hồ sơ xác minh. Chỉ admin truy cập API checklist. Provider của đội `pending`/`suspended` không thể bật sẵn sàng và không lọt vào matching.
+Admin theo dõi ca, xử lý ngoại lệ và quản lý hồ sơ xác minh đội. Cứu hộ viên của đội `pending`/`suspended` không thể bật sẵn sàng và không lọt vào matching.
 
 ## Uy tín và kiểm soát chất lượng
 
@@ -108,7 +108,7 @@ Mỗi review lưu cả `provider_id` và `team_id` tại thời điểm ca hoàn
 
 Backend chỉ tạo `team_quality_alerts` khi đủ số đánh giá tối thiểu. Ngưỡng điểm, khoảng cách số review giữa hai cảnh báo và số cảnh báo để đề nghị xem xét đình chỉ đều lấy từ cấu hình server. Hệ thống không đổi `rescue_teams.status` dựa trên điểm sao. Admin phải kiểm tra ca/review, gửi cảnh báo có lý do và dùng thao tác đình chỉ hiện có nếu cần; đình chỉ tắt khả năng nhận ca mới nhưng không giả định việc xử lý dòng tiền.
 
-Khiếu nại được lưu riêng trong `incident_reports`, không làm biến dạng điểm sao. Chỉ khách của ca và nhân sự vận hành được xem qua API; dispatcher/admin xử lý có ghi người, thời điểm, kết quả và audit. Nếu đội/provider bị đình chỉ giữa ca, ca chuyển sang `needs_dispatch`, offer cũ bị thu hồi và hàng chờ attention buộc nhân sự kiểm tra trước khi ghép lại.
+Khiếu nại được lưu riêng trong `incident_reports`, không làm biến dạng điểm sao. Chỉ khách của ca và admin được xem qua API; admin xử lý có ghi người, thời điểm, kết quả và audit. Nếu đội/cứu hộ viên bị đình chỉ giữa ca, ca chuyển sang `needs_dispatch`, đề nghị cũ bị thu hồi và hàng chờ cảnh báo buộc admin kiểm tra trước khi ghép lại.
 
 ## Trợ lý có giới hạn
 

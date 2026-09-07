@@ -40,14 +40,14 @@ describe('rescue details policy', () => {
     expect(getRescuePermissions('provider', 'provider-1', request).isAssignedProvider).toBe(true);
     expect(getRescuePermissions('provider', 'provider-2', request).showProviderActions).toBe(false);
     expect(getRescuePermissions('customer', 'customer-1', request).showCustomerActions).toBe(true);
-    expect(getRescuePermissions('dispatcher', 'staff-1', request).isStaff).toBe(true);
+    expect(getRescuePermissions('admin', 'admin-1', request).isStaff).toBe(true);
   });
 
   it('shows incidents and retry controls only to eligible roles', () => {
     const customerRequest = permissionRequest('assigned');
     expect(getRescuePermissions('customer', 'customer-1', customerRequest).showIncident).toBe(true);
     const staffRequest = permissionRequest('needs_dispatch', [incident]);
-    const staff = getRescuePermissions('dispatcher', 'staff-1', staffRequest);
+    const staff = getRescuePermissions('admin', 'admin-1', staffRequest);
     expect(staff.showIncident).toBe(true);
     expect(staff.showStaffRetry).toBe(true);
     expect(getRescuePermissions('provider', 'provider-1', staffRequest).showIncident).toBe(false);

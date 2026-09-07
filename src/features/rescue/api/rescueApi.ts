@@ -235,8 +235,8 @@ export const rescueApi = {
       method: 'PUT',
       body: JSON.stringify(input),
     }),
-  setStaffRole: (userId: string, role: 'admin' | 'dispatcher' | 'customer') =>
-    apiRequest<void>('/api/operator/staff-role', { method: 'PUT', body: JSON.stringify({ userId, role }) }),
+  setAdminRole: (userId: string, role: 'admin' | 'customer') =>
+    apiRequest<void>('/api/operator/admin-role', { method: 'PUT', body: JSON.stringify({ userId, role }) }),
   adminServiceTypes: () => apiRequest<AdminServiceType[]>('/api/operator/service-types'),
   updateServiceType: ({ code, ...input }: AdminServiceType) =>
     apiRequest<void>(`/api/operator/service-types/${code}`, {

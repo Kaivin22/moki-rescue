@@ -74,7 +74,7 @@ public class PushNotificationService {
                 JOIN public.profiles profile ON profile.id = device.user_id
                 JOIN public.rescue_requests rr ON rr.id = ?
                 WHERE device.is_active AND profile.is_active
-                  AND ((? AND profile.role IN ('dispatcher', 'admin')) OR device.user_id = ?)
+                  AND ((? AND profile.role = 'admin') OR device.user_id = ?)
                 ON CONFLICT (device_id, request_id, request_version, kind, detail) DO NOTHING
                 """, kind.name(), detail == null ? "" : detail, kind.name(), requestId, staff, userId);
     }
@@ -184,12 +184,12 @@ public class PushNotificationService {
     private String cancelledBy(String role, boolean english) {
         if (english) return switch (role) {
             case "provider" -> "the rescue provider";
-            case "dispatcher", "admin" -> "dispatch staff";
+            case "admin" -> "the operations administrator";
             default -> "the customer";
         };
         return switch (role) {
             case "provider" -> "cứu hộ viên";
-            case "dispatcher", "admin" -> "điều phối viên";
+            case "admin" -> "quản trị viên vận hành";
             default -> "khách";
         };
     }

@@ -48,7 +48,7 @@ public class RescueCancellationService {
                     "no_provider", "needs_dispatch"
             ).contains(current.status());
             case "provider" -> false;
-            case "dispatcher", "admin" -> active;
+            case "admin" -> active;
             default -> false;
         };
         if (!allowed) throw access.invalidAction();
@@ -82,7 +82,7 @@ public class RescueCancellationService {
                         : decision.late() ? "request.late_cancelled_by_customer"
                         : "request.cancelled_by_" + actor.role();
                 audit.record(actor.id(), action, "rescue_request", requestId);
-                if ("dispatcher".equals(actor.role()) || "admin".equals(actor.role())) {
+                if ("admin".equals(actor.role())) {
                     notifications.notifyParticipants(requestId, NotificationKind.REQUEST_CANCELLED, actor.role());
                 } else {
                     notifications.notifyCounterparty(actor, requestId, NotificationKind.REQUEST_CANCELLED, actor.role());

@@ -268,7 +268,7 @@ export interface AuditLogEntry {
 export interface AccountLookup {
   id: string;
   displayName: string;
-  role: 'customer' | 'provider' | 'dispatcher' | 'admin';
+  role: 'customer' | 'provider' | 'admin';
 }
 
 export interface TeamVerificationCheck {

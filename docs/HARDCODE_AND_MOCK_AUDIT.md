@@ -25,7 +25,7 @@
 | Locale đổi nhưng cache giữ label cũ | Invalidate toàn bộ query rescue sau khi cập nhật locale |
 | Consent chỉ kiểm timestamp | Mobile và backend đều kiểm đúng `LEGAL_VERSION`/`TERMS_VERSION` |
 | Log router có thể chứa URL tọa độ | Chỉ log loại exception, không log message/URL |
-| Cấp quyền có thể ghi đè vai trò đặc biệt | Khóa profile và chặn đổi trực tiếp admin/provider qua thao tác dispatcher/provider |
+| Cấp quyền có thể ghi đè vai trò đặc biệt | Khóa profile và chặn đổi trực tiếp admin/cứu hộ viên qua thao tác cấp quyền khác |
 | Thêm provider ghi đè capability của cả đội | Tách endpoint/giao diện năng lực đội khỏi thao tác cấp quyền cứu hộ viên |
 | Admin phải sao chép UUID tài khoản | Tra đúng số điện thoại đăng nhập qua hàm tối thiểu chỉ backend được gọi; UI không nhận lại số điện thoại |
 | Đội có thể được verify ngay sau khi tạo | Buộc mã hồ sơ nội bộ + checklist bắt buộc + capability + provider active; lưu admin/thời điểm xác minh và audit |

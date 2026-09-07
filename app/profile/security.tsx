@@ -26,7 +26,7 @@ const COPY = {
     lastSignIn: 'Đăng nhập gần nhất',
     created: 'Tạo tài khoản',
     principles: 'Nguyên tắc an toàn',
-    guideOtp: 'Không cung cấp mã OTP cho điều phối viên, cứu hộ viên hoặc bất kỳ người nào gọi đến.',
+    guideOtp: 'Không cung cấp mã OTP cho quản trị viên, cứu hộ viên hoặc bất kỳ người nào gọi đến.',
     guideMoney: 'Moki Rescue không yêu cầu chuyển tiền để “mở khóa” tài khoản hay ưu tiên nhận ca.',
     guidePhone:
       'Nếu mất quyền kiểm soát số điện thoại, hãy đăng xuất và liên hệ nhà mạng trước khi tiếp tục sử dụng.',
@@ -52,7 +52,7 @@ const COPY = {
     lastSignIn: 'Last sign-in',
     created: 'Account created',
     principles: 'Safety principles',
-    guideOtp: 'Never share your OTP with a dispatcher, rescue provider, or anyone who calls you.',
+    guideOtp: 'Never share your OTP with an administrator, rescue provider, or anyone who calls you.',
     guideMoney: 'Moki Rescue never asks for a transfer to “unlock” an account or prioritize a request.',
     guidePhone:
       'If you lose control of your phone number, sign out and contact your carrier before continuing.',

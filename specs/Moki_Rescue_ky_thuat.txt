@@ -34,7 +34,7 @@ Moki Rescue hỗ trợ khách gặp sự cố kỹ thuật xe máy tại vùng p
   - điểm uy tín thật cho provider/đội và cảnh báo chất lượng có admin kiểm duyệt;
   - ChatBox AI hướng dẫn cách dùng app và quy trình cứu hộ trong app;
   - điều phối lại ca không tìm được đội;
-  - quản trị đội, provider và dispatcher.
+  - quản trị đội, cứu hộ viên và các ca cần can thiệp.
 
 Mô hình vận hành:
   - Một đơn vị vận hành quản lý mạng lưới kín gồm nhiều đội cứu hộ nhỏ.
@@ -72,19 +72,15 @@ provider:
   - gửi vị trí live, trạng thái, work type và báo giá.
   - thấy điểm đội và nội dung cảnh báo chất lượng do admin đã phát hành.
 
-dispatcher:
+admin:
   - xem ca vận hành, theo dõi no_provider, kích hoạt tìm lại;
   - có quyền dừng ca với lý do được audit;
-  - không tự cấp role admin/provider.
-
-admin:
-  - có toàn bộ quyền điều phối;
   - tạo đội bằng mã hồ sơ nội bộ, cấp tài khoản provider, khai báo capability;
   - hoàn tất checklist, xem người/thời điểm kiểm tra, xác minh/tạm ngưng đội;
   - xem điểm đội, review gần đây và tín hiệu điểm thấp;
   - ẩn/khôi phục review spam với lý do được audit;
   - gửi cảnh báo hoặc đình chỉ đội sau khi kiểm tra; không auto-lock chỉ từ điểm sao;
-  - cấp/thu dispatcher;
+  - cấp/thu quyền admin cho tài khoản vận hành;
   - không mặc nhiên đóng vai provider nếu chưa có provider_members hợp lệ.
 
 Tài khoản mới từ Supabase Auth luôn nhận role customer. Admin đầu tiên chỉ được
@@ -153,7 +149,7 @@ app/
   (tabs)/index.tsx                home theo role
   (tabs)/request.tsx              tạo yêu cầu customer
   (tabs)/activity.tsx             ca mở/lịch sử
-  (tabs)/operations.tsx           provider/dispatcher/admin
+  (tabs)/operations.tsx           provider/admin
   (tabs)/profile.tsx              tài khoản theo role
   rescue/[id].tsx                 chi tiết ca, action, quote, review
   rescue/[id]/map.tsx             bản đồ ca toàn màn hình
@@ -262,7 +258,7 @@ legacy khớp chính xác B1 mới được baseline version 1 theo scripts/READ
 12. Sau assigned mới trả tên, đội, phương tiện và contact phone đã xác minh.
 
 Nếu router lỗi hoặc mọi candidate NoRoute: routing_status=unavailable và không vẽ
-đường chim bay. Nếu không có candidate phù hợp: no_provider. Dispatcher có thể retry.
+đường chim bay. Nếu không có candidate phù hợp: no_provider. Admin có thể retry.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 8. STATE MACHINE
@@ -284,7 +280,7 @@ repairing|transporting → awaiting_completion
   └── customer confirm → completed
 
 searching|offered → no_provider
-no_provider → searching khi dispatcher retry
+no_provider → searching khi admin retry
 trạng thái policy cho phép → cancelled có reason/audit
 
 Mọi action gửi expectedVersion. Service kiểm graph, PostgreSQL trigger kiểm cạnh lần

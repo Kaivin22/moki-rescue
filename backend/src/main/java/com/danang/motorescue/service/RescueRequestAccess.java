@@ -34,7 +34,7 @@ class RescueRequestAccess {
                 LEFT JOIN public.provider_members provider ON provider.user_id = rr.assigned_provider_id
                 LEFT JOIN public.rescue_teams team ON team.id = rr.assigned_team_id
                 WHERE rr.id = ?
-                  AND (rr.customer_id = ? OR rr.assigned_provider_id = ? OR ? IN ('dispatcher', 'admin'))
+                  AND (rr.customer_id = ? OR rr.assigned_provider_id = ? OR ? = 'admin')
                 """, rs -> rs.next() ? mapRequest(rs) : null,
                 actor.locale(), requestId, actor.id(), actor.id(), actor.role());
         if (row == null) {
@@ -55,7 +55,7 @@ class RescueRequestAccess {
                 JOIN public.service_types service ON service.code = rr.service_code
                 LEFT JOIN public.provider_members provider ON provider.user_id = rr.assigned_provider_id
                 LEFT JOIN public.rescue_teams team ON team.id = provider.team_id
-                WHERE rr.id = ? AND (rr.customer_id = ? OR rr.assigned_provider_id = ? OR ? IN ('dispatcher', 'admin'))
+                WHERE rr.id = ? AND (rr.customer_id = ? OR rr.assigned_provider_id = ? OR ? = 'admin')
                 """, rs -> rs.next() ? mapRequest(rs) : null,
                 actor.locale(), requestId, actor.id(), actor.id(), actor.role());
         if (row == null) throw forbidden();

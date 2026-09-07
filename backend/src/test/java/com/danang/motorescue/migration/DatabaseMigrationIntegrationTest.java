@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationVersion;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -23,13 +24,38 @@ class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
     private static final PostgreSQLContainer<?> POSTGRES = newPostgisContainer();
 
     @Test
-    void cleanPostgisDatabaseMigratesAndRemainsIdempotent() throws SQLException {
+    void cleanPostgisDatabaseMigratesLegacyDispatcherAndRemainsIdempotent() throws SQLException {
+        Flyway beforeRoleMerge = Flyway.configure()
+                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                .locations("classpath:db/migration")
+                .baselineOnMigrate(false)
+                .cleanDisabled(true)
+                .validateMigrationNaming(true)
+                .target(MigrationVersion.fromVersion("4"))
+                .load();
+
+        MigrateResult initialMigrations = beforeRoleMerge.migrate();
+        assertTrue(initialMigrations.success);
+        assertEquals(4, initialMigrations.migrationsExecuted);
+
+        try (Connection connection = DriverManager.getConnection(
+                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+                Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO auth.users(id, phone)
+                    VALUES ('00000000-0000-0000-0000-000000000001', '+84901234567')
+                    """);
+            statement.executeUpdate("""
+                    UPDATE public.profiles SET role = 'dispatcher'
+                    WHERE id = '00000000-0000-0000-0000-000000000001'
+                    """);
+        }
+
         Flyway flyway = flywayFor(POSTGRES);
+        MigrateResult roleMerge = flyway.migrate();
 
-        MigrateResult firstRun = flyway.migrate();
-
-        assertTrue(firstRun.success);
-        assertEquals(4, firstRun.migrationsExecuted);
+        assertTrue(roleMerge.success);
+        assertEquals(1, roleMerge.migrationsExecuted);
         assertTrue(flyway.validateWithResult().validationSuccessful);
         assertEquals(0, flyway.migrate().migrationsExecuted);
 
@@ -58,6 +84,13 @@ class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
             assertEquals(1, queryForInt(connection,
                     "SELECT COUNT(*) FROM pg_roles WHERE rolname = 'motorescue_api' "
                             + "AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND rolbypassrls"));
+            assertEquals(1, queryForInt(connection,
+                    "SELECT COUNT(*) FROM public.profiles WHERE role = 'admin' "
+                            + "AND id = '00000000-0000-0000-0000-000000000001'"));
+            assertEquals(1, queryForInt(connection,
+                    "SELECT COUNT(*) FROM pg_constraint "
+                            + "WHERE conrelid = 'public.profiles'::regclass AND conname = 'profiles_role_check' "
+                            + "AND pg_get_constraintdef(oid) NOT LIKE '%dispatcher%'"));
         }
     }
 

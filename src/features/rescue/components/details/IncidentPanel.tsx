@@ -14,7 +14,7 @@ import { rescueDetailsStyles as styles } from './rescueDetailsStyles';
 export function IncidentPanel({ request, role }: { request: RequestDetails; role: ProfileRole }) {
   const actions = useIncidentActions(request.id);
   const c = useRescueDetailsCopy();
-  const isStaff = role === 'dispatcher' || role === 'admin';
+  const isStaff = role === 'admin';
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<IncidentReport['category'] | null>(null);
   const [description, setDescription] = useState('');
