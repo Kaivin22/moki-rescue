@@ -10,7 +10,7 @@ Spring Boot API (authorization, state machine, matching, quote, audit)
         | JDBC/TLS             | HTTPS                 | HTTPS
         v                      v                       v
 Supabase Auth + PostgreSQL   OSRM + Expo Push     Gemini app assistant
-+ PostGIS + RLS + Realtime                         (server key only)
++ PostGIS + RLS                                    (server key only)
 ```
 
 Mobile chỉ đọc dữ liệu được RLS cho phép và gửi business mutation qua API. Backend dùng database credential riêng, nhưng vẫn phải kiểm tra JWT, vai trò, quan hệ với ca, trạng thái hiện tại và version. Nút bị ẩn trên UI không được coi là authorization.
@@ -32,7 +32,8 @@ src/
   features/auth/      Chuẩn hóa số điện Việt Nam
   features/safety/    Danh bạ khẩn cấp dùng chung
   features/location/  Foreground permission/current GPS
-  features/rescue/    API, query, status, tracking, realtime, GPS outbox
+  features/maps/      Leaflet/OpenStreetMap adapter qua WebView và iframe
+  features/rescue/    API, query, status, GPS chờ ca, liên kết dẫn đường
   features/assistant/ ChatBox phiên hiện tại; chỉ gọi backend, không có Gemini key
   features/notifications/ Push registration, token rollover và retry theo app installation
   stores/             Session/profile duy nhất
@@ -49,10 +50,29 @@ Route có thể import feature; feature không import từ `app/`. Component dù
 2. App chỉ xin GPS khi khách bấm lấy vị trí; khách kiểm tra hoặc kéo ghim trên bản đồ rồi mới gửi UUID `Idempotency-Key` cùng loại sự cố và mô tả tối thiểu.
 3. Backend khóa advisory theo customer, kiểm tra payload của key cũ, một ca đang mở, rate limit và polygon `service_zones` đang hoạt động trong PostGIS.
 4. PostGIS lọc provider active/available, đội verified, capability đúng, GPS có sai số trong ngưỡng, vị trí không quá ba phút và nằm trong bán kính đội.
-5. Backend gọi OSRM Table cho toàn bộ ứng viên hợp lệ theo các lô tối đa 99 điểm gốc, loại `NoRoute`, xếp theo duration đường xe máy rồi distance và tạo tối đa số offer đã cấu hình.
-6. Provider nhận push chỉ có khu vực tương đối. SQL function khóa request/offer/provider; hai người nhận đồng thời chỉ một người thành công.
+5. Backend gọi OSRM Table cho toàn bộ ứng viên hợp lệ theo các lô tối đa 99 điểm gốc, loại `NoRoute`, tạo nhóm có ETA không vượt quá ngưỡng so với người nhanh nhất, rồi xếp hạng trong nhóm theo chính sách của loại dịch vụ.
+6. Backend chỉ gửi đề nghị cho một provider tại một thời điểm. Provider nhận push chỉ có khu vực tương đối; phản hồi đến muộn vẫn bị SQL function từ chối nếu đề nghị hoặc ca đã thay đổi.
 7. Sau khi nhận ca, API trả tên và số liên hệ công việc đã được admin xác minh cho participant. Số không nằm trong offer/push và được ẩn khi ca đóng.
-8. Scheduled job quét offer hết hạn mỗi 15 giây và kết thúc `no_provider`; không quay loading vô hạn.
+8. Scheduled job quét offer hết hạn mỗi 15 giây và thử người tiếp theo. Chỉ khi đã hết ứng viên phù hợp mới kết thúc `no_provider`; không quay loading vô hạn.
+
+### Điểm xếp hạng có thể cấu hình
+
+Khái niệm “gần” dùng ETA tuyến đường xe máy, không dùng khoảng cách đường chim bay. Trước khi chấm điểm, hệ thống chỉ giữ ứng viên có ETA không chênh quá `matching_eta_window_seconds` so với ETA tốt nhất. Vì vậy người rất xa không thể vượt lên chỉ nhờ kinh nghiệm hoặc điểm công bằng.
+
+“Kinh nghiệm” là số ca `completed` của chính cứu hộ viên với cùng `service_code`; ca khác loại, ca hủy và điểm sao không được tính. “Thời gian chờ” tính từ lúc bắt đầu sẵn sàng hoặc lần gần nhất được gửi đề nghị. “Số ca gần đây” đếm đề nghị đã nhận trong cửa sổ ngày cấu hình.
+
+Bốn tiêu chí được chuẩn hóa về `[0, 1]` và chi phí thấp hơn được ưu tiên:
+
+```text
+cost = w_eta * min((eta_seconds - best_eta_seconds) / eta_window_seconds, 1)
+     + w_experience * (1 - min(completed_service_cases / experience_reference_cases, 1))
+     + w_waiting * (1 - min(waiting_seconds / waiting_reference_seconds, 1))
+     + w_recent * min(recent_accepted_cases / recent_reference_cases, 1)
+```
+
+Các trọng số được chuẩn hóa để tổng bằng 1; nếu cấu hình không hợp lệ, hệ thống an toàn quay về chỉ ưu tiên ETA. Cấu hình nằm trên từng dòng `service_types`, gồm ngưỡng ETA, trọng số, các mốc chuẩn hóa, cửa sổ ca gần đây, ngưỡng chống bỏ đói và TTL đề nghị.
+
+`provider_dispatch_stats` lưu số lượt liên tiếp một provider vừa đủ điều kiện, vừa nằm trong nhóm ETA nhưng chưa được mời. Khi đạt ngưỡng chống bỏ đói, người đó được đưa lên trước ở lần phù hợp tiếp theo. Bộ đếm đặt lại ngay khi đã gửi đề nghị; từ chối hoặc không phản hồi không được tính là bị hệ thống bỏ qua. Quy tắc này không vượt qua lọc năng lực, trạng thái hoặc ngưỡng ETA.
 
 PostGIS chỉ lọc phạm vi phục vụ, không quyết định người nhanh nhất. Khi OSRM lỗi, backend không fallback Haversine và UI không vẽ Polyline thẳng.
 
@@ -71,14 +91,15 @@ trạng thái cho phép -> cancelled
 
 Mỗi transition được kiểm tra hai lần: service xác định action hợp lệ, trigger PostgreSQL chặn cạnh sai. `version` tăng trong trigger. Khách là bên xác nhận đã đến, báo giá và hoàn thành; GPS không tự động kết luận.
 
-## Vị trí và realtime
+## Vị trí và tuyến tham khảo
 
-- Provider bật sẵn sàng: foreground GPS cập nhật vị trí nội bộ dùng matching; khách không thấy.
-- Điểm GPS provider thiếu `accuracy` bị bỏ; backend và database đều buộc checkpoint phải có độ chính xác hợp lệ.
-- Sau khi nhận ca: foreground tracking hoạt động trong Expo Go; background tracking chỉ khởi động trên development/production build.
-- App gửi private Broadcast topic `request:<uuid>`. RLS chỉ cho cứu hộ viên được phân công ghi và khách/cứu hộ viên được phân công/admin đọc.
-- Mất mạng: outbox chỉ giữ điểm GPS mới nhất, chỉ retry nếu chưa quá hai phút; không phát lại hành trình cũ.
-- Khi ca kết thúc hoặc provider không sẵn sàng, tracking dừng và vị trí matching bị xóa.
+- Provider bật sẵn sàng: GPS foreground/background phục vụ matching, khách không thấy.
+- Khi nhận ca, trigger V8 lưu vị trí chờ ca gần nhất trong `rescue_requests`; API trả `providerLocationStatus=snapshot`. Không ghi đè bằng GPS sau đó.
+- OpenStreetMap hiển thị tuyến OSRM từ vị trí đó tới pickup. App không polling tuyến theo GPS; chỉ cập nhật trạng thái ca và đổi dữ liệu khi đổi phân công.
+- Google Maps bên ngoài dùng GPS thiết bị để dẫn đường. Điểm đích là pickup hoặc điểm giao khi đang vận chuyển; đường Google Maps có thể khác OSRM.
+- Đã gỡ GPS tracking/outbox của ca; endpoint GPS cũ trả lỗi, Broadcast bị chặn và không tạo cờ thiếu GPS live. GPS chờ ca vẫn giữ.
+- Ca đóng/thu hồi phân công xóa snapshot; đổi provider chụp vị trí mới. Ca cũ không có snapshot báo thiếu vị trí, không giả lập.
+- Map/OSRM cần kiểm chứng trên thiết bị và tuyến thật; xem [routing](../routing/README.md).
 
 ## Dữ liệu và RLS
 

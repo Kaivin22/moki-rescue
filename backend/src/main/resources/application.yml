@@ -86,8 +86,6 @@ app:
     max-snap-radius-meters: ${OSRM_MAX_SNAP_RADIUS_METERS:750}
     table-batch-size: ${OSRM_TABLE_BATCH_SIZE:80}
   matching:
-    offer-count: ${MATCHING_OFFER_COUNT:3}
-    offer-ttl-seconds: ${MATCHING_OFFER_TTL_SECONDS:45}
     provider-location-max-age-seconds: ${PROVIDER_LOCATION_MAX_AGE_SECONDS:180}
     provider-location-max-accuracy-meters: ${PROVIDER_LOCATION_MAX_ACCURACY_METERS:150}
     expiry-scan-interval-ms: ${MATCHING_EXPIRY_SCAN_INTERVAL_MS:15000}

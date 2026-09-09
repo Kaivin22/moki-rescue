@@ -197,7 +197,7 @@ export interface RequestDetails {
   currentQuote: QuoteSummary | null;
   review: ReviewSummary | null;
   providerLocation: LocationPoint | null;
-  providerLocationStatus: 'pending' | 'fresh' | 'stale' | 'not_applicable';
+  providerLocationStatus: 'pending' | 'snapshot' | 'not_applicable';
   attentionCodes: string[];
   feedback: FeedbackSummary[];
   incidentReports: IncidentReport[];

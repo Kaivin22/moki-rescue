@@ -30,7 +30,7 @@
 | Admin phải sao chép UUID tài khoản | Tra đúng số điện thoại đăng nhập qua hàm tối thiểu chỉ backend được gọi; UI không nhận lại số điện thoại |
 | Đội có thể được verify ngay sau khi tạo | Buộc mã hồ sơ nội bộ + checklist bắt buộc + capability + provider active; lưu admin/thời điểm xác minh và audit |
 | GPS provider có thể thiếu `accuracy` | Client bỏ điểm thiếu/sai định dạng; API và checkpoint SQL bắt buộc accuracy; matching kiểm ngưỡng lần nữa |
-| Shortlist đường chim bay có thể bỏ sót provider nhanh hơn | Route toàn bộ ứng viên hợp lệ theo các lô OSRM rồi xếp hạng ETA thực tế |
+| Shortlist đường chim bay hoặc kinh nghiệm tuyệt đối có thể chọn sai người | Route toàn bộ ứng viên hợp lệ, tạo nhóm ETA chấp nhận được, rồi xếp hạng bằng chính sách theo dịch vụ và quy tắc chống bỏ đói |
 | Copy vi/en và status team không đồng nhất | Runtime UI, backend catalog, API error mapping và push đã có vi/en |
 | Nhiều file TSX nén thành dòng rất dài | Thêm Prettier, `format:check` và gate CI; TypeScript strict + no-unused vẫn bật |
 | Dependency `concurrently` không dùng | Đã gỡ khỏi package/lockfile |
@@ -57,7 +57,7 @@
 
 ## Cấu hình môi trường, không phải hardcode runtime
 
-Các giá trị sau đi qua `.env`/Spring configuration: Supabase, API origin, EAS project, Maps key, hotline, tâm viewport bản đồ, database login, OSRM URL/profile/snap radius/table batch, offer TTL, GPS freshness/accuracy, rate limit, ngưỡng/cỡ mẫu/nhịp cảnh báo chất lượng, CORS, Expo Push send/receipt/retry, Gemini model/key/quota và `TERMS_VERSION`. Polygon vùng phục vụ là cấu hình database được review, không phải hằng số mobile.
+Các giá trị sau đi qua `.env`/Spring configuration: Supabase, API origin, EAS project, OSM tile URL/attribution, hotline, tâm viewport bản đồ, database login, OSRM URL/profile/snap radius/table batch, offer TTL, GPS freshness/accuracy, rate limit, ngưỡng/cỡ mẫu/nhịp cảnh báo chất lượng, CORS, Expo Push send/receipt/retry, Gemini model/key/quota và `TERMS_VERSION`. Polygon vùng phục vụ là cấu hình database được review, không phải hằng số mobile.
 
 Production Expo config fail-fast khi thiếu public config bắt buộc hoặc dùng URL không phải HTTPS/localhost. Backend secret không có prefix `EXPO_PUBLIC_` và không được đưa vào Expo `extra`.
 

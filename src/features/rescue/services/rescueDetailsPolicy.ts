@@ -82,13 +82,7 @@ export function rescueMapRegion(
   providerLocation: LocationPoint | null,
 ): RescueMapRegion | undefined {
   if (!request) return undefined;
-  const transportLeg =
-    request.activeWorkType === 'transport' &&
-    (request.status === 'transporting' || request.status === 'awaiting_completion');
-  const target =
-    transportLeg && request.destinationLatitude != null && request.destinationLongitude != null
-      ? { latitude: request.destinationLatitude, longitude: request.destinationLongitude }
-      : { latitude: request.pickupLatitude, longitude: request.pickupLongitude };
+  const target = { latitude: request.pickupLatitude, longitude: request.pickupLongitude };
   return {
     latitude: providerLocation ? (target.latitude + providerLocation.latitude) / 2 : target.latitude,
     longitude: providerLocation ? (target.longitude + providerLocation.longitude) / 2 : target.longitude,

@@ -1,8 +1,0 @@
-# Allowlist: never send .env, task files, diagrams, tests or local build artifacts.
-**
-!pom.xml
-!src/
-!src/main/
-!src/main/**
-!docker/
-!docker/Healthcheck.java

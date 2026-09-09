@@ -25,9 +25,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import com.danang.motorescue.support.LocalPostgis;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 @SpringBootTest(properties = {
         "app.routing.motorbike-base-url=https://routing.example.invalid", "app.assistant.enabled=false",
@@ -38,10 +37,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
         "app.case-lifecycle.scan-interval-ms=3600000", "app.push.outbox-scan-interval-ms=3600000"
 })
 @AutoConfigureMockMvc
-@Testcontainers
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class ApiDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = newPostgisContainer();
+    @RegisterExtension
+    static final LocalPostgis POSTGRES = newLocalPostgis();
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate runtime;
     @MockitoBean JwtDecoder decoder;

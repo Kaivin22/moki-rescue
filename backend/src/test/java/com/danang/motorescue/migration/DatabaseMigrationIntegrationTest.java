@@ -15,18 +15,16 @@ import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import com.danang.motorescue.support.LocalPostgis;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-@Testcontainers
 class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
 
-    @Container
-    private static final PostgreSQLContainer<?> POSTGRES = newPostgisContainer();
+    @RegisterExtension
+    static final LocalPostgis POSTGRES = newLocalPostgis();
 
     @Test
-    void cleanPostgisDatabaseMigratesLegacyDispatcherAndRemainsIdempotent() throws Exception {
+    void cleanPostgisDatabaseAppliesVersionedMigrationsAndRemainsIdempotent() throws Exception {
         Flyway beforeRoleMerge = Flyway.configure()
                 .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
                 .locations("classpath:db/migration")
@@ -54,10 +52,10 @@ class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
         }
 
         Flyway flyway = flywayFor(POSTGRES);
-        MigrateResult roleMerge = flyway.migrate();
+        MigrateResult remainingMigrations = flyway.migrate();
 
-        assertTrue(roleMerge.success);
-        assertEquals(1, roleMerge.migrationsExecuted);
+        assertTrue(remainingMigrations.success);
+        assertEquals(4, remainingMigrations.migrationsExecuted);
         assertTrue(flyway.validateWithResult().validationSuccessful);
         assertEquals(0, flyway.migrate().migrationsExecuted);
 
@@ -68,14 +66,17 @@ class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
             try (Statement verification = connection.createStatement()) {
                 verification.execute(verificationSql);
             }
-            assertEquals(25, queryForInt(connection,
+            assertEquals(26, queryForInt(connection,
                     "SELECT COUNT(*) FROM information_schema.tables "
                             + "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
                             + "AND table_name <> 'flyway_schema_history'"));
-            assertEquals(25, queryForInt(connection,
+            assertEquals(26, queryForInt(connection,
                     "SELECT COUNT(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
                             + "WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity"));
             assertEquals(6, queryForInt(connection, "SELECT COUNT(*) FROM public.service_types"));
+            assertEquals(6, queryForInt(connection,
+                    "SELECT COUNT(*) FROM public.service_types WHERE matching_eta_window_seconds > 0 "
+                            + "AND matching_starvation_skip_threshold > 0"));
             assertEquals(6, queryForInt(connection,
                     "SELECT COUNT(*) FROM public.team_verification_requirements"));
             assertEquals(1, queryForInt(connection, "SELECT COUNT(*) FROM public.service_zones"));

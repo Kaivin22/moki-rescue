@@ -19,6 +19,7 @@ node_modules/
 backend/target/
 backend/.m2repo/
 backend/.maven-home/
+routing/data/
 
 # ─── Expo ─────────────────────────────────────────────────────────────────────
 .expo/

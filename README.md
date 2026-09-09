@@ -4,7 +4,7 @@
 
 ## Mô hình sử dụng
 
-- **Khách đi xe máy** tạo yêu cầu, xác nhận vị trí, theo dõi cứu hộ viên, duyệt báo giá và đánh giá 1–5 sao cho ca đã hoàn thành.
+- **Khách đi xe máy** tạo yêu cầu, xác nhận vị trí, xem tuyến tham khảo và trạng thái ca, duyệt báo giá và đánh giá 1–5 sao cho ca đã hoàn thành.
 - **Cứu hộ viên** là thành viên của một đội đối tác đã được xác minh ngoại tuyến; họ bật sẵn sàng, nhận đề nghị phù hợp và cập nhật quy trình xử lý.
 - **Admin** là quản trị viên vận hành của đơn vị trung tâm. Admin xử lý ca ngoại lệ, quản lý đội, năng lực, catalog, quyền nhân sự và cảnh báo chất lượng; admin không mặc nhiên là cứu hộ viên và không có khái niệm VIP.
 
@@ -25,9 +25,9 @@ MVP chưa thu tiền trong ứng dụng. Cứu hộ viên gửi báo giá, khác
 - Lọc PostGIS theo năng lực/bán kính/độ mới và độ chính xác GPS, sau đó xếp hạng toàn bộ ứng viên bằng ETA OSRM theo đường xe máy. Không dùng đường chim bay làm kết quả cuối.
 - Phát nhiều đề nghị có thời hạn; chỉ một cứu hộ viên có thể nhận ca nhờ transaction nguyên tử.
 - State machine phía server, optimistic version, lịch sử chỉ thêm và audit log.
-- Vị trí live qua private Realtime Broadcast; checkpoint tối thiểu, outbox GPS khi mất mạng và job xóa/làm mờ dữ liệu.
+- GPS chờ ca chỉ dùng nội bộ để ghép ca; lưu vị trí lúc nhận ca để vẽ tuyến tham khảo, không theo dõi di chuyển trực tiếp.
 - Sau khi nhận ca, khách thấy tên, đội, phương tiện và số liên hệ công việc đã xác minh của cứu hộ viên; số bị ẩn khi ca đóng.
-- Bản đồ ca toàn màn hình theo dõi provider bằng GPS live và chỉ vẽ geometry tuyến đường bộ do router trả về.
+- Bản đồ OpenStreetMap chỉ vẽ geometry OSRM; cứu hộ viên mở Google Maps bên ngoài để dẫn đường. Xem [cấu hình bản đồ/OSRM](routing/README.md).
 - Xác nhận hai phía khi đến và hoàn thành; báo giá phải được khách duyệt.
 - Đánh giá chỉ gắn với ca đã hoàn thành, có sửa và xóa.
 - Ca mất provider chuyển sang hàng chờ điều phối lại; timeout, GPS cũ và xác nhận quá hạn tạo cờ attention thay vì quay loading vô hạn.

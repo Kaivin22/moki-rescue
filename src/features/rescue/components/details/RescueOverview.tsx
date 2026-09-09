@@ -101,11 +101,8 @@ export function RescueOverview({
           <Text style={styles.warningText}>{c.routingWarning}</Text>
         </View>
       ) : null}
-      {request.providerLocationStatus === 'stale' ? (
-        <View style={styles.warning}>
-          <Text style={styles.noProviderTitle}>{c.gpsStaleTitle}</Text>
-          <Text style={styles.warningText}>{c.gpsStaleBody}</Text>
-        </View>
+      {request.assignedProviderId && request.providerLocation ? (
+        <Text style={styles.infoLabel}>{c.assignmentRouteNote}</Text>
       ) : null}
       {request.status === 'needs_dispatch' ? (
         <View style={styles.noProviderCard}>

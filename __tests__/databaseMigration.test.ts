@@ -16,6 +16,10 @@ const roleMergeMigration = fs.readFileSync(
   path.join(migrationDirectory, 'V5__merge_dispatcher_into_admin.sql'),
   'utf8',
 );
+const fairDispatchMigration = fs.readFileSync(
+  path.join(migrationDirectory, 'V7__configurable_fair_dispatch.sql'),
+  'utf8',
+);
 const applicationConfig = fs.readFileSync(
   path.join(root, 'backend', 'src', 'main', 'resources', 'application.yml'),
   'utf8',
@@ -43,6 +47,16 @@ describe('versioned database migrations', () => {
     expect(roleMergeMigration).toContain("SET role = 'admin'");
     expect(roleMergeMigration).toContain("WHERE role = 'dispatcher'");
     expect(roleMergeMigration).toContain("CHECK (role IN ('customer', 'provider', 'admin'))");
+  });
+
+  it('stores per-service dispatch policy and protects provider fairness state', () => {
+    expect(fairDispatchMigration).toContain('matching_eta_window_seconds');
+    expect(fairDispatchMigration).toContain('matching_starvation_skip_threshold');
+    expect(fairDispatchMigration).toContain('CREATE TABLE public.provider_dispatch_stats');
+    expect(fairDispatchMigration).toContain('provider_dispatch_stats_no_client_access');
+    expect(fairDispatchMigration).toContain(
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON public.provider_dispatch_stats TO motorescue_api',
+    );
   });
 
   it('does not silently baseline or permit Flyway clean', () => {

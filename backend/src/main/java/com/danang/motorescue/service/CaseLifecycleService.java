@@ -38,7 +38,6 @@ public class CaseLifecycleService {
         jdbc.update("DELETE FROM public.api_rate_limit_windows WHERE window_start < NOW() - INTERVAL '2 hours'");
         resolveFlagsWhoseStateEnded();
         requeueAssignmentsThatNeverStarted();
-        flagGpsStale();
         flagStateTimeout("arrival_confirmation_overdue", "awaiting_arrival_confirmation",
                 properties.arrivalConfirmationTimeout().toSeconds(), "customer");
         flagStateTimeout("quote_decision_overdue", "awaiting_quote",
@@ -88,34 +87,6 @@ public class CaseLifecycleService {
         for (AssignmentTimeout row : timedOut) {
             dispatch.match(row.requestId());
         }
-    }
-
-    private void flagGpsStale() {
-        transactions.executeWithoutResult(status -> {
-        List<AttentionTarget> targets = jdbc.query("""
-                WITH candidates AS (
-                  SELECT rr.id, rr.assigned_provider_id AS target_id
-                  FROM public.rescue_requests rr
-                  LEFT JOIN LATERAL (
-                    SELECT recorded_at FROM public.provider_location_checkpoints checkpoint
-                    WHERE checkpoint.request_id = rr.id ORDER BY recorded_at DESC LIMIT 1
-                  ) latest ON TRUE
-                  WHERE rr.status IN ('en_route', 'awaiting_arrival_confirmation', 'transporting')
-                    AND COALESCE(latest.recorded_at, rr.updated_at)
-                      < NOW() - (? * INTERVAL '1 second')
-                ), inserted AS (
-                  INSERT INTO public.case_attention_flags(request_id, code)
-                  SELECT id, 'provider_gps_stale' FROM candidates
-                  ON CONFLICT (request_id, code) WHERE status = 'open' DO NOTHING
-                  RETURNING request_id
-                )
-                SELECT inserted.request_id, candidates.target_id
-                FROM inserted JOIN candidates ON candidates.id = inserted.request_id
-                """, (rs, rowNum) -> new AttentionTarget(
-                rs.getObject("request_id", UUID.class), rs.getObject("target_id", UUID.class)),
-                properties.providerGpsStaleAfter().toSeconds());
-        notifyAttentionTargets(targets, "provider_gps_stale");
-        });
     }
 
     private void flagStateTimeout(String code, String requestStatus, long timeoutSeconds, String targetRole) {

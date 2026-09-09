@@ -1,18 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
-import { MapView, Marker, Polyline, PROVIDER_GOOGLE } from '@/src/components/MapWrapper';
+import { MapView, Marker, Polyline, type MapViewHandle } from '@/src/components/MapWrapper';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { useRequest, useRoadRoute } from '@/src/features/rescue/hooks/useRescueQueries';
 import { RatingBadge } from '@/src/features/rescue/components/RatingBadge';
-import { subscribeToProviderLocation } from '@/src/features/rescue/services/liveLocation';
+import { googleMapsNavigationUrl, navigationDestination } from '@/src/features/rescue/services/navigation';
 import { isLiveStatus } from '@/src/features/rescue/status';
-import type { LocationPoint } from '@/src/types/rescue';
-import type NativeMapView from 'react-native-maps';
 import { useCopy, useI18n } from '@/src/i18n';
 import { useReduceMotion } from '@/src/hooks/useReduceMotion';
 import { useAuthStore } from '@/src/stores/authStore';
@@ -26,17 +24,20 @@ const COPY = {
     roadStatus: 'Tuyến đường bộ {distance} km • khoảng {minutes} phút',
     invalidRoute: 'Chưa lấy được tuyến đường giao thông hợp lệ',
     loadingRoute: 'Đang lấy tuyến đường giao thông…',
-    waitingProvider: 'Đang chờ vị trí cứu hộ viên',
+    retryRoute: 'Tải lại tuyến đường',
+    closedRoute: 'Ca đã kết thúc — không còn hiển thị vị trí cứu hộ viên',
+    waitingProvider: 'Chưa có vị trí cứu hộ viên tại thời điểm nhận ca',
     pickup: 'Điểm nhận cứu hộ',
     destination: 'Điểm giao xe',
     provider: 'Cứu hộ viên',
     backDetails: 'Quay lại chi tiết ca',
-    title: 'Theo dõi đội cứu hộ',
-    noStraightLine: 'Không dùng đường thẳng nối hai điểm để thay thế tuyến giao thông.',
+    title: 'Tuyến đường cứu hộ',
+    noStraightLine:
+      'Tuyến tham khảo từ vị trí lúc nhận ca tới khách, không cập nhật di chuyển trực tiếp. Không dùng đường thẳng thay tuyến giao thông.',
     verifiedTeam: 'Đội cứu hộ đã xác minh',
-    updated: 'GPS cập nhật',
+    updated: 'Vị trí ghi nhận khi giao ca',
     call: 'Gọi',
-    navigate: 'Mở chỉ đường',
+    navigate: 'Dẫn đường bằng Google Maps',
     navigationHint: 'Mở Google Maps tới điểm cứu hộ. Tuyến bên ngoài có thể khác tuyến đang hiển thị.',
     destinationNavigationHint:
       'Mở Google Maps tới điểm giao xe. Tuyến bên ngoài có thể khác tuyến đang hiển thị.',
@@ -50,17 +51,20 @@ const COPY = {
     roadStatus: 'Road route {distance} km • about {minutes} min',
     invalidRoute: 'No valid road route is available',
     loadingRoute: 'Loading road route…',
-    waitingProvider: 'Waiting for provider location',
+    retryRoute: 'Reload route',
+    closedRoute: 'Case closed — provider location is no longer shown',
+    waitingProvider: 'Provider assignment location is not available',
     pickup: 'Rescue pickup',
     destination: 'Motorcycle drop-off',
     provider: 'Rescue provider',
     backDetails: 'Back to request details',
-    title: 'Track rescue team',
-    noStraightLine: 'A straight line between two points is never used as a road route.',
+    title: 'Rescue route',
+    noStraightLine:
+      'Reference route from the assignment location to the pickup, without live movement. A straight line is never used as a road route.',
     verifiedTeam: 'Verified rescue team',
-    updated: 'GPS updated',
+    updated: 'Location recorded at assignment',
     call: 'Call',
-    navigate: 'Open navigation',
+    navigate: 'Navigate with Google Maps',
     navigationHint: 'Open Google Maps to the pickup. Its route may differ from the route shown here.',
     destinationNavigationHint:
       'Open Google Maps to the drop-off. Its route may differ from the route shown here.',
@@ -83,14 +87,16 @@ export default function RescueMapScreen() {
   const insets = useSafeAreaInsets();
   const requestQuery = useRequest(id);
   const request = requestQuery.data;
-  const [liveLocation, setLiveLocation] = useState<LocationPoint | null>(null);
-  const providerLocation = liveLocation ?? request?.providerLocation ?? null;
+  const providerLocation = request?.providerLocation ?? null;
   const route = useRoadRoute(
     id,
     Boolean(request?.assignedProviderId && providerLocation && request && isLiveStatus(request.status)),
+    request?.assignedProviderId,
+    providerLocation?.recordedAt,
   );
-  const mapRef = useRef<NativeMapView>(null);
-  const [mapReady, setMapReady] = useState(false);
+  const mapRef = useRef<MapViewHandle>(null);
+  const [mapReady, setMapReady] = useState(0);
+  const [sheetHeight, setSheetHeight] = useState(300);
   const c = useCopy(COPY);
   const language = useI18n((state) => state.language);
   const reduceMotion = useReduceMotion();
@@ -104,19 +110,11 @@ export default function RescueMapScreen() {
   );
   const routeTarget = useMemo(
     () =>
-      request
-        ? transportLeg
-          ? { latitude: request.destinationLatitude!, longitude: request.destinationLongitude! }
-          : { latitude: request.pickupLatitude, longitude: request.pickupLongitude }
+      request?.pickupLatitude != null && request?.pickupLongitude != null
+        ? { latitude: request.pickupLatitude, longitude: request.pickupLongitude }
         : null,
-    [request, transportLeg],
+    [request?.pickupLatitude, request?.pickupLongitude],
   );
-
-  useEffect(() => setLiveLocation(request?.providerLocation ?? null), [request?.providerLocation]);
-  useEffect(() => {
-    if (!request?.assignedProviderId) return;
-    return subscribeToProviderLocation(id, setLiveLocation);
-  }, [id, request?.assignedProviderId]);
 
   const region = useMemo(() => {
     if (!request) return undefined;
@@ -137,25 +135,22 @@ export default function RescueMapScreen() {
   }, [providerLocation, request, routeTarget]);
 
   useEffect(() => {
-    if (!mapReady || !request) return;
+    if (!mapReady || !routeTarget) return;
     const coordinates = route.data?.coordinates.length
       ? route.data.coordinates
       : providerLocation && routeTarget
         ? [providerLocation, routeTarget]
-        : routeTarget
-          ? [routeTarget]
-          : [{ latitude: request.pickupLatitude, longitude: request.pickupLongitude }];
+        : [routeTarget];
     mapRef.current?.fitToCoordinates(coordinates, {
       animated: !reduceMotion,
-      edgePadding: { top: insets.top + 82, right: 36, bottom: insets.bottom + 255, left: 36 },
+      edgePadding: { top: insets.top + 82, right: 36, bottom: sheetHeight + 16, left: 36 },
     });
   }, [
-    insets.bottom,
+    sheetHeight,
     insets.top,
     mapReady,
     providerLocation,
     reduceMotion,
-    request,
     route.data?.coordinates,
     routeTarget,
   ]);
@@ -186,29 +181,25 @@ export default function RescueMapScreen() {
 
   const hasRoadRoute = Boolean(route.data?.coordinates.length);
   const routingUnavailable = request.routingStatus === 'unavailable' || route.isError;
-  const mapStatus = hasRoadRoute
-    ? template(c.roadStatus, {
-        distance: (route.data!.distanceMeters / 1000).toFixed(1),
-        minutes: Math.max(1, Math.round(route.data!.durationSeconds / 60)),
-      })
-    : routingUnavailable
-      ? c.invalidRoute
-      : providerLocation
-        ? c.loadingRoute
-        : c.waitingProvider;
+  const mapStatus = !isLiveStatus(request.status)
+    ? c.closedRoute
+    : hasRoadRoute
+      ? template(c.roadStatus, {
+          distance: (route.data!.distanceMeters / 1000).toFixed(1),
+          minutes: Math.max(1, Math.round(route.data!.durationSeconds / 60)),
+        })
+      : routingUnavailable
+        ? c.invalidRoute
+        : providerLocation
+          ? c.loadingRoute
+          : c.waitingProvider;
   const canNavigate =
     profile?.role === 'provider' && profile.id === request.assignedProviderId && isLiveStatus(request.status);
 
   const openNavigation = async () => {
     setNavigationError(false);
-    const navigationTarget = routeTarget ?? {
-      latitude: request.pickupLatitude,
-      longitude: request.pickupLongitude,
-    };
-    const destination = `${navigationTarget.latitude.toFixed(6)},${navigationTarget.longitude.toFixed(6)}`;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=two-wheeler`;
     try {
-      await Linking.openURL(url);
+      await Linking.openURL(googleMapsNavigationUrl(navigationDestination(request)));
     } catch {
       setNavigationError(true);
     }
@@ -219,13 +210,12 @@ export default function RescueMapScreen() {
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         initialRegion={region}
-        mapPadding={{ top: insets.top + 72, right: 28, bottom: insets.bottom + 240, left: 28 }}
+        mapPadding={{ top: insets.top + 72, right: 28, bottom: sheetHeight + 8, left: 28 }}
         toolbarEnabled={false}
         showsMyLocationButton={false}
         loadingEnabled
-        onMapReady={() => setMapReady(true)}
+        onMapReady={() => setMapReady((count) => count + 1)}
       >
         <Marker
           coordinate={{ latitude: request.pickupLatitude, longitude: request.pickupLongitude }}
@@ -270,7 +260,10 @@ export default function RescueMapScreen() {
         <Text style={styles.title}>{c.title}</Text>
       </View>
 
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.md }]}>
+      <View
+        onLayout={(event) => setSheetHeight(event.nativeEvent.layout.height)}
+        style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.md }]}
+      >
         <View style={styles.handle} />
         <View style={styles.statusRow}>
           <Ionicons
@@ -285,6 +278,14 @@ export default function RescueMapScreen() {
             <Text style={styles.caption}>{c.noStraightLine}</Text>
           </View>
         </View>
+        {route.isError && providerLocation && isLiveStatus(request.status) ? (
+          <AppButton
+            title={c.retryRoute}
+            variant="outline"
+            loading={route.isFetching}
+            onPress={() => void route.refetch()}
+          />
+        ) : null}
         {request.providerName ? (
           <View style={styles.providerRow}>
             <View style={styles.providerIcon}>

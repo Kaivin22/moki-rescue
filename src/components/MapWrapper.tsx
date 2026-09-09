@@ -1,2 +1,2 @@
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-export { MapView, Marker, Polyline, PROVIDER_GOOGLE };
+export { MapView, Marker, Polyline } from '@/src/features/maps/OpenStreetMap';
+export type { MapViewHandle } from '@/src/features/maps/types';

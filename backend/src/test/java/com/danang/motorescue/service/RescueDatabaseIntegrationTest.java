@@ -17,6 +17,7 @@ import com.danang.motorescue.model.ApiModels.CreateRequest;
 import com.danang.motorescue.model.ApiModels.ProviderLocationRequest;
 import com.danang.motorescue.model.ApiModels.StateActionRequest;
 import com.danang.motorescue.service.ActorService.Actor;
+import com.danang.motorescue.service.RoadRoutingService.RoadPoint;
 import com.danang.motorescue.service.RoadRoutingService.RoadRoute;
 import com.danang.motorescue.support.PostgisIntegrationTestSupport;
 import com.danang.motorescue.web.ApiException;
@@ -46,18 +47,16 @@ import org.junit.jupiter.api.Timeout;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import com.danang.motorescue.support.LocalPostgis;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-@Testcontainers
 class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
 
     private static final double PICKUP_LATITUDE = 16.0544;
     private static final double PICKUP_LONGITUDE = 108.2022;
 
-    @Container
-    private static final PostgreSQLContainer<?> POSTGRES = newPostgisContainer();
+    @RegisterExtension
+    static final LocalPostgis POSTGRES = newLocalPostgis();
 
     private static final AtomicInteger FIXTURE_SEQUENCE = new AtomicInteger();
     private static DataSource dataSource;
@@ -89,9 +88,23 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     @BeforeEach
     void resetDatabaseAndServices() {
         jdbc.execute("TRUNCATE TABLE auth.users CASCADE");
+        jdbc.update("""
+                UPDATE public.service_types
+                SET matching_eta_window_seconds = 300,
+                    matching_eta_weight = 0.55,
+                    matching_experience_weight = 0.15,
+                    matching_waiting_weight = 0.15,
+                    matching_recent_cases_weight = 0.15,
+                    matching_experience_reference_cases = 50,
+                    matching_waiting_reference_seconds = 7200,
+                    matching_recent_window_days = 7,
+                    matching_recent_reference_cases = 10,
+                    matching_starvation_skip_threshold = 3,
+                    matching_offer_ttl_seconds = 45
+                """);
         FIXTURE_SEQUENCE.set(0);
 
-        matchingPolicy = new MatchingProperties(3, 45, 180, 150);
+        matchingPolicy = new MatchingProperties(180, 150);
         rescuePolicy = new RescuePolicyProperties(
                 Duration.ofMinutes(10), 3, 100, 3,
                 Duration.ofDays(30), 3, Duration.ofHours(24),
@@ -252,6 +265,95 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     }
 
     @Test
+    void matchingCountsCompletedCasesOfTheRequestedServiceAsExperience() {
+        UUID teamId = createTeam();
+        addCapability(teamId);
+        double nearLatitude = PICKUP_LATITUDE + 0.001;
+        ProviderFixture nearNewcomer = createProvider(
+                teamId, nearLatitude, PICKUP_LONGITUDE + 0.001, 20, true);
+        ProviderFixture experienced = createProvider(
+                teamId, PICKUP_LATITUDE + 0.004, PICKUP_LONGITUDE + 0.004, 20, true);
+        insertCompletedExperience(experienced, "flat_tire");
+        insertCompletedExperience(experienced, "flat_tire");
+
+        jdbc.update("""
+                UPDATE public.service_types
+                SET matching_eta_window_seconds = 300,
+                    matching_eta_weight = 0.2,
+                    matching_experience_weight = 0.8,
+                    matching_waiting_weight = 0,
+                    matching_recent_cases_weight = 0,
+                    matching_experience_reference_cases = 2
+                WHERE code = 'flat_tire'
+                """);
+        matchingPolicy = new MatchingProperties(180, 150);
+        matchingDispatch = new DispatchService(
+                runtimeJdbc, runtimeTransactions, routing, matchingPolicy, push);
+        when(routing.routesToDestination(anyList(), any())).thenAnswer(invocation -> {
+            List<RoadPoint> origins = invocation.getArgument(0);
+            return origins.stream().map(origin -> {
+                boolean isNear = Math.abs(origin.latitude() - nearLatitude) < 0.000001;
+                return Optional.of(isNear
+                        ? new RoadRoute(1_000, 300, List.of())
+                        : new RoadRoute(2_000, 480, List.of()));
+            }).toList();
+        });
+        UUID requestId = insertRequest(createActor("customer"), "searching", null);
+
+        matchingDispatch.match(requestId);
+
+        List<UUID> offeredProviders = jdbc.query(
+                "SELECT provider_id FROM public.dispatch_offers WHERE request_id = ?",
+                (rs, rowNum) -> rs.getObject(1, UUID.class), requestId);
+        assertThat(offeredProviders).containsExactly(experienced.actor().id());
+        assertThat(offeredProviders).doesNotContain(nearNewcomer.actor().id());
+    }
+
+    @Test
+    void repeatedlySkippedEligibleProviderReceivesTheNextSequentialOffer() {
+        UUID teamId = createTeam();
+        addCapability(teamId);
+        ProviderFixture experienced = createProvider(
+                teamId, PICKUP_LATITUDE + 0.001, PICKUP_LONGITUDE + 0.001, 20, true);
+        ProviderFixture newcomer = createProvider(
+                teamId, PICKUP_LATITUDE + 0.002, PICKUP_LONGITUDE + 0.002, 20, true);
+        insertCompletedExperience(experienced, "flat_tire");
+        jdbc.update("""
+                UPDATE public.service_types
+                SET matching_eta_window_seconds = 300,
+                    matching_eta_weight = 0,
+                    matching_experience_weight = 1,
+                    matching_waiting_weight = 0,
+                    matching_recent_cases_weight = 0,
+                    matching_experience_reference_cases = 1,
+                    matching_starvation_skip_threshold = 2
+                WHERE code = 'flat_tire'
+                """);
+        stubSuccessfulRoutes();
+
+        for (int round = 0; round < 2; round++) {
+            UUID requestId = insertRequest(createActor("customer"), "searching", null);
+            matchingDispatch.match(requestId);
+            assertThat(pendingOfferProvider(requestId)).isEqualTo(experienced.actor().id());
+            closeUnacceptedRequest(requestId);
+        }
+
+        assertThat(jdbc.queryForObject("""
+                SELECT consecutive_skips FROM public.provider_dispatch_stats
+                WHERE provider_id = ? AND service_code = 'flat_tire'
+                """, Integer.class, newcomer.actor().id())).isEqualTo(2);
+
+        UUID nextRequest = insertRequest(createActor("customer"), "searching", null);
+        matchingDispatch.match(nextRequest);
+
+        assertThat(pendingOfferProvider(nextRequest)).isEqualTo(newcomer.actor().id());
+        assertThat(jdbc.queryForObject("""
+                SELECT consecutive_skips FROM public.provider_dispatch_stats
+                WHERE provider_id = ? AND service_code = 'flat_tire'
+                """, Integer.class, newcomer.actor().id())).isZero();
+    }
+
+    @Test
     void expiryDoesNotStarveBehindOneHundredUnexpiredRequests() {
         transactions.executeWithoutResult(status -> {
             UUID teamId = createTeam();
@@ -290,7 +392,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
 
     @Test
     @Timeout(30)
-    void concurrentProvidersLeaveExactlyOneAcceptedOfferAndConsistentAssignment() throws Exception {
+    void sequentialDispatchCreatesOneOfferAndDatabaseRejectsConcurrentLegacyAccepts() throws Exception {
         Actor customer = createActor("customer");
         UUID teamId = createTeam();
         addCapability(teamId);
@@ -301,6 +403,19 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         stubSuccessfulRoutes();
         UUID requestId = insertRequest(customer, "searching", null);
         matchingDispatch.match(requestId);
+
+        UUID initiallyOfferedProvider = pendingOfferProvider(requestId);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM public.dispatch_offers
+                WHERE request_id = ? AND status = 'pending'
+                """, Integer.class, requestId)).isEqualTo(1);
+
+        ProviderFixture otherProvider = initiallyOfferedProvider.equals(first.actor().id()) ? second : first;
+        jdbc.update("""
+                INSERT INTO public.dispatch_offers(
+                  request_id, provider_id, team_id, road_distance_m, eta_seconds, expires_at)
+                VALUES (?, ?, ?, 1200, 360, NOW() + INTERVAL '1 minute')
+                """, requestId, otherProvider.actor().id(), teamId);
 
         Map<UUID, UUID> offerByProvider = jdbc.query("""
                 SELECT provider_id, id FROM public.dispatch_offers WHERE request_id = ?
@@ -406,6 +521,71 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
             }
             connection.rollback();
         }
+    }
+
+    @Test
+    void assignmentRouteUsesFixedPositionEvenAfterProviderMovesAndGpsAges() {
+        Actor customer = createActor("customer");
+        ProviderFixture provider = createProvider(createTeam(), 16.06, 108.21, 20, true);
+        UUID requestId = insertRequest(customer, "assigned", provider);
+        var queries = new RescueQueryService(runtimeJdbc, routing, rescuePolicy, matchingPolicy,
+                new RescueRequestAccess(runtimeJdbc));
+        var captured = queries.details(customer, requestId).providerLocation();
+        assertThat(captured).isNotNull();
+        assertThat(captured.latitude()).isEqualTo(16.06);
+        assertThat(queries.details(customer, requestId).providerLocationStatus()).isEqualTo("snapshot");
+
+        jdbc.update("UPDATE public.provider_members SET last_latitude = 16.09, last_longitude = 108.24 WHERE user_id = ?",
+                provider.actor().id());
+        jdbc.update("UPDATE public.rescue_requests SET assigned_provider_position_at = NOW() - INTERVAL '2 hours' WHERE id = ?",
+                requestId);
+        jdbc.update("UPDATE public.rescue_requests SET status = 'en_route' WHERE id = ?", requestId);
+        assertThat(queries.details(customer, requestId).providerLocation().latitude()).isEqualTo(16.06);
+        assertThat(queries.details(customer, requestId).providerLocationStatus()).isEqualTo("snapshot");
+        when(routing.routeWithGeometry(16.06, 108.21, PICKUP_LATITUDE, PICKUP_LONGITUDE))
+                .thenReturn(Optional.of(new RoadRoute(1800, 360, List.of(
+                        new RoadPoint(16.06, 108.21), new RoadPoint(PICKUP_LATITUDE, PICKUP_LONGITUDE)))));
+        var route = queries.roadRoute(customer, requestId);
+        assertThat(route.distanceMeters()).isEqualTo(1800);
+        assertThat(route.coordinates()).hasSize(2);
+        verify(routing).routeWithGeometry(16.06, 108.21, PICKUP_LATITUDE, PICKUP_LONGITUDE);
+        assertApiCode("REQUEST_ACCESS_DENIED", () -> queries.roadRoute(createActor("customer"), requestId));
+
+        jdbc.update("UPDATE public.rescue_requests SET status = 'cancelled', cancellation_reason = 'test' WHERE id = ?", requestId);
+        assertThat(queries.details(customer, requestId).providerLocation()).isNull();
+        assertThat(jdbc.queryForObject("SELECT assigned_provider_latitude FROM public.rescue_requests WHERE id = ?",
+                Double.class, requestId)).isNull();
+        assertApiCode("ROUTE_NOT_ACTIVE", () -> queries.roadRoute(customer, requestId));
+    }
+
+    @Test
+    void reassigningProviderReplacesSnapshotAndMissingSnapshotIsNotFabricated() {
+        Actor customer = createActor("customer");
+        UUID team = createTeam();
+        ProviderFixture first = createProvider(team, 16.06, 108.21, 20, true);
+        ProviderFixture second = createProvider(team, 16.07, 108.22, 20, true);
+        UUID requestId = insertRequest(customer, "assigned", first);
+        var queries = new RescueQueryService(runtimeJdbc, routing, rescuePolicy, matchingPolicy,
+                new RescueRequestAccess(runtimeJdbc));
+        jdbc.update("UPDATE public.rescue_requests SET assigned_provider_id = ? WHERE id = ?", second.actor().id(), requestId);
+        assertThat(queries.details(customer, requestId).providerLocation().latitude()).isEqualTo(16.07);
+        jdbc.update("UPDATE public.rescue_requests SET assigned_provider_position_at = NULL WHERE id = ?", requestId);
+        assertThat(queries.details(customer, requestId).providerLocation()).isNull();
+        assertApiCode("PROVIDER_LOCATION_PENDING", () -> queries.roadRoute(customer, requestId));
+    }
+
+    @Test
+    void retiredLiveGpsIsRejectedWhileAvailabilityGpsStillWorks() {
+        ProviderFixture provider = createProvider(createTeam(), 16.06, 108.21, 20, true);
+        providers.saveAvailabilityLocation(provider.actor(), new ProviderLocationRequest(16.07, 108.22, 15.0));
+        UUID requestId = insertRequest(createActor("customer"), "assigned", provider);
+        assertApiCode("LOCATION_NOT_ALLOWED", () -> providers.saveLocation(provider.actor(), requestId,
+                new ProviderLocationRequest(16.08, 108.23, 15.0)));
+        assertThat(count("public.provider_location_checkpoints")).isZero();
+        assertThat(jdbc.queryForObject("SELECT public.can_access_realtime_topic(?, TRUE)",
+                Boolean.class, "rescue:" + requestId)).isFalse();
+        assertThat(jdbc.queryForObject("SELECT public.can_access_realtime_topic(?, FALSE)",
+                Boolean.class, "rescue:" + requestId)).isFalse();
     }
 
     private RescueCreationService creationService() {
@@ -547,6 +727,41 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
                 String.format("+848%08d", sequence), available,
                 latitude, longitude, accuracy);
         return new ProviderFixture(actor, teamId);
+    }
+
+    private void insertCompletedExperience(ProviderFixture provider, String serviceCode) {
+        Actor customer = createActor("customer");
+        jdbc.update("""
+                INSERT INTO public.rescue_requests(
+                  id, customer_id, service_code, idempotency_key, status,
+                  vehicle_power_type, pickup_area_label,
+                  pickup_latitude, pickup_longitude, pickup_source,
+                  pickup_accuracy_m, safety_acknowledged,
+                  assigned_team_id, assigned_provider_id, work_type, completed_at)
+                VALUES (?, ?, ?, ?, 'completed', 'gasoline', 'Hải Châu',
+                        ?, ?, 'gps', 20, TRUE, ?, ?, 'repair', NOW())
+                """, UUID.randomUUID(), customer.id(), serviceCode, UUID.randomUUID(),
+                PICKUP_LATITUDE, PICKUP_LONGITUDE, provider.teamId(), provider.actor().id());
+    }
+
+    private UUID pendingOfferProvider(UUID requestId) {
+        return jdbc.queryForObject("""
+                SELECT provider_id FROM public.dispatch_offers
+                WHERE request_id = ? AND status = 'pending'
+                """, UUID.class, requestId);
+    }
+
+    private void closeUnacceptedRequest(UUID requestId) {
+        jdbc.update("""
+                UPDATE public.dispatch_offers
+                SET status = 'withdrawn'
+                WHERE request_id = ? AND status = 'pending'
+                """, requestId);
+        jdbc.update("""
+                UPDATE public.rescue_requests
+                SET status = 'no_provider'
+                WHERE id = ? AND status = 'offered'
+                """, requestId);
     }
 
     private UUID insertRequest(Actor customer, String status, ProviderFixture assignedProvider) {

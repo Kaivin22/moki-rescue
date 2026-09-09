@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { MapView, Marker, Polyline, PROVIDER_GOOGLE } from '@/src/components/MapWrapper';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { MapView, Marker, Polyline } from '@/src/components/MapWrapper';
 import { Colors } from '@/src/constants/colors';
 import { displayPhone, type RescueMapRegion } from '@/src/features/rescue/services/rescueDetailsPolicy';
 import type { LocationPoint, RequestDetails, RoadRoute } from '@/src/types/rescue';
@@ -22,7 +22,6 @@ export function RescueMapSection({ request, providerLocation, route, region, ins
     <View style={styles.mapWrap}>
       <MapView
         style={StyleSheet.absoluteFill}
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         region={region}
         mapPadding={{ top: insetTop + 58, right: 16, bottom: 28, left: 16 }}
         toolbarEnabled={false}

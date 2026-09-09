@@ -15,6 +15,8 @@ import { rescueKeys, useRequests } from '@/src/features/rescue/hooks/useRescueQu
 import { useAuthStore } from '@/src/stores/authStore';
 import { useAvailableProviderLocation } from '@/src/features/rescue/hooks/useAvailableProviderLocation';
 import { RescueTiming } from '@/src/features/rescue/config/operational';
+import { stopAvailabilityBackgroundTracking } from '@/src/features/rescue/services/availabilityBackgroundLocation';
+import type { ProviderStatus } from '@/src/types/rescue';
 import { isStaffRole } from '@/src/features/auth/roles';
 import { useCopy } from '@/src/i18n';
 
@@ -139,6 +141,11 @@ export default function OperationsScreen() {
   const accept = useMutation({
     mutationFn: ({ id, version }: { id: string; version: number }) => rescueApi.acceptOffer(id, version),
     onSuccess: ({ requestId }) => {
+      // Stop availability immediately, including when the status refresh is offline.
+      client.setQueryData<ProviderStatus>(rescueKeys.providerStatus, (previous) =>
+        previous ? { ...previous, available: false } : previous,
+      );
+      void stopAvailabilityBackgroundTracking().catch(() => undefined);
       void client.invalidateQueries({ queryKey: rescueKeys.all });
       router.push(`/rescue/${requestId}`);
     },

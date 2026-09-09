@@ -22,14 +22,12 @@ import org.springframework.http.MediaType;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import com.danang.motorescue.support.LocalPostgis;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-@Testcontainers
 class AccountDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
-    @Container
-    private static final PostgreSQLContainer<?> POSTGRES = newPostgisContainer();
+    @RegisterExtension
+    static final LocalPostgis POSTGRES = newLocalPostgis();
     private static JdbcTemplate owner;
     private static JdbcTemplate runtime;
     private static TransactionTemplate transactions;

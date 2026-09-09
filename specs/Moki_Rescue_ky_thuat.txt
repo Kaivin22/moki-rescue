@@ -26,7 +26,7 @@ Moki Rescue hỗ trợ khách gặp sự cố kỹ thuật xe máy tại vùng p
   - phân loại nguy cơ trước khi tạo ca;
   - xác nhận/kéo ghim vị trí nhận cứu hộ;
   - tìm đội đối tác đã được xác minh, có đúng năng lực;
-  - xếp hạng provider theo ETA của tuyến giao thông thực tế;
+  - tạo nhóm provider có ETA chấp nhận được rồi xếp hạng theo chính sách cấu hình và chống bỏ đói;
   - chống hai provider nhận cùng một ca;
   - theo dõi provider sau khi nhận ca;
   - xác nhận hai phía khi đến và khi hoàn tất;
@@ -251,9 +251,13 @@ legacy khớp chính xác B1 mới được baseline version 1 theo scripts/READ
    GPS có accuracy hợp lệ/còn mới, trong service radius và không bận ca khác.
 8. OSRM Table tính route cho toàn bộ candidate hợp lệ theo lô tối đa cấu hình;
    NoRoute bị loại và thứ tự lô được ghép lại nguyên vẹn.
-9. Kết quả xếp theo duration đường bộ, rồi road distance và provider UUID để phá hòa;
-   không dùng Haversine quyết định shortlist hoặc kết quả cuối.
-10. Tạo tối đa MATCHING_OFFER_COUNT offer với TTL cấu hình.
+9. Lấy ETA tốt nhất làm mốc và loại ứng viên có ETA vượt quá cửa sổ cấu hình của dịch vụ.
+   Trong nhóm còn lại, chi phí chuẩn hóa kết hợp chênh lệch ETA, số ca completed đúng
+   service_code, thời gian chờ và số ca đã nhận gần đây. Không dùng Haversine quyết định
+   shortlist hoặc kết quả cuối.
+10. Nếu provider liên tục đủ điều kiện và thuộc nhóm ETA nhưng chưa được mời đến ngưỡng
+   cấu hình, họ được đưa lên trước ở lần phù hợp tiếp theo. Mỗi thời điểm chỉ tạo một offer;
+   từ chối hoặc hết TTL mới chuyển sang người kế tiếp.
 11. SQL api_accept_dispatch_offer khóa request, offer và provider; chỉ một bên thắng.
 12. Sau assigned mới trả tên, đội, phương tiện và contact phone đã xác minh.
 

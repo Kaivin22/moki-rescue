@@ -63,12 +63,19 @@ export function useRequest(id: string) {
   });
 }
 
-export function useRoadRoute(id: string, enabled: boolean) {
+export function useRoadRoute(
+  id: string,
+  enabled: boolean,
+  providerId?: string | null,
+  assignmentAt?: string,
+) {
   return useQuery({
-    queryKey: rescueKeys.route(id),
+    queryKey: [...rescueKeys.route(id), providerId, assignmentAt],
     queryFn: () => rescueApi.roadRoute(id),
     enabled,
-    refetchInterval: enabled ? RescueTiming.roadRouteRefetchMs : false,
+    staleTime: Infinity,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
     retry: false,
   });
 }

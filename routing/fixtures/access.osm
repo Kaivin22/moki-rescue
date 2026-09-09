@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic test graph, NOT real OSM data. Eastbound takes north detour;
+     westbound takes south detour because northern road is one-way. -->
+<osm version="0.6" generator="Moki routing tests">
+  <node id="1" lat="16.05" lon="108.2"/>
+  <node id="2" lat="16.05" lon="108.21"/>
+  <node id="3" lat="16.055" lon="108.2"/>
+  <node id="4" lat="16.055" lon="108.21"/>
+  <node id="5" lat="16.04" lon="108.2"/>
+  <node id="6" lat="16.04" lon="108.21"/>
+  <way id="10"><nd ref="1"/><nd ref="2"/><tag k="highway" v="motorway"/><tag k="name" v="forbidden-motorway"/></way>
+  <way id="11"><nd ref="1"/><nd ref="2"/><tag k="highway" v="residential"/><tag k="motorcycle" v="no"/><tag k="name" v="forbidden-motorcycle"/></way>
+  <way id="12"><nd ref="1"/><nd ref="2"/><tag k="highway" v="footway"/><tag k="name" v="forbidden-footway"/></way>
+  <way id="20"><nd ref="1"/><nd ref="3"/><tag k="highway" v="residential"/><tag k="name" v="north-west"/></way>
+  <way id="21"><nd ref="3"/><nd ref="4"/><tag k="highway" v="residential"/><tag k="motor_vehicle" v="no"/><tag k="motorcycle" v="yes"/><tag k="oneway" v="yes"/><tag k="name" v="motorcycle-access"/></way>
+  <way id="22"><nd ref="4"/><nd ref="2"/><tag k="highway" v="residential"/><tag k="name" v="north-east"/></way>
+  <way id="30"><nd ref="1"/><nd ref="5"/><nd ref="6"/><nd ref="2"/><tag k="highway" v="residential"/><tag k="name" v="south-detour"/></way>
+</osm>

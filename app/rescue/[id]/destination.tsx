@@ -1,12 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
 import { ScreenHeader } from '@/src/components/atoms/ScreenHeader';
-import { MapView, Marker, PROVIDER_GOOGLE } from '@/src/components/MapWrapper';
+import { MapView, Marker } from '@/src/components/MapWrapper';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { useCurrentLocation } from '@/src/features/location/hooks/useCurrentLocation';
@@ -109,7 +109,6 @@ export default function RescueDestinationScreen() {
         <View style={styles.mapWrap}>
           <MapView
             style={StyleSheet.absoluteFill}
-            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
             initialRegion={{
               latitude: request.pickupLatitude,
               longitude: request.pickupLongitude,

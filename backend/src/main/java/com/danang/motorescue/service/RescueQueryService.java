@@ -112,17 +112,10 @@ public class RescueQueryService {
                 rs.getLong("amount_vnd"), rs.getString("work_type"), rs.getString("status"),
                 rs.getTimestamp("created_at").toInstant()) : null, requestId);
 
-        LocationPoint location = isTrackable(row.status()) ? jdbc.query("""
-                    SELECT latitude, longitude, accuracy_m, recorded_at
-                    FROM public.provider_location_checkpoints WHERE request_id = ?
-                    ORDER BY recorded_at DESC LIMIT 1
-                    """, rs -> rs.next() ? new LocationPoint(
-                    rs.getDouble("latitude"), rs.getDouble("longitude"), getDouble(rs, "accuracy_m"),
-                    rs.getTimestamp("recorded_at").toInstant()) : null, requestId) : null;
+        LocationPoint location = isTrackable(row.status()) ? assignmentLocation(requestId, row.assignedProviderId()) : null;
         String providerLocationStatus = !isTrackable(row.status()) ? "not_applicable"
                 : location == null ? "pending"
-                : location.recordedAt().isBefore(Instant.now().minusSeconds(
-                        matchingPolicy.providerLocationMaxAgeSeconds())) ? "stale" : "fresh";
+                : "snapshot";
 
         List<String> attentionCodes = jdbc.query("""
                 SELECT code FROM public.case_attention_flags
@@ -197,47 +190,41 @@ public class RescueQueryService {
     public RoadRouteResponse roadRoute(Actor actor, UUID requestId) {
         RescueRequestData request = access.requireParticipant(actor, requestId);
         if (!isTrackable(request.status())) {
-            throw new ApiException(HttpStatus.CONFLICT, "ROUTE_NOT_ACTIVE", "Tuyến theo dõi đã dừng vì ca không còn hoạt động.");
+            throw new ApiException(HttpStatus.CONFLICT, "ROUTE_NOT_ACTIVE", "Ca không còn hoạt động để xem tuyến đường.");
         }
         if (request.assignedProviderId() == null) {
             throw new ApiException(HttpStatus.CONFLICT, "PROVIDER_NOT_ASSIGNED", "Yêu cầu chưa có cứu hộ viên.");
         }
-        LocationPoint provider = jdbc.query("""
-                SELECT latitude, longitude, accuracy_m, recorded_at
-                FROM public.provider_location_checkpoints
-                WHERE request_id = ? ORDER BY recorded_at DESC LIMIT 1
-                """, rs -> rs.next() ? new LocationPoint(
-                rs.getDouble("latitude"), rs.getDouble("longitude"), getDouble(rs, "accuracy_m"),
-                rs.getTimestamp("recorded_at").toInstant()) : null, requestId);
+        LocationPoint provider = assignmentLocation(requestId, request.assignedProviderId());
         if (provider == null) {
-            throw new ApiException(HttpStatus.CONFLICT, "PROVIDER_LOCATION_PENDING", "Chưa nhận được vị trí mới của cứu hộ viên.");
-        }
-        if (provider.recordedAt().isBefore(Instant.now().minusSeconds(
-                matchingPolicy.providerLocationMaxAgeSeconds()))) {
-            throw new ApiException(HttpStatus.CONFLICT, "PROVIDER_LOCATION_STALE",
-                    "Vị trí cứu hộ viên đã quá cũ; tuyến đường tạm dừng cho đến khi GPS cập nhật lại.");
+            throw new ApiException(HttpStatus.CONFLICT, "PROVIDER_LOCATION_PENDING", "Ca này chưa lưu vị trí cứu hộ viên tại thời điểm nhận ca.");
         }
         if (provider.accuracyM() == null
                 || provider.accuracyM() > matchingPolicy.providerLocationMaxAccuracyMeters()) {
             throw new ApiException(HttpStatus.CONFLICT, "PROVIDER_LOCATION_INACCURATE",
                     "Vị trí cứu hộ viên chưa đủ chính xác để tính tuyến đường.");
         }
-        boolean transportLeg = "transporting".equals(request.status())
-                || ("awaiting_completion".equals(request.status()) && "transport".equals(request.workType()));
-        if (transportLeg && request.destinationLatitude() == null) {
-            throw new ApiException(HttpStatus.CONFLICT, "DESTINATION_REQUIRED",
-                    "Ca vận chuyển chưa có điểm giao xe hợp lệ.");
-        }
-        double targetLatitude = transportLeg ? request.destinationLatitude() : request.pickupLatitude();
-        double targetLongitude = transportLeg ? request.destinationLongitude() : request.pickupLongitude();
         RoadRoutingService.RoadRoute route = routing.routeWithGeometry(
-                        provider.latitude(), provider.longitude(), targetLatitude, targetLongitude)
+                        provider.latitude(), provider.longitude(), request.pickupLatitude(), request.pickupLongitude())
                 .orElseThrow(() -> new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "ROUTING_UNAVAILABLE",
                         "Dịch vụ tuyến đường xe máy đang tạm thời không khả dụng."));
-        return new RoadRouteResponse(transportLeg ? "to_destination" : "to_pickup",
+        return new RoadRouteResponse("to_pickup",
                 route.distanceMeters(), route.durationSeconds(), route.coordinates().stream()
                 .map(point -> new RouteCoordinate(point.latitude(), point.longitude()))
                 .toList());
+    }
+
+    private LocationPoint assignmentLocation(UUID requestId, UUID providerId) {
+        return jdbc.query("""
+                SELECT assigned_provider_latitude, assigned_provider_longitude,
+                       assigned_provider_accuracy_m, assigned_provider_position_at
+                FROM public.rescue_requests WHERE id = ? AND assigned_provider_id = ?
+                  AND assigned_provider_latitude IS NOT NULL AND assigned_provider_longitude IS NOT NULL
+                  AND assigned_provider_position_at IS NOT NULL
+                """, rs -> rs.next() ? new LocationPoint(
+                rs.getDouble("assigned_provider_latitude"), rs.getDouble("assigned_provider_longitude"),
+                getDouble(rs, "assigned_provider_accuracy_m"),
+                rs.getTimestamp("assigned_provider_position_at").toInstant()) : null, requestId, providerId);
     }
 
     private RatingSummary ratingForProvider(UUID providerId) {

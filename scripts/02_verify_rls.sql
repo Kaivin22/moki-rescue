@@ -12,7 +12,8 @@ BEGIN
     'rescue_requests', 'dispatch_offers', 'quotes', 'request_status_events',
     'case_attention_flags', 'request_feedback_events', 'provider_location_checkpoints',
     'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
-    'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows'
+    'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
+    'provider_dispatch_stats'
   ] LOOP
     IF to_regclass('public.' || table_name) IS NULL THEN
       missing_tables := array_append(missing_tables, table_name);
@@ -39,14 +40,24 @@ BEGIN
     ('team_verification_checks', 'checked_at'),
     ('provider_members', 'contact_phone_e164'),
     ('provider_members', 'location_accuracy_m'),
+    ('provider_members', 'available_since'),
     ('provider_location_checkpoints', 'accuracy_m'),
     ('service_types', 'label_en'),
     ('service_types', 'description_en'),
     ('service_types', 'requires_destination'),
+    ('service_types', 'matching_eta_window_seconds'),
+    ('service_types', 'matching_starvation_skip_threshold'),
+    ('service_types', 'matching_offer_ttl_seconds'),
+    ('provider_dispatch_stats', 'consecutive_skips'),
+    ('provider_dispatch_stats', 'last_offered_at'),
     ('service_zones', 'boundary'),
     ('rescue_requests', 'pickup_location'),
     ('rescue_requests', 'pickup_source'),
     ('rescue_requests', 'pickup_accuracy_m'),
+    ('rescue_requests', 'assigned_provider_latitude'),
+    ('rescue_requests', 'assigned_provider_longitude'),
+    ('rescue_requests', 'assigned_provider_accuracy_m'),
+    ('rescue_requests', 'assigned_provider_position_at'),
     ('rescue_requests', 'destination_location'),
     ('rescue_requests', 'work_type'),
     ('rescue_requests', 'cancellation_code'),
@@ -108,7 +119,9 @@ BEGIN
     ('service_zones_boundary_gix'),
     ('provider_members_location_gix'),
     ('push_devices_installation_id_key'),
-    ('push_delivery_receipts_pending_idx')
+    ('push_delivery_receipts_pending_idx'),
+    ('provider_dispatch_stats_service_skips_idx'),
+    ('dispatch_offers_provider_accepted_recent_idx')
   ) AS required(index_name)
   WHERE to_regclass('public.' || required.index_name) IS NULL;
 
@@ -134,7 +147,8 @@ BEGIN
       'rescue_requests', 'dispatch_offers', 'quotes', 'request_status_events',
       'case_attention_flags', 'request_feedback_events', 'provider_location_checkpoints',
       'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
-      'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows'
+      'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
+      'provider_dispatch_stats'
     )
     AND NOT c.relrowsecurity;
 
@@ -219,7 +233,7 @@ BEGIN
       'dispatch_offers', 'quotes', 'request_status_events', 'case_attention_flags',
       'request_feedback_events', 'provider_location_checkpoints', 'reviews', 'incident_reports',
       'team_quality_alerts', 'push_devices', 'push_delivery_receipts',
-      'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows'
+      'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows', 'provider_dispatch_stats'
     )
     AND privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER');
 
@@ -245,7 +259,8 @@ BEGIN
       'rescue_requests', 'dispatch_offers', 'quotes', 'request_status_events',
       'case_attention_flags', 'request_feedback_events', 'provider_location_checkpoints',
       'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
-      'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows'
+      'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
+      'provider_dispatch_stats'
     );
 
   IF exposed_reads IS NOT NULL THEN
@@ -328,7 +343,7 @@ BEGIN
     ('request_status_events'), ('case_attention_flags'), ('request_feedback_events'),
     ('provider_location_checkpoints'), ('reviews'), ('incident_reports'), ('team_quality_alerts'),
     ('push_devices'), ('push_delivery_receipts'), ('audit_logs'), ('assistant_usage_events'),
-    ('api_rate_limit_windows')
+    ('api_rate_limit_windows'), ('provider_dispatch_stats')
   ) AS required(table_name)
   WHERE NOT EXISTS (
     SELECT 1 FROM pg_policies p
@@ -377,6 +392,14 @@ BEGIN
     AND has_table_privilege('motorescue_api', 'public.api_rate_limit_windows', 'DELETE')
   ) THEN
     RAISE EXCEPTION 'MOTORESCUE_API_RATE_LIMIT_GRANT_MISSING';
+  END IF;
+  IF NOT (
+    has_table_privilege('motorescue_api', 'public.provider_dispatch_stats', 'SELECT')
+    AND has_table_privilege('motorescue_api', 'public.provider_dispatch_stats', 'INSERT')
+    AND has_table_privilege('motorescue_api', 'public.provider_dispatch_stats', 'UPDATE')
+    AND has_table_privilege('motorescue_api', 'public.provider_dispatch_stats', 'DELETE')
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_DISPATCH_STATS_GRANT_MISSING';
   END IF;
   IF NOT (
     has_table_privilege('motorescue_api', 'public.service_types', 'SELECT')

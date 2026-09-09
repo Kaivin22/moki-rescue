@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
+import { googleMapsNavigationUrl, navigationDestination } from '@/src/features/rescue/services/navigation';
+import { isLiveStatus } from '@/src/features/rescue/status';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
 import { ApiClientError } from '@/src/features/rescue/api/client';
@@ -39,6 +41,22 @@ export function ProviderRescueActions({ request }: { request: RequestDetails }) 
   };
   return (
     <View style={styles.actions}>
+      {isLiveStatus(request.status) && (
+        <AppButton
+          title={c.navigate}
+          variant="outline"
+          onPress={() => {
+            setMessage(null);
+            try {
+              void Linking.openURL(googleMapsNavigationUrl(navigationDestination(request))).catch(() =>
+                setMessage(c.navigationError),
+              );
+            } catch {
+              setMessage(c.navigationError);
+            }
+          }}
+        />
+      )}
       {request.status === 'assigned' ? (
         <AppButton title={c.startTrip} onPress={() => void runAction('start_trip')} />
       ) : null}

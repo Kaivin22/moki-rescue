@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
 import { ScreenHeader } from '@/src/components/atoms/ScreenHeader';
-import { MapView, Marker, PROVIDER_GOOGLE } from '@/src/components/MapWrapper';
+import { MapView, Marker } from '@/src/components/MapWrapper';
 import { Colors } from '@/src/constants/colors';
 import { Fonts, Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { ApiClientError } from '@/src/features/rescue/api/client';
@@ -377,7 +377,6 @@ export default function CreateRequestScreen() {
               {location.coordinate || DEFAULT_MAP_CENTER ? (
                 <MapView
                   style={StyleSheet.absoluteFill}
-                  provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
                   region={{
                     latitude:
                       mapTarget === 'destination' && destination.coordinate

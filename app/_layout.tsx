@@ -17,7 +17,10 @@ import { AssistantBubble } from '@/src/features/assistant/components/AssistantBu
 import { AppErrorBoundary } from '@/src/components/AppErrorBoundary';
 import { hasCurrentConsent } from '@/src/features/auth/access';
 import { useI18n } from '@/src/i18n';
-import { stopAllProviderBackgroundTracking } from '@/src/features/rescue/services/backgroundLocation';
+import {
+  stopAllProviderBackgroundTracking,
+  stopProviderBackgroundTracking,
+} from '@/src/features/rescue/services/backgroundLocation';
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -39,6 +42,7 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
   const lastUserId = useRef<string | null>(null);
 
   useEffect(() => {
+    void stopProviderBackgroundTracking().catch(() => undefined);
     void initialize();
     const {
       data: { subscription },

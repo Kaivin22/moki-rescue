@@ -9,7 +9,7 @@ Spring Boot là ranh giới tin cậy duy nhất cho mutation nghiệp vụ. Mob
 - Lọc ứng viên hợp lệ bằng PostGIS, route toàn bộ danh sách theo các lô OSRM Table và xếp hạng ETA đường xe máy.
 - Phát đề nghị có TTL, tự hết hạn bằng scheduled job và nhận ca nguyên tử tại PostgreSQL.
 - Kiểm tra state machine, optimistic version, xác nhận hai phía và báo giá.
-- Nhận checkpoint GPS có giới hạn, phát push và ghi audit cho thao tác nhạy cảm.
+- Nhận GPS chờ ca, lưu vị trí cố định khi phân công, phát push và ghi audit; không theo dõi hành trình trực tiếp.
 - Quản lý mạng đối tác khép kín: mã hồ sơ nội bộ, checklist ngoại tuyến, năng lực, cứu hộ viên và quản trị viên vận hành. Chỉ kích hoạt đội khi đủ điều kiện; không lưu tài liệu pháp lý hoặc giấy tờ cá nhân.
 - Cung cấp trợ lý Gemini giới hạn trong cách dùng Moki Rescue, lọc input trước model, kiểm output sau model và không lưu nội dung chat.
 
@@ -21,8 +21,7 @@ Spring Boot là ranh giới tin cậy duy nhất cho mutation nghiệp vụ. Mob
 - `/api/requests/*`: tạo/xem/hủy theo giai đoạn, state action, route, quote và review.
 
 Khách được tự hủy trước khi xác nhận đội đã đến. Khi đội đã xuất phát, hệ thống lưu
-mã lý do, đánh dấu hủy muộn và chỉ lưu kết luận GPS gần/không gần thay vì sao chép tọa
-độ. Từ lần hủy muộn có dấu hiệu lạm dụng thứ ba trong cửa sổ mặc định 30 ngày, việc tạo
+mã lý do và đánh dấu hủy muộn. Ca mới không có GPS hành trình nên bằng chứng provider gần/không gần là không xác định; không dùng snapshot lúc nhận ca để kết luận vị trí lúc hủy. Từ lần hủy muộn có dấu hiệu lạm dụng thứ ba trong cửa sổ mặc định 30 ngày, việc tạo
 ca mới tạm dừng 24 giờ; báo chưa thấy đội không bị tính nếu GPS không xác nhận đội ở gần.
 Hệ thống không thu phí và không tự khóa tài khoản. Sau khi đã xác nhận đội đến, khách
 phải liên hệ quản trị viên vận hành để dừng ca.
@@ -39,27 +38,7 @@ phải liên hệ quản trị viên vận hành để dừng ca.
 
 ### Integration test PostgreSQL/PostGIS
 
-Docker phải đang chạy trước khi thực thi test backend. Testcontainers khởi tạo
-`postgis/postgis:16-3.5`, chạy toàn bộ Flyway migration thật rồi kiểm tra các service
-trên transaction PostgreSQL thật; không kết nối Supabase cloud và không mock database.
-Chỉ các hệ thống ngoài database như OSRM và Expo Push được thay bằng test double.
-
-```powershell
-# Toàn bộ test backend, gồm integration test database
-.\mvnw.cmd test
-
-# Chỉ migration và nghiệp vụ database
-.\mvnw.cmd "-Dtest=DatabaseMigrationIntegrationTest,RescueDatabaseIntegrationTest" test
-```
-
-CI kiểm tra Docker trước khi chạy Maven để không thể vô tình bỏ qua integration test
-do thiếu Docker daemon.
-
-Từ 05/09/2026, chạy toàn bộ test local cũng **fail** nếu thiếu Docker, không tự skip.
-Nếu chỉ muốn chạy unit test, phải chọn rõ `./mvnw "-Dtest=!*IntegrationTest" test`
-(Windows: `.\mvnw.cmd "-Dtest=!*IntegrationTest" test`). Kết quả này không thay thế full test.
-Test account/push/quota dùng role runtime `motorescue_api`; fixture/migration dùng owner
-trong container tạm thời. Không dùng credential hoặc database Supabase thật cho test.
+Test dùng PostgreSQL/PostGIS cài trực tiếp, cluster riêng và database ngẫu nhiên cho từng suite. Cấu hình, guard chống kết nối database thật, lệnh full test/unit test và giới hạn kiểm chứng: [TESTING.md](TESTING.md).
 
 ## Database migration
 
@@ -78,7 +57,7 @@ Delivery là at-least-once: crash sau khi Expo nhận nhưng trước khi lưu k
 thể gửi lặp cùng `notificationId`; không cam kết exactly-once. Theo dõi bản ghi
 `failed`, `expired`, backlog và receipt khi vận hành.
 
-Flyway đọc migration từ `src/main/resources/db/migration`. `B1__initial_schema.sql` là baseline tích lũy cho database PostgreSQL/PostGIS sạch; V2 sửa khóa khi nhận offer, V3 phục hồi điều phối và V4 thêm push outbox. Thay đổi tiếp theo phải bắt đầu từ `V5__...` và không sửa file đã applied.
+Flyway đọc migration từ `src/main/resources/db/migration`. `B1__initial_schema.sql` là baseline tích lũy cho database PostgreSQL/PostGIS sạch; V2 sửa khóa khi nhận offer, V3 phục hồi điều phối và V4 thêm push outbox. Hiện có V5 gộp vai trò, V6/V7 ghép ca có cấu hình/công bằng, V8 lưu vị trí lúc nhận ca và chặn GPS live. Thay đổi tiếp theo phải dùng V9 trở lên; không sửa migration đã applied.
 
 Migration được chạy như một deployment job bằng database owner riêng:
 
@@ -97,7 +76,7 @@ Auto-migration khi application startup mặc định tắt. Chỉ bật `SPRING_
 
 Runtime database phải dùng `SPRING_DATASOURCE_USERNAME=motorescue_api`, không dùng `postgres`. `GEMINI_API_KEY` là secret backend bắt buộc nếu bật trợ lý và không bao giờ dùng prefix `EXPO_PUBLIC_`.
 
-Dockerfile multi-stage, Compose và smoke script nằm trong `backend`; xem
+Backend chạy trực tiếp bằng Java 21; xem
 [`DEPLOYMENT`](../docs/DEPLOYMENT.md) và [`STAGING_VALIDATION`](../docs/STAGING_VALIDATION.md).
 API integration test khởi tạo toàn bộ Spring context, controller/security filter và
 runtime JDBC thật; chỉ giả lập JWT decoder. Chữ ký/JWKS/OTP thật vẫn phải test staging.

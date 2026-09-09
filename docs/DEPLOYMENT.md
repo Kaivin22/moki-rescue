@@ -10,27 +10,30 @@
 
 ## 2. Cấu hình
 
-Sao chép `.env.example` thành `.env`. Client chỉ nhận Supabase URL + publishable/anon key, API URL, hotline, EAS project ID và Maps key đã restriction. Database password, Expo access token và Gemini key chỉ ở backend secret store. `EXPO_PUBLIC_API_URL` là origin/prefix đứng trước `/api`, không thêm `/api` lần nữa.
+Sao chép `.env.example` thành `.env`. Client chỉ nhận Supabase URL + publishable/anon key, API URL, hotline, EAS project ID và cấu hình tile OpenStreetMap. Không dùng Google Maps API key. Database password, Expo access token và Gemini key chỉ ở backend secret store. `EXPO_PUBLIC_API_URL` là origin/prefix đứng trước `/api`, không thêm `/api` lần nữa.
 
-`APP_ENV=production` làm Expo config fail-fast nếu thiếu Supabase, API, Maps, hotline, EAS project ID hoặc tâm bản đồ ban đầu. Tâm bản đồ chỉ là viewport public; polygon `service_zones` trong database mới là nguồn quyết định có nhận ca hay không. Không dùng `localhost` cho API URL trên điện thoại thật.
+`APP_ENV=production` làm Expo config fail-fast nếu thiếu Supabase, API, hotline, EAS project ID hoặc tâm bản đồ ban đầu. Tâm bản đồ chỉ là viewport public; polygon `service_zones` trong database mới là nguồn quyết định có nhận ca hay không. Không dùng `localhost` cho API URL trên điện thoại thật.
+
+Chính sách ghép ca được lưu theo từng dòng `service_types`: ngưỡng chênh lệch ETA, trọng số ETA/kinh nghiệm/thời gian chờ/số ca gần đây, các mốc chuẩn hóa, ngưỡng chống bỏ đói và TTL đề nghị. Chỉ hiệu chỉnh trên staging bằng migration hoặc SQL đã review; không sửa trực tiếp production mà không ghi lại giá trị trước/sau. “Kinh nghiệm” chỉ đếm ca hoàn thành của cứu hộ viên với đúng loại dịch vụ.
 
 ## 3. Supabase
 
 Với project mới:
 
 1. Dùng direct connection Supabase port `5432` (hoặc session pooler port `5432` khi chỉ có IPv4) và database owner riêng để chạy `flyway:info`, `flyway:migrate`, `flyway:validate` từ thư mục `backend`. Database chưa từng chạy SQL **không được** dùng `flyway:baseline`.
-2. Xác nhận B1/V2/V3/V4 thành công trong `flyway_schema_history`, sau đó chạy `scripts/02_verify_rls.sql`.
+2. Xác nhận B1/V2/V3/V4/V5/V6/V7/V8 thành công trong `flyway_schema_history`, sau đó chạy `scripts/02_verify_rls.sql`.
 3. Đặt mật khẩu ngẫu nhiên cho role `motorescue_api` bằng câu lệnh trong `scripts/README.md`, lưu vào secret manager và cấu hình `SPRING_DATASOURCE_USERNAME=motorescue_api`. Không dùng database owner hoặc `postgres` cho runtime.
 4. Bật phone auth và SMS provider. Đặt OTP expiry ngắn, rate limit, CAPTCHA/bot protection theo gói Supabase.
 5. Đăng nhập OTP cho tài khoản admin đầu tiên. Thay đúng một số E.164 trong `03_bootstrap_operator.sql` rồi chạy. Không dùng UPDATE không có `WHERE`.
 6. Bật Supabase Cron/`pg_cron`, sau đó chạy `04_schedule_retention.sql`.
-7. Trong Realtime Settings, tắt public access và kiểm tra private topic `request:<uuid>` bằng hai tài khoản không liên quan.
+7. V8 chặn toàn bộ GPS Broadcast của ca, kể cả app cũ; kiểm tra tài khoản ngoài ca không đọc được vị trí qua API. Trạng thái ca dùng polling.
 8. Với đối tác thật, dùng mã hồ sơ nội bộ không chứa số CCCD/số điện thoại. Từng provider tự đăng nhập OTP trước; admin cấp quyền, khai báo capability, hoàn tất checklist và kích hoạt đội. Không đưa tài liệu pháp lý hoặc ảnh giấy tờ vào Supabase Storage.
 
 Chi tiết biến môi trường Flyway, bootstrap database sạch, cách baseline database legacy, quy trình staging và rollback nằm tại [`scripts/README.md`](../scripts/README.md). `baselineOnMigrate=false` và `cleanDisabled=true` là guard bắt buộc. `00_reset.sql` chỉ dùng local/staging được phép xóa và yêu cầu cờ xác nhận trong cùng SQL session; sau reset phải chạy lại Flyway. Không chạy reset trên production có dữ liệu cần giữ.
 
 ## 4. Routing
 
+- Cấu hình, script chạy OSRM trực tiếp và giới hạn profile thử nghiệm nằm tại [`routing/README.md`](../routing/README.md).
 - `OSRM_MOTORBIKE_BASE_URL` là base origin, không kèm `/route/v1` hoặc `/table/v1`.
 - Dataset phải được preprocess bằng profile xe máy phù hợp luật giao thông; không dùng public demo router production.
 - Đặt `OSRM_TABLE_BATCH_SIZE` không quá giới hạn coordinate của instance (mặc định dự án là 80, tối đa code là 99 nguồn + một đích).
@@ -39,32 +42,20 @@ Chi tiết biến môi trường Flyway, bootstrap database sạch, cách baseli
 
 ## 5. Backend
 
-### Docker local/staging
+### Chạy Java trực tiếp
 
-Từ repository root:
+Sau khi đặt các biến backend trong terminal, IDE hoặc service manager:
 
 ```powershell
-docker build --tag moki-rescue-api:local backend
-& ./backend/docker/Test-Container.ps1
+cd backend
+.\mvnw.cmd spring-boot:run
 ```
 
-Smoke script dùng PostGIS và mạng Docker internal tạm thời, credential giả, không
-publish port hay kết nối Supabase. Script bật startup Flyway **chỉ trong container
-smoke**, kiểm non-root/readiness và tự dọn tài nguyên có label của chính lần chạy.
-Không dùng script này với database thật.
+Để chạy bản JAR, dùng `.\mvnw.cmd package` sau khi chuẩn bị môi trường integration test riêng, rồi `java -jar target/moki-rescue-0.0.1-SNAPSHOT.jar`. Không bỏ kiểm thử khi phát hành. Tham khảo [kiểm thử PostgreSQL/PostGIS trực tiếp](../backend/TESTING.md).
 
-Để chạy API kết nối staging đã chuẩn bị, tạo `backend/.env.runtime` theo
-`backend/.env.runtime.example`, rồi chạy `docker compose -f backend/compose.yaml up --build -d`.
-File chứa secret được gitignore; Docker build context dùng allowlist, không copy env
-vào image. Compose mặc định bind `127.0.0.1:8080`, filesystem read-only và user 10001.
-Muốn điện thoại trong LAN truy cập, đặt `API_BIND_ADDRESS=0.0.0.0` cho Compose và cấu
-hình firewall/mạng tin cậy; mobile dùng IP LAN của máy, không dùng localhost.
-Database trên máy host dùng `host.docker.internal` trên Docker Desktop, không phải localhost trong container.
+Spring Boot không tự đọc `.env`/`.env.runtime`; đây chỉ là file tham khảo biến. Nạp cấu hình bằng môi trường tiến trình, IDE hoặc secret store, không đưa mật khẩu vào command line/JAR. Runtime dùng `motorescue_api`, migration owner tách riêng. Điện thoại dùng IP LAN/HTTPS API, không dùng localhost; OSRM có thể chạy độc lập và backend gọi qua `OSRM_MOTORBIKE_BASE_URL`.
 
-Image chỉ chứa JRE/JAR/health probe; base image khóa digest, cần cập nhật digest có
-review khi vá bảo mật. Build image không chạy test; phải chạy đầy đủ Maven/Jest trước
-phát hành. Healthcheck gọi `/api/health/ready`; production vẫn cần HTTPS reverse proxy.
-CI có build và smoke image nhưng không tự publish image hay deploy môi trường thật.
+Healthcheck dùng `GET /api/health/ready`. Production cần HTTPS reverse proxy, tài khoản hệ điều hành ít quyền, giám sát và rollback JAR. CI chỉ kiểm chứng mã nguồn, không tự triển khai môi trường thật.
 
 ### Migration và rollout
 
@@ -84,10 +75,10 @@ npx eas-cli build --platform android --profile production
 npx eas-cli build --platform ios --profile production
 ```
 
-Kiểm tra status bar/cutout trên map, quyền location deny/allow, kill/resume app, pin notification, deep link từ push và dừng tracking sau khi đóng ca.
+Kiểm tra chọn/kéo ghim OpenStreetMap, geometry OSRM, attribution không bị che, lỗi mạng, quyền location, kill/resume, push và nút Google Maps trên Android/iOS thật.
 
 Availability từ 05/09/2026: provider có task nền riêng khi bật sẵn sàng, gắn với
-user của installation. Khi nhận ca, task này dừng và chuyển sang tracking ca;
+user của installation. Khi nhận ca, task này dừng; chỉ lưu vị trí lúc nhận ca cho tuyến tham khảo, không khởi động tracking ca;
 tắt sẵn sàng/đăng xuất phải dừng task. Không cấp quyền nền hoặc Expo Go thì UI báo
 foreground-only. Cần build native mới vì nội dung quyền location đã thay đổi.
 Test trên thiết bị: đứng yên và khóa màn hình trên 3 phút, chuyển app, thu hồi quyền,
@@ -96,6 +87,6 @@ vẫn có thể ngừng GPS; backend tiếp tục loại GPS quá 180 giây, kh�
 
 ## 7. CI/CD và release
 
-Repository có đúng một workflow `ci.yml`, chạy khi push `develop`/`main` hoặc mở PR vào `main`. Mỗi run có một job tuần tự: backend test, audit critical, secret scan, lint, format check, typecheck, Jest, Expo config/package check, export bundle, build và smoke image backend. Concurrency hủy run cũ cùng ref.
+Repository có đúng một workflow `ci.yml`, chạy khi push `develop`/`main` hoặc mở PR vào `main`. Mỗi run có một job tuần tự: backend test, audit critical, secret scan, lint, format check, typecheck, Jest, Expo config/package check, export bundle. PostgreSQL/PostGIS cho integration test được cài trực tiếp trên runner; không có bước đóng gói image. Concurrency hủy run cũ cùng ref.
 
 CI không deploy Supabase, backend hay EAS. Release có thay đổi bên ngoài chỉ được thêm sau khi EAS credential/project và staging gate đã tồn tại, qua GitHub Environment có reviewer.

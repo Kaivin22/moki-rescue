@@ -114,13 +114,19 @@ public class ProviderService {
             int updated = jdbc.update("""
                     UPDATE public.provider_members pm
                     SET is_available = ?,
+                        available_since = CASE
+                          WHEN ? AND NOT pm.is_available THEN NOW()
+                          WHEN ? THEN pm.available_since
+                          ELSE NULL
+                        END,
                         last_latitude = CASE WHEN ? THEN ? ELSE NULL END,
                         last_longitude = CASE WHEN ? THEN ? ELSE NULL END,
                         location_accuracy_m = CASE WHEN ? THEN ? ELSE NULL END
                     FROM public.rescue_teams team
                     WHERE pm.user_id = ? AND pm.status = 'active'
                       AND team.id = pm.team_id AND team.status = 'verified'
-                    """, input.available(), input.available(), input.latitude(),
+                    """, input.available(), input.available(), input.available(),
+                    input.available(), input.latitude(),
                     input.available(), input.longitude(), input.available(), input.accuracyM(), actor.id());
             if (updated > 0) {
                 audit.record(actor.id(), input.available() ? "provider.available" : "provider.unavailable", "provider", actor.id());
@@ -242,7 +248,7 @@ public class ProviderService {
             jdbc.update("""
                     UPDATE public.provider_members
                     SET is_available = FALSE, last_latitude = NULL, last_longitude = NULL,
-                        location_accuracy_m = NULL
+                        location_accuracy_m = NULL, available_since = NULL
                     WHERE user_id = ?
                     """, actor.id());
             if ("needs_dispatch".equals(locked.nextStatus())) {
@@ -273,44 +279,9 @@ public class ProviderService {
 
     public boolean saveLocation(Actor actor, UUID requestId, ProviderLocationRequest input) {
         requireProvider(actor);
-        validateAccuracy(input);
-        Boolean assigned = jdbc.queryForObject("""
-                SELECT EXISTS(
-                  SELECT 1 FROM public.rescue_requests
-                  WHERE id = ? AND assigned_provider_id = ?
-                    AND status IN ('assigned', 'en_route', 'awaiting_arrival_confirmation', 'arrived',
-                      'diagnosing', 'awaiting_quote', 'quote_approved', 'repairing', 'transporting', 'awaiting_completion')
-                )
-                """, Boolean.class, requestId, actor.id());
-        if (!Boolean.TRUE.equals(assigned)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "LOCATION_NOT_ALLOWED", "Ca này không được phân công cho bạn.");
-        }
-
-        return Boolean.TRUE.equals(transactions.execute(status -> {
-            jdbc.update("""
-                    UPDATE public.provider_members
-                    SET last_latitude = ?, last_longitude = ?, location_accuracy_m = ?
-                    WHERE user_id = ? AND status = 'active'
-                    """, input.latitude(), input.longitude(), input.accuracyM(), actor.id());
-            int inserted = jdbc.update("""
-                    INSERT INTO public.provider_location_checkpoints(
-                      request_id, provider_id, latitude, longitude, accuracy_m
-                    )
-                    SELECT ?, ?, ?, ?, ?
-                    WHERE NOT EXISTS (
-                      SELECT 1 FROM public.provider_location_checkpoints
-                      WHERE request_id = ? AND provider_id = ?
-                        AND recorded_at > NOW() - (? * INTERVAL '1 second')
-                    )
-                    """, requestId, actor.id(), input.latitude(), input.longitude(), input.accuracyM(),
-                    requestId, actor.id(), policy.checkpointDedupeSeconds());
-            jdbc.update("""
-                    UPDATE public.case_attention_flags
-                    SET status = 'resolved', resolved_at = NOW(), resolution_note = 'GPS đã cập nhật trở lại.'
-                    WHERE request_id = ? AND code = 'provider_gps_stale' AND status = 'open'
-                    """, requestId);
-            return inserted > 0;
-        }));
+        // Older apps recognize this code and stop their active-case background task.
+        throw new ApiException(HttpStatus.GONE, "LOCATION_NOT_ALLOWED",
+                "Ứng dụng đã dừng theo dõi GPS trong ca. Hãy dùng Google Maps để dẫn đường.");
     }
 
     public void saveAvailabilityLocation(Actor actor, ProviderLocationRequest input) {

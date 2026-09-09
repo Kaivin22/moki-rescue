@@ -18,15 +18,12 @@ import { RescueMapSection } from '@/src/features/rescue/components/details/Rescu
 import { RescueOverview } from '@/src/features/rescue/components/details/RescueOverview';
 import { RescueQuoteCard } from '@/src/features/rescue/components/details/RescueQuoteCard';
 import { RescueTimeline } from '@/src/features/rescue/components/details/RescueTimeline';
-import { RescueTrackingNotice } from '@/src/features/rescue/components/details/RescueTrackingNotice';
 import { ReviewPanel } from '@/src/features/rescue/components/details/ReviewPanel';
 import { useRescueDetailsCopy } from '@/src/features/rescue/components/details/rescueDetailsCopy';
 import { rescueDetailsStyles as styles } from '@/src/features/rescue/components/details/rescueDetailsStyles';
 import { useDispatchRetry, useSupportAction } from '@/src/features/rescue/hooks/useRescueActions';
 import { useRescuePermissions } from '@/src/features/rescue/hooks/useRescuePermissions';
-import { useProviderTracking } from '@/src/features/rescue/hooks/useProviderTracking';
 import { useRequest, useRoadRoute } from '@/src/features/rescue/hooks/useRescueQueries';
-import { useRescueRealtime } from '@/src/features/rescue/hooks/useRescueRealtime';
 import { rescueMapRegion } from '@/src/features/rescue/services/rescueDetailsPolicy';
 import { isLiveStatus } from '@/src/features/rescue/status';
 import { useAuthStore } from '@/src/stores/authStore';
@@ -41,14 +38,12 @@ export default function RescueDetailsScreen() {
   const request = requestQuery.data;
   const role = profile?.role ?? 'customer';
   const permissions = useRescuePermissions(role, profile?.id, request);
-  const providerLocation = useRescueRealtime(id, request?.assignedProviderId, request?.providerLocation);
-  const tracking = useProviderTracking(
-    id,
-    Boolean(permissions.isAssignedProvider && request && isLiveStatus(request.status)),
-  );
+  const providerLocation = request?.providerLocation ?? null;
   const route = useRoadRoute(
     id,
     Boolean(request?.assignedProviderId && providerLocation && request && isLiveStatus(request.status)),
+    request?.assignedProviderId,
+    providerLocation?.recordedAt,
   );
   const dispatchRetry = useDispatchRetry(id, role, request?.status, requestQuery.refetch);
   const support = useSupportAction(id);
@@ -125,7 +120,6 @@ export default function RescueDetailsScreen() {
           onRetryDispatch={() => void retryDispatch()}
           onRequestSupport={() => void requestDispatchSupport()}
         />
-        {permissions.isAssignedProvider ? <RescueTrackingNotice state={tracking} /> : null}
         {request.currentQuote ? <RescueQuoteCard quote={request.currentQuote} /> : null}
         {request.status === 'cancelled' ? <CancellationSummary request={request} role={role} /> : null}
         {permissions.showReview ? <ReviewPanel request={request} /> : null}

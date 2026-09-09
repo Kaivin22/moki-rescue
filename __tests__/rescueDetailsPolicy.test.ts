@@ -15,7 +15,7 @@ describe('rescue details policy', () => {
     expect(requiresAssistedCancellation('en_route')).toBe(false);
   });
 
-  it('targets the destination only during an active transport leg', () => {
+  it('keeps the reference map on the original pickup even during transport', () => {
     const request = {
       activeWorkType: 'transport' as const,
       status: 'transporting' as const,
@@ -24,15 +24,15 @@ describe('rescue details policy', () => {
       destinationLatitude: 16.1,
       destinationLongitude: 108.25,
     };
-    expect(rescueMapRegion(request, null)).toMatchObject({ latitude: 16.1, longitude: 108.25 });
+    expect(rescueMapRegion(request, null)).toMatchObject({ latitude: 16.05, longitude: 108.2 });
     const region = rescueMapRegion(request, {
       latitude: 16.08,
       longitude: 108.23,
       accuracyM: 10,
       recordedAt: '2026-08-30T00:00:00.000Z',
     });
-    expect(region?.latitude).toBeCloseTo(16.09);
-    expect(region?.longitude).toBeCloseTo(108.24);
+    expect(region?.latitude).toBeCloseTo(16.065);
+    expect(region?.longitude).toBeCloseTo(108.215);
   });
 
   it('keeps role-specific controls scoped to the current participant', () => {

@@ -4,7 +4,22 @@ const isProductionBuild =
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
-const mapsKey = process.env.GOOGLE_MAPS_KEY || '';
+const mapTileUrl = process.env.EXPO_PUBLIC_MAP_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const mapTileAttribution = process.env.EXPO_PUBLIC_MAP_TILE_ATTRIBUTION || '';
+try {
+  const tileUrl = new URL(mapTileUrl);
+  if (
+    tileUrl.protocol !== 'https:' ||
+    tileUrl.username ||
+    tileUrl.password ||
+    !/^[a-z0-9.-]+$/i.test(tileUrl.hostname) ||
+    !['{z}', '{x}', '{y}'].every((token) => mapTileUrl.includes(token))
+  ) {
+    throw new Error('Invalid tile URL');
+  }
+} catch {
+  throw new Error('EXPO_PUBLIC_MAP_TILE_URL must be an HTTPS XYZ tile URL without credentials.');
+}
 const supportHotline = process.env.EXPO_PUBLIC_SUPPORT_HOTLINE || '';
 const serviceCenterLatitude = process.env.EXPO_PUBLIC_SERVICE_CENTER_LATITUDE || '';
 const serviceCenterLongitude = process.env.EXPO_PUBLIC_SERVICE_CENTER_LONGITUDE || '';
@@ -28,7 +43,6 @@ if (isProductionBuild) {
     ['EXPO_PUBLIC_SUPABASE_URL', process.env.EXPO_PUBLIC_SUPABASE_URL],
     ['EXPO_PUBLIC_SUPABASE_ANON_KEY', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY],
     ['EXPO_PUBLIC_API_URL', apiUrl],
-    ['GOOGLE_MAPS_KEY', mapsKey],
     ['EXPO_PUBLIC_SUPPORT_HOTLINE', supportHotline],
     ['EXPO_PUBLIC_SERVICE_CENTER_LATITUDE', serviceCenterLatitude],
     ['EXPO_PUBLIC_SERVICE_CENTER_LONGITUDE', serviceCenterLongitude],
@@ -91,9 +105,6 @@ export default {
       package: 'com.danang.motorescue',
       versionCode: 1,
       predictiveBackGestureEnabled: true,
-      config: {
-        googleMaps: { apiKey: mapsKey },
-      },
     },
     web: { favicon: './assets/branding/moki-rescue-logo.png' },
     plugins: [
@@ -104,9 +115,9 @@ export default {
         'expo-location',
         {
           locationWhenInUsePermission:
-            'Moki Rescue dùng vị trí khi khách tạo ca hoặc khi cứu hộ viên bật sẵn sàng nhận ca hay đang xử lý ca. Tắt sẵn sàng và kết thúc ca để dừng theo dõi.',
+            'Moki Rescue dùng vị trí khi khách chọn điểm cứu hộ hoặc cứu hộ viên bật sẵn sàng nhận ca. Dẫn đường sau khi nhận ca được thực hiện trong Google Maps.',
           locationAlwaysAndWhenInUsePermission:
-            'Cứu hộ viên có thể cho phép cập nhật vị trí trong nền khi bật sẵn sàng nhận ca hoặc đang xử lý ca. Tắt sẵn sàng để dừng vị trí chờ ca. Khách hàng không cần quyền này.',
+            'Cứu hộ viên có thể cho phép cập nhật vị trí trong nền khi bật sẵn sàng nhận ca. Tắt sẵn sàng hoặc nhận ca để dừng cập nhật vị trí chờ ca. Khách hàng không cần quyền này.',
           isIosBackgroundLocationEnabled: true,
           isAndroidBackgroundLocationEnabled: true,
           isAndroidForegroundServiceEnabled: true,
@@ -125,6 +136,8 @@ export default {
       supabaseUrl,
       supabaseAnonKey,
       apiUrl,
+      mapTileUrl,
+      mapTileAttribution,
       supportHotline,
       serviceCenterLatitude,
       serviceCenterLongitude,

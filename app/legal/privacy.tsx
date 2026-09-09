@@ -18,7 +18,7 @@ const COPY = {
       ],
       [
         'Vị trí',
-        'Vị trí chính xác của khách chỉ được gửi khi khách chủ động tạo yêu cầu. Vị trí cứu hộ viên chỉ cập nhật khi sẵn sàng hoặc đang xử lý ca. Chỉ khách, cứu hộ viên được phân công và quản trị viên vận hành được xem vị trí ca tương ứng. Checkpoint vị trí được xóa tự động theo thời hạn vận hành.',
+        'Vị trí khách được gửi khi khách chủ động xác nhận điểm cứu hộ hoặc điểm giao xe. GPS cứu hộ viên chỉ cập nhật khi bật sẵn sàng để ghép ca; lúc nhận ca lưu một vị trí cố định cho tuyến tham khảo, không theo dõi hành trình trực tiếp. Chỉ người tham gia ca và quản trị viên vận hành xem được vị trí tương ứng. Vị trí lúc nhận ca bị xóa khi ca đóng hoặc thu hồi phân công; dữ liệu vị trí cũ được xóa theo thời hạn vận hành.',
       ],
       [
         'Đối tác cứu hộ',
@@ -26,7 +26,7 @@ const COPY = {
       ],
       [
         'Mục đích và bên xử lý',
-        'Dữ liệu được dùng để xác thực, tìm đội phù hợp, tính tuyến đường, cập nhật trạng thái, báo giá, chống nhận trùng và giải quyết tranh chấp. Supabase xử lý xác thực/dữ liệu; nhà cung cấp bản đồ và định tuyến nhận tọa độ cần thiết để tính tuyến.',
+        'Dữ liệu dùng để xác thực, ghép ca, định tuyến, cập nhật trạng thái, báo giá và giải quyết tranh chấp. Supabase xử lý xác thực/dữ liệu; OSRM nhận tọa độ tính tuyến. Nhà cung cấp tile nhận yêu cầu tải khu vực đang xem và địa chỉ mạng. Khi bấm dẫn đường, điểm đích được gửi cho Google Maps; quyền vị trí và dữ liệu trong Google Maps do dịch vụ đó xử lý.',
       ],
       [
         'Trợ lý Moki Rescue',
@@ -57,7 +57,7 @@ const COPY = {
       ],
       [
         'Location',
-        "A customer's exact location is sent only when they actively create a request. A provider location is updated only while available or handling a request. Only the customer, assigned provider, and operations administrators can see the corresponding request location. Location checkpoints are automatically deleted after the operational retention period.",
+        'Customer coordinates are submitted when they confirm a pickup or drop-off. Provider GPS updates only while available for matching; a fixed position is saved at assignment, without live journey tracking. Only request participants and operations administrators can view the corresponding location. Assignment positions are cleared when the case closes or the assignment is withdrawn; legacy data follows the retention policy.',
       ],
       [
         'Rescue partners',
@@ -65,7 +65,7 @@ const COPY = {
       ],
       [
         'Purpose and processors',
-        'Data is used to authenticate users, find a suitable team, calculate road routes, update status, handle quotes, prevent duplicate acceptance, and resolve disputes. Supabase processes authentication and data. Map and routing providers receive coordinates required for route calculation.',
+        'Data supports authentication, matching, routing, status, quotes and disputes. Supabase processes authentication/data; OSRM receives route coordinates. Tile providers receive requests for the viewed area and network addresses. Tapping navigation sends the destination to Google Maps; location permissions and data within Google Maps are handled by that service.',
       ],
       [
         'Moki Rescue assistant',

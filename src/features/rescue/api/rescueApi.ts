@@ -142,11 +142,6 @@ export const rescueApi = {
       `/api/provider/requests/${requestId}/withdraw`,
       { method: 'POST', body: JSON.stringify({ reason }) },
     ),
-  saveProviderLocation: (id: string, latitude: number, longitude: number, accuracyM: number) =>
-    apiRequest<{ stored: boolean }>(`/api/provider/requests/${id}/location`, {
-      method: 'POST',
-      body: JSON.stringify({ latitude, longitude, accuracyM }),
-    }),
   saveProviderAvailabilityLocation: (latitude: number, longitude: number, accuracyM: number) =>
     apiRequest<void>('/api/provider/location', {
       method: 'POST',

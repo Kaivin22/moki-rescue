@@ -24,12 +24,12 @@ env:
   EXPO_PUBLIC_SUPPORT_HOTLINE: '19000000'
   EXPO_PUBLIC_SERVICE_CENTER_LATITUDE: '16.0544'
   EXPO_PUBLIC_SERVICE_CENTER_LONGITUDE: '108.2022'
-  GOOGLE_MAPS_KEY: ci-placeholder
+  EXPO_PUBLIC_MAP_TILE_URL: https://tile.openstreetmap.org/{z}/{x}/{y}.png
 
 jobs:
   validate:
     name: Mobile, backend and security
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - name: Checkout code
@@ -49,10 +49,20 @@ jobs:
           cache: maven
       - name: Install locked dependencies
         run: npm ci
-      - name: Verify Docker for database integration tests
-        run: docker info
+      - name: Prepare native PostgreSQL and PostGIS for integration tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-16 postgresql-16-postgis-3
+          sudo systemctl start postgresql
+          sudo -u postgres psql --set ON_ERROR_STOP=1 --command "ALTER USER postgres WITH PASSWORD 'ci-test-only';"
+          pg_isready -h 127.0.0.1 -p 5432
       - name: Run backend tests
         working-directory: backend
+        env:
+          TEST_PG_ISOLATED: 'true'
+          TEST_PG_PORT: '5432'
+          TEST_PG_USER: postgres
+          TEST_PG_PASSWORD: ci-test-only
         # Repository is maintained on Windows, so do not rely on the POSIX
         # executable bit being preserved for the Maven wrapper.
         run: bash ./mvnw --batch-mode --no-transfer-progress test
@@ -81,11 +91,6 @@ jobs:
         run: npx expo install --check
       - name: Export Android, iOS and web bundles
         run: npx expo export --platform all --output-dir dist
-      - name: Build non-root backend image
-        run: docker build --tag moki-rescue-api:local backend
-      - name: Smoke backend image with disposable PostGIS
-        shell: pwsh
-        run: ./backend/docker/Test-Container.ps1
       - name: Upload Expo export from main
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

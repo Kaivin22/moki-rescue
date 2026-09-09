@@ -14,12 +14,12 @@ Chưa triển khai hoặc chạy SQL lên Supabase trong đợt sửa 05/09/2026
 ## Database và API
 
 - [ ] Backup nếu staging đã có dữ liệu; chạy `flyway:info`, `migrate`, `validate` bằng
-  migration owner. Database sạch chạy B1 -> V2 -> V3 -> V4 -> V5, không dùng baseline.
-  Database đang ở phiên bản cũ chỉ nhận các migration còn thiếu đến V5. Không sửa checksum của migration cũ.
+  migration owner. Database sạch chạy B1 -> V2 -> V3 -> V4 -> V5 -> V6 -> V7 -> V8, không dùng baseline.
+  Database đang ở phiên bản cũ chỉ nhận các migration còn thiếu đến V8. Không sửa checksum của migration cũ.
 - [ ] API chạy bằng `motorescue_api`, không dùng owner; readiness đạt. Runtime không
   được tạo bảng, đổi role hoặc đọc danh tính ngoài API được cấp quyền.
 - [ ] Test JWT thật: hết hạn, sai issuer/audience/chữ ký; thiếu consent, tài khoản bị đình chỉ.
-- [ ] Test customer A/B, cứu hộ viên được phân công/không liên quan và admin qua API cùng private Realtime.
+- [ ] Test customer A/B, cứu hộ viên được phân công/không liên quan và admin qua API; GPS Broadcast của ca phải bị chặn kể cả app cũ.
 - [ ] Tạo ca không có điểm giao, retry cùng idempotency key, hai provider cùng nhận ca,
   báo giá, từ chối/duyệt, hoàn tất và hủy theo đúng giai đoạn.
 - [ ] Gián đoạn backend sau khi ca đã commit: `dispatch_recovery_jobs` phải xử lý lại;
@@ -33,17 +33,19 @@ Chưa triển khai hoặc chạy SQL lên Supabase trong đợt sửa 05/09/2026
   receipt thật và DeviceNotRegistered; at-least-once có thể lặp cùng notificationId.
 - [ ] Provider bật sẵn sàng: đứng yên, khóa màn hình/chuyển app trên 3 phút, sau đó
   tạo ca gần provider. Thử từ chối quyền nền và kiểm thông báo foreground-only.
-- [ ] Nhận ca dừng task chờ ca, chuyển tracking ca. Tắt sẵn sàng/đăng xuất/đổi tài khoản
+- [ ] Nhận ca dừng task chờ ca; lưu snapshot, không khởi động tracking ca. Tắt sẵn sàng/đăng xuất/đổi tài khoản
   dừng task; stop trong lúc prompt quyền đang mở không tự bật tracking trở lại.
 - [ ] Thu hồi quyền, tiết kiệm pin, force-stop/khởi động lại: không cam kết GPS luôn
   chạy; dữ liệu cũ phải bị loại, không được biến thành GPS mới.
 - [ ] Kiểm deep link, mạng yếu/mất mạng, font scale, tai thỏ và quyền Android/iOS.
+- [ ] Map OpenStreetMap chọn/kéo ghim và attribution luôn nhìn thấy. Nhận/đổi người nhận/đóng ca cập nhật snapshot đúng; không có di chuyển live.
+- [ ] Nút Google Maps dùng vị trí thiết bị và đúng điểm đón/giao. OSRM lỗi có thể thử lại, không vẽ đường thẳng.
 
 ## Vận hành
 
 - [ ] Kiểm tuyến cầu/đường một chiều/cấm xe máy/NoRoute và biên service zone. ETA không có traffic live.
 - [ ] Bật retention Cron, kiểm job thực thi; thiết lập cảnh báo backlog/failed/expired
-  push, recovery attempts tăng, ca quá hạn, DB/pool lỗi. Thử backup/restore và rollback image.
+  push, recovery attempts tăng, ca quá hạn, DB/pool lỗi. Thử backup/restore và rollback JAR/backend.
 - [ ] Xác định người trực điều phối/hotline và quy trình khi thiết bị của khách hết pin.
 - [ ] Hoàn thiện quy trình vận hành yêu cầu xóa danh tính; tính năng hiện chỉ tiếp nhận
   và vô hiệu hóa, không tự xóa Supabase Auth. Không xóa audit/ca theo cách làm mất bằng chứng.

@@ -9,9 +9,12 @@ backend/src/main/resources/db/migration/
   V3__durable_dispatch_recovery.sql
   V4__durable_push_outbox.sql
   V5__merge_dispatcher_into_admin.sql
+  V6__index_provider_service_experience.sql
+  V7__configurable_fair_dispatch.sql
+  V8__assignment_route_snapshot.sql
 ```
 
-`B1` là baseline migration tích lũy từ schema đã được squash trước đây. Nó dựng đầy đủ tables, indexes, constraints, triggers, RLS, grants, functions và dữ liệu cấu hình bắt buộc trên database mới. `V2` sửa thứ tự khóa transaction khi provider nhận offer để tránh deadlock. `V3` phục hồi điều phối bị gián đoạn; `V4` lưu push outbox cùng transaction nghiệp vụ; `V5` chuyển tài khoản điều phối cũ sang admin và giới hạn hệ thống còn ba vai trò. Những thay đổi tiếp theo phải bắt đầu từ `V6__...sql`, tăng tuần tự và có mô tả rõ ràng.
+`B1` là baseline migration tích lũy từ schema đã được squash trước đây. Nó dựng đầy đủ tables, indexes, constraints, triggers, RLS, grants, functions và dữ liệu cấu hình bắt buộc trên database mới. `V2` sửa thứ tự khóa transaction khi provider nhận offer để tránh deadlock. `V3` phục hồi điều phối bị gián đoạn; `V4` lưu push outbox cùng transaction nghiệp vụ; `V5` chuyển tài khoản điều phối cũ sang admin và giới hạn hệ thống còn ba vai trò; `V6` thêm index phục vụ đếm kinh nghiệm; `V7` thêm chính sách điều phối theo loại dịch vụ và trạng thái chống bỏ đói; `V8` lưu vị trí lúc nhận ca và chặn GPS Broadcast của ca. Những thay đổi tiếp theo phải bắt đầu từ `V9__...sql`, tăng tuần tự và có mô tả rõ ràng.
 
 Sau khi một migration đã chạy trên bất kỳ môi trường dùng chung nào, không được sửa, đổi tên hoặc xóa file đó. Mọi sửa đổi phải nằm trong migration có version mới. Không dùng `flyway repair` để che checksum mismatch nếu chưa điều tra và phê duyệt nguyên nhân.
 
@@ -40,7 +43,7 @@ cd backend
 .\mvnw.cmd flyway:validate
 ```
 
-`migrate` sẽ chạy `B1__initial_schema.sql`, các migration version tiếp theo (hiện tại là `V2`, `V3`, `V4`, `V5`) và tạo `flyway_schema_history`. Sau đó:
+`migrate` sẽ chạy `B1__initial_schema.sql`, các migration version tiếp theo (hiện tại là `V2`, `V3`, `V4`, `V5`, `V6`, `V7`, `V8`) và tạo `flyway_schema_history`. Sau đó:
 
 1. Đặt password ngẫu nhiên riêng cho role backend, lưu trong secret manager và không commit câu lệnh đã điền secret:
 
