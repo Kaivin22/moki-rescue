@@ -20,6 +20,11 @@ describe('project integrity', () => {
     expect(ci).toContain("NODE_VERSION: '24.14.x'");
   });
 
+  it('shares the lockfile peer-resolution policy with clean installs and CI', () => {
+    const npmrc = fs.readFileSync(path.join(process.cwd(), '.npmrc'), 'utf8');
+    expect(npmrc).toMatch(/^legacy-peer-deps=true\s*$/m);
+  });
+
   it('declares TypeScript 6 ambient types and resolves aliases without deprecated baseUrl', () => {
     const tsconfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'tsconfig.json'), 'utf8'));
     expect(tsconfig.compilerOptions.baseUrl).toBeUndefined();

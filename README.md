@@ -62,6 +62,8 @@ Mobile là client không tin cậy. Các thay đổi nghiệp vụ đi qua Sprin
 
 Yêu cầu Node `^22.13.0 || >=24.3.0` (CI dùng Node `24.14.x`), npm và JDK 21.
 
+Repository có `.npmrc` đặt `legacy-peer-deps=true`, khớp với cấu hình đã tạo `package-lock.json`. Giữ file này khi chạy `npm ci` trên máy mới hoặc CI để npm không tự bổ sung các peer dependency khác với bộ thư viện đã khóa. Theo [tài liệu npm ci](https://docs.npmjs.com/cli/v11/commands/npm-ci/), cấu hình ảnh hưởng cây phụ thuộc phải thống nhất giữa lúc tạo lockfile và lúc cài. Đây không phải bảo đảm tương thích native; vẫn phải chạy kiểm tra phiên bản Expo, export bundle và kiểm thử thiết bị. Khi thay đổi chính sách này, cần rà soát lại peer dependency và lockfile, không tự nâng thư viện native.
+
 ```powershell
 npm ci
 Copy-Item .env.example .env
