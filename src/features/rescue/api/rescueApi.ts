@@ -17,9 +17,17 @@ import type {
   AttentionFlag,
   ProviderMember,
   AuditLogEntry,
+  OperatorStatistics,
+  CaseResolutionInput,
 } from '@/src/types/rescue';
 
 export const rescueApi = {
+  resolveCase: (id: string, input: CaseResolutionInput) =>
+    apiRequest<RequestDetails>(`/api/operator/requests/${id}/resolution`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  statistics: () => apiRequest<OperatorStatistics>('/api/operator/statistics'),
   serviceTypes: () => apiRequest<ServiceType[]>('/api/catalog/service-types'),
   requests: (history = false, cursor?: { before: string; beforeId: string }, limit = 50) => {
     const query = new URLSearchParams({ history: String(history), limit: String(limit) });

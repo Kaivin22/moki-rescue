@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { googleMapsNavigationUrl, navigationDestination } from '@/src/features/rescue/services/navigation';
 import { isLiveStatus } from '@/src/features/rescue/status';
+import { NavigationTarget } from '../NavigationTarget';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
 import { ApiClientError } from '@/src/features/rescue/api/client';
@@ -41,6 +42,7 @@ export function ProviderRescueActions({ request }: { request: RequestDetails }) 
   };
   return (
     <View style={styles.actions}>
+      {isLiveStatus(request.status) && <NavigationTarget request={request} />}
       {isLiveStatus(request.status) && (
         <AppButton
           title={c.navigate}
@@ -116,7 +118,11 @@ export function ProviderRescueActions({ request }: { request: RequestDetails }) 
         />
       ) : null}
       {request.status === 'repairing' || request.status === 'transporting' ? (
-        <AppButton title={c.requestCompletion} onPress={() => void runAction('request_completion')} />
+        <AppButton
+          title={c.requestCompletion}
+          loading={actions.action.isPending}
+          onPress={() => void runAction('request_completion')}
+        />
       ) : null}
       {message ? <Text style={styles.error}>{message}</Text> : null}
     </View>

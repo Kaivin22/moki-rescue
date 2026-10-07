@@ -68,6 +68,7 @@ public class RescueCancellationService {
                     """, input.reasonCode(), decision.stage(), cancellationNote, decision.late(),
                     providerNearPickup, actor.id(), requestId, current.status(), input.expectedVersion());
             if (updated > 0) {
+                CaseClosureSupport.resolveLifecycleFlags(jdbc, requestId, actor.id());
                 jdbc.update("UPDATE public.dispatch_offers SET status = 'withdrawn' WHERE request_id = ? AND status = 'pending'", requestId);
                 if (current.assignedProviderId() != null) {
                     jdbc.update("""

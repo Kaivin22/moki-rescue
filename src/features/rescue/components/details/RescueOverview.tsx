@@ -7,6 +7,7 @@ import { RatingBadge } from '@/src/features/rescue/components/RatingBadge';
 import { displayPhone, template } from '@/src/features/rescue/services/rescueDetailsPolicy';
 import { statusColor, statusLabel } from '@/src/features/rescue/status';
 import { useI18n } from '@/src/i18n';
+import { caseProgress } from '@/src/features/rescue/services/caseProgress';
 import type { ProfileRole } from '@/src/types/profile';
 import type { RequestDetails } from '@/src/types/rescue';
 import { useRescueDetailsCopy } from './rescueDetailsCopy';
@@ -53,6 +54,10 @@ export function RescueOverview({
         </View>
       </View>
 
+      <View style={styles.infoCard}>
+        <Text style={styles.section}>{language === 'en' ? 'Next step' : 'Bước tiếp theo'}</Text>
+        <Text style={styles.infoLabel}>{caseProgress(request, role, language)}</Text>
+      </View>
       <View style={styles.infoCard}>
         <Info icon="location-outline" label={c.landmark} value={request.pickupAreaLabel} />
         {request.destinationAreaLabel ? (

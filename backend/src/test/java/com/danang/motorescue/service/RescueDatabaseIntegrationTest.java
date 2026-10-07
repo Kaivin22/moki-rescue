@@ -14,6 +14,7 @@ import com.danang.motorescue.config.MatchingProperties;
 import com.danang.motorescue.config.QualityProperties;
 import com.danang.motorescue.config.RescuePolicyProperties;
 import com.danang.motorescue.model.ApiModels.CreateRequest;
+import com.danang.motorescue.model.ApiModels.AvailabilityRequest;
 import com.danang.motorescue.model.ApiModels.ProviderLocationRequest;
 import com.danang.motorescue.model.ApiModels.StateActionRequest;
 import com.danang.motorescue.service.ActorService.Actor;
@@ -116,7 +117,68 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         creationDispatch = mock(DispatchService.class);
         providers = new ProviderService(
                 runtimeJdbc, runtimeTransactions, matchingDispatch, new AuditService(runtimeJdbc), push,
-                matchingPolicy, rescuePolicy, qualityPolicy);
+                matchingPolicy, rescuePolicy, qualityPolicy, new ServiceAreaService(runtimeJdbc));
+    }
+
+    @Test
+    void availabilityCanTurnOffWithoutSendingCoordinates() {
+        UUID teamId = createTeam();
+        ProviderFixture fixture = createProvider(teamId, PICKUP_LATITUDE, PICKUP_LONGITUDE, 10, false);
+        assertThat(providers.setAvailability(fixture.actor(),
+                new AvailabilityRequest(true, PICKUP_LATITUDE, PICKUP_LONGITUDE, 10.0)).available()).isTrue();
+        assertThat(providers.setAvailability(fixture.actor(),
+                new AvailabilityRequest(false, null, null, null)).available()).isFalse();
+        var row = jdbc.queryForMap("SELECT last_latitude, last_longitude, location_accuracy_m FROM public.provider_members WHERE user_id = ?", fixture.actor().id());
+        assertThat(row.get("last_latitude")).isNull();
+        assertThat(row.get("last_longitude")).isNull();
+        assertThat(row.get("location_accuracy_m")).isNull();
+    }
+
+    @Test
+    void demoCoverageIncludesEdgesButRejectsEveryOutsideDirection() {
+        var area = new ServiceAreaService(runtimeJdbc);
+        for (double[] point : new double[][] {
+                {16.0611, 108.2201}, {15.95, 108.05}, {16.18, 108.34},
+                {15.95, 108.34}, {16.18, 108.05}, {16.18, 108.20}, {16.06, 108.05},
+                {15.950001, 108.050001}, {16.179999, 108.339999}}) {
+            assertThat(area.contains(point[0], point[1])).as("inside/border %s,%s", point[0], point[1]).isTrue();
+        }
+        for (double[] point : new double[][] {
+                {15.949999, 108.20}, {16.180001, 108.20}, {16.06, 108.049999}, {16.06, 108.340001},
+                {10.77, 106.7}, {108.22, 16.06}}) {
+            assertThat(area.contains(point[0], point[1])).as("outside %s,%s", point[0], point[1]).isFalse();
+        }
+        transactions.executeWithoutResult(tx -> {
+            jdbc.update("UPDATE public.service_zones SET is_active = FALSE");
+            assertThat(new ServiceAreaService(jdbc).contains(16.0611, 108.2201)).isFalse();
+            tx.setRollbackOnly();
+        });
+    }
+
+    @Test
+    void providerLeavingCoverageIsDisabledWithoutCancellingAssignedWork() {
+        var provider = createProvider(createTeam(), PICKUP_LATITUDE, PICKUP_LONGITUDE, 10, true);
+        UUID requestId = insertRequest(createActor("customer"), "assigned", provider);
+        assertApiCode("PROVIDER_OUTSIDE_SERVICE_AREA", () -> providers.saveAvailabilityLocation(provider.actor(),
+                new ProviderLocationRequest(16.181, 108.22, 10.0)));
+        var row = jdbc.queryForMap("SELECT is_available, last_latitude, last_longitude FROM public.provider_members WHERE user_id = ?", provider.actor().id());
+        assertThat(row.get("is_available")).isEqualTo(false);
+        assertThat(row.get("last_latitude")).isNull();
+        assertThat(row.get("last_longitude")).isNull();
+        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, requestId)).isEqualTo("assigned");
+        assertApiCode("PROVIDER_OUTSIDE_SERVICE_AREA", () -> providers.setAvailability(provider.actor(),
+                new AvailabilityRequest(true, 16.181, 108.22, 10.0)));
+        assertThat(providers.setAvailability(provider.actor(), new AvailabilityRequest(false, null, null, null)).available()).isFalse();
+    }
+
+    @Test
+    void staleOutOfAreaProviderCannotBeAssignedEvenThroughDirectDatabaseTransition() {
+        var provider = createProvider(createTeam(), 15.949, PICKUP_LONGITUDE, 10, true);
+        UUID requestId = insertRequest(createActor("customer"), "offered", null);
+        assertThatThrownBy(() -> runtimeJdbc.update("UPDATE public.rescue_requests SET status = 'assigned', assigned_provider_id = ?, assigned_team_id = ? WHERE id = ?",
+                provider.actor().id(), provider.teamId(), requestId))
+                .hasMessageContaining("OFFER_OUTSIDE_SERVICE_AREA");
+        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, requestId)).isEqualTo("offered");
     }
 
     @Test
@@ -600,6 +662,76 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
                 new ServiceAreaService(runtimeJdbc), new AuditService(runtimeJdbc),
                 new CaseLifecycleProperties(null, null, null, null, null, null, null, 3),
                 new RescueRequestAccess(runtimeJdbc), new RescueNotificationService(runtimeJdbc, push));
+    }
+
+    @Test
+    void operatorVerificationUsesRealTriggerAndKeepsIncidentAlertOpen() {
+        Actor customer = createActor("customer");
+        Actor admin = createActor("admin");
+        ProviderFixture provider = createProvider(createTeam(), PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        UUID requestId = awaitingCompletion(customer, provider);
+        jdbc.update("INSERT INTO public.case_attention_flags(request_id, code) VALUES (?, 'completion_confirmation_overdue'), (?, 'customer_incident_reported')",
+                requestId, requestId);
+        int version = requestVersion(requestId);
+        operatorResolutionService().resolve(admin, requestId,
+                new com.danang.motorescue.model.ApiModels.CaseResolutionRequest("verified_completed", "Đã xác minh với khách và cứu hộ viên.", version));
+        var row = jdbc.queryForMap("SELECT status, version, completed_at FROM public.rescue_requests WHERE id = ?", requestId);
+        assertThat(row.get("status")).isEqualTo("completed");
+        assertThat(row.get("version")).isEqualTo(version + 1);
+        assertThat(row.get("completed_at")).isNotNull();
+        assertThat(jdbc.queryForObject("SELECT actor_id FROM public.request_status_events WHERE request_id = ? AND to_status = 'completed'", UUID.class, requestId)).isEqualTo(admin.id());
+        assertThat(jdbc.queryForObject("SELECT is_available FROM public.provider_members WHERE user_id = ?", Boolean.class, provider.actor().id())).isFalse();
+        assertThat(jdbc.queryForObject("SELECT last_latitude FROM public.provider_members WHERE user_id = ?", Double.class, provider.actor().id())).isNull();
+        assertThat(jdbc.queryForList("SELECT code FROM public.case_attention_flags WHERE request_id = ? AND status = 'open'", String.class, requestId)).containsExactly("customer_incident_reported");
+        assertThat(jdbc.queryForObject("SELECT metadata->>'decision' FROM public.audit_logs WHERE entity_id = ? AND action = 'request.operator_resolution'", String.class, requestId.toString())).isEqualTo("verified_completed");
+        // The active-provider uniqueness constraint no longer blocks a subsequent job.
+        providers.setAvailability(provider.actor(), new AvailabilityRequest(true, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20.0));
+        insertRequest(createActor("customer"), "assigned", provider);
+    }
+
+    @Test
+    void unverifiedPreservesTimerVersionAndOpenAlertThenCustomerCanComplete() {
+        Actor customer = createActor("customer");
+        Actor admin = createActor("admin");
+        ProviderFixture provider = createProvider(createTeam(), PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        UUID requestId = awaitingCompletion(customer, provider);
+        jdbc.update("INSERT INTO public.case_attention_flags(request_id, code) VALUES (?, 'completion_confirmation_overdue')", requestId);
+        var before = jdbc.queryForMap("SELECT status, version, updated_at FROM public.rescue_requests WHERE id = ?", requestId);
+        var input = new com.danang.motorescue.model.ApiModels.CaseResolutionRequest("unverified", "Chưa liên hệ được khách để xác minh.", requestVersion(requestId));
+        operatorResolutionService().resolve(admin, requestId, input);
+        assertThat(jdbc.queryForMap("SELECT status, version, updated_at FROM public.rescue_requests WHERE id = ?", requestId)).isEqualTo(before);
+        assertThat(jdbc.queryForObject("SELECT status FROM public.case_attention_flags WHERE request_id = ?", String.class, requestId)).isEqualTo("open");
+        lifecycleService().act(customer, requestId, new StateActionRequest("confirm_completion", null, null, null, input.expectedVersion()));
+        assertThat(jdbc.queryForObject("SELECT status FROM public.case_attention_flags WHERE request_id = ?", String.class, requestId)).isEqualTo("resolved");
+        assertApiCode("REQUEST_VERSION_CONFLICT", () -> operatorResolutionService().resolve(admin, requestId, input));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.audit_logs WHERE action = 'request.operator_resolution'", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void completionAlertCannotBeDismissedWhileJobIsOpen() {
+        var provider = createProvider(createTeam(), PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        UUID requestId = awaitingCompletion(createActor("customer"), provider);
+        UUID flag = jdbc.queryForObject("INSERT INTO public.case_attention_flags(request_id, code) VALUES (?, 'completion_confirmation_overdue') RETURNING id", UUID.class, requestId);
+        var operator = new OperatorService(runtimeJdbc, matchingDispatch, new AuditService(runtimeJdbc), runtimeTransactions, qualityPolicy);
+        assertApiCode("CASE_RESOLUTION_REQUIRED", () -> operator.resolveAttention(createActor("admin"), flag,
+                new com.danang.motorescue.model.ApiModels.AttentionResolutionRequest("Không được ẩn ca chưa kết thúc.")));
+        assertThat(jdbc.queryForObject("SELECT status FROM public.case_attention_flags WHERE id = ?", String.class, flag)).isEqualTo("open");
+    }
+
+    private OperatorCaseResolutionService operatorResolutionService() {
+        return new OperatorCaseResolutionService(runtimeJdbc, runtimeTransactions,
+                new RescueRequestAccess(runtimeJdbc), new RescueNotificationService(runtimeJdbc, push));
+    }
+
+    private UUID awaitingCompletion(Actor customer, ProviderFixture provider) {
+        UUID requestId = insertRequest(customer, "diagnosing", provider);
+        jdbc.update("UPDATE public.rescue_requests SET work_type = 'repair', status = 'repairing' WHERE id = ?", requestId);
+        jdbc.update("UPDATE public.rescue_requests SET status = 'awaiting_completion' WHERE id = ?", requestId);
+        return requestId;
+    }
+
+    private int requestVersion(UUID requestId) {
+        return jdbc.queryForObject("SELECT version FROM public.rescue_requests WHERE id = ?", Integer.class, requestId);
     }
 
     @Test

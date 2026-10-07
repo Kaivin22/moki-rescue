@@ -16,6 +16,15 @@ export type RescueStatus =
   | 'cancelled'
   | 'no_provider';
 
+export interface OperatorStatistics {
+  timezone: string;
+  fromDate: string;
+  toDate: string;
+  summary: { openCases: number; waitingCases: number; verifiedTeams: number; openAlerts: number };
+  daily: { date: string; count: number }[];
+  statuses: { status: RescueStatus; count: number }[];
+}
+
 export type CancellationReasonCode =
   | 'issue_resolved'
   | 'changed_mind'
@@ -202,6 +211,18 @@ export interface RequestDetails {
   feedback: FeedbackSummary[];
   incidentReports: IncidentReport[];
   events: StatusEvent[];
+  operatorResolution?: {
+    decision: 'verified_completed' | 'unverified';
+    note: string | null;
+    requestVersion: number;
+    createdAt: string;
+  } | null;
+}
+
+export interface CaseResolutionInput {
+  decision: 'verified_completed' | 'unverified';
+  note: string;
+  expectedVersion: number;
 }
 
 export interface RoadRoute {

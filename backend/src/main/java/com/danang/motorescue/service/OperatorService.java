@@ -193,6 +193,18 @@ public class OperatorService {
     public void resolveAttention(Actor actor, UUID flagId, AttentionResolutionRequest input) {
         requireAdmin(actor);
         int changed = transactions.execute(status -> {
+            Boolean completionPending = jdbc.query("""
+                    SELECT rr.status NOT IN ('completed', 'cancelled')
+                           AND flag.code IN ('completion_confirmation_overdue', 'completion_dispute')
+                    FROM public.case_attention_flags flag
+                    JOIN public.rescue_requests rr ON rr.id = flag.request_id
+                    WHERE flag.id = ? AND flag.status = 'open'
+                    FOR UPDATE OF rr
+                    """, rs -> rs.next() && rs.getBoolean(1), flagId);
+            if (Boolean.TRUE.equals(completionPending)) {
+                throw new ApiException(HttpStatus.CONFLICT, "CASE_RESOLUTION_REQUIRED",
+                        "Mở chi tiết ca để xác minh hoàn tất hoặc hủy ca có lý do. Chưa xác minh thì giữ cảnh báo mở.");
+            }
             int updated = jdbc.update("""
                     UPDATE public.case_attention_flags
                     SET status = 'resolved', resolution_note = ?, resolved_at = NOW(), resolved_by = ?

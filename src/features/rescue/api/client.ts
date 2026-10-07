@@ -38,6 +38,10 @@ const ENGLISH_API_ERRORS: Record<string, string> = {
   IDEMPOTENCY_KEY_REUSED: 'This submission identifier was already used with different information.',
   CREATE_FAILED: 'The rescue request could not be created.',
   OUTSIDE_SERVICE_AREA: 'This location is outside the current service area.',
+  PROVIDER_OUTSIDE_SERVICE_AREA:
+    'You are outside the Da Nang demo service area. Availability is now off. Return to the service area before enabling it again.',
+  OFFER_OUTSIDE_SERVICE_AREA:
+    'The provider or job location is outside the current service area. This offer cannot be accepted.',
   DESTINATION_INCOMPLETE: 'Provide the complete drop-off name and coordinates.',
   DESTINATION_OUTSIDE_SERVICE_AREA: 'The drop-off is outside the current service area.',
   DESTINATION_REQUIRED: 'Choose a motorcycle drop-off point before continuing.',
@@ -52,9 +56,15 @@ const ENGLISH_API_ERRORS: Record<string, string> = {
   INVALID_SERVICE_ICON: 'The rescue service icon is not supported by this app version.',
   REQUEST_NOT_FOUND: 'The rescue request was not found.',
   INVALID_CURSOR: 'The history cursor is incomplete. Refresh the list and try again.',
+  INVALID_INBOX: 'This moderation inbox is not supported.',
+  INVALID_STATUS: 'This status filter is not valid for the selected inbox.',
+  MODERATION_NOT_FOUND: 'This review, report, or quality alert no longer exists.',
   REQUEST_ACCESS_DENIED: 'You do not have access to this rescue request.',
   REQUEST_VERSION_CONFLICT: 'The request changed on another device. Refresh and try again.',
   INVALID_REQUEST_ACTION: 'This action is not valid for the current request status.',
+  CASE_RESOLUTION_INVALID: 'Choose a result and provide 10–500 characters of verification evidence.',
+  CASE_RESOLUTION_REQUIRED:
+    'Open the job to verify completion or cancel with a reason. Keep the alert open if unverified.',
   INVALID_CANCELLATION_REASON: 'Choose a cancellation reason that matches the current request status.',
   CANCELLATION_NOTE_REQUIRED: 'Enter a short explanation for the selected cancellation reason.',
   REQUEST_NOT_RETRYABLE: 'This request cannot be dispatched again in its current status.',

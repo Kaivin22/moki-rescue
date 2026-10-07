@@ -162,12 +162,14 @@ export function CustomerRescueActions({ request }: { request: RequestDetails }) 
         <>
           <AppButton
             title={c.confirmCompletion}
+            loading={actions.action.isPending}
             onPress={() =>
               void run(actions.action.mutateAsync({ action: 'confirm_completion', version: request.version }))
             }
           />
           <AppButton
             title={c.incomplete}
+            disabled={actions.action.isPending}
             variant="outline"
             onPress={() =>
               setFeedbackAction(request.activeWorkType === 'transport' ? 'reject_transport' : 'reject_repair')

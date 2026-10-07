@@ -123,6 +123,7 @@ public class RescueLifecycleService {
                       AND (customer_id = ? OR assigned_provider_id = ?)
                     """, next, workTypeToPersist, requestId, input.expectedVersion(), actor.id(), actor.id());
             if (updated > 0 && "completed".equals(next) && current.assignedProviderId() != null) {
+                CaseClosureSupport.resolveLifecycleFlags(jdbc, requestId, actor.id());
                 jdbc.update("""
                         UPDATE public.provider_members
                         SET is_available = FALSE, last_latitude = NULL, last_longitude = NULL,

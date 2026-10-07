@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { rescueApi } from '../api/rescueApi';
 import { RescueTiming } from '../config/operational';
-import type { CancelRescueInput, CreateRescueInput } from '@/src/types/rescue';
+import type { CancelRescueInput, CaseResolutionInput, CreateRescueInput } from '@/src/types/rescue';
 
 export const rescueKeys = {
   all: ['rescue'] as const,
@@ -98,8 +98,16 @@ export function useRequestMutation(id: string) {
     client.setQueryData(rescueKeys.request(id), request);
     void client.invalidateQueries({ queryKey: rescueKeys.requests(false) });
     void client.invalidateQueries({ queryKey: rescueKeys.requests(true) });
+    void client.invalidateQueries({ queryKey: rescueKeys.requestHistory });
+    void client.invalidateQueries({ queryKey: rescueKeys.providerStatus });
+    void client.invalidateQueries({ queryKey: ['rescue', 'attention'] });
+    void client.invalidateQueries({ queryKey: ['rescue', 'operator-statistics'] });
   };
   return {
+    resolveCase: useMutation({
+      mutationFn: (input: CaseResolutionInput) => rescueApi.resolveCase(id, input),
+      onSuccess: update,
+    }),
     action: useMutation({
       mutationFn: (input: {
         action: string;

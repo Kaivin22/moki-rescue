@@ -6,6 +6,7 @@ import static com.danang.motorescue.service.RescueJdbcSupport.getInteger;
 import com.danang.motorescue.config.MatchingProperties;
 import com.danang.motorescue.config.RescuePolicyProperties;
 import com.danang.motorescue.model.ApiModels.FeedbackSummary;
+import com.danang.motorescue.model.ApiModels.CaseResolutionSummary;
 import com.danang.motorescue.model.ApiModels.IncidentReportSummary;
 import com.danang.motorescue.model.ApiModels.LocationPoint;
 import com.danang.motorescue.model.ApiModels.QuoteSummary;
@@ -132,6 +133,16 @@ public class RescueQueryService {
                 rs.getTimestamp("created_at").toInstant()), requestId);
 
         boolean staff = "admin".equals(actor.role());
+        CaseResolutionSummary operatorResolution = jdbc.query("""
+                SELECT metadata->>'decision' AS decision, metadata->>'note' AS note,
+                       (metadata->>'requestVersion')::INTEGER AS request_version, created_at
+                FROM public.audit_logs
+                WHERE entity_type = 'rescue_request' AND entity_id = ?
+                  AND action = 'request.operator_resolution'
+                ORDER BY id DESC LIMIT 1
+                """, rs -> rs.next() ? new CaseResolutionSummary(rs.getString("decision"),
+                staff ? rs.getString("note") : null, rs.getInt("request_version"),
+                rs.getTimestamp("created_at").toInstant()) : null, requestId.toString());
         List<IncidentReportSummary> incidents = "provider".equals(actor.role())
                 ? List.of()
                 : jdbc.query("""
@@ -184,7 +195,8 @@ public class RescueQueryService {
                 maskOperationalCancellation ? null : row.cancellationReason(),
                 row.lateCancellation(), staff ? row.providerNearPickupOnCancel() : null,
                 row.version(), row.requestedAt(), row.updatedAt(), providerRating, teamRating,
-                quote, review, location, providerLocationStatus, attentionCodes, feedback, incidents, events);
+                quote, review, location, providerLocationStatus, attentionCodes, feedback, incidents, events,
+                operatorResolution);
     }
 
     public RoadRouteResponse roadRoute(Actor actor, UUID requestId) {

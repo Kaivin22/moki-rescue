@@ -163,7 +163,15 @@ public final class ApiModels {
             List<String> attentionCodes,
             List<FeedbackSummary> feedback,
             List<IncidentReportSummary> incidentReports,
-            List<StatusEvent> events) {}
+            List<StatusEvent> events,
+            CaseResolutionSummary operatorResolution) {}
+
+    public record CaseResolutionSummary(String decision, String note, int requestVersion, Instant createdAt) {}
+
+    public record CaseResolutionRequest(
+            @NotBlank @Pattern(regexp = "verified_completed|unverified") String decision,
+            @NotBlank @Size(min = 10, max = 500) String note,
+            @NotNull @Min(1) Integer expectedVersion) {}
 
     public record DestinationRequest(
             @NotBlank @Size(max = 160) String areaLabel,
