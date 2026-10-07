@@ -1,12 +1,25 @@
 -- CHỈ DÙNG CHO LOCAL/STAGING ĐƯỢC PHÉP MẤT DỮ LIỆU.
 -- Script này xóa schema public; sau đó chạy lại toàn bộ Flyway migration từ B1 theo scripts/README.md.
--- Chạy cùng một lượt với dòng sau trong Supabase SQL Editor:
---   SELECT set_config('app.confirm_motorescue_reset', 'RESET_MOTORESCUE', false);
+-- KHÔNG thuộc thứ tự cài đặt thông thường. Backup trước, dừng backend và đăng ký
+-- tài khoản trong lúc reset. auth.users được giữ lại nhưng toàn bộ dữ liệu app mất.
+-- Chỉ dùng database riêng của dự án; CASCADE có thể ảnh hưởng đối tượng phụ thuộc.
+-- Sửa hai hằng bên dưới ngay trong bản chạy; không dựa vào cờ session còn sót.
+
+BEGIN;
 
 DO $$
+DECLARE
+  confirm_reset CONSTANT TEXT := 'CHANGE_ME';
+  deployment_environment CONSTANT TEXT := 'CHANGE_ME';
 BEGIN
-  IF COALESCE(current_setting('app.confirm_motorescue_reset', TRUE), '') <> 'RESET_MOTORESCUE' THEN
+  IF confirm_reset <> 'RESET_MOTORESCUE' OR deployment_environment NOT IN ('local', 'staging') THEN
     RAISE EXCEPTION 'RESET_NOT_CONFIRMED';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace
+    WHERE n.nspname = 'public'
+  ) THEN
+    RAISE EXCEPTION 'RESET_REFUSED_EXTENSION_IN_PUBLIC';
   END IF;
 END;
 $$;
@@ -47,3 +60,5 @@ GRANT ALL ON SCHEMA public TO postgres, service_role;
 
 COMMENT ON SCHEMA public IS
   'Moki Rescue - nền tảng điều phối cứu hộ xe máy cho mạng lưới đối tác được xác minh.';
+
+COMMIT;

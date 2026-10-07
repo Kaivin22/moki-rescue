@@ -1,5 +1,6 @@
--- Kiểm tra cấu trúc bảo mật sau khi Flyway migrate thành công.
--- Script chỉ đọc metadata và không tạo fixture/người dùng/dữ liệu nghiệp vụ.
+-- Kiểm tra trạng thái ĐẾN V9; không dùng để xác minh schema legacy chỉ ở B1.
+-- Chỉ đọc metadata và một số bất biến dữ liệu; không thay thế test RLS bằng JWT.
+BEGIN TRANSACTION READ ONLY;
 
 DO $$
 DECLARE
@@ -13,7 +14,7 @@ BEGIN
     'case_attention_flags', 'request_feedback_events', 'provider_location_checkpoints',
     'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
     'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
-    'provider_dispatch_stats'
+    'provider_dispatch_stats', 'dispatch_recovery_jobs', 'push_outbox'
   ] LOOP
     IF to_regclass('public.' || table_name) IS NULL THEN
       missing_tables := array_append(missing_tables, table_name);
@@ -46,10 +47,23 @@ BEGIN
     ('service_types', 'description_en'),
     ('service_types', 'requires_destination'),
     ('service_types', 'matching_eta_window_seconds'),
+    ('service_types', 'matching_eta_weight'),
+    ('service_types', 'matching_experience_weight'),
+    ('service_types', 'matching_waiting_weight'),
+    ('service_types', 'matching_recent_cases_weight'),
+    ('service_types', 'matching_experience_reference_cases'),
+    ('service_types', 'matching_waiting_reference_seconds'),
+    ('service_types', 'matching_recent_window_days'),
+    ('service_types', 'matching_recent_reference_cases'),
     ('service_types', 'matching_starvation_skip_threshold'),
     ('service_types', 'matching_offer_ttl_seconds'),
     ('provider_dispatch_stats', 'consecutive_skips'),
     ('provider_dispatch_stats', 'last_offered_at'),
+    ('dispatch_recovery_jobs', 'lease_id'),
+    ('dispatch_recovery_jobs', 'available_at'),
+    ('push_outbox', 'state'),
+    ('push_outbox', 'expires_at'),
+    ('push_outbox', 'lease_id'),
     ('service_zones', 'boundary'),
     ('rescue_requests', 'pickup_location'),
     ('rescue_requests', 'pickup_source'),
@@ -121,9 +135,17 @@ BEGIN
     ('push_devices_installation_id_key'),
     ('push_delivery_receipts_pending_idx'),
     ('provider_dispatch_stats_service_skips_idx'),
-    ('dispatch_offers_provider_accepted_recent_idx')
+    ('dispatch_offers_provider_accepted_recent_idx'),
+    ('rescue_requests_provider_service_completed_idx'),
+    ('dispatch_recovery_due_idx'),
+    ('push_outbox_due_idx'),
+    ('push_outbox_retention_idx')
   ) AS required(index_name)
-  WHERE to_regclass('public.' || required.index_name) IS NULL;
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_index i
+    WHERE i.indexrelid = to_regclass('public.' || required.index_name)
+      AND i.indisvalid AND i.indisready
+  );
 
   IF missing_indexes IS NOT NULL THEN
     RAISE EXCEPTION 'MISSING_SAFETY_INDEXES: %', missing_indexes;
@@ -140,7 +162,7 @@ BEGIN
   FROM pg_class c
   JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE n.nspname = 'public'
-    AND c.relkind = 'r'
+    AND c.relkind IN ('r', 'p')
     AND c.relname IN (
       'profiles', 'rescue_teams', 'team_verification_requirements', 'team_verification_checks',
       'service_types', 'service_zones', 'provider_members', 'team_capabilities',
@@ -148,7 +170,7 @@ BEGIN
       'case_attention_flags', 'request_feedback_events', 'provider_location_checkpoints',
       'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
       'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
-      'provider_dispatch_stats'
+      'provider_dispatch_stats', 'dispatch_recovery_jobs', 'push_outbox'
     )
     AND NOT c.relrowsecurity;
 
@@ -360,7 +382,7 @@ DO $$
 DECLARE
   runtime_role RECORD;
 BEGIN
-  SELECT rolname, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls
+  SELECT rolname, rolcanlogin, rolinherit, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls
   INTO runtime_role
   FROM pg_roles
   WHERE rolname = 'motorescue_api';
@@ -369,7 +391,8 @@ BEGIN
     RAISE EXCEPTION 'MOTORESCUE_API_ROLE_MISSING';
   END IF;
   IF runtime_role.rolsuper OR runtime_role.rolcreatedb OR runtime_role.rolcreaterole
-    OR runtime_role.rolreplication OR NOT runtime_role.rolbypassrls THEN
+    OR runtime_role.rolreplication OR NOT runtime_role.rolbypassrls
+    OR NOT runtime_role.rolcanlogin OR runtime_role.rolinherit THEN
     RAISE EXCEPTION 'MOTORESCUE_API_ROLE_UNSAFE';
   END IF;
   IF has_schema_privilege('motorescue_api', 'public', 'CREATE') THEN
@@ -503,6 +526,7 @@ BEGIN
     SELECT 1 FROM pg_trigger trigger_info
     WHERE trigger_info.tgrelid = 'auth.users'::regclass
       AND trigger_info.tgname = 'on_auth_user_created'
+      AND trigger_info.tgenabled IN ('O', 'A')
       AND NOT trigger_info.tgisinternal
   ) THEN
     RAISE EXCEPTION 'AUTH_PROFILE_TRIGGER_MISSING';
@@ -526,4 +550,74 @@ BEGIN
 END;
 $$;
 
-SELECT 'RLS/security metadata verification passed' AS result;
+-- Hai bảng hàng đợi bật RLS nhưng cố ý không có policy client (deny-by-default).
+-- Dùng effective privileges: phát hiện cả quyền qua PUBLIC hoặc role được kế thừa.
+DO $$
+DECLARE
+  queue_name TEXT;
+  client_role TEXT;
+  privilege_name TEXT;
+BEGIN
+  FOREACH queue_name IN ARRAY ARRAY['dispatch_recovery_jobs', 'push_outbox'] LOOP
+    FOREACH client_role IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+      FOREACH privilege_name IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'] LOOP
+        IF has_table_privilege(client_role, 'public.' || queue_name, privilege_name) THEN
+          RAISE EXCEPTION 'QUEUE_EXPOSED: %.% %', client_role, queue_name, privilege_name;
+        END IF;
+      END LOOP;
+      IF has_any_column_privilege(client_role, 'public.' || queue_name, 'SELECT,INSERT,UPDATE,REFERENCES') THEN
+        RAISE EXCEPTION 'QUEUE_COLUMN_EXPOSED: %.%', client_role, queue_name;
+      END IF;
+    END LOOP;
+    FOREACH privilege_name IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE'] LOOP
+      IF NOT has_table_privilege('motorescue_api', 'public.' || queue_name, privilege_name) THEN
+        RAISE EXCEPTION 'QUEUE_RUNTIME_GRANT_MISSING: % %', queue_name, privilege_name;
+      END IF;
+    END LOOP;
+  END LOOP;
+END;
+$$;
+
+DO $$
+DECLARE
+  column_name TEXT;
+  trigger_name TEXT;
+BEGIN
+  FOREACH column_name IN ARRAY ARRAY['id', 'role', 'is_active', 'deletion_requested_at'] LOOP
+    IF has_column_privilege('authenticated', 'public.profiles', column_name, 'UPDATE')
+      OR has_column_privilege('anon', 'public.profiles', column_name, 'UPDATE') THEN
+      RAISE EXCEPTION 'PROFILE_PRIVILEGED_COLUMN_WRITABLE: %', column_name;
+    END IF;
+  END LOOP;
+  FOREACH trigger_name IN ARRAY ARRAY['rescue_requests_dispatch_recovery', 'rescue_requests_assignment_position', 'rescue_requests_service_area'] LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_trigger t
+      WHERE t.tgrelid = 'public.rescue_requests'::regclass AND t.tgname = trigger_name
+        AND NOT t.tgisinternal AND t.tgenabled IN ('O', 'A')
+    ) THEN
+      RAISE EXCEPTION 'REQUIRED_TRIGGER_MISSING_OR_DISABLED: %', trigger_name;
+    END IF;
+  END LOOP;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF to_regprocedure('public.api_is_in_service_area(double precision,double precision)') IS NULL THEN
+    RAISE EXCEPTION 'V9_SERVICE_COVERAGE_FUNCTION_MISSING';
+  END IF;
+  IF NOT has_function_privilege('motorescue_api',
+    'public.api_is_in_service_area(double precision,double precision)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'SERVICE_COVERAGE_RUNTIME_GRANT_MISSING';
+  END IF;
+  IF public.api_is_in_service_area(16.180001, 108.20)
+    OR public.api_is_in_service_area(15.949999, 108.20)
+    OR public.api_is_in_service_area(16.06, 108.049999)
+    OR public.api_is_in_service_area(16.06, 108.340001) THEN
+    RAISE EXCEPTION 'SERVICE_AREA_EXCEEDS_DEMO_EXTRACT';
+  END IF;
+END;
+$$;
+
+SELECT 'V9 schema/security checks passed; JWT and end-to-end tests still required' AS result;
+COMMIT;
