@@ -107,7 +107,7 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
 }
 
 function RouteStatusBar() {
-  return <StatusBar style="dark" translucent backgroundColor="transparent" />;
+  return <StatusBar style="dark" />;
 }
 
 function GlobalAssistant() {
@@ -144,7 +144,7 @@ function AppNavigator() {
         <Stack.Screen name="rescue/[id]/map" />
         <Stack.Screen name="service" />
         <Stack.Screen name="help" />
-        <Stack.Screen name="operator/teams" />
+        <Stack.Screen name="operator" />
         <Stack.Screen name="profile" />
         <Stack.Screen name="legal/terms" />
         <Stack.Screen name="legal/privacy" />

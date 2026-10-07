@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
@@ -28,7 +28,7 @@ const COPY = {
     loadError: 'Không tải được danh mục quản trị.',
     loading: 'Đang tải danh mục quản trị…',
     retry: 'Thử lại',
-    empty: 'Chưa có loại dịch vụ nào trong database.',
+    empty: 'Không tìm thấy dịch vụ đã chọn.',
     labelVi: 'Tên tiếng Việt',
     descriptionVi: 'Mô tả tiếng Việt',
     labelEn: 'Tên tiếng Anh',
@@ -50,7 +50,7 @@ const COPY = {
     loadError: 'Could not load the administration catalog.',
     loading: 'Loading the administration catalog…',
     retry: 'Try again',
-    empty: 'There are no service types in the database.',
+    empty: 'The selected service was not found.',
     labelVi: 'Vietnamese name',
     descriptionVi: 'Vietnamese description',
     labelEn: 'English name',
@@ -68,20 +68,22 @@ const COPY = {
   },
 } as const;
 
-export function ServiceCatalogEditor() {
+export function ServiceCatalogEditor({ serviceCode }: { serviceCode: string }) {
   const c = useCopy(COPY);
   const queryClient = useQueryClient();
   const catalog = useQuery({ queryKey: rescueKeys.adminServices, queryFn: rescueApi.adminServiceTypes });
   const [draft, setDraft] = useState<AdminServiceType | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!catalog.data?.length) return;
+  const [catalogSource, setCatalogSource] = useState<typeof catalog.data>();
+  if (catalog.data && catalog.data !== catalogSource) {
+    setCatalogSource(catalog.data);
     setDraft((current) => {
       const stillExists = current && catalog.data.some((service) => service.code === current.code);
-      return stillExists ? current : { ...catalog.data[0] };
+      const selected = catalog.data.find((service) => service.code === serviceCode);
+      return stillExists && current.code === serviceCode ? current : selected ? { ...selected } : null;
     });
-  }, [catalog.data]);
+  }
 
   const update = useMutation({
     mutationFn: rescueApi.updateServiceType,
@@ -129,7 +131,7 @@ export function ServiceCatalogEditor() {
 
   return (
     <View style={styles.sectionWrap}>
-      <Text style={styles.title}>{c.title}</Text>
+      <Text style={styles.title}>{draft?.labelVi ?? c.title}</Text>
       <Text style={styles.hint}>{c.hint}</Text>
       {catalog.isLoading ? <Text style={styles.hint}>{c.loading}</Text> : null}
       {catalog.isError ? (
@@ -138,31 +140,7 @@ export function ServiceCatalogEditor() {
           <AppButton title={c.retry} variant="outline" onPress={() => void catalog.refetch()} />
         </View>
       ) : null}
-      {!catalog.isLoading && catalog.data?.length === 0 ? <Text style={styles.hint}>{c.empty}</Text> : null}
-      <View style={styles.selector}>
-        {(catalog.data ?? []).map((service) => (
-          <Pressable
-            key={service.code}
-            accessibilityRole="radio"
-            accessibilityLabel={service.labelVi}
-            accessibilityState={{ checked: draft?.code === service.code }}
-            onPress={() => {
-              setDraft({ ...service });
-              setMessage(null);
-            }}
-            style={[styles.serviceChip, draft?.code === service.code && styles.selectedChip]}
-          >
-            <Ionicons
-              name={service.iconName as keyof typeof Ionicons.glyphMap}
-              size={18}
-              color={Colors.primary}
-            />
-            <Text style={styles.serviceChipText}>{service.labelVi}</Text>
-            {!service.active ? <Text style={styles.inactive}>{c.inactive}</Text> : null}
-          </Pressable>
-        ))}
-      </View>
-
+      {catalog.isSuccess && !draft ? <Text style={styles.hint}>{c.empty}</Text> : null}
       {draft ? (
         <View style={styles.card}>
           <AppInput

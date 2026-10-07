@@ -11,6 +11,9 @@ import { emergencyCallUri, MEDICAL_EMERGENCY_NUMBER } from '@/src/features/safet
 import { useAuthStore } from '@/src/stores/authStore';
 import { roleLabel } from '@/src/features/auth/roles';
 import { useCopy, useI18n } from '@/src/i18n';
+import { OperationsWorkspace } from '@/src/features/rescue/screens/OperationsWorkspace';
+import { AdminDashboard } from '@/src/features/operator/AdminDashboard';
+import { ApiClientError } from '@/src/features/rescue/api/client';
 
 const COPY = {
   vi: {
@@ -58,6 +61,13 @@ const COPY = {
 } as const;
 
 export default function HomeScreen() {
+  const role = useAuthStore((state) => state.profile?.role);
+  if (role === 'provider') return <OperationsWorkspace />;
+  if (role === 'admin') return <AdminDashboard />;
+  return <CustomerHomeScreen />;
+}
+
+function CustomerHomeScreen() {
   const profile = useAuthStore((state) => state.profile);
   const role = profile?.role ?? 'customer';
   const requests = useRequests(false);
@@ -70,7 +80,7 @@ export default function HomeScreen() {
     <View style={styles.screen}>
       <SafeAreaView style={styles.hero} edges={['top']}>
         <View style={styles.heroContent}>
-          <View>
+          <View style={styles.heroText}>
             <Text style={styles.eyebrow}>{roleLabel(role, language)}</Text>
             <Text style={styles.greeting}>
               {c.greeting} {profile?.display_name ?? c.you}
@@ -131,7 +141,7 @@ export default function HomeScreen() {
         {requests.isError ? (
           <View style={styles.errorPanel}>
             <Text accessibilityRole="alert" style={styles.error}>
-              {c.loadActiveError}
+              {requests.error instanceof ApiClientError ? requests.error.message : c.loadActiveError}
             </Text>
             <AppButton title={c.retry} variant="outline" onPress={() => void requests.refetch()} />
           </View>
@@ -169,7 +179,7 @@ export default function HomeScreen() {
             {services.isError ? (
               <View style={styles.errorPanel}>
                 <Text accessibilityRole="alert" style={styles.error}>
-                  {c.loadServicesError}
+                  {services.error instanceof ApiClientError ? services.error.message : c.loadServicesError}
                 </Text>
                 <AppButton title={c.retry} variant="outline" onPress={() => void services.refetch()} />
               </View>
@@ -203,18 +213,21 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.background },
-  hero: { backgroundColor: Colors.brandBlue, paddingBottom: Spacing.xl },
+  screen: { flex: 1, minWidth: 0, backgroundColor: Colors.background },
+  hero: { alignSelf: 'stretch', minWidth: 0, backgroundColor: Colors.brandBlue, paddingBottom: Spacing.xl },
   heroContent: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: Spacing.md,
   },
+  heroText: { flex: 1, minWidth: 0 },
   eyebrow: { ...Typography.label, color: Colors.textPrimary },
   greeting: { ...Typography.h1, color: Colors.textPrimary, marginTop: 3 },
   shield: {
+    flexShrink: 0,
     width: 50,
     height: 50,
     borderRadius: Radius.lg,
@@ -248,9 +261,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: Spacing.sm,
   },
-  sectionTitle: { ...Typography.h3, color: Colors.textPrimary, marginTop: Spacing.sm },
+  sectionTitle: { ...Typography.h3, color: Colors.textPrimary, marginTop: Spacing.sm, flex: 1 },
   link: { ...Typography.bodyBold, color: Colors.primary },
-  linkButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: Spacing.sm },
+  linkButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: Spacing.sm, flexShrink: 0 },
   muted: { ...Typography.body, color: Colors.textMuted },
   error: { ...Typography.body, color: Colors.error },
   errorPanel: { gap: Spacing.sm },
@@ -262,7 +275,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardBg,
     borderRadius: Radius.lg,
   },
-  emptyText: { ...Typography.body, color: Colors.textSecondary },
+  emptyText: { ...Typography.body, color: Colors.textSecondary, flex: 1 },
   services: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   service: {
     width: '48%',

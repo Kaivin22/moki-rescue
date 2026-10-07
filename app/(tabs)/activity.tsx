@@ -7,7 +7,9 @@ import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { RequestSummaryCard } from '@/src/features/rescue/components/RequestSummaryCard';
 import { useRequestHistory, useRequests } from '@/src/features/rescue/hooks/useRescueQueries';
 import { AppButton } from '@/src/components/atoms/AppButton';
-import { useCopy } from '@/src/i18n';
+import { useCopy, useI18n } from '@/src/i18n';
+import { useAuthStore } from '@/src/stores/authStore';
+import { ApiClientError } from '@/src/features/rescue/api/client';
 
 const COPY = {
   vi: {
@@ -38,6 +40,33 @@ export default function ActivityScreen() {
   const activeRequests = useRequests(false);
   const historyRequests = useRequestHistory();
   const c = useCopy(COPY);
+  const role = useAuthStore((state) => state.profile?.role);
+  const english = useI18n((state) => state.language === 'en');
+  const title =
+    role === 'provider'
+      ? english
+        ? 'My assigned cases'
+        : 'Ca được giao cho tôi'
+      : role === 'admin'
+        ? english
+          ? 'Network case history'
+          : 'Ca trên toàn hệ thống'
+        : english
+          ? 'My rescue requests'
+          : 'Yêu cầu cứu hộ của tôi';
+  const subtitle =
+    role === 'provider'
+      ? english
+        ? 'Your current work and completed jobs.'
+        : 'Công việc đang xử lý và các ca bạn đã thực hiện.'
+      : role === 'admin'
+        ? english
+          ? 'Monitor case progress across the partner network.'
+          : 'Theo dõi tiến độ và lịch sử ca của mạng lưới đối tác.'
+        : english
+          ? 'Track your requests and review completed rescues.'
+          : 'Theo dõi yêu cầu đã gửi và xem lại các lần được cứu hộ.';
+  const error = history ? historyRequests.error : activeRequests.error;
   const data = history
     ? (historyRequests.data?.pages.flatMap((page) => page) ?? [])
     : (activeRequests.data ?? []);
@@ -48,8 +77,8 @@ export default function ActivityScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>{c.title}</Text>
-        <Text style={styles.subtitle}>{c.subtitle}</Text>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
       <View style={styles.switcher}>
         <Pressable
@@ -81,7 +110,11 @@ export default function ActivityScreen() {
           />
         }
       >
-        {isError ? <Text style={styles.error}>{c.error}</Text> : null}
+        {isError ? (
+          <Text accessibilityRole="alert" style={styles.error}>
+            {error instanceof ApiClientError ? error.message : c.error}
+          </Text>
+        ) : null}
         {data.map((request) => (
           <RequestSummaryCard
             key={request.id}

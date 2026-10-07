@@ -13,6 +13,7 @@ import { ApiClientError } from '@/src/features/rescue/api/client';
 import { rescueApi } from '@/src/features/rescue/api/rescueApi';
 import { rescueKeys } from '@/src/features/rescue/hooks/useRescueQueries';
 import { useCopy } from '@/src/i18n';
+import { needsCompletionDecision } from '@/src/features/rescue/services/caseProgress';
 import type { AttentionFlag } from '@/src/types/rescue';
 
 const COPY = {
@@ -27,6 +28,8 @@ const COPY = {
     resolve: 'Đánh dấu đã xử lý',
     noteRequired: 'Kết quả xử lý cần ít nhất 5 ký tự.',
     resolveError: 'Không thể đóng cảnh báo.',
+    completionReview:
+      'Ca chưa kết thúc: mở chi tiết ca để xác minh hoàn tất hoặc hủy có lý do. Chưa xác minh thì giữ cảnh báo mở.',
     codes: {
       provider_start_timeout: 'Cứu hộ viên không xuất phát đúng hạn',
       provider_gps_stale: 'GPS cứu hộ viên đã cũ',
@@ -53,6 +56,8 @@ const COPY = {
     resolve: 'Mark as resolved',
     noteRequired: 'Resolution result must contain at least 5 characters.',
     resolveError: 'Could not resolve the alert.',
+    completionReview:
+      'This job is still open. Review its details to verify completion or cancel with a reason. Keep the alert open when unverified.',
     codes: {
       provider_start_timeout: 'Provider did not depart on time',
       provider_gps_stale: 'Provider GPS is stale',
@@ -139,7 +144,9 @@ export default function AttentionQueueScreen() {
               <Text style={styles.openText}>{c.openRequest}</Text>
               <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
             </Pressable>
-            {selected === flag.id ? (
+            {needsCompletionDecision(flag.code, flag.requestStatus) ? (
+              <Text style={styles.body}>{c.completionReview}</Text>
+            ) : selected === flag.id ? (
               <View style={styles.resolveBox}>
                 <AppInput
                   label={c.resolution}

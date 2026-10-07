@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
@@ -88,12 +88,13 @@ export function PartnerVerificationEditor({ teamId, onChanged, onError }: Props)
   const [dirty, setDirty] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!verification.data) return;
+  const [verificationSource, setVerificationSource] = useState<typeof verification.data>();
+  if (verification.data && verification.data !== verificationSource) {
+    setVerificationSource(verification.data);
     setPartnerReference(verification.data.partnerReference);
     setChecks(verification.data.checks);
     setDirty(false);
-  }, [verification.data]);
+  }
 
   const refresh = async () => {
     setActionMessage(null);

@@ -116,6 +116,32 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {profile?.role !== 'customer' ? (
+          <View style={styles.card}>
+            <MenuRow
+              icon={profile?.role === 'admin' ? 'settings-outline' : 'radio-outline'}
+              title={
+                profile?.role === 'admin'
+                  ? language === 'en'
+                    ? 'Manage partner network'
+                    : 'Quản lý mạng lưới'
+                  : language === 'en'
+                    ? 'My rescue shift'
+                    : 'Trạm nhận ca của tôi'
+              }
+              subtitle={
+                profile?.role === 'admin'
+                  ? language === 'en'
+                    ? 'Teams, verification and access'
+                    : 'Đội, xác minh và phân quyền'
+                  : language === 'en'
+                    ? 'Availability and assigned jobs'
+                    : 'Trạng thái sẵn sàng và ca được giao'
+              }
+              onPress={() => router.push(profile?.role === 'admin' ? '/operator' : '/(tabs)')}
+            />
+          </View>
+        ) : null}
         <Text style={styles.section}>{c.account}</Text>
         <View style={styles.card}>
           <MenuRow

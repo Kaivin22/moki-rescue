@@ -6,7 +6,6 @@ import { Colors } from '@/src/constants/colors';
 import { Spacing, Typography } from '@/src/constants/spacing';
 import { useI18n } from '@/src/i18n';
 import { useAuthStore } from '@/src/stores/authStore';
-import { hasOperationsRole } from '@/src/features/auth/roles';
 import { useHasAppAccess } from '@/src/features/auth/access';
 
 export default function TabLayout() {
@@ -14,9 +13,9 @@ export default function TabLayout() {
   const role = useAuthStore((state) => state.profile?.role ?? 'customer');
   const user = useAuthStore((state) => state.user);
   const hasAccess = useHasAppAccess();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const isCustomer = role === 'customer';
-  const hasOperations = hasOperationsRole(role);
+  const english = language === 'en';
 
   if (!user || !hasAccess) return <Redirect href="/(auth)/login" />;
 
@@ -34,8 +33,23 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: t('nav.home'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />,
+          title:
+            role === 'provider'
+              ? english
+                ? 'My shift'
+                : 'Nhận ca'
+              : role === 'admin'
+                ? english
+                  ? 'Overview'
+                  : 'Tổng quan'
+                : t('nav.home'),
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons
+              name={role === 'provider' ? 'radio' : role === 'admin' ? 'grid' : 'home'}
+              color={color}
+              size={size}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -49,15 +63,24 @@ export default function TabLayout() {
       <Tabs.Screen
         name="activity"
         options={{
-          title: t('nav.activity'),
+          title:
+            role === 'provider'
+              ? english
+                ? 'My jobs'
+                : 'Ca của tôi'
+              : role === 'admin'
+                ? english
+                  ? 'All cases'
+                  : 'Toàn bộ ca'
+                : t('nav.activity'),
           tabBarIcon: ({ color, size }) => <Ionicons name="time" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="operations"
         options={{
-          href: hasOperations ? undefined : null,
-          title: t('nav.operations'),
+          href: role === 'admin' ? undefined : null,
+          title: english ? 'Dispatch' : 'Điều phối',
           tabBarIcon: ({ color, size }) => <Ionicons name="radio" color={color} size={size} />,
         }}
       />
