@@ -12,16 +12,10 @@ public class ServiceAreaService {
     }
 
     public boolean contains(double latitude, double longitude) {
+        if (!Double.isFinite(latitude) || !Double.isFinite(longitude)) return false;
         Boolean covered = jdbc.queryForObject("""
-                SELECT EXISTS(
-                  SELECT 1 FROM public.service_zones zone
-                  WHERE zone.is_active
-                    AND extensions.ST_Covers(
-                      zone.boundary,
-                      extensions.ST_SetSRID(extensions.ST_MakePoint(?, ?), 4326)::extensions.geography
-                    )
-                )
-                """, Boolean.class, longitude, latitude);
+                SELECT public.api_is_in_service_area(?, ?)
+                """, Boolean.class, latitude, longitude);
         return Boolean.TRUE.equals(covered);
     }
 }

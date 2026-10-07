@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { WebView } from 'react-native-webview';
 import type { MapSurfaceHandle, MapSurfaceProps } from './types';
-import { scriptJson } from './mapDocument';
+import { MAP_DOCUMENT_BASE_URL, scriptJson } from './mapDocument';
 
 export const MapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
   ({ html, onMessage, onError }, ref) => {
@@ -18,9 +18,9 @@ export const MapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
       <WebView
         ref={web}
         style={{ flex: 1 }}
-        source={{ html }}
+        source={{ html, baseUrl: MAP_DOCUMENT_BASE_URL }}
         originWhitelist={['*']}
-        userAgent="MokiRescue/1.0 (+https://github.com/Kaivin22/moki-rescue)"
+        applicationNameForUserAgent="MokiRescue/1.0 (+https://github.com/Kaivin22/moki-rescue)"
         javaScriptEnabled
         domStorageEnabled={false}
         cacheEnabled
@@ -29,10 +29,14 @@ export const MapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
         geolocationEnabled={false}
         setSupportMultipleWindows={false}
         onShouldStartLoadWithRequest={(request) =>
-          request.url === 'about:blank' || request.url.startsWith('about:blank#')
+          request.url === 'about:blank' ||
+          request.url.startsWith('about:blank#') ||
+          request.url === MAP_DOCUMENT_BASE_URL
         }
         onMessage={(event) => onMessage(event.nativeEvent.data)}
         onError={onError}
+        // iOS only reports main-frame HTTP errors here, not raster tile failures.
+        // Tile failures are reported separately by Leaflet through onMessage.
         onHttpError={onError}
       />
     );

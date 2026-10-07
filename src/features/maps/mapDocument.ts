@@ -1,7 +1,10 @@
 import { Colors } from '@/src/constants/colors';
+import leaflet from './vendor/leaflet-1.9.4.json';
 
 export const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
 export const DEFAULT_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+// A real project URL identifies the inline document; it is not fetched as a page.
+export const MAP_DOCUMENT_BASE_URL = 'https://github.com/Kaivin22/moki-rescue/';
 
 // Safe inside an inline script even when names/notes contain HTML or script closers.
 export function scriptJson(value: unknown): string {
@@ -45,8 +48,8 @@ export function mapDocument(tileUrl: string, attribution: string, english: boole
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://unpkg.com; style-src 'unsafe-inline' https://unpkg.com; img-src data: ${tileOrigin}; connect-src 'none';">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: ${tileOrigin}; connect-src 'none';">
+<style>${leaflet.css}</style>
 <style>html,body,#map{width:100%;height:100%;margin:0;background:${Colors.background};font-family:sans-serif}
 .pin{width:22px;height:22px;border:3px solid ${Colors.white};border-radius:50%;box-shadow:0 1px 5px ${Colors.overlay};box-sizing:border-box}
 .leaflet-control-attribution{font-size:11px;max-width:85vw}.leaflet-popup-content{white-space:pre-line}</style>
@@ -54,9 +57,10 @@ export function mapDocument(tileUrl: string, attribution: string, english: boole
 <script>
 function send(payload){var message=JSON.stringify(Object.assign({source:'moki-map'},payload));
 if(window.ReactNativeWebView){window.ReactNativeWebView.postMessage(message);}else{parent.postMessage(message,'*');}}
-function fail(){send({type:'error'});}
+function fail(reason){send({type:'error',reason:reason||'runtime'});}
+window.addEventListener('error',function(){fail('runtime');});
 </script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous" onerror="fail()"></script>
+<script>${leaflet.js.replace(/<\/script/gi, '<\\/script')}</script>
 <script>
 if(window.L){
 var map=L.map('map',{zoomControl:false,attributionControl:true});
@@ -67,7 +71,7 @@ osmLink.onclick=function(e){e.preventDefault();send({type:'attribution'});};
 map.attributionControl.setPrefix(false);map.attributionControl.getContainer().appendChild(osmLink);
 if(attribution.textContent){map.attributionControl.getContainer().appendChild(document.createTextNode(' · '));map.attributionControl.getContainer().appendChild(attribution);}
 var tiles=L.tileLayer(${scriptJson(tileUrl)},{maxZoom:19,updateWhenIdle:true,keepBuffer:1}).addTo(map);
-tiles.on('tileerror',function(){send({type:'tileError'});});tiles.on('tileload',function(){send({type:'tileLoaded'});});
+tiles.on('tileerror',function(event){send({type:'tileError',url:event.tile.src});});tiles.on('tileload',function(){send({type:'tileLoaded'});});
 var layers=L.layerGroup().addTo(map),lastRegion='',lastLayers='',padding={top:0,right:0,bottom:0,left:0};
 function point(p){return [p.latitude,p.longitude];}
 function fit(points,pad){if(!points.length)return;map.fitBounds(L.latLngBounds(points.map(point)),{animate:false,maxZoom:17,paddingTopLeft:[pad.left+12,pad.top+12],paddingBottomRight:[pad.right+12,pad.bottom+30]});}
@@ -89,6 +93,6 @@ window.addEventListener('message',function(event){if(event.source!==parent)retur
 map.on('click',function(event){send({type:'press',coordinate:{latitude:event.latlng.lat,longitude:event.latlng.lng}});});
 new ResizeObserver(function(){map.invalidateSize();}).observe(document.getElementById('map'));
 send({type:'ready'});
-}else{fail();}
+}else{fail('library');}
 </script></body></html>`;
 }

@@ -9,6 +9,7 @@ import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { useRequest, useRoadRoute } from '@/src/features/rescue/hooks/useRescueQueries';
 import { RatingBadge } from '@/src/features/rescue/components/RatingBadge';
+import { NavigationTarget } from '@/src/features/rescue/components/NavigationTarget';
 import { googleMapsNavigationUrl, navigationDestination } from '@/src/features/rescue/services/navigation';
 import { isLiveStatus } from '@/src/features/rescue/status';
 import { useCopy, useI18n } from '@/src/i18n';
@@ -108,12 +109,14 @@ export default function RescueMapScreen() {
     request.destinationLatitude != null &&
     request.destinationLongitude != null,
   );
+  const pickupLatitude = request?.pickupLatitude;
+  const pickupLongitude = request?.pickupLongitude;
   const routeTarget = useMemo(
     () =>
-      request?.pickupLatitude != null && request?.pickupLongitude != null
-        ? { latitude: request.pickupLatitude, longitude: request.pickupLongitude }
+      pickupLatitude != null && pickupLongitude != null
+        ? { latitude: pickupLatitude, longitude: pickupLongitude }
         : null,
-    [request?.pickupLatitude, request?.pickupLongitude],
+    [pickupLatitude, pickupLongitude],
   );
 
   const region = useMemo(() => {
@@ -318,6 +321,7 @@ export default function RescueMapScreen() {
         ) : null}
         {canNavigate ? (
           <View style={styles.navigation}>
+            <NavigationTarget request={request} />
             <Text style={styles.caption}>
               {transportLeg ? c.destinationNavigationHint : c.navigationHint}
             </Text>

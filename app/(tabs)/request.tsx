@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Linking,
@@ -25,6 +25,7 @@ import { useCreateRequest, useServiceTypes } from '@/src/features/rescue/hooks/u
 import { useCurrentLocation } from '@/src/features/location/hooks/useCurrentLocation';
 import { emergencyCallUri, EMERGENCY_CONTACTS } from '@/src/features/safety/emergencyContacts';
 import { useCopy } from '@/src/i18n';
+import { useAuthStore } from '@/src/stores/authStore';
 import {
   clearRequestSubmission,
   getRequestSubmissionKey,
@@ -95,7 +96,8 @@ const COPY = {
     destinationNearby: 'Tên điểm giao xe',
     destinationPlaceholder: 'Cửa hàng, trạm sạc hoặc địa chỉ giao xe',
     destinationNote: 'Ghi chú tại điểm giao',
-    mapHint: 'Kiểm tra đúng phía đường, đầu cầu hoặc lối vào hẻm trước khi gửi.',
+    mapHint:
+      'Chạm bản đồ hoặc kéo ghim để chọn tọa độ. Nhập tên địa chỉ bên dưới chỉ là ghi chú, không di chuyển ghim. Kiểm tra đúng vị trí trước khi gửi.',
     nearby: 'Điểm nhận biết gần bạn',
     nearbyPlaceholder: 'Tên đường, cửa hàng hoặc cổng gần nhất',
     note: 'Ghi chú cho cứu hộ viên',
@@ -154,7 +156,8 @@ const COPY = {
     destinationNearby: 'Drop-off name',
     destinationPlaceholder: 'Repair shop, charging station, or delivery address',
     destinationNote: 'Drop-off note',
-    mapHint: 'Check the correct side of the road, bridge entrance, or alley entrance before sending.',
+    mapHint:
+      'Tap the map or drag a pin to select coordinates. Typing an address below only changes its label, not the pin. Check the location before sending.',
     nearby: 'Nearby landmark',
     nearbyPlaceholder: 'Nearest street, shop, or gate',
     note: 'Note for the rescue provider',
@@ -168,6 +171,12 @@ const COPY = {
 } as const;
 
 export default function CreateRequestScreen() {
+  const role = useAuthStore((state) => state.profile?.role);
+  if (role !== 'customer') return <Redirect href="/(tabs)" />;
+  return <CustomerRequestForm />;
+}
+
+function CustomerRequestForm() {
   const params = useLocalSearchParams<{ service?: string }>();
   const services = useServiceTypes();
   const create = useCreateRequest();
@@ -188,11 +197,17 @@ export default function CreateRequestScreen() {
   const selectedService = services.data?.find((service) => service.code === serviceCode);
   const needsDestination = Boolean(selectedService?.requiresDestination);
 
-  useEffect(() => {
+  const [serviceSource, setServiceSource] = useState<{
+    code?: string;
+    data?: typeof services.data;
+  }>({});
+  // Apply changed route/catalog input before rendering the form, not in a second effect pass.
+  if (serviceSource.code !== params.service || serviceSource.data !== services.data) {
+    setServiceSource({ code: params.service, data: services.data });
     if (params.service && services.data?.some((service) => service.code === params.service)) {
       setServiceCode(params.service);
     }
-  }, [params.service, services.data]);
+  }
 
   const goBack = () => {
     setError(null);
@@ -300,7 +315,9 @@ export default function CreateRequestScreen() {
             <Text style={styles.subtitle}>{c.issueBody}</Text>
             {services.isError ? (
               <View style={styles.errorCard}>
-                <Text style={styles.error}>{c.loadServicesError}</Text>
+                <Text style={styles.error}>
+                  {services.error instanceof ApiClientError ? services.error.message : c.loadServicesError}
+                </Text>
                 <AppButton title={c.retry} variant="outline" onPress={() => void services.refetch()} />
               </View>
             ) : null}
@@ -406,10 +423,10 @@ export default function CreateRequestScreen() {
                       description={c.markerDescription}
                       draggable
                       onDragEnd={(event) =>
-                        selectPickup(
-                          event.nativeEvent.coordinate.latitude,
-                          event.nativeEvent.coordinate.longitude,
-                        )
+                        void location.selectCoordinate({
+                          ...event.nativeEvent.coordinate,
+                          accuracy: null,
+                        })
                       }
                     />
                   ) : null}
@@ -506,6 +523,18 @@ export default function CreateRequestScreen() {
                   </>
                 ) : null}
                 <Text style={styles.mapHint}>{c.mapHint}</Text>
+                {(mapTarget === 'destination' ? destination.coordinate : location.coordinate) ? (
+                  <Text selectable style={styles.coordinate}>
+                    {mapTarget === 'destination' ? c.destinationMarker : c.markerTitle}:{' '}
+                    {(mapTarget === 'destination'
+                      ? destination.coordinate
+                      : location.coordinate)!.latitude.toFixed(6)}
+                    ,{' '}
+                    {(mapTarget === 'destination'
+                      ? destination.coordinate
+                      : location.coordinate)!.longitude.toFixed(6)}
+                  </Text>
+                ) : null}
                 {mapTarget === 'destination' && needsDestination ? (
                   <>
                     <Text style={styles.mapHint}>{c.destinationHint}</Text>

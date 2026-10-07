@@ -340,6 +340,8 @@ public class DispatchService {
                   ON stats.provider_id = pm.user_id AND stats.service_code = ?
                 WHERE pm.status = 'active'
                   AND pm.is_available
+                  AND public.api_is_in_service_area(pm.last_latitude, pm.last_longitude)
+                  AND public.api_is_in_service_area(rr.pickup_latitude, rr.pickup_longitude)
                   AND team.status = 'verified'
                   AND pm.last_location IS NOT NULL
                   AND pm.location_accuracy_m IS NOT NULL

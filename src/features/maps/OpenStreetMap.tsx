@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -31,8 +32,9 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>((props, ref) => {
   const surface = useRef<MapSurfaceHandle>(null);
   const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [ready, setReady] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const [tileFailed, setTileFailed] = useState(false);
+  const [failedTileUrl, setFailedTileUrl] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const markers: MapMarkerProps[] = [];
   const lines: MapPolylineProps[] = [];
@@ -42,7 +44,6 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>((props, ref) => {
     if (child.type === Polyline) lines.push(child.props as MapPolylineProps);
   });
   const current = useRef({ props, markers });
-  current.current = { props, markers };
   const html = useMemo(
     () =>
       mapDocument(
@@ -60,8 +61,19 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>((props, ref) => {
     lines,
   });
   const latestUpdate = useRef(update);
-  latestUpdate.current = update;
-  const onError = useCallback(() => setFailed(true), []);
+  useLayoutEffect(() => {
+    current.current = { props, markers };
+    latestUpdate.current = update;
+  });
+  const [documentState, setDocumentState] = useState({ html, attempt });
+  if (documentState.html !== html || documentState.attempt !== attempt) {
+    setDocumentState({ html, attempt });
+    setReady(false);
+    setFailure(null);
+    setTileFailed(false);
+    setFailedTileUrl(null);
+  }
+  const onError = useCallback(() => setFailure('webview'), []);
   const onMessage = useCallback((raw: string) => {
     try {
       const message = JSON.parse(raw);
@@ -69,12 +81,18 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>((props, ref) => {
       if (message.type === 'ready') {
         if (timeout.current) clearTimeout(timeout.current);
         setReady(true);
-        setFailed(false);
+        setFailure(null);
         surface.current?.send(latestUpdate.current);
         current.current.props.onMapReady?.();
-      } else if (message.type === 'error') setFailed(true);
-      else if (message.type === 'tileError') setTileFailed(true);
-      else if (message.type === 'tileLoaded') setTileFailed(false);
+      } else if (message.type === 'error') setFailure(message.reason === 'library' ? 'library' : 'runtime');
+      else if (message.type === 'tileError') {
+        setTileFailed(true);
+        if (typeof message.url === 'string') {
+          const tile = new URL(message.url);
+          const configured = new URL(String(Constants.expoConfig?.extra?.mapTileUrl || DEFAULT_TILE_URL));
+          if (tile.protocol === 'https:' && tile.origin === configured.origin) setFailedTileUrl(tile.href);
+        }
+      } else if (message.type === 'tileLoaded') setTileFailed(false);
       else if (message.type === 'attribution') void Linking.openURL(OSM_COPYRIGHT_URL).catch(() => undefined);
       else if (validCoordinate(message.coordinate)) {
         const event = { nativeEvent: { coordinate: message.coordinate } };
@@ -105,28 +123,44 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>((props, ref) => {
     if (ready) surface.current?.send(update);
   }, [ready, update]);
   useEffect(() => {
-    setReady(false);
-    setFailed(false);
-    timeout.current = setTimeout(() => setFailed(true), 20_000);
+    if (ready || failure) return;
+    timeout.current = setTimeout(() => setFailure('timeout'), 20_000);
     return () => {
       if (timeout.current) clearTimeout(timeout.current);
     };
-  }, [html, attempt]);
+  }, [html, attempt, ready, failure]);
   return (
     <View style={[{ overflow: 'hidden' }, props.style]}>
       <MapSurface key={attempt} ref={surface} html={html} onMessage={onMessage} onError={onError} />
-      {(!ready || failed || tileFailed) && (
+      {(!ready || failure || tileFailed) && (
         <View style={[styles.notice, { top: (props.mapPadding?.top ?? 0) + 8 }]}>
           <Text style={styles.text}>
-            {failed || tileFailed
+            {failure
               ? english
-                ? 'Map unavailable. Check your connection.'
-                : 'Chưa tải được bản đồ. Kiểm tra kết nối mạng.'
-              : english
-                ? 'Loading map…'
-                : 'Đang tải bản đồ…'}
+                ? `Map could not start (${failure}). Tap Retry.`
+                : `Không khởi tạo được bản đồ (${failure}). Hãy bấm Thử lại.`
+              : tileFailed
+                ? english
+                  ? 'OSM background images could not load. Check your Internet connection.'
+                  : 'Chưa tải được ảnh nền OSM. Kiểm tra kết nối Internet.'
+                : english
+                  ? 'Loading map…'
+                  : 'Đang tải bản đồ…'}
           </Text>
-          {(failed || tileFailed) && (
+          {tileFailed && failedTileUrl ? (
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={
+                english ? 'Check image source in browser' : 'Kiểm tra nguồn ảnh trên trình duyệt'
+              }
+              onPress={() => void Linking.openURL(failedTileUrl).catch(() => undefined)}
+            >
+              <Text style={styles.retry}>
+                {english ? 'Check image source in browser' : 'Kiểm tra nguồn ảnh trên trình duyệt'}
+              </Text>
+            </Pressable>
+          ) : null}
+          {(failure || tileFailed) && (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={english ? 'Reload map' : 'Tải lại bản đồ'}

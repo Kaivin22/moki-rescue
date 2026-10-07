@@ -31,6 +31,7 @@ public class ProviderService {
     private final MatchingProperties properties;
     private final RescuePolicyProperties policy;
     private final QualityProperties qualityPolicy;
+    private final ServiceAreaService serviceArea;
 
     public ProviderService(
             JdbcTemplate jdbc,
@@ -40,7 +41,8 @@ public class ProviderService {
             PushNotificationService push,
             MatchingProperties properties,
             RescuePolicyProperties policy,
-            QualityProperties qualityPolicy) {
+            QualityProperties qualityPolicy,
+            ServiceAreaService serviceArea) {
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.dispatch = dispatch;
@@ -49,6 +51,7 @@ public class ProviderService {
         this.properties = properties;
         this.policy = policy;
         this.qualityPolicy = qualityPolicy;
+        this.serviceArea = serviceArea;
     }
 
     public ProviderStatusResponse status(Actor actor) {
@@ -100,6 +103,7 @@ public class ProviderService {
                         "Cần vị trí GPS hợp lệ trước khi bật trạng thái sẵn sàng.");
             }
             validateAccuracy(new ProviderLocationRequest(input.latitude(), input.longitude(), input.accuracyM()));
+            requireServiceArea(actor, input.latitude(), input.longitude());
             Boolean busy = jdbc.queryForObject("""
                     SELECT EXISTS(
                       SELECT 1 FROM public.rescue_requests
@@ -119,9 +123,9 @@ public class ProviderService {
                           WHEN ? THEN pm.available_since
                           ELSE NULL
                         END,
-                        last_latitude = CASE WHEN ? THEN ? ELSE NULL END,
-                        last_longitude = CASE WHEN ? THEN ? ELSE NULL END,
-                        location_accuracy_m = CASE WHEN ? THEN ? ELSE NULL END
+                        last_latitude = CASE WHEN ? THEN CAST(? AS double precision) ELSE NULL END,
+                        last_longitude = CASE WHEN ? THEN CAST(? AS double precision) ELSE NULL END,
+                        location_accuracy_m = CASE WHEN ? THEN CAST(? AS double precision) ELSE NULL END
                     FROM public.rescue_teams team
                     WHERE pm.user_id = ? AND pm.status = 'active'
                       AND team.id = pm.team_id AND team.status = 'verified'
@@ -178,6 +182,10 @@ public class ProviderService {
             return accepted.requestId();
         } catch (DataAccessException ex) {
             String detail = ex.getMostSpecificCause().getMessage();
+            if (detail != null && detail.contains("OFFER_OUTSIDE_SERVICE_AREA")) {
+                throw new ApiException(HttpStatus.CONFLICT, "OFFER_OUTSIDE_SERVICE_AREA",
+                        "Vị trí cứu hộ viên hoặc địa điểm của ca nằm ngoài vùng phục vụ hiện tại. Không thể nhận đề nghị này.");
+            }
             if (detail != null && (detail.contains("OFFER_") || detail.contains("REQUEST_ALREADY_CHANGED")
                     || detail.contains("PROVIDER_NOT_ELIGIBLE"))) {
                 throw new ApiException(HttpStatus.CONFLICT, "OFFER_NOT_AVAILABLE", "Đề nghị đã hết hạn hoặc được người khác nhận.");
@@ -287,6 +295,7 @@ public class ProviderService {
     public void saveAvailabilityLocation(Actor actor, ProviderLocationRequest input) {
         requireProvider(actor);
         validateAccuracy(input);
+        requireServiceArea(actor, input.latitude(), input.longitude());
         int changed = jdbc.update("""
                 UPDATE public.provider_members pm
                 SET last_latitude = ?, last_longitude = ?, location_accuracy_m = ?
@@ -304,6 +313,23 @@ public class ProviderService {
         if (!"provider".equals(actor.role())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "PROVIDER_ROLE_REQUIRED", "Chức năng chỉ dành cho cứu hộ viên.");
         }
+    }
+
+    private void requireServiceArea(Actor actor, double latitude, double longitude) {
+        if (serviceArea.contains(latitude, longitude)) return;
+        // Commit OFF before returning the error: retaining the old in-area GPS would
+        // otherwise keep matching this provider. Never modify the provider's active job.
+        transactions.executeWithoutResult(transaction -> {
+            int changed = jdbc.update("""
+                    UPDATE public.provider_members
+                    SET is_available = FALSE, available_since = NULL,
+                        last_latitude = NULL, last_longitude = NULL, location_accuracy_m = NULL
+                    WHERE user_id = ? AND is_available
+                    """, actor.id());
+            if (changed > 0) audit.record(actor.id(), "provider.outside_service_area", "provider", actor.id());
+        });
+        throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "PROVIDER_OUTSIDE_SERVICE_AREA",
+                "Bạn đang ngoài vùng phục vụ của bản đồ demo Đà Nẵng. Đã tắt nhận ca; hãy quay lại trong vùng rồi bật hoạt động.");
     }
 
     private void validateAccuracy(ProviderLocationRequest input) {

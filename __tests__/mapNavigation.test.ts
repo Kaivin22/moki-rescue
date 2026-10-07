@@ -1,4 +1,6 @@
 import { Script } from 'node:vm';
+import { createHash } from 'node:crypto';
+import leaflet from '../src/features/maps/vendor/leaflet-1.9.4.json';
 import {
   DEFAULT_TILE_URL,
   mapDocument,
@@ -9,6 +11,17 @@ import {
 import { googleMapsNavigationUrl, navigationDestination } from '../src/features/rescue/services/navigation';
 
 describe('OpenStreetMap document', () => {
+  it('bundles verified Leaflet assets without runtime CDN requests', () => {
+    expect(createHash('sha256').update(leaflet.js).digest('base64')).toBe(
+      '20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=',
+    );
+    expect(createHash('sha256').update(leaflet.css).digest('base64')).toBe(
+      'p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=',
+    );
+    const html = mapDocument(DEFAULT_TILE_URL, '', false);
+    expect(html).not.toMatch(/<script[^>]+src=/);
+    expect(html).not.toMatch(/<link[^>]+href=/);
+  });
   it.each([false, true])('generates valid inline JavaScript, english=%s', (english) => {
     const html = mapDocument(DEFAULT_TILE_URL, '</script><script>alert(1)</script>', english);
     const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];

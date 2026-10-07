@@ -61,6 +61,7 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(AVAILABILITY_TASK)) {
             'AUTH_REQUIRED',
             'ACCOUNT_INACTIVE',
             'PROVIDER_NOT_AVAILABLE',
+            'PROVIDER_OUTSIDE_SERVICE_AREA',
             'PROVIDER_ROLE_REQUIRED',
             'PROVIDER_NOT_READY',
             'CONSENT_REQUIRED',

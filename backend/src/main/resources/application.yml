@@ -31,6 +31,9 @@ spring:
           issuer-uri: ${SUPABASE_URL}/auth/v1
           jwk-set-uri: ${SUPABASE_URL}/auth/v1/.well-known/jwks.json
           audiences: authenticated
+          # Supabase signs current access tokens with ES256; keep RSA rotation support.
+          # This does not relax issuer, audience, expiry or signature validation.
+          jws-algorithms: ES256,RS256
 
 app:
   legal:

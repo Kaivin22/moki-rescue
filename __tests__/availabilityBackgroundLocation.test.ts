@@ -45,6 +45,7 @@ import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { supabase } from '../src/services/supabase';
 import { rescueApi } from '../src/features/rescue/api/rescueApi';
+import { ApiClientError } from '../src/features/rescue/api/client';
 import {
   AVAILABILITY_TASK,
   startAvailabilityBackgroundTracking,
@@ -71,6 +72,18 @@ const setUser = (id: string) =>
     data: { session: { user: { id } } },
     error: null,
   } as Awaited<ReturnType<typeof supabase.auth.getSession>>);
+
+it('stops background tracking when the server disables an out-of-area provider', async () => {
+  setUser('coverage-provider');
+  await startAvailabilityBackgroundTracking();
+  jest.mocked(Location.hasStartedLocationUpdatesAsync).mockResolvedValue(true);
+  jest
+    .mocked(rescueApi.saveProviderAvailabilityLocation)
+    .mockRejectedValueOnce(new ApiClientError('PROVIDER_OUTSIDE_SERVICE_AREA', 'Outside service area', 422));
+  await runTask();
+  expect(Location.stopLocationUpdatesAsync).toHaveBeenCalled();
+  expect(mockStorage.size).toBe(0);
+});
 const runTask = (sample = position()) =>
   task({
     data: { locations: [sample] },
