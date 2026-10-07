@@ -55,7 +55,8 @@ class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
         MigrateResult remainingMigrations = flyway.migrate();
 
         assertTrue(remainingMigrations.success);
-        assertEquals(4, remainingMigrations.migrationsExecuted);
+        assertEquals(5, remainingMigrations.migrationsExecuted); // V5 through V9
+        assertEquals(MigrationVersion.fromVersion("9"), flyway.info().current().getVersion());
         assertTrue(flyway.validateWithResult().validationSuccessful);
         assertEquals(0, flyway.migrate().migrationsExecuted);
 
@@ -80,6 +81,17 @@ class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
             assertEquals(6, queryForInt(connection,
                     "SELECT COUNT(*) FROM public.team_verification_requirements"));
             assertEquals(1, queryForInt(connection, "SELECT COUNT(*) FROM public.service_zones"));
+            assertEquals(1, queryForInt(connection,
+                    "SELECT COUNT(*) FROM public.service_zones WHERE name = 'Da Nang launch zone' "
+                            + "AND extensions.ST_Equals(boundary::extensions.geometry, "
+                            + "extensions.ST_MakeEnvelope(108.05, 15.95, 108.34, 16.18, 4326))"));
+            assertEquals(1, queryForInt(connection,
+                    "SELECT COUNT(*) WHERE public.api_is_in_service_area(16.0544, 108.2022) "
+                            + "AND public.api_is_in_service_area(15.95, 108.05) "
+                            + "AND NOT public.api_is_in_service_area(16.20, 108.2022)"));
+            assertEquals(1, queryForInt(connection,
+                    "SELECT COUNT(*) FROM pg_trigger "
+                            + "WHERE tgname = 'rescue_requests_service_area' AND NOT tgisinternal"));
             assertEquals(1, queryForInt(connection,
                     "SELECT COUNT(*) FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace "
                             + "WHERE e.extname = 'postgis' AND n.nspname = 'extensions'"));
