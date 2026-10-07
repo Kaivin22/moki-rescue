@@ -1,9 +1,11 @@
 import Constants from 'expo-constants';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
+import { NavigationCard } from '@/src/components/atoms/NavigationCard';
+import { useI18n } from '@/src/i18n';
 import { Colors } from '@/src/constants/colors';
 import { Spacing } from '@/src/constants/spacing';
 import { ApiClientError } from '@/src/features/rescue/api/client';
@@ -12,13 +14,10 @@ import {
   OperationalCancellationPanel,
 } from '@/src/features/rescue/components/details/CancellationPanels';
 import { CustomerRescueActions } from '@/src/features/rescue/components/details/CustomerRescueActions';
-import { IncidentPanel } from '@/src/features/rescue/components/details/IncidentPanel';
 import { ProviderRescueActions } from '@/src/features/rescue/components/details/ProviderRescueActions';
+import { OperatorCompletionPanel } from '@/src/features/rescue/components/details/OperatorCompletionPanel';
 import { RescueMapSection } from '@/src/features/rescue/components/details/RescueMapSection';
 import { RescueOverview } from '@/src/features/rescue/components/details/RescueOverview';
-import { RescueQuoteCard } from '@/src/features/rescue/components/details/RescueQuoteCard';
-import { RescueTimeline } from '@/src/features/rescue/components/details/RescueTimeline';
-import { ReviewPanel } from '@/src/features/rescue/components/details/ReviewPanel';
 import { useRescueDetailsCopy } from '@/src/features/rescue/components/details/rescueDetailsCopy';
 import { rescueDetailsStyles as styles } from '@/src/features/rescue/components/details/rescueDetailsStyles';
 import { useDispatchRetry, useSupportAction } from '@/src/features/rescue/hooks/useRescueActions';
@@ -49,6 +48,7 @@ export default function RescueDetailsScreen() {
   const support = useSupportAction(id);
   const [screenMessage, setScreenMessage] = useState<string | null>(null);
   const c = useRescueDetailsCopy();
+  const en = useI18n((s) => s.language === 'en');
   const region = useMemo(() => rescueMapRegion(request, providerLocation), [providerLocation, request]);
 
   const retryDispatch = async () => {
@@ -120,10 +120,30 @@ export default function RescueDetailsScreen() {
           onRetryDispatch={() => void retryDispatch()}
           onRequestSupport={() => void requestDispatchSupport()}
         />
-        {request.currentQuote ? <RescueQuoteCard quote={request.currentQuote} /> : null}
+        {request.currentQuote ? (
+          <NavigationCard
+            title={en ? 'View quote' : 'Xem chi tiết báo giá'}
+            description={`${request.currentQuote.amountVnd.toLocaleString(en ? 'en-US' : 'vi-VN')} VND`}
+            icon="receipt-outline"
+            onPress={() => router.push(`/rescue/${id}/quote` as Href)}
+          />
+        ) : null}
         {request.status === 'cancelled' ? <CancellationSummary request={request} role={role} /> : null}
-        {permissions.showReview ? <ReviewPanel request={request} /> : null}
-        {permissions.showIncident ? <IncidentPanel request={request} role={role} /> : null}
+        {permissions.showReview ? (
+          <NavigationCard
+            title={request.review ? c.editReview : c.review}
+            description={en ? 'Optional — you may skip this.' : 'Không bắt buộc — bạn có thể bỏ qua.'}
+            icon="star-outline"
+            onPress={() => router.push(`/rescue/${id}/review` as Href)}
+          />
+        ) : null}
+        {permissions.showIncident ? (
+          <NavigationCard
+            title={c.incidentTitle}
+            icon="flag-outline"
+            onPress={() => router.push(`/rescue/${id}/incidents` as Href)}
+          />
+        ) : null}
         {permissions.showCustomerActions ? <CustomerRescueActions request={request} /> : null}
         {permissions.showProviderActions ? <ProviderRescueActions request={request} /> : null}
         {permissions.isAssignedProvider ? (
@@ -134,13 +154,18 @@ export default function RescueDetailsScreen() {
             providerWithdrawal
           />
         ) : null}
+        {permissions.isStaff ? <OperatorCompletionPanel request={request} /> : null}
         {permissions.isStaff ? (
           <OperationalCancellationPanel request={request} actorLabel={c.admin} reasonCode="other" />
         ) : null}
         {permissions.showStaffRetry ? (
           <AppButton title={c.retry} loading={dispatchRetry.isPending} onPress={() => void retryDispatch()} />
         ) : null}
-        <RescueTimeline events={request.events} />
+        <NavigationCard
+          title={en ? 'Case timeline' : 'Lịch sử xử lý ca'}
+          icon="time-outline"
+          onPress={() => router.push(`/rescue/${id}/timeline` as Href)}
+        />
       </ScrollView>
     </View>
   );

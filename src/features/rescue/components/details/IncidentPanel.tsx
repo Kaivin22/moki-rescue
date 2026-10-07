@@ -4,6 +4,7 @@ import { Pressable, Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
 import { Colors } from '@/src/constants/colors';
+import { useI18n } from '@/src/i18n';
 import { ApiClientError } from '@/src/features/rescue/api/client';
 import { useIncidentActions } from '@/src/features/rescue/hooks/useRescueActions';
 import type { ProfileRole } from '@/src/types/profile';
@@ -11,11 +12,24 @@ import type { IncidentReport, RequestDetails } from '@/src/types/rescue';
 import { useRescueDetailsCopy } from './rescueDetailsCopy';
 import { rescueDetailsStyles as styles } from './rescueDetailsStyles';
 
-export function IncidentPanel({ request, role }: { request: RequestDetails; role: ProfileRole }) {
+export function IncidentPanel({
+  request,
+  role,
+  mode = 'all',
+  incidentId,
+  onSubmitted,
+}: {
+  request: RequestDetails;
+  role: ProfileRole;
+  mode?: 'all' | 'create' | 'detail';
+  incidentId?: string;
+  onSubmitted?: () => void;
+}) {
   const actions = useIncidentActions(request.id);
+  const english = useI18n((s) => s.language === 'en');
   const c = useRescueDetailsCopy();
   const isStaff = role === 'admin';
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(mode === 'create');
   const [category, setCategory] = useState<IncidentReport['category'] | null>(null);
   const [description, setDescription] = useState('');
   const [selectedIncident, setSelectedIncident] = useState<string | null>(null);
@@ -38,6 +52,7 @@ export function IncidentPanel({ request, role }: { request: RequestDetails; role
       setDescription('');
       setOpen(false);
       setMessage(c.incidentSent);
+      onSubmitted?.();
     } catch (error) {
       setMessage(error instanceof ApiClientError ? error.message : c.incidentError);
     }
@@ -62,7 +77,10 @@ export function IncidentPanel({ request, role }: { request: RequestDetails; role
     <View style={styles.incidentPanel}>
       <Text style={styles.section}>{c.incidentTitle}</Text>
       <Text style={styles.infoLabel}>{c.incidentIntro}</Text>
-      {request.incidentReports.map((incident) => (
+      {(mode === 'create'
+        ? []
+        : request.incidentReports.filter((report) => !incidentId || report.id === incidentId)
+      ).map((incident) => (
         <View key={incident.id} style={styles.incidentCard}>
           <View style={styles.summaryTitleRow}>
             <Ionicons name="shield-checkmark-outline" size={20} color={Colors.primary} />
@@ -107,7 +125,7 @@ export function IncidentPanel({ request, role }: { request: RequestDetails; role
           ) : null}
         </View>
       ))}
-      {!isStaff && categories.length > 0 ? (
+      {role === 'customer' && mode !== 'detail' && categories.length > 0 ? (
         open ? (
           <View style={styles.actions}>
             <Text style={styles.fieldLabel}>{c.incidentCategory}</Text>
@@ -147,6 +165,13 @@ export function IncidentPanel({ request, role }: { request: RequestDetails; role
         ) : (
           <AppButton title={c.reportIncident} variant="outline" onPress={() => setOpen(true)} />
         )
+      ) : null}
+      {mode === 'create' && categories.length === 0 ? (
+        <Text style={styles.infoLabel}>
+          {english
+            ? 'All report categories have already been submitted for this case. Return to the list to view their resolution.'
+            : 'Bạn đã gửi báo cáo cho tất cả nhóm vấn đề của ca này. Quay lại danh sách để xem kết quả xử lý.'}
+        </Text>
       ) : null}
       {message ? <Text style={styles.infoLabel}>{message}</Text> : null}
     </View>

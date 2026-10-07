@@ -1,23 +1,48 @@
 # Danh mục giao diện Moki Rescue cho Figma
 
-> Rà soát ngày 22/08/2026. Danh mục được suy ra từ toàn bộ route trong `app/`, không tính `_layout.tsx` là màn hình. Chỉ trạng thái làm thay đổi quyết định hoặc hành động của người dùng mới được tách thành frame.
+> Cập nhật điều hướng ngày 07/10/2026. Số màn hình được đếm trực tiếp từ `app/`, không tính `_layout.tsx`, ảnh chụp, popup hay biến thể trạng thái. Các bảng frame Figma A–D bên dưới là đề xuất thiết kế lịch sử ngày 24/09, không phải số màn hình hiện tại hoặc bằng chứng đã dựng trên Figma/Stitch.
 
 ## Kết luận số lượng
 
-- **23 màn hình điều hướng thực tế**: người dùng có thể tới bằng route.
+- **48 màn hình điều hướng thực tế**: gồm màn đăng nhập kiểm thử chỉ mở ở môi trường cho phép.
 - **1 màn hình khởi động/điều hướng** tại `app/index.tsx`.
-- **24 màn hình ở cấp mã nguồn** nếu tính cả màn hình khởi động.
-- **70 frame Figma nghiệp vụ** nếu thể hiện đủ vai trò, trạng thái ca, trợ lý và lỗi production quan trọng.
+- **49 màn hình ở cấp mã nguồn** nếu tính cả màn hình khởi động.
+- 83 frame là số đề xuất Figma của bản cũ, chưa kiểm kê lại sau lần tách này; không dùng để báo cáo số interface đã có.
 
-Con số 70 không có nghĩa là phải tạo 70 route hoặc 70 file code. Một route chi tiết ca phải có nhiều frame vì quyền, nội dung và nút hành động thay đổi theo role/trạng thái. ChatBox là modal toàn cục, không phải route. Không tính các biến thể thuần trang trí như pressed, màu icon hoặc spinner dùng chung để độn số lượng.
+## Các màn hình tách thêm ngày 07/10/2026 — 12 route
 
-## A. Luồng nghiệp vụ nền tảng — 46 frame
+| Route | Chức năng riêng |
+|---|---|
+| `/rescue/[id]/review` | Khách gửi/sửa/xóa đánh giá sau ca hoàn tất; có thể bỏ qua |
+| `/rescue/[id]/incidents` | Danh sách khiếu nại thuộc một ca và trạng thái xử lý |
+| `/rescue/[id]/incident-new` | Biểu mẫu gửi báo cáo sự cố, chọn loại và mô tả |
+| `/rescue/[id]/incidents/[incidentId]` | Nội dung một khiếu nại và kết quả xử lý; admin có thể xử lý |
+| `/rescue/[id]/quote` | Chi tiết báo giá hiện tại; liên kết về thao tác ca |
+| `/rescue/[id]/timeline` | Lịch sử chuyển trạng thái của ca |
+| `/operator/reviews` | Danh sách đánh giá toàn hệ thống, lọc hiển thị/đã ẩn, phân trang |
+| `/operator/reviews/[id]` | Xem đánh giá và kiểm duyệt có lý do; không sửa lời khách/số sao |
+| `/operator/incidents` | Danh sách khiếu nại toàn hệ thống, lọc trạng thái, phân trang |
+| `/operator/incidents/[id]` | Xác minh một khiếu nại, ghi kết quả xử lý/bác bỏ |
+| `/operator/quality-alerts` | Danh sách cảnh báo chất lượng, lọc trạng thái, phân trang |
+| `/operator/quality-alerts/[id]` | Kiểm tra một cảnh báo và gửi cảnh báo/đóng sau xác minh |
+
+36 màn cũ + 12 màn trên = 48. Trang chi tiết ca dẫn sang các trang con, không nhúng các biểu mẫu đánh giá/khiếu nại nữa. Trang chất lượng đội giữ phần tổng quan và liên kết tới trang kiểm duyệt từng nội dung. Quyền truy cập vẫn do backend kiểm tra, không chỉ ẩn nút trên app.
+
+Mã nguồn có màn hình không đồng nghĩa tất cả đã được chạy thử trên thiết bị. Không thay đổi PRD/SRS trong lần tách này.
+
+## Bản đề xuất frame lịch sử (24/09/2026)
+
+Con số 83 không có nghĩa là phải tạo 83 route hoặc 83 file code. Một route chi tiết ca phải có nhiều frame vì quyền, nội dung và nút hành động thay đổi theo role/trạng thái. ChatBox là modal toàn cục, không phải route. Không tính các biến thể thuần trang trí như pressed, màu icon hoặc spinner dùng chung để độn số lượng. So với bản 70 frame ngày 22/08, tăng 2 frame đăng nhập và 11 frame quản trị do tách các biểu mẫu thành màn riêng; bản đặc tả Stitch 70 frame trước đây chưa phản ánh lần tách này.
+
+## A. Luồng nghiệp vụ nền tảng — 59 frame
 
 | Nhóm | Route/màn hình | Frame | Biến thể bắt buộc |
 |---|---|---:|---|
 | Khởi động | `/` | 1 | Splash/loading trước khi redirect |
 | Onboarding | `/onboarding` | 3 | Loại sự cố; tuyến đường thật; quyền riêng tư |
-| Đăng nhập | `/(auth)/login` | 2 | Nhập số điện thoại; nhập OTP |
+| Chọn cách đăng nhập | `/(auth)/login` | 1 | Menu phương thức, không chứa biểu mẫu |
+| Đăng nhập SMS | `/(auth)/sms-login` | 2 | Nhập số điện thoại; nhập OTP |
+| Đăng nhập kiểm thử | `/(auth)/test-login` | 1 | Email/mật khẩu; chỉ môi trường cho phép |
 | Trang chủ | `/(tabs)` | 3 | Khách hàng; cứu hộ viên; admin |
 | Tạo yêu cầu | `/(tabs)/request` | 4 | Bước an toàn; chuyển giao khẩn cấp; bước sự cố/xe; bước bản đồ + bottom sheet xác nhận |
 | Hoạt động | `/(tabs)/activity` | 2 | Ca đang mở; lịch sử đã kết thúc |
@@ -28,14 +53,25 @@ Con số 70 không có nghĩa là phải tạo 70 route hoặc 70 file code. M�
 | Xóa tài khoản | `/profile/delete-account` | 1 | Xác nhận phá hủy |
 | Quyền riêng tư | `/legal/privacy` | 1 | Nội dung chính sách |
 | Điều khoản | `/legal/terms` | 1 | Nội dung điều khoản |
-| Đội, quyền, chất lượng và catalog | `/operator/teams` | 1 | Tạo đội với mã hồ sơ nội bộ, cấp tài khoản OTP, capability, checklist/tiến độ/người xác minh, kích hoạt hoặc đình chỉ, điểm thật/review/cảnh báo, quyền admin và catalog song ngữ |
+| Menu quản lý | `/operator` | 1 | Lối vào đội, dịch vụ, quyền admin, cảnh báo, nhật ký |
+| Danh sách đội | `/operator/teams` | 1 | Danh sách, trạng thái, lối vào tạo và chi tiết đội |
+| Tạo đội | `/operator/team-new` | 1 | Biểu mẫu tạo đội với mã hồ sơ nội bộ |
+| Chi tiết đội | `/operator/team/[id]` | 1 | Menu cứu hộ viên, năng lực, xác minh, chất lượng |
+| Cứu hộ viên | `/operator/team/[id]/providers` | 1 | Danh sách và trạng thái thành viên |
+| Thêm cứu hộ viên | `/operator/team/[id]/provider-new` | 1 | Tìm tài khoản OTP, thông tin nghiệp vụ, cấp quyền |
+| Năng lực đội | `/operator/team/[id]/capabilities` | 1 | Chọn và lưu dịch vụ đội cung cấp |
+| Xác minh đội | `/operator/team/[id]/verification` | 1 | Checklist, tiến độ, người xác minh, kích hoạt |
+| Chất lượng đội | `/operator/team/[id]/quality` | 1 | Review, kiểm duyệt và cảnh báo |
+| Quyền admin | `/operator/admins` | 1 | Tìm tài khoản, cấp/thu hồi quyền |
+| Danh mục quản trị | `/operator/services` | 1 | Danh sách dịch vụ, không nhúng biểu mẫu |
+| Sửa dịch vụ | `/operator/service/[code]` | 1 | Biểu mẫu song ngữ của một dịch vụ |
 | Hàng đợi cần can thiệp | `/operator/attention` | 1 | Cảnh báo mở, mở chi tiết ca, ghi kết quả và đóng cảnh báo |
 | Nhật ký quản trị | `/operator/audit` | 1 | Admin xem audit tối thiểu, phân trang và không lộ dữ liệu nhạy cảm |
 | Chi tiết ca - customer | `/rescue/[id]` | 9 | Tìm/đã phát offer/không có đội; đã gán; đang đến; xác nhận đã đến; đã đến/đang chẩn đoán; duyệt báo giá; đang sửa/chở; xác nhận hoàn tất; hoàn tất + review |
 | Chi tiết ca - provider | `/rescue/[id]` | 7 | Đã gán/đang đến; chờ khách xác nhận đến; đã đến; chẩn đoán không báo giá; chẩn đoán cần báo giá; đang sửa/chở; chờ khách xác nhận hoàn tất |
 | Chi tiết ca - admin | `/rescue/[id]` | 1 | Theo dõi ca hoạt động, cảnh báo và tìm/điều phối lại đội trong cùng frame |
 | Chọn điểm giao xe | `/rescue/[id]/destination` | 1 | Khách xác nhận điểm giao cho ca vận chuyển sau chẩn đoán |
-| **Tạm tính A** |  | **46** |  |
+| **Tạm tính A** |  | **59** |  |
 
 ## B. Giao diện khai thác thêm — 16 frame
 
@@ -55,8 +91,8 @@ Các frame này nằm trên route đã có nhưng làm thay đổi hành động
 
 | Mã | Route | Frame |
 |---|---|---|
-| C01 | `/(auth)/login` | Gửi OTP thất bại/số điện thoại không hợp lệ |
-| C02 | `/(auth)/login` | OTP sai, hết hạn hoặc vượt giới hạn thử |
+| C01 | `/(auth)/sms-login` | Gửi OTP thất bại/số điện thoại không hợp lệ |
+| C02 | `/(auth)/sms-login` | OTP sai, hết hạn hoặc vượt giới hạn thử |
 | C03 | `/(tabs)/request` | Catalog dịch vụ không tải được, không cho gửi dữ liệu không xác định |
 | C04 | `/(tabs)/request` | Đang xin GPS trước khi hiển thị bản đồ xác nhận |
 | C05 | `/(tabs)/request` | Backend từ chối tạo ca: ngoài vùng, rate limit hoặc đã có ca hoạt động |
@@ -75,11 +111,11 @@ Các frame này nằm trên route đã có nhưng làm thay đổi hành động
 
 | Phần | Frame |
 |---|---:|
-| A. Luồng nghiệp vụ nền tảng | 46 |
+| A. Luồng nghiệp vụ nền tảng | 59 |
 | B. Giao diện khai thác thêm | 16 |
 | C. Trạng thái production | 6 |
 | D. Trợ lý Moki Rescue | 2 |
-| **Tổng** | **70** |
+| **Tổng** | **83** |
 
 ## Cấu trúc file Figma đề nghị
 

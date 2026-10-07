@@ -15,9 +15,11 @@ export function ReviewPanel({ request }: { request: RequestDetails }) {
   const c = useRescueDetailsCopy();
   const [rating, setRating] = useState(request.review?.rating ?? 5);
   const [comment, setComment] = useState(request.review?.comment ?? '');
+  const [saved, setSaved] = useState(false);
   const save = async () => {
     try {
       await actions.save.mutateAsync({ rating, comment: comment.trim() || undefined });
+      setSaved(true);
     } catch (error) {
       Alert.alert(c.saveReviewError, error instanceof ApiClientError ? error.message : c.retryGeneric);
     }
@@ -64,7 +66,17 @@ export function ReviewPanel({ request }: { request: RequestDetails }) {
         multiline
         placeholder={c.reviewPlaceholder}
       />
-      <AppButton title={c.saveReview} onPress={() => void save()} loading={actions.save.isPending} />
+      <AppButton
+        title={c.saveReview}
+        onPress={() => void save()}
+        loading={actions.save.isPending}
+        disabled={actions.remove.isPending}
+      />
+      {saved ? (
+        <Text accessibilityRole="alert" style={styles.infoLabel}>
+          {c.saveReview} ✓
+        </Text>
+      ) : null}
       {request.review ? <AppButton title={c.deleteReview} variant="ghost" onPress={remove} /> : null}
     </View>
   );

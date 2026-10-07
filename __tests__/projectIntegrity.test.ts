@@ -5,8 +5,27 @@ describe('project integrity', () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
   const config = fs.readFileSync(path.join(process.cwd(), 'app.config.js'), 'utf8');
 
-  it('keeps Expo SDK 54 for the current Expo Go workflow', () => {
-    expect(packageJson.dependencies.expo).toMatch(/^~54\.0\.\d+$/);
+  it('keeps the approved SDK 57, React and React Native versions aligned', () => {
+    expect(packageJson.dependencies.expo).toMatch(/^~57\.0\.\d+$/);
+    expect(packageJson.dependencies['react-native']).toMatch(/^0\.86\.\d+$/);
+    expect(packageJson.dependencies.react).toBe('19.2.3');
+    expect(packageJson.dependencies['react-dom']).toBe(packageJson.dependencies.react);
+    expect(packageJson.dependencies['expo-router']).toMatch(/^~57\.0\.\d+$/);
+    expect(packageJson.devDependencies.typescript).toMatch(/^~6\.0\.\d+$/);
+    const lock = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package-lock.json'), 'utf8'));
+    expect(lock.packages[''].dependencies).toEqual(packageJson.dependencies);
+    expect(lock.packages[''].devDependencies).toEqual(packageJson.devDependencies);
+    expect(packageJson.engines.node).toBe('^22.13.0 || >=24.3.0');
+    const ci = fs.readFileSync(path.join(process.cwd(), '.github', 'workflows', 'ci.yml'), 'utf8');
+    expect(ci).toContain("NODE_VERSION: '24.14.x'");
+  });
+
+  it('declares TypeScript 6 ambient types and resolves aliases without deprecated baseUrl', () => {
+    const tsconfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'tsconfig.json'), 'utf8'));
+    expect(tsconfig.compilerOptions.baseUrl).toBeUndefined();
+    expect(tsconfig.compilerOptions.paths['@/*']).toEqual(['./*']);
+    expect(tsconfig.compilerOptions.types).toEqual(expect.arrayContaining(['node', 'jest', 'react']));
+    expect(packageJson.devDependencies['@types/node']).toMatch(/^\^24\./);
   });
 
   it('does not embed server secrets or legacy tourism services', () => {
@@ -32,7 +51,10 @@ describe('project integrity', () => {
 
   it('uses the new backend artifact and product identity', () => {
     expect(packageJson.name).toBe('moki-rescue');
-    expect(packageJson.scripts['dev:backend']).toContain('moki-rescue-0.0.1-SNAPSHOT.jar');
+    expect(packageJson.scripts['dev:backend']).toBe('node scripts/start-development.cjs --backend');
+    expect(fs.readFileSync(path.join(process.cwd(), 'scripts/start-development.cjs'), 'utf8')).toContain(
+      'moki-rescue-0.0.1-SNAPSHOT.jar',
+    );
     expect(config).toContain("name: 'Moki Rescue'");
     expect(config).toContain("slug: 'moki-rescue'");
     expect(config).toContain("['EXPO_PUBLIC_EAS_PROJECT_ID', easProjectId]");
@@ -56,7 +78,7 @@ describe('project integrity', () => {
     expect(workflows).toEqual(['ci.yml']);
   });
 
-  it('keeps the SDK 54 web resolver scoped to the incompatible Zustand entry', () => {
+  it('keeps the web resolver scoped to the incompatible Zustand entry', () => {
     const metroConfig = fs.readFileSync(path.join(process.cwd(), 'metro.config.js'), 'utf8');
     expect(metroConfig).toContain("platform === 'web'");
     expect(metroConfig).toContain("moduleName === 'zustand/middleware'");
@@ -110,8 +132,12 @@ describe('project integrity', () => {
       });
     const routes = collectRoutes(path.join(process.cwd(), 'app'));
     const inventory = fs.readFileSync(path.join(process.cwd(), 'docs', 'FIGMA_SCREEN_INVENTORY.md'), 'utf8');
-    expect(routes).toHaveLength(24);
-    expect(inventory).toContain('**70 frame Figma nghiệp vụ**');
+    expect(routes).toHaveLength(49);
+    expect(inventory).toContain(`**${routes.length} màn hình ở cấp mã nguồn**`);
+    expect(inventory).toContain(`**${routes.length - 1} màn hình điều hướng thực tế**`);
+    for (const section of ['reviews', 'incidents', 'quality-alerts']) {
+      expect(inventory).toContain(`/operator/${section}/[id]`);
+    }
   });
 
   it('keeps the full-screen rescue map on router geometry only', () => {

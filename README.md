@@ -60,7 +60,7 @@ Mobile là client không tin cậy. Các thay đổi nghiệp vụ đi qua Sprin
 
 ## Cài đặt local
 
-Yêu cầu Node `>=20.19`, npm và JDK 21.
+Yêu cầu Node `^22.13.0 || >=24.3.0` (CI dùng Node `24.14.x`), npm và JDK 21.
 
 ```powershell
 npm ci
@@ -68,23 +68,42 @@ Copy-Item .env.example .env
 npm start
 ```
 
-Điện cấu hình thật theo [hướng dẫn triển khai](./docs/DEPLOYMENT.md). Trên điện thoại thật, `EXPO_PUBLIC_API_URL` phải là HTTPS hoặc IP LAN truy cập được; `localhost` là chính điện thoại.
+Điền cấu hình thật theo [hướng dẫn triển khai](./docs/DEPLOYMENT.md). Trên điện thoại thật, `EXPO_PUBLIC_API_URL` phải là HTTPS hoặc IP LAN truy cập được; `localhost` là chính điện thoại. Không chép đè `.env` nếu đã có thông tin thật.
+
+`npm start` / `npm run dev` hiện kiểm tra `/api/health/ready` trước khi mở Expo. Nếu backend local chưa chạy, launcher build bằng Maven cache đã có rồi chạy backend; không tự tải thư viện, không chạy migration/reset và không dùng Docker. Log nằm trong `.tmp/local-development/backend.log` trên ổ chứa dự án. Nếu backend đã chạy thì dùng lại; Ctrl+C chỉ dừng các tiến trình do chính launcher mở.
+
+- Điện thoại và máy tính cùng Wi-Fi. Mở `http://<IP máy tính>:8080/api/health/ready` trong Safari; phải thấy `ready` trước khi kiểm thử nghiệp vụ.
+- IP Wi-Fi thay đổi: cập nhật `EXPO_PUBLIC_API_URL` trong `.env`, khởi động lại Metro bằng `npm start -- --clear --go --lan`. Khi chưa cấu hình URL và có đúng một card LAN phù hợp, launcher dùng IP đó cho phiên chạy.
+- OSRM là tiến trình riêng đã cài trước đó. Backend dùng `OSRM_MOTORBIKE_BASE_URL`; `ready` chỉ xác nhận database, không xác nhận OSRM hoặc GPS điện thoại.
+- `npm run dev:backend` chỉ mở backend; `npm run dev:frontend` chỉ mở Expo sau khi API đã sẵn sàng. Nếu vừa sửa backend, dừng tiến trình backend cũ rồi chạy lại để build mã mới.
+- Production phải dùng tài khoản database runtime `motorescue_api`, không dùng `postgres`. Launcher không tự đổi mật khẩu hoặc quyền database.
 
 Backend:
 
 ```powershell
 cd backend
 .\mvnw.cmd test
-.\mvnw.cmd spring-boot:run
+cd ..
+npm run dev:backend # nạp .env cho backend
 ```
 
 Database mới được dựng bằng Flyway theo đúng thứ tự trong [scripts/README.md](./scripts/README.md). Không có seed ca, vị trí, đội hay review giả; danh mục loại sự cố là cấu hình sản phẩm.
 
-## Expo SDK 54
+## Expo SDK 57
 
-Dự án chủ đích giữ Expo SDK 54 để không phá luồng quét QR bằng Expo Go mà chủ dự án đang dùng. `AGENTS.md` chỉ hướng dẫn coding agent và không thể tự nâng dependency. Background location và remote push không được kiểm chứng đầy đủ trong Expo Go; production phải dùng development/preview build.
+Dự án nâng từ SDK 54 lên SDK 57 theo phê duyệt của chủ dự án, dùng React Native `0.86.3` và React `19.2.3`. Giữ cả `package.json` và `package-lock.json` đồng bộ; không chỉ đổi số `sdkVersion` trong app config. Các bản nâng SDK tiếp theo vẫn cần được chủ dự án phê duyệt.
+
+Sau khi cập nhật mã nguồn, dừng Metro cũ, chạy `npm ci` rồi `npm start -- --clear --go --lan`. Máy tính và iPhone cần truy cập được nhau qua mạng LAN; quét QR bằng Camera trên iPhone để mở Expo Go. Không dùng `--localhost` cho điện thoại thật vì loopback trên điện thoại không trỏ đến máy tính. SDK 57 yêu cầu iOS 16.4 trở lên.
+
+Expo Go trên thiết bị **phải hỗ trợ SDK 57**; số phiên bản ứng dụng Expo Go không phải số SDK. Theo [hướng dẫn xử lý lệch phiên bản của Expo](https://docs.expo.dev/troubleshooting/expo-go-version-mismatch/), tại thời điểm rà soát 21/09/2026, bản App Store được tài liệu ghi nhận vẫn ở SDK 54. Vì vậy, nâng source lên 57 không tự nâng khả năng của bản Expo Go đã cài: cần kiểm tra thông báo SDK trên chính thiết bị. Nếu bản đó không hỗ trợ 57, cần Expo Go 57 qua kênh iOS được Expo hỗ trợ hoặc development build; không thể ép tương thích bằng cách sửa manifest.
+
+Expo Go chỉ dùng cho các luồng tương thích với môi trường này. App không đăng ký remote push và không bật cập nhật GPS nền trong Expo Go; kiểm thử các chức năng đó cần development/preview build. Type-check, unit test và export bundle không thay thế kiểm thử đăng nhập OTP, bản đồ, quyền GPS và điều hướng trên iPhone thật.
 
 ## Kiểm tra
+
+Để thử đủ ba vai trò mà không nhận SMS/email, dùng [thiết lập tài khoản kiểm thử](./scripts/README.md#đăng-nhập-ba-vai-trò-không-cần-smsemail-chỉ-localstaging).
+Mục đăng nhập email/mật khẩu chỉ hiện trong bản phát triển; phiên Supabase và quyền trong database
+vẫn là thật. Chỉ có code/script không có nghĩa tài khoản đã được tạo trên cloud: phải hoàn tất bước setup.
 
 ```powershell
 npm run check

@@ -29,7 +29,58 @@ phải liên hệ quản trị viên vận hành để dừng ca.
 - `/api/operator/*`: hàng đợi, retry dispatch, tạo/checklist/kích hoạt đội đối tác, phân vai trò, review gần đây và xử lý cảnh báo chất lượng.
 - `/api/assistant/message`: trợ lý trong app cho tài khoản active, quota theo phút/ngày.
 
+## Kết thúc ca và xử lý ngoại lệ
+
+Luồng bình thường: cứu hộ viên gửi `request_completion` khi sửa/giao xe xong,
+ca chuyển sang `awaiting_completion`. Khách gửi `confirm_completion` để kết thúc,
+hoặc `reject_repair` / `reject_transport` kèm lý do để quay lại công việc.
+GPS, ETA và việc mở Google Maps không phải bằng chứng công việc đã hoàn tất.
+
+Quá hạn xác nhận (mặc định 15 phút, cấu hình `app.case-lifecycle.completion-confirmation-timeout`)
+chỉ tạo cảnh báo vận hành; không tự chuyển ca thành hoàn thành.
+
+`POST /api/operator/requests/{requestId}/resolution` chỉ dành cho admin:
+
+```json
+{
+  "decision": "verified_completed",
+  "note": "Đã liên hệ và đối chiếu kết quả thực hiện với các bên.",
+  "expectedVersion": 8
+}
+```
+
+- Chỉ áp dụng khi ca đang `awaiting_completion`. `note` cần 10–500 ký tự.
+- `verified_completed`: admin đã xác minh công việc thực sự xong; đóng ca, ghi thời điểm,
+  người thao tác và căn cứ vào lịch sử/audit. API trả `RequestDetails` mới.
+- `unverified`: ghi nhận chưa xác minh, giữ ca và cảnh báo hiện có mở; không giải phóng
+  cứu hộ viên, không reset thời gian chờ. Tiếp tục liên hệ hoặc xử lý hủy nếu có căn cứ.
+- Nếu công việc không thể thực hiện: dùng API hủy ca hiện có, có lý do và phiên bản ca.
+  Hủy không được tính vào số ca hoàn thành.
+- Khóa bản ghi và kiểm tra phiên bản ngăn admin ghi đè thao tác đồng thời của khách.
+  Phiên bản cũ trả HTTP 409; khách/cứu hộ viên gọi endpoint admin trả HTTP 403.
+- `operatorResolution` trong chi tiết ca cung cấp quyết định gần nhất và thời điểm;
+  nội dung căn cứ chỉ trả cho admin. Các quyết định trước vẫn lưu trong audit.
+- Kết thúc ca đóng cảnh báo vòng đời, không tự đóng khiếu nại/sự cố hay yêu cầu hỗ trợ.
+  Không cho đóng riêng cảnh báo hoàn tất/tranh chấp hoàn tất khi ca còn mở.
+- Sau hoàn thành/hủy, cứu hộ viên hết bị ràng buộc bởi ca cũ nhưng ở trạng thái tắt nhận ca;
+  phải chủ động bật hoạt động để cập nhật GPS và nhận ca mới.
+
+Kiểm thử thủ công trên app: chạy một ca đến bước chờ hoàn tất, thử lần lượt khách xác nhận,
+khách báo chưa xong, admin ghi chưa xác minh, và admin xác minh hoàn tất (có bước xác nhận lại).
+Mỗi nhánh kết thúc dùng một ca riêng. Kiểm tra Lịch sử, thống kê, cảnh báo và bật nhận ca mới.
+Giữ màn hình admin ở bước xác nhận, để khách hoàn tất trước, rồi xác nhận ở admin để kiểm tra
+chặn phiên bản cũ. Thay đổi này dùng schema hiện có, không cần chạy lại SQL Supabase;
+phải khởi động lại backend để nạp code mới.
+
 ## Chạy
+
+Code hiện cần V9 cho vùng phục vụ demo. Database SQL thủ công đang ở V8: chạy file
+`scripts/06_upgrade_demo_service_coverage.sql`, rồi `scripts/02_verify_rls.sql` trước khi
+khởi động backend mới. Không chạy lại init/reset. Xem [thứ tự nâng cấp](../scripts/README.md#database-đã-tồn-tại).
+Khách/điểm giao/cứu hộ viên dùng chung kiểm tra vùng đang bật, giới hạn trong khung
+OSRM demo 15.95–16.18 Bắc, 108.05–108.34 Đông (gồm biên). Đây không phải toàn thành phố;
+vẫn phải có đường OSRM hợp lệ. GPS chờ ra ngoài vùng sẽ tắt nhận ca, xóa tọa độ cũ và
+trả `PROVIDER_OUTSIDE_SERVICE_AREA` (422), không tự hủy công việc đã nhận.
 
 ```powershell
 .\mvnw.cmd test
@@ -57,7 +108,7 @@ Delivery là at-least-once: crash sau khi Expo nhận nhưng trước khi lưu k
 thể gửi lặp cùng `notificationId`; không cam kết exactly-once. Theo dõi bản ghi
 `failed`, `expired`, backlog và receipt khi vận hành.
 
-Flyway đọc migration từ `src/main/resources/db/migration`. `B1__initial_schema.sql` là baseline tích lũy cho database PostgreSQL/PostGIS sạch; V2 sửa khóa khi nhận offer, V3 phục hồi điều phối và V4 thêm push outbox. Hiện có V5 gộp vai trò, V6/V7 ghép ca có cấu hình/công bằng, V8 lưu vị trí lúc nhận ca và chặn GPS live. Thay đổi tiếp theo phải dùng V9 trở lên; không sửa migration đã applied.
+Flyway đọc migration từ `src/main/resources/db/migration`. `B1__initial_schema.sql` là baseline tích lũy cho database PostgreSQL/PostGIS sạch; V2 sửa khóa khi nhận offer, V3 phục hồi điều phối và V4 thêm push outbox. Hiện có V5 gộp vai trò, V6/V7 ghép ca có cấu hình/công bằng, V8 lưu vị trí lúc nhận ca và chặn GPS live, V9 đồng bộ giới hạn vùng OSRM demo. Thay đổi tiếp theo phải dùng V10 trở lên; không sửa migration đã applied.
 
 Migration được chạy như một deployment job bằng database owner riêng:
 

@@ -33,7 +33,11 @@ export function useIncidentActions(requestId: string) {
   const report = useMutation({
     mutationFn: ({ category, description }: { category: IncidentReport['category']; description: string }) =>
       rescueApi.reportIncident(requestId, category, description),
-    onSuccess: () => client.invalidateQueries({ queryKey: rescueKeys.request(requestId) }),
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: rescueKeys.request(requestId) }),
+        client.invalidateQueries({ queryKey: ['moderation'] }),
+      ]),
   });
   const resolve = useMutation({
     mutationFn: ({
@@ -49,6 +53,7 @@ export function useIncidentActions(requestId: string) {
       Promise.all([
         client.invalidateQueries({ queryKey: rescueKeys.request(requestId) }),
         client.invalidateQueries({ queryKey: rescueKeys.attention(true) }),
+        client.invalidateQueries({ queryKey: ['moderation'] }),
       ]),
   });
   return { report, resolve };
@@ -56,7 +61,11 @@ export function useIncidentActions(requestId: string) {
 
 export function useReviewActions(requestId: string) {
   const client = useQueryClient();
-  const refresh = () => client.invalidateQueries({ queryKey: rescueKeys.request(requestId) });
+  const refresh = () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: ['rescue'] }),
+      client.invalidateQueries({ queryKey: ['moderation'] }),
+    ]);
   const save = useMutation({
     mutationFn: ({ rating, comment }: { rating: number; comment?: string }) =>
       rescueApi.saveReview(requestId, rating, comment),
