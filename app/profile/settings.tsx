@@ -76,19 +76,21 @@ export default function SettingsScreen() {
   const [savingLanguage, setSavingLanguage] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const refreshLocationPermission = useCallback(async () => {
-    try {
-      const value = await Location.getForegroundPermissionsAsync();
-      setPermission(value.status);
-    } catch {
-      setMessage(c.locationReadError);
-    }
-  }, [c.locationReadError]);
+  const refreshLocationPermission = useCallback(
+    () =>
+      Location.getForegroundPermissionsAsync()
+        .then((value) => setPermission(value.status))
+        .catch(() => setMessage(c.locationReadError)),
+    [c.locationReadError],
+  );
 
-  const refreshPushPermission = useCallback(async () => {
-    const status = await getPushNotificationStatus().catch(() => 'unavailable' as const);
-    setPushStatus(status);
-  }, []);
+  const refreshPushPermission = useCallback(
+    () =>
+      getPushNotificationStatus()
+        .catch(() => 'unavailable' as const)
+        .then(setPushStatus),
+    [],
+  );
 
   useEffect(() => {
     void refreshLocationPermission();

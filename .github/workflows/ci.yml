@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: '20.19.x'
+  NODE_VERSION: '24.14.x'
   APP_ENV: production
   EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
   EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
@@ -66,8 +66,7 @@ jobs:
         # Repository is maintained on Windows, so do not rely on the POSIX
         # executable bit being preserved for the Maven wrapper.
         run: bash ./mvnw --batch-mode --no-transfer-progress test
-      # SDK 54 currently has known high advisories in its Metro build toolchain.
-      # Keep them visible, but block critical findings without forcing an SDK jump.
+      # Report all advisories while retaining the existing critical-severity gate.
       - name: Audit locked dependencies (critical gate)
         run: npm audit --audit-level=critical
       - name: Reject common committed secret formats

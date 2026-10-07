@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   FlatList,
   ImageBackground,
@@ -75,10 +75,10 @@ export default function OnboardingScreen() {
   const c = useCopy(COPY);
   const { language, setLanguage } = useI18n();
   const reduceMotion = useReduceMotion();
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+  const [viewabilityConfig] = useState(() => ({ itemVisiblePercentThreshold: 60 }));
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (typeof viewableItems[0]?.index === 'number') setIndex(viewableItems[0].index);
-  }).current;
+  }, []);
 
   const finish = async () => {
     await markOnboardingCompleted();

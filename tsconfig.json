@@ -4,9 +4,9 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "baseUrl": ".",
+    "types": ["node", "jest", "react"],
     "paths": {
-      "@/*": ["*"]
+      "@/*": ["./*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx"]

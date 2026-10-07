@@ -61,12 +61,17 @@ export function AssistantBubble({
       ? ['How do I request rescue?', 'How do I track my request?', 'How do quotes work?']
       : ['Tạo yêu cầu cứu hộ thế nào?', 'Theo dõi ca ở đâu?', 'Báo giá hoạt động thế nào?'];
 
-  useEffect(() => {
-    nextId.current = 1;
+  const [session, setSession] = useState({ initialMessage, userId });
+  if (session.initialMessage !== initialMessage || session.userId !== userId) {
+    setSession({ initialMessage, userId });
     setMessages([initialMessage]);
     setInput('');
     setRemaining(null);
     setVisible(false);
+  }
+
+  useEffect(() => {
+    nextId.current = 1;
   }, [initialMessage, userId]);
 
   useEffect(() => {
@@ -271,7 +276,7 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.78 },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
-  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: Colors.overlay },
+  scrim: { ...StyleSheet.absoluteFill, backgroundColor: Colors.overlay },
   sheet: {
     height: '78%',
     maxHeight: 700,

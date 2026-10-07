@@ -27,7 +27,14 @@ public class HealthController {
     @GetMapping("/ready")
     ResponseEntity<HealthResponse> readiness() {
         try {
-            Integer result = jdbc.queryForObject("SELECT 1", Integer.class);
+            Integer result = jdbc.queryForObject("""
+                    SELECT CASE WHEN
+                      to_regprocedure('public.api_is_in_service_area(double precision,double precision)') IS NOT NULL
+                      AND EXISTS (SELECT 1 FROM pg_trigger
+                        WHERE tgrelid = to_regclass('public.rescue_requests')
+                          AND tgname = 'rescue_requests_service_area' AND tgenabled IN ('O', 'A'))
+                    THEN 1 ELSE 0 END
+                    """, Integer.class);
             if (result != null && result == 1) {
                 return ResponseEntity.ok(new HealthResponse("ready", Instant.now()));
             }

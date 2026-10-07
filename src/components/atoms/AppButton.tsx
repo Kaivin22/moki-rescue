@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import {
   StyleSheet,
   ActivityIndicator,
@@ -40,12 +40,12 @@ export function AppButton({
   accessibilityLabel,
 }: AppButtonProps) {
   const reduceMotion = useReduceMotion();
-  const scale = useRef(new Animated.Value(1)).current;
+  const [scale] = useState(() => new Animated.Value(1));
   // Crossfade giữa text và spinner
-  const textOpacity = useRef(new Animated.Value(loading ? 0 : 1)).current;
-  const spinnerOpacity = useRef(new Animated.Value(loading ? 1 : 0)).current;
+  const [textOpacity] = useState(() => new Animated.Value(loading ? 0 : 1));
+  const [spinnerOpacity] = useState(() => new Animated.Value(loading ? 1 : 0));
   // Fade opacity khi disabled
-  const containerOpacity = useRef(new Animated.Value(disabled ? 0.5 : 1)).current;
+  const [containerOpacity] = useState(() => new Animated.Value(disabled ? 0.5 : 1));
 
   useEffect(() => {
     Animated.timing(textOpacity, {
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   spinnerLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
   },

@@ -33,7 +33,7 @@ export class AppErrorBoundary extends React.Component<{ children: ReactNode }, S
     const english = useI18n.getState().language === 'en';
     return (
       <SafeAreaView style={styles.safe}>
-        <StatusBar style="dark" backgroundColor={Colors.background} />
+        <StatusBar style="dark" />
         <View style={styles.card} accessibilityRole="alert">
           <Text style={styles.title}>
             {english ? 'Moki Rescue encountered a problem' : 'Moki Rescue gặp sự cố'}
