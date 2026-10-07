@@ -99,7 +99,7 @@ Mỗi transition được kiểm tra hai lần: service xác định action hợ
 - Google Maps bên ngoài dùng GPS thiết bị để dẫn đường. Điểm đích là pickup hoặc điểm giao khi đang vận chuyển; đường Google Maps có thể khác OSRM.
 - Đã gỡ GPS tracking/outbox của ca; endpoint GPS cũ trả lỗi, Broadcast bị chặn và không tạo cờ thiếu GPS live. GPS chờ ca vẫn giữ.
 - Ca đóng/thu hồi phân công xóa snapshot; đổi provider chụp vị trí mới. Ca cũ không có snapshot báo thiếu vị trí, không giả lập.
-- Map/OSRM cần kiểm chứng trên thiết bị và tuyến thật; xem [routing](../routing/README.md).
+- Map/OSRM cần kiểm chứng trên thiết bị và tuyến thật; xem [tích hợp bản đồ và routing](MAP_ROUTING.md). Bộ demo/dataset local không được phân phối trong repository.
 
 ## Dữ liệu và RLS
 

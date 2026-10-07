@@ -19,7 +19,10 @@ node_modules/
 backend/target/
 backend/.m2repo/
 backend/.maven-home/
-routing/data/
+# Local-only demo data, diagrams and task notes
+/routing/
+/SoDo_DuAn/
+/task.md
 
 # ─── Expo ─────────────────────────────────────────────────────────────────────
 .expo/

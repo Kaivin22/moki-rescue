@@ -4,8 +4,9 @@ const read = (name: string) => fs.readFileSync(path.join(process.cwd(), name), '
 const migration = read('backend/src/main/resources/db/migration/V9__align_demo_service_coverage.sql');
 
 describe('service coverage wiring (static contracts, not PostgreSQL execution)', () => {
-  it('uses the same extraction envelope without claiming an administrative boundary', () => {
-    expect(read('routing/Prepare-Data.ps1')).toContain('(15.95,108.05,16.18,108.34)');
+  it('defines the demo coverage envelope without depending on local routing files', () => {
+    expect(migration).toContain('NOT the administrative boundary of Da Nang');
+    expect(migration).toContain('extensions.ST_MakeEnvelope(108.05, 15.95, 108.34, 16.18, 4326)');
     expect(migration).toContain('latitude BETWEEN 15.95 AND 16.18 AND longitude BETWEEN 108.05 AND 108.34');
     expect(migration).toContain('zone.boundary::extensions.geometry');
     expect(migration).toContain('WHERE zone.is_active');

@@ -33,7 +33,7 @@ Chi tiết biến môi trường Flyway, bootstrap database sạch, cách baseli
 
 ## 4. Routing
 
-- Cấu hình, script chạy OSRM trực tiếp và giới hạn profile thử nghiệm nằm tại [`routing/README.md`](../routing/README.md).
+- Cấu hình và luồng tích hợp nằm tại [MAP_ROUTING.md](MAP_ROUTING.md). Repository không kèm bộ demo, script khởi động hoặc dataset OSRM; cần cấp endpoint OSRM độc lập.
 - `OSRM_MOTORBIKE_BASE_URL` là base origin, không kèm `/route/v1` hoặc `/table/v1`.
 - Dataset phải được preprocess bằng profile xe máy phù hợp luật giao thông; không dùng public demo router production.
 - Đặt `OSRM_TABLE_BATCH_SIZE` không quá giới hạn coordinate của instance (mặc định dự án là 80, tối đa code là 99 nguồn + một đích).

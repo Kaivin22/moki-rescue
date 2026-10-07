@@ -27,7 +27,7 @@ MVP chưa thu tiền trong ứng dụng. Cứu hộ viên gửi báo giá, khác
 - State machine phía server, optimistic version, lịch sử chỉ thêm và audit log.
 - GPS chờ ca chỉ dùng nội bộ để ghép ca; lưu vị trí lúc nhận ca để vẽ tuyến tham khảo, không theo dõi di chuyển trực tiếp.
 - Sau khi nhận ca, khách thấy tên, đội, phương tiện và số liên hệ công việc đã xác minh của cứu hộ viên; số bị ẩn khi ca đóng.
-- Bản đồ OpenStreetMap chỉ vẽ geometry OSRM; cứu hộ viên mở Google Maps bên ngoài để dẫn đường. Xem [cấu hình bản đồ/OSRM](routing/README.md).
+- Bản đồ OpenStreetMap chỉ vẽ geometry OSRM; cứu hộ viên mở Google Maps bên ngoài để dẫn đường. Xem [cấu hình bản đồ/OSRM](docs/MAP_ROUTING.md).
 - Xác nhận hai phía khi đến và hoàn thành; báo giá phải được khách duyệt.
 - Đánh giá chỉ gắn với ca đã hoàn thành, có sửa và xóa.
 - Ca mất provider chuyển sang hàng chờ điều phối lại; timeout, GPS cũ và xác nhận quá hạn tạo cờ attention thay vì quay loading vô hạn.
