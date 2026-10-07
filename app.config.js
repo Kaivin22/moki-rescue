@@ -4,6 +4,10 @@ const isProductionBuild =
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
+const devPasswordLoginEnabled =
+  !isProductionBuild &&
+  ['development', 'local', 'staging'].includes(process.env.APP_ENV || 'development') &&
+  process.env.DEV_PASSWORD_LOGIN_ENABLED !== 'false';
 const mapTileUrl = process.env.EXPO_PUBLIC_MAP_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const mapTileAttribution = process.env.EXPO_PUBLIC_MAP_TILE_ATTRIBUTION || '';
 try {
@@ -142,6 +146,7 @@ export default {
       serviceCenterLatitude,
       serviceCenterLongitude,
       appEnvironment: process.env.APP_ENV || 'development',
+      devPasswordLoginEnabled,
       ...(easProjectId ? { eas: { projectId: easProjectId } } : {}),
     },
     runtimeVersion: { policy: 'appVersion' },

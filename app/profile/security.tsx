@@ -11,16 +11,23 @@ import { type Language, useCopy, useI18n } from '@/src/i18n';
 import { rescueApi } from '@/src/features/rescue/api/rescueApi';
 import { clearStoredPushToken } from '@/src/features/notifications/pushNotifications';
 import { stopAllProviderBackgroundTracking } from '@/src/features/rescue/services/backgroundLocation';
+import { accountVerification } from '@/src/features/auth/accountVerification';
 
 const COPY = {
   vi: {
     noData: 'Chưa có dữ liệu',
     hidden: 'Không hiển thị',
-    title: 'Bảo vệ bằng OTP',
+    title: 'Bảo mật tài khoản',
     subtitle: 'Moki Rescue dùng phiên đăng nhập Supabase và không lưu mật khẩu riêng trong ứng dụng.',
     account: 'Trạng thái tài khoản',
     phone: 'Số điện thoại',
-    otp: 'Xác minh OTP',
+    email: 'Email đăng nhập',
+    otp: 'Xác minh số điện thoại',
+    emailVerification: 'Xác minh email',
+    active: 'Đang hoạt động',
+    inactive: 'Đã vô hiệu hóa',
+    emailNote:
+      'Tài khoản này đăng nhập bằng email. Không cần xác minh SMS để dùng tài khoản kiểm thử đã được cấp quyền.',
     verified: 'Đã xác minh',
     unverified: 'Chưa xác minh',
     lastSignIn: 'Đăng nhập gần nhất',
@@ -34,7 +41,7 @@ const COPY = {
     signOutAll: 'Đăng xuất trên tất cả thiết bị',
     signOutAllTitle: 'Thu hồi tất cả phiên đăng nhập?',
     signOutAllBody:
-      'Tất cả refresh token và đăng ký nhận thông báo sẽ bị thu hồi. Bạn cần đăng nhập OTP lại trên từng thiết bị.',
+      'Tất cả refresh token và đăng ký nhận thông báo sẽ bị thu hồi. Bạn cần đăng nhập lại trên từng thiết bị.',
     signOutAllError: 'Không thể thu hồi toàn bộ phiên. Vui lòng thử lại.',
     cancel: 'Không',
     note: 'Ứng dụng chỉ hiển thị phiên hiện tại. Việc thay đổi số điện thoại cần quy trình xác minh riêng và không được giả lập trong bản production.',
@@ -42,11 +49,17 @@ const COPY = {
   en: {
     noData: 'No data',
     hidden: 'Not displayed',
-    title: 'Protected by OTP',
+    title: 'Account security',
     subtitle: 'Moki Rescue uses Supabase sessions and does not store a separate password in the app.',
     account: 'Account status',
     phone: 'Phone number',
-    otp: 'OTP verification',
+    email: 'Sign-in email',
+    otp: 'Phone verification',
+    emailVerification: 'Email verification',
+    active: 'Active',
+    inactive: 'Disabled',
+    emailNote:
+      'This account signs in by email. A pre-provisioned test account does not need SMS verification.',
     verified: 'Verified',
     unverified: 'Not verified',
     lastSignIn: 'Last sign-in',
@@ -60,7 +73,7 @@ const COPY = {
     signOutAll: 'Sign out on all devices',
     signOutAllTitle: 'Revoke all sign-in sessions?',
     signOutAllBody:
-      'All refresh tokens and push registrations will be revoked. Each device must sign in with OTP again.',
+      'All refresh tokens and push registrations will be revoked. Each device must sign in again.',
     signOutAllError: 'Could not revoke all sessions. Please try again.',
     cancel: 'Cancel',
     note: 'The app only shows the current session. Changing a phone number requires a separate verification process and is not simulated in the production app.',
@@ -104,6 +117,8 @@ function SecurityRow({
 
 export default function AccountSecurityScreen() {
   const user = useAuthStore((state) => state.user);
+  const profile = useAuthStore((state) => state.profile);
+  const verification = accountVerification(user);
   const language = useI18n((state) => state.language);
   const c = useCopy(COPY);
   const signOutEverywhere = useAuthStore((state) => state.signOutEverywhere);
@@ -144,15 +159,25 @@ export default function AccountSecurityScreen() {
         <Text style={styles.section}>{c.account}</Text>
         <View style={styles.card}>
           <SecurityRow
-            icon="phone-portrait-outline"
-            label={c.phone}
-            value={maskPhone(user?.phone, c.hidden)}
+            icon={verification.channel === 'email' ? 'mail-outline' : 'phone-portrait-outline'}
+            label={verification.channel === 'email' ? c.email : c.phone}
+            value={
+              verification.channel === 'email'
+                ? verification.identity
+                : maskPhone(verification.identity, c.hidden)
+            }
           />
           <SecurityRow
             icon="checkmark-circle-outline"
-            label={c.otp}
-            value={user?.phone_confirmed_at ? c.verified : c.unverified}
-            tone={user?.phone_confirmed_at ? 'success' : 'normal'}
+            label={verification.channel === 'email' ? c.emailVerification : c.otp}
+            value={verification.verified ? c.verified : c.unverified}
+            tone={verification.verified ? 'success' : 'normal'}
+          />
+          <SecurityRow
+            icon="person-circle-outline"
+            label={c.account}
+            value={profile ? (profile.is_active ? c.active : c.inactive) : c.noData}
+            tone={profile?.is_active ? 'success' : 'normal'}
           />
           <SecurityRow
             icon="log-in-outline"
@@ -165,6 +190,8 @@ export default function AccountSecurityScreen() {
             value={formatDate(user?.created_at, language, c.noData)}
           />
         </View>
+
+        {verification.channel === 'email' ? <Text style={styles.note}>{c.emailNote}</Text> : null}
 
         <Text style={styles.section}>{c.principles}</Text>
         <View style={styles.guidance}>
