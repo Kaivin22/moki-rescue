@@ -211,8 +211,11 @@ public class RescueQueryService {
         if (provider == null) {
             throw new ApiException(HttpStatus.CONFLICT, "PROVIDER_LOCATION_PENDING", "Ca này chưa lưu vị trí cứu hộ viên tại thời điểm nhận ca.");
         }
-        if (provider.accuracyM() == null
-                || provider.accuracyM() > matchingPolicy.providerLocationMaxAccuracyMeters()) {
+        // V10 stores a registered shop snapshot with NULL accuracy: it is not
+        // a GPS measurement. Still validate measured accuracy on legacy snapshots.
+        // Missing coordinates/timestamp are rejected by assignmentLocation above.
+        if (provider.accuracyM() != null
+                && provider.accuracyM() > matchingPolicy.providerLocationMaxAccuracyMeters()) {
             throw new ApiException(HttpStatus.CONFLICT, "PROVIDER_LOCATION_INACCURATE",
                     "Vị trí cứu hộ viên chưa đủ chính xác để tính tuyến đường.");
         }

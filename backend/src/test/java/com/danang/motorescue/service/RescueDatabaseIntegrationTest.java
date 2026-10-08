@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.danang.motorescue.config.CaseLifecycleProperties;
@@ -602,6 +603,8 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         var captured = queries.details(customer, requestId).providerLocation();
         assertThat(captured).isNotNull();
         assertThat(captured.latitude()).isEqualTo(16.06);
+        assertThat(captured.longitude()).isEqualTo(108.21);
+        assertThat(captured.accuracyM()).isNull();
         assertThat(queries.details(customer, requestId).providerLocationStatus()).isEqualTo("snapshot");
 
         jdbc.update("UPDATE public.provider_members SET last_latitude = 16.09, last_longitude = 108.24 WHERE user_id = ?",
@@ -625,6 +628,27 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         assertThat(jdbc.queryForObject("SELECT assigned_provider_latitude FROM public.rescue_requests WHERE id = ?",
                 Double.class, requestId)).isNull();
         assertApiCode("ROUTE_NOT_ACTIVE", () -> queries.roadRoute(customer, requestId));
+    }
+
+    @Test
+    void legacyMeasuredAccuracyIsStillValidatedBeforeRouting() {
+        Actor customer = createActor("customer");
+        ProviderFixture provider = createProvider(createTeam(16.06, 108.21), 16.08, 108.23, 20, true);
+        UUID requestId = insertRequest(customer, "assigned", provider);
+        var queries = new RescueQueryService(runtimeJdbc, routing, rescuePolicy, matchingPolicy,
+                new RescueRequestAccess(runtimeJdbc));
+        // Simulate an existing pre-V10 GPS snapshot; migration preserves these.
+        jdbc.update("UPDATE public.rescue_requests SET assigned_provider_accuracy_m = ? WHERE id = ?",
+                matchingPolicy.providerLocationMaxAccuracyMeters() + 1, requestId);
+        assertApiCode("PROVIDER_LOCATION_INACCURATE", () -> queries.roadRoute(customer, requestId));
+        verifyNoInteractions(routing);
+
+        jdbc.update("UPDATE public.rescue_requests SET assigned_provider_accuracy_m = 20 WHERE id = ?", requestId);
+        when(routing.routeWithGeometry(16.06, 108.21, PICKUP_LATITUDE, PICKUP_LONGITUDE))
+                .thenReturn(Optional.of(new RoadRoute(1800, 360, List.of(
+                        new RoadPoint(16.06, 108.21), new RoadPoint(PICKUP_LATITUDE, PICKUP_LONGITUDE)))));
+        assertThat(queries.roadRoute(customer, requestId).distanceMeters()).isEqualTo(1800);
+        verify(routing).routeWithGeometry(16.06, 108.21, PICKUP_LATITUDE, PICKUP_LONGITUDE);
     }
 
     @Test
