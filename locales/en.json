@@ -1,8 +1,8 @@
 {
   "CFBundleDisplayName": "Moki Rescue",
-  "NSLocationWhenInUseUsageDescription": "Moki Rescue uses your location only while you create or handle a rescue request. Your location is not tracked when no request is active.",
-  "NSLocationAlwaysAndWhenInUseUsageDescription": "Rescue providers can let Moki Rescue update their location in the background only while handling an active request. Customers do not need this permission.",
-  "NSLocationAlwaysUsageDescription": "Moki Rescue updates a rescue provider's background location only during an active request.",
+  "NSLocationWhenInUseUsageDescription": "Moki Rescue uses location when customers choose a pickup point. Dispatch uses shop coordinates; Google Maps uses your current location when you open navigation.",
+  "NSLocationAlwaysAndWhenInUseUsageDescription": "Moki Rescue does not use background location. Dispatch uses shop coordinates.",
+  "NSLocationAlwaysUsageDescription": "Moki Rescue does not use background location.",
   "android": {
     "app_name": "Moki Rescue"
   }

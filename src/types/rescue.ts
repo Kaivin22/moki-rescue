@@ -245,6 +245,13 @@ export interface Offer {
   expiresAt: string;
 }
 
+export interface ProviderStatistics {
+  completedCases: number;
+  activeCases: number;
+  cancelledCases: number;
+  rating: RatingSummary;
+}
+
 export interface ProviderStatus {
   available: boolean;
   teamName: string;
@@ -253,6 +260,10 @@ export interface ProviderStatus {
   qualityWarningCount: number;
   suspensionReviewRecommended: boolean;
   qualityNotice: string | null;
+  teamStatus: 'pending' | 'verified' | 'suspended';
+  shopLatitude: number | null;
+  shopLongitude: number | null;
+  shopInServiceArea: boolean;
 }
 
 export interface TeamSummary {
@@ -265,16 +276,30 @@ export interface TeamSummary {
   qualityWarningCount: number;
   suspensionReviewRecommended: boolean;
   activeQualityAlert: QualityAlertSummary | null;
+  baseLatitude: number | null;
+  baseLongitude: number | null;
+  shopInServiceArea: boolean;
 }
 
 export interface ProviderMember {
   userId: string;
   displayName: string;
   contactPhone: string;
-  status: 'active' | 'suspended' | 'left';
+  status: 'pending' | 'active' | 'rejected' | 'suspended' | 'left';
   available: boolean;
   rescueVehicleLabel: string | null;
   locationUpdatedAt: string | null;
+}
+
+export interface ProviderDirectoryEntry {
+  userId: string;
+  displayName: string;
+  teamId: string | null;
+  teamName: string | null;
+  teamStatus: TeamSummary['status'] | null;
+  status: ProviderMember['status'] | 'unassigned';
+  accountActive: boolean;
+  available: boolean;
 }
 
 export interface AuditLogEntry {
@@ -317,6 +342,7 @@ export interface TeamVerification {
   completedRequiredCount: number;
   requiredCount: number;
   readyToVerify: boolean;
+  shopInServiceArea: boolean;
   checks: TeamVerificationCheck[];
 }
 

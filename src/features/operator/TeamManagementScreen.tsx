@@ -19,6 +19,7 @@ import { rescueKeys } from '@/src/features/rescue/hooks/useRescueQueries';
 import { useCopy, useI18n } from '@/src/i18n';
 import { useAuthStore } from '@/src/stores/authStore';
 import type { AccountLookup } from '@/src/types/rescue';
+import { ShopLocationEditor } from './ShopLocationEditor';
 
 const COPY = {
   vi: {
@@ -89,7 +90,7 @@ const COPY = {
     vehiclePlaceholder: 'Ví dụ: xe máy kéo rơ-moóc',
     capabilities: 'Năng lực của đội đã chọn',
     saveCapabilities: 'Lưu năng lực đội',
-    grantProvider: 'Cấp quyền cứu hộ viên',
+    grantProvider: 'Thêm hồ sơ cứu hộ viên chờ duyệt',
     adminSection: 'Phân quyền quản trị viên vận hành',
     grantAdmin: 'Cấp quyền admin',
     grantAdminTitle: 'Cấp toàn quyền quản trị?',
@@ -170,7 +171,7 @@ const COPY = {
     vehiclePlaceholder: 'Example: motorcycle with rescue trailer',
     capabilities: 'Selected team capabilities',
     saveCapabilities: 'Save team capabilities',
-    grantProvider: 'Grant provider access',
+    grantProvider: 'Submit provider for approval',
     adminSection: 'Operations administrator access',
     grantAdmin: 'Grant admin access',
     grantAdminTitle: 'Grant full administrator access?',
@@ -254,6 +255,7 @@ export function TeamManagementScreen({
 
   const refreshTeams = (teamId?: string) => {
     void client.invalidateQueries({ queryKey: rescueKeys.teams });
+    void client.invalidateQueries({ queryKey: ['rescue', 'provider-directory'] });
     if (teamId) {
       void client.invalidateQueries({ queryKey: rescueKeys.teamVerification(teamId) });
       void client.invalidateQueries({ queryKey: rescueKeys.providers(teamId) });
@@ -438,6 +440,9 @@ export function TeamManagementScreen({
           <>
             <Text style={styles.section}>{selectedTeamData?.name}</Text>
             <Text style={styles.muted}>{selectedTeamData ? c[selectedTeamData.status] : ''}</Text>
+            {selectedTeamData ? (
+              <ShopLocationEditor key={selectedTeamData.id} team={selectedTeamData} />
+            ) : null}
             <NavigationCard
               title={c.roster}
               icon="people-outline"
@@ -780,6 +785,11 @@ export function TeamManagementScreen({
             {selectedTeam ? (
               <View style={styles.card}>
                 <Text style={styles.section}>{c.roster}</Text>
+                <AppButton
+                  title={english ? 'Open provider approvals' : 'Mở danh sách duyệt cứu hộ viên'}
+                  variant="outline"
+                  onPress={() => router.push('/operator/providers' as Href)}
+                />
                 {(providers.data ?? []).map((provider) => (
                   <View key={provider.userId} style={styles.reviewRow}>
                     <Text style={styles.teamName}>{provider.displayName}</Text>
@@ -790,12 +800,20 @@ export function TeamManagementScreen({
                     <Text style={provider.status === 'active' ? styles.providerActive : styles.qualityDanger}>
                       {provider.status === 'active'
                         ? c.providerActive
-                        : provider.status === 'suspended'
-                          ? c.providerSuspended
-                          : c.providerLeft}
+                        : provider.status === 'pending'
+                          ? english
+                            ? 'Awaiting approval'
+                            : 'Chờ duyệt'
+                          : provider.status === 'rejected'
+                            ? english
+                              ? 'Rejected'
+                              : 'Đã từ chối'
+                            : provider.status === 'suspended'
+                              ? c.providerSuspended
+                              : c.providerLeft}
                       {provider.available ? ` • ${c.providerAvailable}` : ''}
                     </Text>
-                    {provider.status !== 'active' ? (
+                    {provider.status === 'pending' ? null : provider.status !== 'active' ? (
                       <AppButton
                         title={c.activateProvider}
                         variant="outline"
@@ -810,7 +828,7 @@ export function TeamManagementScreen({
                         onPress={() => updateProviderStatus(provider.userId, 'suspended')}
                       />
                     )}
-                    {provider.status !== 'left' ? (
+                    {provider.status !== 'left' && provider.status !== 'pending' ? (
                       <AppButton
                         title={c.markProviderLeft}
                         variant="ghost"

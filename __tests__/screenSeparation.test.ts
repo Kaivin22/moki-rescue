@@ -32,7 +32,9 @@ describe('focused login and operator screens', () => {
     const workspace = read('src/features/rescue/screens/OperationsWorkspace.tsx');
     expect(workspace).toContain('disabled={!canToggle}');
     expect(workspace).toContain('if (!canToggle || changing.current) return');
-    expect(workspace).toContain('25_000');
+    expect(workspace).toContain('await availability.mutateAsync({ available: value })');
+    expect(workspace).not.toContain('getCurrentPositionAsync');
+    expect(workspace).not.toContain('requestForegroundPermissionsAsync');
   });
   it('keeps login as a method chooser, with separate guarded forms', () => {
     const login = read('app/(auth)/login.tsx');

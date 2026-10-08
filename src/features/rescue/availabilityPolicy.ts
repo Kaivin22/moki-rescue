@@ -10,5 +10,10 @@ export function canChangeAvailability(input: {
 }): boolean {
   if (!input.loaded || input.failed || input.busy || !input.provider) return false;
   if (input.provider.available) return true;
-  return input.provider.status === 'active' && !input.hasActiveRequest;
+  return (
+    input.provider.status === 'active' &&
+    input.provider.teamStatus === 'verified' &&
+    input.provider.shopInServiceArea &&
+    !input.hasActiveRequest
+  );
 }

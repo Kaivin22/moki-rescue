@@ -26,6 +26,13 @@ export class ApiClientError extends Error {
 }
 
 const ENGLISH_API_ERRORS: Record<string, string> = {
+  INVALID_PROVIDER_DECISION: 'Choose approve or reject.',
+  PROVIDER_REVIEW_CHANGED:
+    'This application changed, the account is inactive or the shop is suspended. Refresh the list.',
+  PROVIDER_REVIEW_REQUIRED: 'Use the provider approval list to approve or reject a pending application.',
+  SHOP_OUTSIDE_SERVICE_AREA: 'Ask an administrator to save valid shop coordinates inside the service area.',
+  TEAM_LOCATION_IN_USE:
+    'Turn off availability for all members and finish open cases/offers before moving the shop.',
   API_NOT_CONFIGURED: 'The API server is not configured.',
   AUTH_REQUIRED: 'Your session has expired. Please sign in again.',
   INVALID_SUBJECT: 'Your session identity is invalid. Please sign in again.',

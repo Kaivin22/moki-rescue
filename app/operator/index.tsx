@@ -6,6 +6,7 @@ import { useCopy } from '@/src/i18n';
 const COPY = {
   vi: {
     title: 'Quản lý',
+    providerApprovals: 'Tài khoản và duyệt cứu hộ viên',
     teams: 'Đội cứu hộ',
     teamsHint: 'Danh sách đội, cứu hộ viên, năng lực và xác minh.',
     services: 'Danh mục dịch vụ',
@@ -20,6 +21,7 @@ const COPY = {
   },
   en: {
     title: 'Management',
+    providerApprovals: 'Provider accounts and approvals',
     teams: 'Rescue teams',
     teamsHint: 'Teams, providers, capabilities and verification.',
     services: 'Service catalog',
@@ -37,6 +39,11 @@ export default function ManagementScreen() {
   const c = useCopy(COPY);
   return (
     <OperatorPage title={c.title} fallback="/(tabs)/operations">
+      <NavigationCard
+        title={c.providerApprovals}
+        icon="person-add-outline"
+        onPress={() => router.push('/operator/providers' as Href)}
+      />
       <NavigationCard
         title={c.incidents}
         icon="flag-outline"

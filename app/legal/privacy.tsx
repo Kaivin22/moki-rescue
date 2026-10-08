@@ -18,7 +18,7 @@ const COPY = {
       ],
       [
         'Vị trí',
-        'Vị trí khách được gửi khi khách chủ động xác nhận điểm cứu hộ hoặc điểm giao xe. GPS cứu hộ viên chỉ cập nhật khi bật sẵn sàng để ghép ca; lúc nhận ca lưu một vị trí cố định cho tuyến tham khảo, không theo dõi hành trình trực tiếp. Chỉ người tham gia ca và quản trị viên vận hành xem được vị trí tương ứng. Vị trí lúc nhận ca bị xóa khi ca đóng hoặc thu hồi phân công; dữ liệu vị trí cũ được xóa theo thời hạn vận hành.',
+        'Vị trí khách được gửi khi khách chủ động xác nhận điểm cứu hộ hoặc điểm giao xe. Điều phối dùng tọa độ cửa hàng, không thu thập GPS nền của cứu hộ viên. Lúc nhận ca mới, hệ thống lưu tọa độ cửa hàng làm điểm xuất phát tham khảo; không theo dõi hành trình trực tiếp. Chỉ người tham gia ca và quản trị viên vận hành xem được vị trí tương ứng. Điểm xuất phát đã lưu bị xóa khỏi ca khi ca đóng hoặc thu hồi phân công; dữ liệu vị trí cũ được xóa theo thời hạn vận hành.',
       ],
       [
         'Đối tác cứu hộ',
@@ -57,7 +57,7 @@ const COPY = {
       ],
       [
         'Location',
-        'Customer coordinates are submitted when they confirm a pickup or drop-off. Provider GPS updates only while available for matching; a fixed position is saved at assignment, without live journey tracking. Only request participants and operations administrators can view the corresponding location. Assignment positions are cleared when the case closes or the assignment is withdrawn; legacy data follows the retention policy.',
+        'Customer coordinates are submitted when they confirm a pickup or drop-off. Dispatch uses shop coordinates and does not collect provider background GPS. New assignments save the shop coordinates as a reference departure point, without live journey tracking. Only request participants and operations administrators can view the corresponding location. Saved departure points are cleared from the case when it closes or the assignment is withdrawn; legacy data follows the retention policy.',
       ],
       [
         'Rescue partners',

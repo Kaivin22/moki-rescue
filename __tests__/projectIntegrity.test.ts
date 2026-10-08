@@ -137,7 +137,7 @@ describe('project integrity', () => {
       });
     const routes = collectRoutes(path.join(process.cwd(), 'app'));
     const inventory = fs.readFileSync(path.join(process.cwd(), 'docs', 'FIGMA_SCREEN_INVENTORY.md'), 'utf8');
-    expect(routes).toHaveLength(49);
+    expect(routes).toHaveLength(50);
     expect(inventory).toContain(`**${routes.length} màn hình ở cấp mã nguồn**`);
     expect(inventory).toContain(`**${routes.length - 1} màn hình điều hướng thực tế**`);
     for (const section of ['reviews', 'incidents', 'quality-alerts']) {

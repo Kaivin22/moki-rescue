@@ -1,8 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import * as Location from 'expo-location';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/src/constants/colors';
@@ -13,7 +12,6 @@ import { RequestSummaryCard } from '@/src/features/rescue/components/RequestSumm
 import { RatingBadge } from '@/src/features/rescue/components/RatingBadge';
 import { rescueKeys, useRequests } from '@/src/features/rescue/hooks/useRescueQueries';
 import { useAuthStore } from '@/src/stores/authStore';
-import { useAvailableProviderLocation } from '@/src/features/rescue/hooks/useAvailableProviderLocation';
 import { RescueTiming } from '@/src/features/rescue/config/operational';
 import { stopAvailabilityBackgroundTracking } from '@/src/features/rescue/services/availabilityBackgroundLocation';
 import type { ProviderStatus } from '@/src/types/rescue';
@@ -33,7 +31,6 @@ const COPY = {
     availabilityError: 'Không thể cập nhật trạng thái sẵn sàng.',
     offerError: 'Đề nghị không còn khả dụng. Hãy tải lại danh sách.',
     declineError: 'Không thể từ chối đề nghị. Hãy tải lại danh sách.',
-    locationRequired: 'Cần cấp quyền và lấy được GPS chính xác trước khi bật sẵn sàng.',
     retryError: 'Không thể tìm lại đội cứu hộ.',
     title: 'Vận hành',
     requestError: 'Không tải được danh sách ca. Kéo xuống để thử lại.',
@@ -41,12 +38,7 @@ const COPY = {
     loadingTeam: 'Đang tải đội cứu hộ…',
     providerError: 'Không tải được trạng thái cứu hộ viên.',
     notice:
-      'Khi bật sẵn sàng, vị trí được dùng để ghép ca, kể cả trong nền nếu bạn cấp quyền. Tắt sẵn sàng để dừng. Trước khi nhận ca, khách không thấy tọa độ của bạn. GPS hiện tại:',
-    gpsTracking: 'đang cập nhật',
-    gpsForegroundOnly: 'chỉ cập nhật khi mở app; khi chạy nền lâu bạn có thể không được ghép ca',
-    gpsDenied: 'chưa được cấp quyền',
-    gpsError: 'mất kết nối',
-    gpsStarting: 'đang khởi tạo',
+      'Bật sẵn sàng nghĩa là bạn có thể xuất phát từ cửa hàng. OSRM tính tuyến đường và ETA từ cửa hàng, không theo dõi GPS của bạn. Nếu đang ở nơi khác, hãy tắt nhận ca. Sau khi nhận ca, mở Google Maps để dẫn đường từ vị trí thực tế.',
     offers: 'Đề nghị mới',
     offersError: 'Không tải được đề nghị mới.',
     minutes: 'phút',
@@ -79,7 +71,6 @@ const COPY = {
     availabilityError: 'Could not update availability.',
     offerError: 'This offer is no longer available. Refresh the list.',
     declineError: 'Could not decline this offer. Refresh the list.',
-    locationRequired: 'A precise GPS location is required before availability can be enabled.',
     retryError: 'Could not find another rescue team.',
     title: 'Operations',
     requestError: 'Could not load requests. Pull down to try again.',
@@ -87,12 +78,7 @@ const COPY = {
     loadingTeam: 'Loading rescue team…',
     providerError: 'Could not load provider status.',
     notice:
-      'While available, location is used for matching, including in the background if permitted. Turn availability off to stop. Customers cannot see your coordinates before acceptance. Current GPS:',
-    gpsTracking: 'updating',
-    gpsForegroundOnly: 'foreground only; you may stop receiving offers while the app is backgrounded',
-    gpsDenied: 'permission not granted',
-    gpsError: 'connection lost',
-    gpsStarting: 'starting',
+      'Availability means you can depart from your shop. OSRM calculates routes and ETA from the shop; your GPS is not tracked. Turn availability off when elsewhere. After accepting a case, open Google Maps for navigation from your actual location.',
     offers: 'New offers',
     offersError: 'Could not load new offers.',
     minutes: 'min',
@@ -120,6 +106,7 @@ const COPY = {
 export function OperationsWorkspace() {
   const insets = useSafeAreaInsets();
   const role = useAuthStore((state) => state.profile?.role);
+  const providerId = useAuthStore((state) => state.profile?.id);
   const isProvider = role === 'provider';
   const isStaff = role ? isStaffRole(role) : false;
   const requests = useRequests(false);
@@ -127,6 +114,11 @@ export function OperationsWorkspace() {
   const provider = useQuery({
     queryKey: rescueKeys.providerStatus,
     queryFn: rescueApi.providerStatus,
+    enabled: isProvider,
+  });
+  const personalStatistics = useQuery({
+    queryKey: ['rescue', 'provider-statistics', providerId],
+    queryFn: rescueApi.providerStatistics,
     enabled: isProvider,
   });
   const offers = useQuery({
@@ -164,16 +156,17 @@ export function OperationsWorkspace() {
     mutationFn: rescueApi.reassignDispatch,
     onSuccess: () => void client.invalidateQueries({ queryKey: rescueKeys.requests(false) }),
   });
-  const availabilityLocation = useAvailableProviderLocation(Boolean(isProvider && provider.data?.available));
+  useEffect(() => {
+    void stopAvailabilityBackgroundTracking().catch(() => undefined);
+  }, []);
   const [message, setMessage] = useState<string | null>(null);
   const c = useCopy(COPY);
   const english = useI18n((state) => state.language === 'en');
-  const [locating, setLocating] = useState(false);
   const changing = useRef(false);
   const canToggle = canChangeAvailability({
     loaded: provider.isSuccess,
     failed: provider.isError,
-    busy: locating || availability.isPending,
+    busy: availability.isPending,
     provider: provider.data,
     hasActiveRequest: Boolean(requests.data?.length),
   });
@@ -188,53 +181,12 @@ export function OperationsWorkspace() {
     if (!canToggle || changing.current) return;
     changing.current = true;
     setMessage(null);
-    let gpsTimeout: ReturnType<typeof setTimeout> | undefined;
     try {
-      if (!value) {
-        await availability.mutateAsync({ available: false });
-        return;
-      }
-      setLocating(true);
-      if (!(await Location.hasServicesEnabledAsync())) {
-        setMessage(
-          english
-            ? 'Enable Location Services on your phone first.'
-            : 'Hãy bật Dịch vụ định vị trên điện thoại trước.',
-        );
-        return;
-      }
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (permission.status !== Location.PermissionStatus.GRANTED) {
-        setMessage(c.locationRequired);
-        return;
-      }
-      const position = await Promise.race([
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
-        new Promise<never>((_, reject) => {
-          gpsTimeout = setTimeout(() => reject(new Error('GPS_TIMEOUT')), 25_000);
-        }),
-      ]);
-      if (position.coords.accuracy == null) {
-        setMessage(c.locationRequired);
-        return;
-      }
-      await availability.mutateAsync({
-        available: true,
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracyM: position.coords.accuracy,
-      });
+      await availability.mutateAsync({ available: value });
     } catch (error) {
-      report(
-        error,
-        english
-          ? 'Could not obtain GPS. Check location permission, move outside and retry.'
-          : 'Chưa lấy được GPS. Kiểm tra quyền định vị, ra nơi thoáng và thử lại.',
-      );
+      report(error, c.availabilityError);
     } finally {
-      if (gpsTimeout) clearTimeout(gpsTimeout);
       changing.current = false;
-      setLocating(false);
     }
   };
 
@@ -271,6 +223,7 @@ export function OperationsWorkspace() {
     void requests.refetch();
     if (isProvider) {
       void provider.refetch();
+      void personalStatistics.refetch();
       if (provider.data?.available) void offers.refetch();
     }
     if (isStaff) void teams.refetch();
@@ -324,6 +277,43 @@ export function OperationsWorkspace() {
         ) : null}
         {isProvider ? (
           <>
+            <View style={styles.offer}>
+              <Text style={styles.cardTitle}>{english ? 'My statistics' : 'Thống kê của tôi'}</Text>
+              <Text style={styles.muted}>
+                {english
+                  ? 'All-time cases assigned to your account, not the shop total or colleagues’ cases.'
+                  : 'Các ca được giao cho tài khoản của bạn từ trước đến nay, không phải tổng của cửa hàng hoặc của đồng nghiệp.'}
+              </Text>
+              {personalStatistics.isPending ? (
+                <Text style={styles.muted}>{english ? 'Loading statistics…' : 'Đang tải thống kê…'}</Text>
+              ) : null}
+              {personalStatistics.isError ? (
+                <Text accessibilityRole="alert" style={styles.error}>
+                  {english
+                    ? 'Could not load personal statistics. Pull down to retry.'
+                    : 'Không tải được thống kê cá nhân. Kéo xuống để thử lại.'}
+                </Text>
+              ) : null}
+              {personalStatistics.data ? (
+                <>
+                  <Text style={styles.muted}>
+                    {english ? 'Completed' : 'Đã hoàn thành'}: {personalStatistics.data.completedCases}
+                  </Text>
+                  <Text style={styles.muted}>
+                    {english ? 'In progress' : 'Đang xử lý'}: {personalStatistics.data.activeCases}
+                  </Text>
+                  <Text style={styles.muted}>
+                    {english ? 'Cancelled while assigned' : 'Đã hủy khi được giao'}:{' '}
+                    {personalStatistics.data.cancelledCases}
+                  </Text>
+                  <RatingBadge
+                    rating={personalStatistics.data.rating}
+                    label={english ? 'My ratings' : 'Đánh giá của tôi'}
+                    compact
+                  />
+                </>
+              ) : null}
+            </View>
             <View style={styles.availabilityCard}>
               <View style={styles.flex}>
                 <Text style={styles.cardTitle}>{c.available}</Text>
@@ -348,9 +338,18 @@ export function OperationsWorkspace() {
                 thumbColor={Colors.white}
               />
             </View>
-            {locating ? (
+            {provider.data &&
+            (!provider.data.shopInServiceArea || provider.data.teamStatus !== 'verified') ? (
               <Text style={styles.notice}>
-                {english ? 'Obtaining GPS (up to 25 seconds)…' : 'Đang lấy GPS (tối đa 25 giây)…'}
+                {english
+                  ? 'Your shop must be verified and have coordinates inside the service area. Contact an administrator.'
+                  : 'Cửa hàng cần được xác minh và có tọa độ trong vùng phục vụ. Liên hệ admin để cập nhật.'}
+              </Text>
+            ) : null}
+            {provider.data?.shopLatitude != null && provider.data.shopLongitude != null ? (
+              <Text style={styles.notice}>
+                {english ? 'Shop' : 'Cửa hàng'}: {provider.data.shopLatitude.toFixed(5)},{' '}
+                {provider.data.shopLongitude.toFixed(5)}
               </Text>
             ) : null}
             {!provider.data?.available && requests.data?.length ? (
@@ -382,26 +381,10 @@ export function OperationsWorkspace() {
                 </View>
               </View>
             ) : null}
-            {availabilityLocation === 'outside_area' ? (
-              <Text accessibilityRole="alert" style={styles.warning}>
-                {english
-                  ? 'You left the Da Nang demo service area. Availability is off. Return to the area and enable it again.'
-                  : 'Bạn đã ra ngoài vùng phục vụ demo Đà Nẵng. Đã tắt nhận ca; hãy quay lại trong vùng rồi bật hoạt động.'}
-              </Text>
-            ) : null}
+            <Text style={styles.notice}>{c.notice}</Text>
             {provider.data?.available ? (
               <Text style={styles.notice}>
-                {c.notice}{' '}
-                {availabilityLocation === 'tracking'
-                  ? c.gpsTracking
-                  : availabilityLocation === 'foreground_only'
-                    ? c.gpsForegroundOnly
-                    : availabilityLocation === 'denied'
-                      ? c.gpsDenied
-                      : availabilityLocation === 'error'
-                        ? c.gpsError
-                        : c.gpsStarting}
-                .
+                {english ? 'Ready to depart from the shop.' : 'Đang sẵn sàng xuất phát từ cửa hàng.'}
               </Text>
             ) : (
               <Text style={styles.notice}>
@@ -410,8 +393,8 @@ export function OperationsWorkspace() {
                     ? 'Connect to the server to confirm your availability.'
                     : 'Cần kết nối máy chủ để xác định trạng thái nhận ca.'
                   : english
-                    ? 'You are offline. Enable availability to receive offers; GPS is required.'
-                    : 'Bạn chưa sẵn sàng nhận ca. Bật công tắc khi có thể làm việc; cần cấp quyền GPS.'}
+                    ? 'You are unavailable. Enable the switch when ready to depart from the shop.'
+                    : 'Bạn chưa sẵn sàng nhận ca. Bật công tắc khi có thể xuất phát từ cửa hàng.'}
               </Text>
             )}
             <Text style={styles.section}>{c.offers}</Text>

@@ -9,6 +9,10 @@ const provider: ProviderStatus = {
   qualityWarningCount: 0,
   suspensionReviewRecommended: false,
   qualityNotice: null,
+  teamStatus: 'verified',
+  shopLatitude: 16.061,
+  shopLongitude: 108.2238,
+  shopInServiceArea: true,
 };
 const ready = { loaded: true, failed: false, busy: false, provider, hasActiveRequest: false };
 describe('provider availability control', () => {
@@ -19,6 +23,10 @@ describe('provider availability control', () => {
     { busy: true },
     { provider: undefined },
     { provider: { ...provider, status: 'suspended' } },
+    { provider: { ...provider, status: 'pending' } },
+    { provider: { ...provider, status: 'rejected' } },
+    { provider: { ...provider, teamStatus: 'pending' as const } },
+    { provider: { ...provider, shopInServiceArea: false } },
     { hasActiveRequest: true },
   ])('blocks unsafe or misleading changes: %j', (state) =>
     expect(canChangeAvailability({ ...ready, ...state })).toBe(false),

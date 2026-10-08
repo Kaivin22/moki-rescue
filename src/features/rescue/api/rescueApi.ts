@@ -3,6 +3,7 @@ import type {
   CreateRescueInput,
   Offer,
   ProviderStatus,
+  ProviderStatistics,
   RequestCardData,
   RequestDetails,
   RoadRoute,
@@ -16,6 +17,7 @@ import type {
   CancelRescueInput,
   AttentionFlag,
   ProviderMember,
+  ProviderDirectoryEntry,
   AuditLogEntry,
   OperatorStatistics,
   CaseResolutionInput,
@@ -125,6 +127,7 @@ export const rescueApi = {
     }),
   deleteReview: (id: string) => apiRequest<void>(`/api/requests/${id}/review`, { method: 'DELETE' }),
   providerStatus: () => apiRequest<ProviderStatus>('/api/provider/status'),
+  providerStatistics: () => apiRequest<ProviderStatistics>('/api/provider/statistics'),
   setAvailability: (input: {
     available: boolean;
     latitude?: number;
@@ -156,6 +159,17 @@ export const rescueApi = {
       body: JSON.stringify({ latitude, longitude, accuracyM }),
     }),
   teams: () => apiRequest<TeamSummary[]>('/api/operator/teams'),
+  providerDirectory: () => apiRequest<ProviderDirectoryEntry[]>('/api/operator/providers'),
+  reviewProvider: (providerId: string, decision: 'active' | 'rejected') =>
+    apiRequest<void>(`/api/operator/providers/${providerId}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ decision }),
+    }),
+  setTeamLocation: (teamId: string, latitude: number, longitude: number) =>
+    apiRequest<void>(`/api/operator/teams/${teamId}/location`, {
+      method: 'PUT',
+      body: JSON.stringify({ latitude, longitude }),
+    }),
   providers: (teamId: string) => apiRequest<ProviderMember[]>(`/api/operator/teams/${teamId}/providers`),
   setProviderStatus: (teamId: string, providerId: string, status: 'active' | 'suspended' | 'left') =>
     apiRequest<void>(`/api/operator/teams/${teamId}/providers/${providerId}/status`, {

@@ -46,7 +46,7 @@ export function RescueMapSection({ request, providerLocation, route, region, ins
         {providerLocation ? (
           <Marker
             coordinate={providerLocation}
-            title={request.providerName ?? c.provider}
+            title={c.departureMarker}
             description={
               request.providerContactPhone
                 ? `${c.contact}: ${displayPhone(request.providerContactPhone)}`

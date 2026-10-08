@@ -56,7 +56,7 @@ describe('operational SQL safety contracts (static, not database execution)', ()
     expect(section.indexOf('1. Chạy `scripts/01_preflight.sql`')).toBeLessThan(
       section.indexOf('2. Chạy **toàn bộ `scripts/01_init_database.sql`'),
     );
-    expect(section).toContain('Không chạy lại các file B1–V9 riêng lẻ');
+    expect(section).toContain('Không chạy lại các file B1–V10 riêng lẻ');
     expect(section).not.toContain('Không có `01_schema.sql`');
   });
 
@@ -71,6 +71,8 @@ describe('operational SQL safety contracts (static, not database execution)', ()
     '03_bootstrap_operator.sql',
     '04_schedule_retention.sql',
     '05_seed_demo_teams.sql',
+    '07_upgrade_shop_dispatch_and_provider_approval.sql',
+    '08_approve_existing_test_provider.sql',
   ])('%s wraps mutations in a transaction', (name) => {
     expect(sql(name).trim()).toMatch(/^BEGIN;/);
     expect(sql(name)).toContain('COMMIT;');

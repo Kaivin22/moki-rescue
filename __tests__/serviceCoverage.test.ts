@@ -2,6 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 const read = (name: string) => fs.readFileSync(path.join(process.cwd(), name), 'utf8').replace(/\r\n/g, '\n');
 const migration = read('backend/src/main/resources/db/migration/V9__align_demo_service_coverage.sql');
+const shopMigration = read(
+  'backend/src/main/resources/db/migration/V10__shop_dispatch_and_provider_approval.sql',
+);
 
 describe('service coverage wiring (static contracts, not PostgreSQL execution)', () => {
   it('defines the demo coverage envelope without depending on local routing files', () => {
@@ -17,7 +20,7 @@ describe('service coverage wiring (static contracts, not PostgreSQL execution)',
       'public.api_is_in_service_area(?, ?)',
     );
     expect(read('backend/src/main/java/com/danang/motorescue/service/DispatchService.java')).toContain(
-      'public.api_is_in_service_area(pm.last_latitude, pm.last_longitude)',
+      'public.api_is_in_service_area(team.base_latitude, team.base_longitude)',
     );
     expect(migration).toContain('OFFER_OUTSIDE_SERVICE_AREA');
     expect(migration).toContain("NEW.status = 'assigned'");
@@ -38,11 +41,28 @@ describe('service coverage wiring (static contracts, not PostgreSQL execution)',
     expect(migration).toContain('FROM PUBLIC, anon, authenticated');
     expect(migration).toContain('TO motorescue_api');
     expect(migration).toContain('WHERE is_available AND NOT public.api_is_in_service_area');
-    expect(read('src/features/rescue/hooks/useAvailableProviderLocation.ts')).toContain(
-      "error.code === 'PROVIDER_OUTSIDE_SERVICE_AREA'",
-    );
-    expect(read('src/features/rescue/services/availabilityBackgroundLocation.ts')).toContain(
-      "'PROVIDER_OUTSIDE_SERVICE_AREA'",
+    expect(shopMigration).toContain('public.api_is_in_service_area(team.base_latitude, team.base_longitude)');
+    expect(shopMigration).not.toContain('pm.last_latitude');
+    const cleanup = read('src/features/rescue/services/availabilityBackgroundLocation.ts');
+    expect(cleanup).toContain('stopLocationUpdatesAsync');
+    expect(cleanup).not.toContain('startLocationUpdatesAsync');
+    expect(cleanup).not.toContain('requestBackgroundPermissionsAsync');
+  });
+  it('upgrades shop dispatch atomically and never silently approves existing members', () => {
+    const upgrade = read('scripts/07_upgrade_shop_dispatch_and_provider_approval.sql');
+    expect(upgrade).toContain(shopMigration);
+    expect(upgrade).toContain('V10_ALREADY_APPLIED_DO_NOT_RERUN');
+    expect(upgrade).not.toContain("SET status = 'active'");
+    expect(upgrade).not.toMatch(/DROP SCHEMA|UPDATE auth\./);
+    expect(shopMigration).toContain("SET status = 'no_provider'");
+  });
+  it('rechecks the shop origin before publishing an OSRM offer', () => {
+    const dispatch = read('backend/src/main/java/com/danang/motorescue/service/DispatchService.java');
+    expect(dispatch).toContain('team.base_latitude = ? AND team.base_longitude = ?');
+    expect(dispatch).toContain('FOR UPDATE OF pm');
+    expect(dispatch).toContain('if (!Boolean.TRUE.equals(offered)) markNoProvider(requestId, false)');
+    expect(read('backend/src/main/java/com/danang/motorescue/service/OperatorService.java')).toContain(
+      'ORDER BY user_id FOR UPDATE',
     );
   });
 });

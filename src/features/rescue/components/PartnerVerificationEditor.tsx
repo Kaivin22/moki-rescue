@@ -21,7 +21,7 @@ const COPY = {
     partnerPlaceholder: 'Ví dụ: MR-DN-2026-0001',
     partnerHelp: 'Dùng mã nội bộ duy nhất gồm chữ, số, dấu chấm, gạch ngang, gạch chéo hoặc gạch dưới.',
     progress: 'Tiến độ checklist bắt buộc',
-    providers: 'Có ít nhất 1 tài khoản cứu hộ viên',
+    providers: 'Có ít nhất 1 cứu hộ viên đã duyệt',
     capabilities: 'Đã khai báo ít nhất 1 năng lực',
     checklist: 'Checklist xác minh ngoại tuyến',
     required: 'Bắt buộc',
@@ -30,7 +30,8 @@ const COPY = {
     save: 'Lưu kết quả xác minh',
     activate: 'Xác minh và kích hoạt đội',
     saveBeforeActivate: 'Hãy lưu mọi thay đổi trước khi kích hoạt đội.',
-    notReady: 'Chưa đủ điều kiện kích hoạt. Hoàn tất checklist, năng lực và tài khoản cứu hộ viên.',
+    notReady:
+      'Chưa đủ điều kiện kích hoạt. Cần checklist, năng lực, cứu hộ viên đã duyệt và tọa độ cửa hàng trong vùng phục vụ (sửa tại trang cửa hàng).',
     ready: 'Đã đủ điều kiện để admin kích hoạt đội.',
     verifiedBy: 'Đã xác minh bởi',
     loadError: 'Không tải được checklist xác minh.',
@@ -47,7 +48,7 @@ const COPY = {
     partnerHelp:
       'Use one unique internal code with letters, numbers, dots, hyphens, slashes, or underscores.',
     progress: 'Required checklist progress',
-    providers: 'At least 1 provider account is assigned',
+    providers: 'At least 1 provider account is approved',
     capabilities: 'At least 1 capability is configured',
     checklist: 'Offline verification checklist',
     required: 'Required',
@@ -57,7 +58,7 @@ const COPY = {
     activate: 'Verify and activate team',
     saveBeforeActivate: 'Save all changes before activating the team.',
     notReady:
-      'Activation requirements are incomplete. Finish the checklist, capabilities, and provider account.',
+      'Complete the checklist, capabilities, provider approval and in-area shop coordinates (edit on the shop page).',
     ready: 'This team is ready for admin activation.',
     verifiedBy: 'Verified by',
     loadError: 'Could not load the verification checklist.',
@@ -202,6 +203,14 @@ export function PartnerVerificationEditor({ teamId, onChanged, onError }: Props)
       </Text>
       <RequirementState met={data.activeProviderCount > 0} label={c.providers} />
       <RequirementState met={data.capabilityCount > 0} label={c.capabilities} />
+      <RequirementState
+        met={data.shopInServiceArea}
+        label={
+          language === 'vi'
+            ? 'Tọa độ cửa hàng trong vùng phục vụ'
+            : 'Shop coordinates inside the service area'
+        }
+      />
 
       <Text style={styles.subheading}>{c.checklist}</Text>
       {checks.map((check) => {

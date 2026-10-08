@@ -119,12 +119,12 @@ export default {
         'expo-location',
         {
           locationWhenInUsePermission:
-            'Moki Rescue dùng vị trí khi khách chọn điểm cứu hộ hoặc cứu hộ viên bật sẵn sàng nhận ca. Dẫn đường sau khi nhận ca được thực hiện trong Google Maps.',
+            'Moki Rescue dùng vị trí khi khách chọn điểm cứu hộ. Điều phối dùng tọa độ cửa hàng; Google Maps tự lấy vị trí hiện tại khi cứu hộ viên mở dẫn đường.',
           locationAlwaysAndWhenInUsePermission:
-            'Cứu hộ viên có thể cho phép cập nhật vị trí trong nền khi bật sẵn sàng nhận ca. Tắt sẵn sàng hoặc nhận ca để dừng cập nhật vị trí chờ ca. Khách hàng không cần quyền này.',
-          isIosBackgroundLocationEnabled: true,
-          isAndroidBackgroundLocationEnabled: true,
-          isAndroidForegroundServiceEnabled: true,
+            'Moki Rescue không sử dụng vị trí trong nền. Điều phối dùng tọa độ cửa hàng.',
+          isIosBackgroundLocationEnabled: false,
+          isAndroidBackgroundLocationEnabled: false,
+          isAndroidForegroundServiceEnabled: false,
         },
       ],
       [

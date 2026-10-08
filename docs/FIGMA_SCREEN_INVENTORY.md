@@ -4,12 +4,14 @@
 
 ## Kết luận số lượng
 
-- **48 màn hình điều hướng thực tế**: gồm màn đăng nhập kiểm thử chỉ mở ở môi trường cho phép.
+- **49 màn hình điều hướng thực tế**: gồm màn đăng nhập kiểm thử chỉ mở ở môi trường cho phép.
 - **1 màn hình khởi động/điều hướng** tại `app/index.tsx`.
-- **49 màn hình ở cấp mã nguồn** nếu tính cả màn hình khởi động.
+- **50 màn hình ở cấp mã nguồn** nếu tính cả màn hình khởi động.
 - 83 frame là số đề xuất Figma của bản cũ, chưa kiểm kê lại sau lần tách này; không dùng để báo cáo số interface đã có.
 
 ## Các màn hình tách thêm ngày 07/10/2026 — 12 route
+
+Bổ sung ngày 08/10: `/operator/providers` — danh sách tài khoản cứu hộ viên toàn hệ thống, lọc trạng thái và duyệt/từ chối hồ sơ đang chờ. Tổng điều hướng hiện tại: 48 + 1 = 49. Không có vai trò quản lý đội mới.
 
 | Route | Chức năng riêng |
 |---|---|
