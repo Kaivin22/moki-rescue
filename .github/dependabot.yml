@@ -5,9 +5,13 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
-    versioning-strategy: increase-if-necessary
+    # Respect package.json's approved SDK ranges and exact native pins.
+    # PR #15 changed pinned React/WebView versions and broke MapSurface typing.
+    # Updates outside these ranges require a reviewed compatibility change;
+    # lockfile updates within the ranges still run the complete CI workflow.
+    versioning-strategy: lockfile-only
     groups:
-      expo-sdk-54-patches:
+      expo-sdk-patches:
         patterns:
           - expo
           - expo-*
