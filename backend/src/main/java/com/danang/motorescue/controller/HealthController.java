@@ -33,6 +33,13 @@ public class HealthController {
                       AND EXISTS (SELECT 1 FROM pg_trigger
                         WHERE tgrelid = to_regclass('public.rescue_requests')
                           AND tgname = 'rescue_requests_service_area' AND tgenabled IN ('O', 'A'))
+                      AND EXISTS (SELECT 1 FROM information_schema.columns
+                        WHERE table_schema = 'public' AND table_name = 'provider_members'
+                          AND column_name = 'status' AND column_default LIKE '%pending%')
+                      AND position('team.base_latitude' IN pg_get_functiondef(
+                        to_regprocedure('public.capture_assignment_position()'))) > 0
+                      AND position('team.base_latitude' IN pg_get_functiondef(
+                        to_regprocedure('public.enforce_assignment_service_area()'))) > 0
                     THEN 1 ELSE 0 END
                     """, Integer.class);
             if (result != null && result == 1) {

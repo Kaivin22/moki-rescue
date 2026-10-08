@@ -105,6 +105,10 @@ BEGIN
   IF to_regclass('public.flyway_schema_history') IS NOT NULL THEN
     RAISE EXCEPTION 'DATABASE_MANAGED_BY_FLYWAY_USE_FLYWAY_MIGRATE';
   END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+    AND table_name = 'provider_members' AND column_name = 'status' AND column_default LIKE '%pending%') THEN
+    RAISE EXCEPTION 'V10_ALREADY_APPLIED_DO_NOT_DOWNGRADE';
+  END IF;
   IF to_regclass('public.service_zones') IS NULL
     OR to_regclass('public.provider_dispatch_stats') IS NULL
     OR NOT EXISTS (SELECT 1 FROM information_schema.columns
@@ -122,7 +126,48 @@ SELECT 'V9 coverage applied; run 02_verify_rls.sql, then restart backend' AS res
 `;
 }
 
-module.exports = { generate, migrationSources, outputPath, generateCoverageUpgrade, upgradePath };
+const shopUpgradePath = path.join(__dirname, '07_upgrade_shop_dispatch_and_provider_approval.sql');
+function generateShopUpgrade(sources = migrationSources()) {
+  const migration = sources.find((source) => source.name === 'V10__shop_dispatch_and_provider_approval.sql');
+  if (!migration) throw new Error('Missing V10 shop dispatch migration.');
+  return `-- FILE TỰ SINH từ V10. Database đã chạy thủ công đến V9 mới dùng file này.
+-- Không reset dữ liệu. Backup và dừng backend trước khi chạy. Cài mới bằng 01 thì bỏ qua.
+-- Chỉ chạy MỘT LẦN: tắt sẵn sàng và rút các đề nghị chưa nhận khi đổi mô hình vị trí.
+-- Không hủy ca đã nhận, không tự duyệt tài khoản. Sau đó chạy 02_verify_rls.sql.
+BEGIN;
+SELECT pg_advisory_xact_lock(225122, 274);
+DO $guard$
+BEGIN
+  IF to_regclass('public.flyway_schema_history') IS NOT NULL THEN
+    RAISE EXCEPTION 'DATABASE_MANAGED_BY_FLYWAY_USE_FLYWAY_MIGRATE';
+  END IF;
+  IF to_regprocedure('public.api_is_in_service_area(double precision,double precision)') IS NULL
+    OR to_regprocedure('public.capture_assignment_position()') IS NULL THEN
+    RAISE EXCEPTION 'V9_PREREQUISITES_MISSING_DO_NOT_RESET';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+    AND table_name = 'provider_members' AND column_name = 'status' AND column_default LIKE '%pending%') THEN
+    RAISE EXCEPTION 'V10_ALREADY_APPLIED_DO_NOT_RERUN';
+  END IF;
+END;
+$guard$;
+-- SOURCE: ${migration.name}
+-- SHA256: ${migration.sha256}
+${migration.content}
+COMMIT;
+SELECT 'V10 applied; run 02_verify_rls.sql, then restart backend and app' AS result;
+`;
+}
+
+module.exports = {
+  generate,
+  migrationSources,
+  outputPath,
+  generateCoverageUpgrade,
+  upgradePath,
+  generateShopUpgrade,
+  shopUpgradePath,
+};
 
 if (require.main === module) {
   const args = process.argv.slice(2);
@@ -131,6 +176,7 @@ if (require.main === module) {
   }
   const expected = generate();
   const upgrade = generateCoverageUpgrade();
+  const shopUpgrade = generateShopUpgrade();
   if (args.includes('--check')) {
     const actual = fs.existsSync(outputPath)
       ? fs.readFileSync(outputPath, 'utf8').replace(/\r\n/g, '\n')
@@ -138,7 +184,10 @@ if (require.main === module) {
     const actualUpgrade = fs.existsSync(upgradePath)
       ? fs.readFileSync(upgradePath, 'utf8').replace(/\r\n/g, '\n')
       : '';
-    if (actual !== expected || actualUpgrade !== upgrade) {
+    const actualShopUpgrade = fs.existsSync(shopUpgradePath)
+      ? fs.readFileSync(shopUpgradePath, 'utf8').replace(/\r\n/g, '\n')
+      : '';
+    if (actual !== expected || actualUpgrade !== upgrade || actualShopUpgrade !== shopUpgrade) {
       console.error('Init SQL missing/outdated. Run: node scripts/build-init-sql.cjs');
       process.exitCode = 1;
     } else {
@@ -147,6 +196,7 @@ if (require.main === module) {
   } else {
     fs.writeFileSync(outputPath, expected, 'utf8');
     fs.writeFileSync(upgradePath, upgrade, 'utf8');
+    fs.writeFileSync(shopUpgradePath, shopUpgrade, 'utf8');
     console.log(`Generated ${outputPath}; ${Buffer.byteLength(expected, 'utf8')} bytes. No SQL executed.`);
   }
 }

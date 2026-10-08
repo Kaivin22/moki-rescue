@@ -1,12 +1,11 @@
 package com.danang.motorescue.service;
 
-import com.danang.motorescue.config.MatchingProperties;
-import com.danang.motorescue.config.RescuePolicyProperties;
 import com.danang.motorescue.config.QualityProperties;
 import com.danang.motorescue.model.ApiModels.AvailabilityRequest;
 import com.danang.motorescue.model.ApiModels.OfferResponse;
 import com.danang.motorescue.model.ApiModels.ProviderLocationRequest;
 import com.danang.motorescue.model.ApiModels.ProviderStatusResponse;
+import com.danang.motorescue.model.ApiModels.ProviderStatisticsResponse;
 import com.danang.motorescue.model.ApiModels.ProviderWithdrawalResponse;
 import com.danang.motorescue.model.ApiModels.RatingSummary;
 import com.danang.motorescue.service.ActorService.Actor;
@@ -28,10 +27,7 @@ public class ProviderService {
     private final DispatchService dispatch;
     private final AuditService audit;
     private final PushNotificationService push;
-    private final MatchingProperties properties;
-    private final RescuePolicyProperties policy;
     private final QualityProperties qualityPolicy;
-    private final ServiceAreaService serviceArea;
 
     public ProviderService(
             JdbcTemplate jdbc,
@@ -39,25 +35,21 @@ public class ProviderService {
             DispatchService dispatch,
             AuditService audit,
             PushNotificationService push,
-            MatchingProperties properties,
-            RescuePolicyProperties policy,
-            QualityProperties qualityPolicy,
-            ServiceAreaService serviceArea) {
+            QualityProperties qualityPolicy) {
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.dispatch = dispatch;
         this.audit = audit;
         this.push = push;
-        this.properties = properties;
-        this.policy = policy;
         this.qualityPolicy = qualityPolicy;
-        this.serviceArea = serviceArea;
     }
 
     public ProviderStatusResponse status(Actor actor) {
         requireProvider(actor);
         ProviderStatusResponse result = jdbc.query("""
-                SELECT pm.is_available, team.name, pm.status,
+                SELECT pm.is_available, team.name, pm.status, team.status AS team_status,
+                       team.base_latitude, team.base_longitude,
+                       public.api_is_in_service_area(team.base_latitude, team.base_longitude) AS shop_in_area,
                        rating.average_rating, rating.rating_count,
                        (SELECT COUNT(*) FROM public.team_quality_alerts alert
                         WHERE alert.team_id = team.id AND alert.warning_number IS NOT NULL) AS warning_count,
@@ -89,21 +81,46 @@ public class ProviderService {
                     new RatingSummary(average == null ? null : average.doubleValue(), rs.getInt("rating_count")),
                     warningCount,
                     qualityPolicy.recommendsSuspensionReview(warningCount),
-                    rs.getString("quality_notice"));
+                    rs.getString("quality_notice"), rs.getString("team_status"),
+                    rs.getObject("base_latitude", Double.class), rs.getObject("base_longitude", Double.class),
+                    rs.getBoolean("shop_in_area"));
         }, actor.id());
         if (result == null) throw providerNotReady();
         return result;
     }
 
+    public ProviderStatisticsResponse statistics(Actor actor) {
+        requireProvider(actor);
+        // Identity comes from the authenticated JWT, never from a client-supplied team/provider ID.
+        return jdbc.query("""
+                SELECT COUNT(*) FILTER (WHERE rr.status = 'completed') AS completed,
+                       COUNT(*) FILTER (WHERE rr.status NOT IN ('completed', 'cancelled')) AS active,
+                       COUNT(*) FILTER (WHERE rr.status = 'cancelled') AS cancelled,
+                       ROUND(AVG(review.rating)::NUMERIC, 2) AS average_rating,
+                       COUNT(review.id)::INTEGER AS rating_count
+                FROM public.rescue_requests rr
+                LEFT JOIN public.reviews review ON review.request_id = rr.id AND NOT review.is_hidden
+                WHERE rr.assigned_provider_id = ?
+                """, rs -> {
+            rs.next();
+            var average = rs.getBigDecimal("average_rating");
+            return new ProviderStatisticsResponse(rs.getLong("completed"), rs.getLong("active"), rs.getLong("cancelled"),
+                    new RatingSummary(average == null ? null : average.doubleValue(), rs.getInt("rating_count")));
+        }, actor.id());
+    }
+
     public ProviderStatusResponse setAvailability(Actor actor, AvailabilityRequest input) {
         requireProvider(actor);
         if (input.available()) {
-            if (input.latitude() == null || input.longitude() == null || input.accuracyM() == null) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "PROVIDER_LOCATION_REQUIRED",
-                        "Cần vị trí GPS hợp lệ trước khi bật trạng thái sẵn sàng.");
+            // Old clients may still send GPS. Never use it for shop-based dispatch.
+            ProviderStatusResponse current = status(actor);
+            if (!"active".equals(current.status()) || !"verified".equals(current.teamStatus())) {
+                throw providerNotReady();
             }
-            validateAccuracy(new ProviderLocationRequest(input.latitude(), input.longitude(), input.accuracyM()));
-            requireServiceArea(actor, input.latitude(), input.longitude());
+            if (!current.shopInServiceArea()) {
+                throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "SHOP_OUTSIDE_SERVICE_AREA",
+                        "Cửa hàng chưa có tọa độ hợp lệ trong vùng phục vụ. Hãy nhờ admin cập nhật vị trí cửa hàng.");
+            }
             Boolean busy = jdbc.queryForObject("""
                     SELECT EXISTS(
                       SELECT 1 FROM public.rescue_requests
@@ -123,15 +140,16 @@ public class ProviderService {
                           WHEN ? THEN pm.available_since
                           ELSE NULL
                         END,
-                        last_latitude = CASE WHEN ? THEN CAST(? AS double precision) ELSE NULL END,
-                        last_longitude = CASE WHEN ? THEN CAST(? AS double precision) ELSE NULL END,
-                        location_accuracy_m = CASE WHEN ? THEN CAST(? AS double precision) ELSE NULL END
+                        last_latitude = NULL, last_longitude = NULL, location_accuracy_m = NULL
                     FROM public.rescue_teams team
-                    WHERE pm.user_id = ? AND pm.status = 'active'
-                      AND team.id = pm.team_id AND team.status = 'verified'
+                    WHERE pm.user_id = ? AND team.id = pm.team_id
+                      AND (NOT ? OR (pm.status = 'active' AND team.status = 'verified'
+                        AND public.api_is_in_service_area(team.base_latitude, team.base_longitude)
+                        AND NOT EXISTS (SELECT 1 FROM public.rescue_requests rr
+                          WHERE rr.assigned_provider_id = pm.user_id
+                            AND rr.status NOT IN ('completed', 'cancelled'))))
                     """, input.available(), input.available(), input.available(),
-                    input.available(), input.latitude(),
-                    input.available(), input.longitude(), input.available(), input.accuracyM(), actor.id());
+                    actor.id(), input.available());
             if (updated > 0) {
                 audit.record(actor.id(), input.available() ? "provider.available" : "provider.unavailable", "provider", actor.id());
             }
@@ -184,7 +202,7 @@ public class ProviderService {
             String detail = ex.getMostSpecificCause().getMessage();
             if (detail != null && detail.contains("OFFER_OUTSIDE_SERVICE_AREA")) {
                 throw new ApiException(HttpStatus.CONFLICT, "OFFER_OUTSIDE_SERVICE_AREA",
-                        "Vị trí cứu hộ viên hoặc địa điểm của ca nằm ngoài vùng phục vụ hiện tại. Không thể nhận đề nghị này.");
+                        "Vị trí cửa hàng hoặc địa điểm của ca nằm ngoài vùng phục vụ hiện tại. Không thể nhận đề nghị này.");
             }
             if (detail != null && (detail.contains("OFFER_") || detail.contains("REQUEST_ALREADY_CHANGED")
                     || detail.contains("PROVIDER_NOT_ELIGIBLE"))) {
@@ -294,48 +312,14 @@ public class ProviderService {
 
     public void saveAvailabilityLocation(Actor actor, ProviderLocationRequest input) {
         requireProvider(actor);
-        validateAccuracy(input);
-        requireServiceArea(actor, input.latitude(), input.longitude());
-        int changed = jdbc.update("""
-                UPDATE public.provider_members pm
-                SET last_latitude = ?, last_longitude = ?, location_accuracy_m = ?
-                FROM public.rescue_teams team
-                WHERE pm.user_id = ? AND pm.status = 'active' AND pm.is_available
-                  AND team.id = pm.team_id AND team.status = 'verified'
-                """, input.latitude(), input.longitude(), input.accuracyM(), actor.id());
-        if (changed == 0) {
-            throw new ApiException(HttpStatus.CONFLICT, "PROVIDER_NOT_AVAILABLE",
-                    "Hãy bật trạng thái sẵn sàng trước khi cập nhật vị trí nhận ca.");
-        }
+        // Compatibility endpoint: old clients stop publishing on this code.
+        throw new ApiException(HttpStatus.GONE, "PROVIDER_NOT_AVAILABLE",
+                "Điều phối hiện dùng tọa độ cửa hàng. Hãy cập nhật app; không gửi GPS nền nữa.");
     }
 
     private void requireProvider(Actor actor) {
         if (!"provider".equals(actor.role())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "PROVIDER_ROLE_REQUIRED", "Chức năng chỉ dành cho cứu hộ viên.");
-        }
-    }
-
-    private void requireServiceArea(Actor actor, double latitude, double longitude) {
-        if (serviceArea.contains(latitude, longitude)) return;
-        // Commit OFF before returning the error: retaining the old in-area GPS would
-        // otherwise keep matching this provider. Never modify the provider's active job.
-        transactions.executeWithoutResult(transaction -> {
-            int changed = jdbc.update("""
-                    UPDATE public.provider_members
-                    SET is_available = FALSE, available_since = NULL,
-                        last_latitude = NULL, last_longitude = NULL, location_accuracy_m = NULL
-                    WHERE user_id = ? AND is_available
-                    """, actor.id());
-            if (changed > 0) audit.record(actor.id(), "provider.outside_service_area", "provider", actor.id());
-        });
-        throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "PROVIDER_OUTSIDE_SERVICE_AREA",
-                "Bạn đang ngoài vùng phục vụ của bản đồ demo Đà Nẵng. Đã tắt nhận ca; hãy quay lại trong vùng rồi bật hoạt động.");
-    }
-
-    private void validateAccuracy(ProviderLocationRequest input) {
-        if (input.accuracyM() > properties.providerLocationMaxAccuracyMeters()) {
-            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "LOCATION_NOT_ACCURATE",
-                    "Tín hiệu vị trí chưa đủ chính xác. Hãy ra nơi thoáng và thử lại.");
         }
     }
 

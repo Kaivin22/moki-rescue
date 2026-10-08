@@ -248,7 +248,10 @@ public final class ApiModels {
             RatingSummary teamRating,
             int qualityWarningCount,
             boolean suspensionReviewRecommended,
-            String qualityNotice) {}
+            String qualityNotice,
+            String teamStatus, Double shopLatitude, Double shopLongitude, boolean shopInServiceArea) {}
+
+    public record ProviderStatisticsResponse(long completedCases, long activeCases, long cancelledCases, RatingSummary rating) {}
 
     public record TeamResponse(
             UUID id,
@@ -259,7 +262,8 @@ public final class ApiModels {
             RatingSummary rating,
             int qualityWarningCount,
             boolean suspensionReviewRecommended,
-            QualityAlertSummary activeQualityAlert) {}
+            QualityAlertSummary activeQualityAlert,
+            Double baseLatitude, Double baseLongitude, boolean shopInServiceArea) {}
 
     public record QualityAlertActionRequest(@NotBlank @Size(min = 5, max = 500) String note) {}
 
@@ -337,6 +341,7 @@ public final class ApiModels {
             int completedRequiredCount,
             int requiredCount,
             boolean readyToVerify,
+            boolean shopInServiceArea,
             List<TeamVerificationCheckResponse> checks) {}
 
     public record TeamVerificationCheckRequest(
@@ -349,6 +354,10 @@ public final class ApiModels {
             @NotNull @Size(min = 1, max = 20) List<@Valid TeamVerificationCheckRequest> checks) {}
 
     public record TeamStatusRequest(@NotBlank @Pattern(regexp = "pending|verified|suspended") String status) {}
+
+    public record TeamLocationRequest(
+            @NotNull @DecimalMin("-90") @DecimalMax("90") Double latitude,
+            @NotNull @DecimalMin("-180") @DecimalMax("180") Double longitude) {}
 
     public record TeamCapabilitiesRequest(
             @NotNull @Size(min = 1, max = 6)
@@ -365,7 +374,13 @@ public final class ApiModels {
             boolean available, String rescueVehicleLabel, Instant locationUpdatedAt) {}
 
     public record ProviderMemberStatusRequest(
-            @NotBlank @Pattern(regexp = "active|suspended|left") String status) {}
+            @NotBlank @Pattern(regexp = "active|rejected|suspended|left") String status) {}
+
+    public record ProviderDirectoryResponse(
+            UUID userId, String displayName, UUID teamId, String teamName, String teamStatus,
+            String status, boolean accountActive, boolean available) {}
+
+    public record ProviderDecisionRequest(@NotBlank @Pattern(regexp = "active|rejected") String decision) {}
 
     public record AdminRoleRequest(
             @NotNull UUID userId,

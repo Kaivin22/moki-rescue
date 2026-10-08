@@ -235,6 +235,7 @@ async function setup(env, args) {
         display_name: '[TEST] Cứu hộ viên',
         contact_phone_e164: '+12025550191',
         rescue_vehicle_label: '[TEST] Xe cứu hộ mô phỏng',
+        status: 'active', // Explicit test fixture approval; normal admin enrollment starts pending.
         is_available: false,
       }),
       'CREATE_TEST_PROVIDER',
@@ -308,7 +309,7 @@ async function setup(env, args) {
   }
   console.log(`Passwords saved only in ${credentialsPath}`);
   console.log(
-    'Test provider starts offline with no fabricated GPS. Enable availability in the app with a real location.',
+    'Test provider starts offline. Dispatch uses the fixed test shop (16.061, 108.2238); enable availability in the app when ready.',
   );
   console.log('Global email/SMS settings and existing accounts/teams were not changed.');
 }

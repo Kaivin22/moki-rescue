@@ -20,6 +20,9 @@ import com.danang.motorescue.model.ApiModels.AttentionResolutionRequest;
 import com.danang.motorescue.model.ApiModels.IncidentResolutionRequest;
 import com.danang.motorescue.model.ApiModels.ProviderMemberResponse;
 import com.danang.motorescue.model.ApiModels.ProviderMemberStatusRequest;
+import com.danang.motorescue.model.ApiModels.ProviderDirectoryResponse;
+import com.danang.motorescue.model.ApiModels.ProviderDecisionRequest;
+import com.danang.motorescue.model.ApiModels.TeamLocationRequest;
 import com.danang.motorescue.model.ApiModels.AuditLogResponse;
 import com.danang.motorescue.service.ActorService;
 import com.danang.motorescue.service.ActorService.Actor;
@@ -135,6 +138,25 @@ public class OperatorController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID teamId) {
         return operator.providers(admin(jwt), teamId);
+    }
+
+    @GetMapping("/providers")
+    List<ProviderDirectoryResponse> providerDirectory(@AuthenticationPrincipal Jwt jwt) {
+        return operator.providerDirectory(admin(jwt));
+    }
+
+    @PostMapping("/providers/{providerId}/review")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void reviewProvider(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID providerId,
+            @Valid @RequestBody ProviderDecisionRequest input) {
+        operator.reviewProvider(admin(jwt), providerId, input.decision());
+    }
+
+    @PutMapping("/teams/{teamId}/location")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void setTeamLocation(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID teamId,
+            @Valid @RequestBody TeamLocationRequest input) {
+        operator.setTeamLocation(admin(jwt), teamId, input);
     }
 
     @PutMapping("/teams/{teamId}/providers/{providerId}/status")

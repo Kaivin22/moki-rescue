@@ -9,12 +9,14 @@ một đoạn bỏ qua kiểm tra/transaction. Nếu lỗi trong transaction, d�
 | File trong `scripts` | Thời điểm chạy | Tác động |
 | --- | --- | --- |
 | `01_preflight.sql` | Đầu tiên | Chỉ đọc: bảng hiện có, extension, dấu vết Flyway; xem cả mục Messages cho lịch sử |
-| `01_init_database.sql` | Sau preflight, chỉ trên database chưa có schema ứng dụng | Khởi tạo toàn bộ B1–V9 trong một transaction, không cần chạy file ở backend |
-| `02_verify_rls.sql` | Sau khi schema đã đến V9 | Chỉ đọc: cấu trúc, RLS, quyền và một số bất biến; không tự sửa lỗi |
+| `01_init_database.sql` | Sau preflight, chỉ trên database chưa có schema ứng dụng | Khởi tạo toàn bộ B1–V10 trong một transaction, không cần chạy file ở backend |
+| `02_verify_rls.sql` | Sau khi schema đã đến V10 | Chỉ đọc: cấu trúc, RLS, quyền và một số bất biến; không tự sửa lỗi |
 | `03_bootstrap_operator.sql` | Sau 02 và sau khi tài khoản admin đăng nhập OTP | Cấp admin đầu tiên theo số điện thoại bạn điền |
 | `04_schedule_retention.sql` | Tùy chọn, khi đồng ý chính sách retention | Đăng ký 4 lịch tự động xóa/làm mờ dữ liệu; không cần cho demo ngắn |
 | `05_seed_demo_teams.sql` | Tùy chọn, sau 02; thường sau 03 để admin kiểm tra | Thêm 12 đội giả lập `pending`, năng lực và checklist chưa xác minh |
 | `06_upgrade_demo_service_coverage.sql` | Chỉ database đã chạy thủ công đến V8 | Áp dụng V9: giới hạn vùng demo OSRM, chặn nhận ca ngoài vùng; không reset, không hủy ca đang làm |
+| `07_upgrade_shop_dispatch_and_provider_approval.sql` | Chỉ database đã chạy thủ công đến V9, chạy một lần | Áp dụng V10: điều phối từ cửa hàng, thành viên mới chờ duyệt; tắt sẵn sàng và dừng tìm đối với đề nghị cũ chưa nhận |
+| `08_approve_existing_test_provider.sql` | Tùy chọn sau 02, chỉ local/staging đã có đúng tài khoản mẫu | Duyệt đúng 1 cứu hộ viên có dấu fixture, không tạo tài khoản, không đổi mật khẩu |
 | `00_reset.sql` | Chỉ reset local/staging được phép mất dữ liệu | Xóa toàn bộ schema `public`, gồm dữ liệu app và lịch sử Flyway; giữ Auth users |
 
 ### Cài mới bằng SQL Editor (thứ tự thủ công)
@@ -26,8 +28,8 @@ Hai file cùng tiền tố 01: luôn chạy **preflight trước, init sau**, kh
 
 1. Chạy `scripts/01_preflight.sql`; nếu đã có bảng ứng dụng/lịch sử Flyway, xem phần nâng cấp bên dưới.
 2. Chạy **toàn bộ `scripts/01_init_database.sql` một lần**. File đã chứa B1, V2, V3, V4,
-   V5, V6, V7, V8, V9 đúng thứ tự, có `BEGIN`/`COMMIT` và kiểm tra database trước khi tạo.
-   **Không chạy lại các file B1–V9 riêng lẻ sau bước này.** Bỏ qua file 06 vì init đã gồm V9.
+   V5, V6, V7, V8, V9, V10 đúng thứ tự, có `BEGIN`/`COMMIT` và kiểm tra database trước khi tạo.
+   **Không chạy lại các file B1–V10 riêng lẻ sau bước này.** Bỏ qua file 06 và 07 vì init đã gồm chúng.
 3. Chạy `scripts/02_verify_rls.sql`. Nếu lỗi, dừng; không bỏ qua bằng cách xóa câu kiểm tra.
 4. Thiết lập mật khẩu riêng cho role runtime như phần bên dưới; không dùng `postgres` cho backend.
 5. Bật phone auth, đăng nhập OTP bằng tài khoản của bạn; điền số E.164 vào bản chạy
@@ -57,18 +59,24 @@ node scripts/build-init-sql.cjs --check
 ```
 
 Hai lệnh dùng Node có sẵn, không cài gói và không kết nối database. Lệnh đầu tạo lại
-`01_init_database.sql` và `06_upgrade_demo_service_coverage.sql`; lệnh `--check` chỉ đọc và báo lỗi nếu bản tổng hợp lệch nguồn. Mỗi phần
+`01_init_database.sql`, `06_upgrade_demo_service_coverage.sql` và `07_upgrade_shop_dispatch_and_provider_approval.sql`; lệnh `--check` chỉ đọc và báo lỗi nếu bản tổng hợp lệch nguồn. Mỗi phần
 có tên migration và SHA-256 để đối chiếu. Không sửa tay bản init; sửa schema bằng migration mới
 rồi tạo lại. File init chỉ dành cho database mới; database hiện có vẫn nâng cấp bằng migration.
 
 ### Database đã tồn tại
 
+**Đang ở V9: chạy `07 → 02`, không chạy lại 00/01.** Backup, dừng backend trước khi nâng cấp; khởi động lại backend và app sau khi 02 thành công. File 07 giữ ca đã nhận và lịch sử, nhưng tắt sẵn sàng của các thành viên; đề nghị cũ chưa nhận được rút và yêu cầu chuyển sang `no_provider` để khách/admin tìm lại, không treo chờ. Thành viên đang `active` vẫn được duyệt; chỉ hồ sơ mới mặc định `pending`.
+
+Muốn duyệt tài khoản mẫu hiện có: chỉ trên project test, đọc rồi đổi `deployment_environment` trong **08** sang `staging`, chạy toàn bộ file. Nó chỉ nhận `provider.rescue@example.com` có dấu server `rescue-auth-test-v1` cùng đội `TEST-AUTH-DN-01`, không nhận tài khoản tùy ý. Sai fixture, bị đình chỉ/đã từ chối, thiếu tọa độ hoặc đang có ca thì dừng để kiểm tra, không xóa guard. Có thể dùng nút duyệt trong app cho hồ sơ `pending`; **không có nút duyệt lại khi đã `active`**.
+
+12 đội do 05 tạo là **12 cửa hàng, không phải 12 tài khoản**. Một cửa hàng có nhiều thành viên, mỗi người có số ca, trạng thái sẵn sàng và thống kê riêng. Chỉ admin được duyệt và quản lý thành viên; không thêm vai trò quản lý đội.
+
 **Nâng cấp phạm vi demo từ V8 đến V9 (không xóa dữ liệu):**
 
 1. Backup và dừng backend cũ; xác nhận database đã chạy thủ công đến V8.
 2. Chạy toàn bộ `scripts/06_upgrade_demo_service_coverage.sql` trong SQL Editor.
-3. Chạy `scripts/02_verify_rls.sql`; nếu có lỗi thì dừng và kiểm tra, không reset database.
-4. Khởi động backend code mới rồi Expo. `/api/health/ready` sẽ chưa báo ready nếu thiếu hàm/trigger V9.
+3. Tiếp tục chạy `scripts/07_upgrade_shop_dispatch_and_provider_approval.sql` để lên V10, rồi `scripts/02_verify_rls.sql`; nếu lỗi thì dừng, không reset database.
+4. Khởi động backend code mới rồi Expo. `/api/health/ready` sẽ chưa báo ready nếu thiếu hợp đồng V10.
 
 Không chạy lại 00/01/03/05 chỉ để nâng cấp này. File 06 không tạo tài khoản, không hủy ca,
 không tải thêm bản đồ. Nó thay vùng `Da Nang launch zone` bằng khung demo và tắt nhận ca,

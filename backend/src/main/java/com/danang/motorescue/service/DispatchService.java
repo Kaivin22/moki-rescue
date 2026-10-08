@@ -125,10 +125,14 @@ public class DispatchService {
             return;
         }
         Ranked selected = ordered.get(0);
-        transactions.executeWithoutResult(status -> {
-            if (!writeOffer(request, ordered, selected)) return;
+        Boolean offered = transactions.execute(status -> {
+            if (!writeOffer(request, ordered, selected)) return false;
             push.notifyUser(selected.candidate().providerId(), NotificationKind.NEW_OFFER, null, requestId);
+            return true;
         });
+        // Eligibility/shop coordinates can change while OSRM is responding.
+        // Stop explicitly instead of publishing an ETA for an outdated origin.
+        if (!Boolean.TRUE.equals(offered)) markNoProvider(requestId, false);
     }
 
     static List<Ranked> rankCandidates(List<Ranked> candidates, MatchingPolicy policy) {
@@ -306,7 +310,7 @@ public class DispatchService {
 
     private List<Candidate> eligibleCandidates(RequestPoint request) {
         return jdbc.query("""
-                SELECT pm.user_id, pm.team_id, pm.last_latitude, pm.last_longitude,
+                SELECT pm.user_id, pm.team_id, team.base_latitude, team.base_longitude,
                        (
                          SELECT COUNT(*)::INTEGER
                          FROM public.rescue_requests completed
@@ -333,6 +337,8 @@ public class DispatchService {
                        COALESCE(stats.consecutive_skips, 0) AS consecutive_skips
                 FROM public.provider_members pm
                 JOIN public.rescue_teams team ON team.id = pm.team_id
+                JOIN public.profiles profile ON profile.id = pm.user_id
+                  AND profile.role = 'provider' AND profile.is_active
                 JOIN public.team_capabilities capability
                   ON capability.team_id = pm.team_id AND capability.service_code = ? AND capability.is_active
                 JOIN public.rescue_requests rr ON rr.id = ?
@@ -340,14 +346,12 @@ public class DispatchService {
                   ON stats.provider_id = pm.user_id AND stats.service_code = ?
                 WHERE pm.status = 'active'
                   AND pm.is_available
-                  AND public.api_is_in_service_area(pm.last_latitude, pm.last_longitude)
+                  AND public.api_is_in_service_area(team.base_latitude, team.base_longitude)
                   AND public.api_is_in_service_area(rr.pickup_latitude, rr.pickup_longitude)
                   AND team.status = 'verified'
-                  AND pm.last_location IS NOT NULL
-                  AND pm.location_accuracy_m IS NOT NULL
-                  AND pm.location_accuracy_m <= ?
-                  AND pm.location_updated_at >= NOW() - (? * INTERVAL '1 second')
-                  AND extensions.ST_DWithin(pm.last_location, rr.pickup_location, team.service_radius_km * 1000)
+                  AND extensions.ST_DWithin(
+                    extensions.ST_SetSRID(extensions.ST_MakePoint(team.base_longitude, team.base_latitude), 4326)::extensions.geography,
+                    rr.pickup_location, team.service_radius_km * 1000)
                   AND NOT EXISTS (
                     SELECT 1 FROM public.rescue_requests active_request
                     WHERE active_request.assigned_provider_id = pm.user_id
@@ -370,16 +374,14 @@ public class DispatchService {
                 """, (rs, rowNum) -> new Candidate(
                         rs.getObject("user_id", UUID.class),
                         rs.getObject("team_id", UUID.class),
-                        rs.getDouble("last_latitude"),
-                        rs.getDouble("last_longitude"),
+                        rs.getDouble("base_latitude"),
+                        rs.getDouble("base_longitude"),
                         rs.getInt("completed_service_count"),
                         rs.getInt("recent_accepted_count"),
                         rs.getLong("waiting_seconds"),
                         rs.getInt("consecutive_skips")),
                 request.serviceCode(), request.serviceCode(), request.policy().recentWindowDays(),
-                request.serviceCode(), request.id(), request.serviceCode(),
-                properties.providerLocationMaxAccuracyMeters(),
-                properties.providerLocationMaxAgeSeconds());
+                request.serviceCode(), request.id(), request.serviceCode());
     }
 
     private boolean writeOffer(RequestPoint request, List<Ranked> rankedCandidates, Ranked selected) {
@@ -387,6 +389,25 @@ public class DispatchService {
         String current = jdbc.query("SELECT status FROM public.rescue_requests WHERE id = ? FOR UPDATE",
                 rs -> rs.next() ? rs.getString(1) : null, requestId);
         if (!"searching".equals(current)) return false;
+
+        List<UUID> stillEligible = jdbc.query("""
+                SELECT pm.user_id FROM public.provider_members pm
+                JOIN public.rescue_teams team ON team.id = pm.team_id
+                JOIN public.profiles profile ON profile.id = pm.user_id
+                WHERE pm.user_id = ? AND pm.team_id = ? AND pm.status = 'active' AND pm.is_available
+                  AND profile.role = 'provider' AND profile.is_active AND team.status = 'verified'
+                  AND team.base_latitude = ? AND team.base_longitude = ?
+                  AND public.api_is_in_service_area(team.base_latitude, team.base_longitude)
+                  AND EXISTS (SELECT 1 FROM public.team_capabilities cap
+                    WHERE cap.team_id = pm.team_id AND cap.service_code = ? AND cap.is_active)
+                  AND NOT EXISTS (SELECT 1 FROM public.rescue_requests active_request
+                    WHERE active_request.assigned_provider_id = pm.user_id
+                      AND active_request.status NOT IN ('completed', 'cancelled'))
+                FOR UPDATE OF pm
+                """, (rs, row) -> rs.getObject("user_id", UUID.class),
+                selected.candidate().providerId(), selected.candidate().teamId(),
+                selected.candidate().latitude(), selected.candidate().longitude(), request.serviceCode());
+        if (stillEligible.isEmpty()) return false;
 
         jdbc.update("""
                 UPDATE public.dispatch_offers SET status = 'withdrawn'

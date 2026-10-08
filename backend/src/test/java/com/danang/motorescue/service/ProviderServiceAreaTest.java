@@ -2,14 +2,12 @@ package com.danang.motorescue.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import com.danang.motorescue.config.MatchingProperties;
-import com.danang.motorescue.model.ApiModels.AvailabilityRequest;
-import com.danang.motorescue.model.ApiModels.ProviderLocationRequest;
+import com.danang.motorescue.model.ApiModels.*;
 import com.danang.motorescue.service.ActorService.Actor;
 import com.danang.motorescue.web.ApiException;
+import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.SimpleTransactionStatus;
@@ -17,47 +15,73 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 class ProviderServiceAreaTest {
-    private final List<String> events = new ArrayList<>();
     private final Actor actor = new Actor(UUID.randomUUID(), "Test provider", "provider", "vi");
+    private final List<String> calls = new ArrayList<>();
     private final JdbcTemplate jdbc = new JdbcTemplate() {
-        @Override public int update(String sql, Object... args) {
-            assertThat(sql).contains("UPDATE public.provider_members", "is_available = FALSE", "last_latitude = NULL");
-            assertThat(sql).doesNotContain("rescue_requests", "cancelled");
+        @Override public <T> T queryForObject(String sql, Class<T> type, Object... args) {
+            assertThat(sql).contains("assigned_provider_id = ?");
             assertThat(args).containsExactly(actor.id());
-            events.add("disable");
+            calls.add("busy-check");
+            return type.cast(false);
+        }
+        @Override public int update(String sql, Object... args) {
+            assertThat(sql).contains("public.api_is_in_service_area(team.base_latitude, team.base_longitude)", "last_latitude = NULL");
+            assertThat(args).containsExactly(true, true, true, actor.id(), true);
+            calls.add("available");
             return 1;
         }
     };
-    private final ProviderService service = new ProviderService(jdbc,
-            new TransactionTemplate() {
-                @Override public <T> T execute(TransactionCallback<T> callback) {
-                    T result = callback.doInTransaction(new SimpleTransactionStatus());
-                    events.add("commit");
-                    return result;
-                }
-            }, null, new AuditService(jdbc) {
-                @Override public void record(UUID id, String action, String entity, Object entityId) {
-                    assertThat(action).isEqualTo("provider.outside_service_area");
-                    events.add("audit");
-                }
-            }, null, new MatchingProperties(180, 150), null, null,
-            new ServiceAreaService(jdbc) {
-                @Override public boolean contains(double lat, double lon) { return false; }
-            });
-
-    @Test
-    void rejectsActivationOutsideAndCommitsOffBeforeReturningError() {
-        assertThatThrownBy(() -> service.setAvailability(actor, new AvailabilityRequest(true, 16.19, 108.22, 10.0)))
-                .isInstanceOfSatisfying(ApiException.class,
-                        error -> assertThat(error.code()).isEqualTo("PROVIDER_OUTSIDE_SERVICE_AREA"));
-        assertThat(events).containsExactly("disable", "audit", "commit");
+    private final AuditService audit = new AuditService(jdbc) {
+        @Override public void record(UUID id, String action, String entity, Object entityId) {
+            assertThat(id).isEqualTo(actor.id());
+            assertThat(action).isEqualTo("provider.available");
+            calls.add("audit");
+        }
+    };
+    private final TransactionTemplate transactions = new TransactionTemplate() {
+        @Override public <T> T execute(TransactionCallback<T> callback) {
+            return callback.doInTransaction(new SimpleTransactionStatus());
+        }
+    };
+    private ProviderService service(boolean validShop, String memberStatus, String teamStatus) {
+        return new ProviderService(jdbc, transactions, null, audit, null, null) {
+            @Override public ProviderStatusResponse status(Actor actor) {
+                return new ProviderStatusResponse(false, "Shop", memberStatus, new RatingSummary(null, 0),
+                        0, false, null, teamStatus, 16.061, 108.2238, validShop);
+            }
+        };
     }
 
-    @Test
-    void rejectsAvailabilityGpsOutsideAndDoesNotKeepOldMatchingPosition() {
-        assertThatThrownBy(() -> service.saveAvailabilityLocation(actor, new ProviderLocationRequest(15.94, 108.22, 10.0)))
-                .isInstanceOfSatisfying(ApiException.class,
-                        error -> assertThat(error.code()).isEqualTo("PROVIDER_OUTSIDE_SERVICE_AREA"));
-        assertThat(events).containsExactly("disable", "audit", "commit");
+    @Test void validShopAcceptsAvailabilityWithoutGps() {
+        service(true, "active", "verified").setAvailability(actor, new AvailabilityRequest(true, null, null, null));
+        assertThat(calls).containsExactly("busy-check", "available", "audit");
+    }
+
+    @Test void liveGpsOutsideCoverageDoesNotReplaceValidShop() {
+        service(true, "active", "verified").setAvailability(actor, new AvailabilityRequest(true, 10.77, 106.7, 10.0));
+        assertThat(calls).containsExactly("busy-check", "available", "audit");
+    }
+
+    @Test void invalidShopCannotUsePhoneGpsToBypassCoverage() {
+        assertThatThrownBy(() -> service(false, "active", "verified").setAvailability(actor,
+                new AvailabilityRequest(true, 16.06, 108.22, 10.0)))
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.code()).isEqualTo("SHOP_OUTSIDE_SERVICE_AREA"));
+        assertThat(calls).isEmpty();
+    }
+
+    @Test void pendingAndRejectedMembersCannotGoAvailable() {
+        for (String status : new String[] {"pending", "rejected", "suspended"}) {
+            assertThatThrownBy(() -> service(true, status, "verified").setAvailability(actor,
+                    new AvailabilityRequest(true, null, null, null)))
+                    .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.code()).isEqualTo("PROVIDER_NOT_READY"));
+        }
+        assertThat(calls).isEmpty();
+    }
+
+    @Test void retiredGpsEndpointNeverWritesCoordinatesOrDisablesShift() {
+        assertThatThrownBy(() -> service(true, "active", "verified").saveAvailabilityLocation(actor,
+                new ProviderLocationRequest(15.94, 108.22, 10.0)))
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.code()).isEqualTo("PROVIDER_NOT_AVAILABLE"));
+        assertThat(calls).isEmpty();
     }
 }

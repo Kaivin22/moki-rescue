@@ -4,6 +4,7 @@ import com.danang.motorescue.model.ApiModels.AvailabilityRequest;
 import com.danang.motorescue.model.ApiModels.OfferResponse;
 import com.danang.motorescue.model.ApiModels.ProviderLocationRequest;
 import com.danang.motorescue.model.ApiModels.ProviderStatusResponse;
+import com.danang.motorescue.model.ApiModels.ProviderStatisticsResponse;
 import com.danang.motorescue.model.ApiModels.ProviderWithdrawalRequest;
 import com.danang.motorescue.model.ApiModels.ProviderWithdrawalResponse;
 import com.danang.motorescue.service.ActorService;
@@ -48,6 +49,11 @@ public class ProviderController {
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody AvailabilityRequest input) {
         return providers.setAvailability(provider(jwt), input);
+    }
+
+    @GetMapping("/statistics")
+    ProviderStatisticsResponse statistics(@AuthenticationPrincipal Jwt jwt) {
+        return providers.statistics(provider(jwt));
     }
 
     @GetMapping("/offers")

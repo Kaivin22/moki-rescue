@@ -117,7 +117,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         creationDispatch = mock(DispatchService.class);
         providers = new ProviderService(
                 runtimeJdbc, runtimeTransactions, matchingDispatch, new AuditService(runtimeJdbc), push,
-                matchingPolicy, rescuePolicy, qualityPolicy, new ServiceAreaService(runtimeJdbc));
+                qualityPolicy);
     }
 
     @Test
@@ -156,24 +156,25 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     }
 
     @Test
-    void providerLeavingCoverageIsDisabledWithoutCancellingAssignedWork() {
+    void retiredGpsDoesNotDisableShopAvailabilityOrCancelAssignedWork() {
         var provider = createProvider(createTeam(), PICKUP_LATITUDE, PICKUP_LONGITUDE, 10, true);
         UUID requestId = insertRequest(createActor("customer"), "assigned", provider);
-        assertApiCode("PROVIDER_OUTSIDE_SERVICE_AREA", () -> providers.saveAvailabilityLocation(provider.actor(),
+        assertApiCode("PROVIDER_NOT_AVAILABLE", () -> providers.saveAvailabilityLocation(provider.actor(),
                 new ProviderLocationRequest(16.181, 108.22, 10.0)));
         var row = jdbc.queryForMap("SELECT is_available, last_latitude, last_longitude FROM public.provider_members WHERE user_id = ?", provider.actor().id());
-        assertThat(row.get("is_available")).isEqualTo(false);
-        assertThat(row.get("last_latitude")).isNull();
-        assertThat(row.get("last_longitude")).isNull();
+        assertThat(row.get("is_available")).isEqualTo(true);
+        assertThat(row.get("last_latitude")).isEqualTo(PICKUP_LATITUDE);
+        assertThat(row.get("last_longitude")).isEqualTo(PICKUP_LONGITUDE);
         assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, requestId)).isEqualTo("assigned");
-        assertApiCode("PROVIDER_OUTSIDE_SERVICE_AREA", () -> providers.setAvailability(provider.actor(),
+        assertApiCode("PROVIDER_HAS_ACTIVE_REQUEST", () -> providers.setAvailability(provider.actor(),
                 new AvailabilityRequest(true, 16.181, 108.22, 10.0)));
         assertThat(providers.setAvailability(provider.actor(), new AvailabilityRequest(false, null, null, null)).available()).isFalse();
     }
 
     @Test
-    void staleOutOfAreaProviderCannotBeAssignedEvenThroughDirectDatabaseTransition() {
-        var provider = createProvider(createTeam(), 15.949, PICKUP_LONGITUDE, 10, true);
+    void outOfAreaShopCannotBeAssignedEvenWhenProviderGpsIsInArea() {
+        UUID team = createTeam(15.949, PICKUP_LONGITUDE);
+        var provider = createProvider(team, PICKUP_LATITUDE, PICKUP_LONGITUDE, 10, true);
         UUID requestId = insertRequest(createActor("customer"), "offered", null);
         assertThatThrownBy(() -> runtimeJdbc.update("UPDATE public.rescue_requests SET status = 'assigned', assigned_provider_id = ?, assigned_team_id = ? WHERE id = ?",
                 provider.actor().id(), provider.teamId(), requestId))
@@ -288,7 +289,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     }
 
     @Test
-    void matchingUsesPostgisAndExcludesStaleOrInaccurateGps() {
+    void matchingUsesShopCoordinatesRegardlessOfStaleInaccurateOrRemoteProviderGps() {
         Actor customer = createActor("customer");
         UUID teamId = createTeam();
         addCapability(teamId);
@@ -299,6 +300,9 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         ProviderFixture inaccurate = createProvider(
                 teamId, PICKUP_LATITUDE + 0.004, PICKUP_LONGITUDE + 0.004, 300, true);
         ProviderFixture farAway = createProvider(teamId, 17.0, 109.0, 25, true);
+        UUID outsideShop = createTeam(17.0, 109.0);
+        addCapability(outsideShop);
+        ProviderFixture inAreaPhoneOutsideShop = createProvider(outsideShop, PICKUP_LATITUDE, PICKUP_LONGITUDE, 10, true);
         jdbc.update("""
                 UPDATE public.provider_members
                 SET location_updated_at = NOW() - INTERVAL '10 minutes'
@@ -312,29 +316,32 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         List<UUID> offeredProviders = jdbc.query(
                 "SELECT provider_id FROM public.dispatch_offers WHERE request_id = ? ORDER BY provider_id",
                 (rs, rowNum) -> rs.getObject(1, UUID.class), requestId);
-        assertThat(offeredProviders).containsExactly(eligible.actor().id());
-        assertThat(offeredProviders).doesNotContain(
-                stale.actor().id(), inaccurate.actor().id(), farAway.actor().id());
+        assertThat(offeredProviders).hasSize(1);
+        assertThat(offeredProviders.getFirst()).isIn(eligible.actor().id(), stale.actor().id(), inaccurate.actor().id(), farAway.actor().id());
+        assertThat(offeredProviders).doesNotContain(inAreaPhoneOutsideShop.actor().id());
         assertThat(jdbc.queryForObject(
                 "SELECT status FROM public.rescue_requests WHERE id = ?", String.class, requestId))
                 .isEqualTo("offered");
         verify(routing).routesToDestination(
-                org.mockito.ArgumentMatchers.argThat(origins -> origins.size() == 1), any());
+                org.mockito.ArgumentMatchers.argThat(origins -> origins.size() == 4
+                        && origins.stream().allMatch(origin -> origin.latitude() == PICKUP_LATITUDE && origin.longitude() == PICKUP_LONGITUDE)), any());
 
-        assertApiCode("LOCATION_NOT_ACCURATE", () -> providers.saveAvailabilityLocation(
+        assertApiCode("PROVIDER_NOT_AVAILABLE", () -> providers.saveAvailabilityLocation(
                 inaccurate.actor(),
                 new ProviderLocationRequest(PICKUP_LATITUDE, PICKUP_LONGITUDE, 300.0)));
     }
 
     @Test
     void matchingCountsCompletedCasesOfTheRequestedServiceAsExperience() {
-        UUID teamId = createTeam();
-        addCapability(teamId);
         double nearLatitude = PICKUP_LATITUDE + 0.001;
+        UUID teamId = createTeam(nearLatitude, PICKUP_LONGITUDE + 0.001);
+        addCapability(teamId);
+        UUID experiencedShop = createTeam(PICKUP_LATITUDE + 0.004, PICKUP_LONGITUDE + 0.004);
+        addCapability(experiencedShop);
         ProviderFixture nearNewcomer = createProvider(
                 teamId, nearLatitude, PICKUP_LONGITUDE + 0.001, 20, true);
         ProviderFixture experienced = createProvider(
-                teamId, PICKUP_LATITUDE + 0.004, PICKUP_LONGITUDE + 0.004, 20, true);
+                experiencedShop, PICKUP_LATITUDE + 0.004, PICKUP_LONGITUDE + 0.004, 20, true);
         insertCompletedExperience(experienced, "flat_tire");
         insertCompletedExperience(experienced, "flat_tire");
 
@@ -588,7 +595,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     @Test
     void assignmentRouteUsesFixedPositionEvenAfterProviderMovesAndGpsAges() {
         Actor customer = createActor("customer");
-        ProviderFixture provider = createProvider(createTeam(), 16.06, 108.21, 20, true);
+        ProviderFixture provider = createProvider(createTeam(16.06, 108.21), 16.08, 108.23, 20, true);
         UUID requestId = insertRequest(customer, "assigned", provider);
         var queries = new RescueQueryService(runtimeJdbc, routing, rescuePolicy, matchingPolicy,
                 new RescueRequestAccess(runtimeJdbc));
@@ -621,7 +628,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     }
 
     @Test
-    void reassigningProviderReplacesSnapshotAndMissingSnapshotIsNotFabricated() {
+    void sameShopProvidersShareOriginButMissingSnapshotIsNotFabricated() {
         Actor customer = createActor("customer");
         UUID team = createTeam();
         ProviderFixture first = createProvider(team, 16.06, 108.21, 20, true);
@@ -630,16 +637,16 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         var queries = new RescueQueryService(runtimeJdbc, routing, rescuePolicy, matchingPolicy,
                 new RescueRequestAccess(runtimeJdbc));
         jdbc.update("UPDATE public.rescue_requests SET assigned_provider_id = ? WHERE id = ?", second.actor().id(), requestId);
-        assertThat(queries.details(customer, requestId).providerLocation().latitude()).isEqualTo(16.07);
+        assertThat(queries.details(customer, requestId).providerLocation().latitude()).isEqualTo(PICKUP_LATITUDE);
         jdbc.update("UPDATE public.rescue_requests SET assigned_provider_position_at = NULL WHERE id = ?", requestId);
         assertThat(queries.details(customer, requestId).providerLocation()).isNull();
         assertApiCode("PROVIDER_LOCATION_PENDING", () -> queries.roadRoute(customer, requestId));
     }
 
     @Test
-    void retiredLiveGpsIsRejectedWhileAvailabilityGpsStillWorks() {
+    void bothLiveAndAvailabilityGpsAreRetired() {
         ProviderFixture provider = createProvider(createTeam(), 16.06, 108.21, 20, true);
-        providers.saveAvailabilityLocation(provider.actor(), new ProviderLocationRequest(16.07, 108.22, 15.0));
+        assertApiCode("PROVIDER_NOT_AVAILABLE", () -> providers.saveAvailabilityLocation(provider.actor(), new ProviderLocationRequest(16.07, 108.22, 15.0)));
         UUID requestId = insertRequest(createActor("customer"), "assigned", provider);
         assertApiCode("LOCATION_NOT_ALLOWED", () -> providers.saveLocation(provider.actor(), requestId,
                 new ProviderLocationRequest(16.08, 108.23, 15.0)));
@@ -648,6 +655,66 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
                 Boolean.class, "rescue:" + requestId)).isFalse();
         assertThat(jdbc.queryForObject("SELECT public.can_access_realtime_topic(?, FALSE)",
                 Boolean.class, "rescue:" + requestId)).isFalse();
+    }
+
+    @Test
+    void colleaguesShareShopButNotStatisticsOrCaseDetails() {
+        UUID shop = createTeam();
+        var first = createProvider(shop, 16.06, 108.21, 20, false);
+        var colleague = createProvider(shop, 16.06, 108.21, 20, false);
+        insertCompletedExperience(first, "flat_tire");
+        insertCompletedExperience(first, "flat_tire");
+        insertCompletedExperience(colleague, "flat_tire");
+        UUID activeCase = insertRequest(createActor("customer"), "assigned", colleague);
+        assertThat(providers.statistics(first.actor()).completedCases()).isEqualTo(2);
+        assertThat(providers.statistics(first.actor()).activeCases()).isZero();
+        assertThat(providers.statistics(colleague.actor()).completedCases()).isEqualTo(1);
+        assertThat(providers.statistics(colleague.actor()).activeCases()).isEqualTo(1);
+        var queries = new RescueQueryService(runtimeJdbc, routing, rescuePolicy, matchingPolicy, new RescueRequestAccess(runtimeJdbc));
+        assertThat(queries.list(first.actor(), true, null, null, 50)).hasSize(2);
+        assertThat(queries.list(first.actor(), false, null, null, 50)).isEmpty();
+        assertApiCode("REQUEST_NOT_FOUND", () -> queries.details(first.actor(), activeCase));
+        assertApiCode("PROVIDER_ROLE_REQUIRED", () -> providers.statistics(createActor("customer")));
+        var admin = createActor("admin");
+        assertThat(queries.details(admin, activeCase).id()).isEqualTo(activeCase);
+    }
+
+    @Test
+    void adminApprovalIsExplicitAndDuplicateOrConflictingDecisionsFail() {
+        var admin = createActor("admin");
+        var operator = new OperatorService(runtimeJdbc, matchingDispatch, new AuditService(runtimeJdbc), runtimeTransactions, qualityPolicy);
+        UUID shop = createTeam();
+        var pending = createProvider(shop, 16.06, 108.21, 20, false);
+        jdbc.update("UPDATE public.provider_members SET status = 'pending' WHERE user_id = ?", pending.actor().id());
+        assertThat(operator.providerDirectory(admin)).anyMatch(row -> row.userId().equals(pending.actor().id()) && row.status().equals("pending"));
+        assertApiCode("PROVIDER_NOT_READY", () -> providers.setAvailability(pending.actor(), new AvailabilityRequest(true, null, null, null)));
+        assertApiCode("ADMIN_ROLE_REQUIRED", () -> operator.reviewProvider(pending.actor(), pending.actor().id(), "active"));
+        operator.reviewProvider(admin, pending.actor().id(), "active");
+        assertThat(providers.setAvailability(pending.actor(), new AvailabilityRequest(true, null, null, null)).available()).isTrue();
+        assertApiCode("PROVIDER_REVIEW_CHANGED", () -> operator.reviewProvider(admin, pending.actor().id(), "rejected"));
+        var rejected = createProvider(shop, 16.06, 108.21, 20, false);
+        jdbc.update("UPDATE public.provider_members SET status = 'pending' WHERE user_id = ?", rejected.actor().id());
+        operator.reviewProvider(admin, rejected.actor().id(), "rejected");
+        assertApiCode("PROVIDER_NOT_READY", () -> providers.setAvailability(rejected.actor(), new AvailabilityRequest(true, null, null, null)));
+        assertThat(operator.providers(admin, shop)).hasSize(2);
+        assertApiCode("ADMIN_ROLE_REQUIRED", () -> operator.providerDirectory(pending.actor()));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.audit_logs WHERE action LIKE 'provider.review.%'", Integer.class)).isEqualTo(2);
+    }
+
+    @Test
+    void dispatchDoesNotPublishAnOldEtaIfShopMovesWhileOsrmIsResponding() {
+        UUID shop = createTeam();
+        addCapability(shop);
+        createProvider(shop, 16.06, 108.21, 20, true);
+        when(routing.routesToDestination(anyList(), any())).thenAnswer(invocation -> {
+            // Deliberately bypass the admin API to exercise the final dispatch guard.
+            jdbc.update("UPDATE public.rescue_teams SET base_latitude = 16.08 WHERE id = ?", shop);
+            return List.of(Optional.of(new RoadRoute(1000, 300, List.of())));
+        });
+        UUID request = insertRequest(createActor("customer"), "searching", null);
+        matchingDispatch.match(request);
+        assertThat(count("public.dispatch_offers")).isZero();
+        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, request)).isEqualTo("no_provider");
     }
 
     private RescueCreationService creationService() {
@@ -822,6 +889,10 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     }
 
     private UUID createTeam() {
+        return createTeam(PICKUP_LATITUDE, PICKUP_LONGITUDE);
+    }
+
+    private UUID createTeam(double latitude, double longitude) {
         int sequence = FIXTURE_SEQUENCE.incrementAndGet();
         UUID teamId = UUID.randomUUID();
         jdbc.update("""
@@ -831,7 +902,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
                 VALUES (?, ?, ?, 'verified', '+84912345678', ?, ?, 15, NOW())
                 """, teamId, "Integration Team " + sequence,
                 "INT-" + teamId.toString().substring(0, 8).toUpperCase(),
-                PICKUP_LATITUDE, PICKUP_LONGITUDE);
+                latitude, longitude);
         return teamId;
     }
 

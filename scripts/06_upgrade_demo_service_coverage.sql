@@ -8,6 +8,10 @@ BEGIN
   IF to_regclass('public.flyway_schema_history') IS NOT NULL THEN
     RAISE EXCEPTION 'DATABASE_MANAGED_BY_FLYWAY_USE_FLYWAY_MIGRATE';
   END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+    AND table_name = 'provider_members' AND column_name = 'status' AND column_default LIKE '%pending%') THEN
+    RAISE EXCEPTION 'V10_ALREADY_APPLIED_DO_NOT_DOWNGRADE';
+  END IF;
   IF to_regclass('public.service_zones') IS NULL
     OR to_regclass('public.provider_dispatch_stats') IS NULL
     OR NOT EXISTS (SELECT 1 FROM information_schema.columns

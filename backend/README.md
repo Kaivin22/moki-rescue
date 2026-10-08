@@ -9,7 +9,7 @@ Spring Boot là ranh giới tin cậy duy nhất cho mutation nghiệp vụ. Mob
 - Lọc ứng viên hợp lệ bằng PostGIS, route toàn bộ danh sách theo các lô OSRM Table và xếp hạng ETA đường xe máy.
 - Phát đề nghị có TTL, tự hết hạn bằng scheduled job và nhận ca nguyên tử tại PostgreSQL.
 - Kiểm tra state machine, optimistic version, xác nhận hai phía và báo giá.
-- Nhận GPS chờ ca, lưu vị trí cố định khi phân công, phát push và ghi audit; không theo dõi hành trình trực tiếp.
+- Dùng tọa độ cửa hàng để ghép ca/tính ETA, lưu điểm xuất phát cố định khi phân công, phát push và ghi audit; không nhận GPS chờ ca hoặc theo dõi hành trình trực tiếp.
 - Quản lý mạng đối tác khép kín: mã hồ sơ nội bộ, checklist ngoại tuyến, năng lực, cứu hộ viên và quản trị viên vận hành. Chỉ kích hoạt đội khi đủ điều kiện; không lưu tài liệu pháp lý hoặc giấy tờ cá nhân.
 - Cung cấp trợ lý Gemini giới hạn trong cách dùng Moki Rescue, lọc input trước model, kiểm output sau model và không lưu nội dung chat.
 
@@ -25,9 +25,23 @@ mã lý do và đánh dấu hủy muộn. Ca mới không có GPS hành trình n
 ca mới tạm dừng 24 giờ; báo chưa thấy đội không bị tính nếu GPS không xác nhận đội ở gần.
 Hệ thống không thu phí và không tự khóa tài khoản. Sau khi đã xác nhận đội đến, khách
 phải liên hệ quản trị viên vận hành để dừng ca.
-- `/api/provider/*`: sẵn sàng, vị trí, đề nghị và nhận ca.
+- `/api/provider/*`: sẵn sàng xuất phát từ cửa hàng, thống kê cá nhân, đề nghị và nhận ca. Hai endpoint GPS cũ trả 410 để app cũ dừng gửi.
 - `/api/operator/*`: hàng đợi, retry dispatch, tạo/checklist/kích hoạt đội đối tác, phân vai trò, review gần đây và xử lý cảnh báo chất lượng.
 - `/api/assistant/message`: trợ lý trong app cho tài khoản active, quota theo phút/ngày.
+
+### Cửa hàng, duyệt cứu hộ viên và quyền riêng tư (V10)
+
+Giữ ba vai trò `customer/provider/admin`, không có quản lý đội. Cửa hàng là đơn vị tổ chức/điểm xuất phát, không phải tài khoản đăng nhập. Mỗi thành viên có trạng thái sẵn sàng, lịch sử, số ca hoàn thành và điểm ưu tiên riêng. API thống kê và danh sách ca của provider lấy ID từ JWT; không mở danh sách/ca của đồng nghiệp cùng đội.
+
+| API | Quyền và nội dung |
+|---|---|
+| `GET /api/provider/statistics` | Provider: `completedCases`, `activeCases`, `cancelledCases`, `rating` chỉ của bản thân, toàn bộ dữ liệu còn lưu. Ca bị rút phân công không còn tính như ca được giao; không phải doanh thu/lợi nhuận |
+| `PUT /api/provider/availability` | Body `{ "available": true/false }`. Không cần GPS; bật phải có thành viên active, đội verified, tọa độ cửa hàng trong vùng và không có ca đang làm |
+| `GET /api/operator/providers` | Chỉ admin: mọi tài khoản provider, gồm `unassigned` khi chưa có membership. Không nhầm 12 cửa hàng seed với 12 tài khoản |
+| `POST /api/operator/providers/{providerId}/review` | Chỉ admin, body `{ "decision": "active" }` hoặc `rejected`. Chỉ quyết định hồ sơ pending, ghi audit, trả 409 nếu đã bị người khác xử lý |
+| `PUT /api/operator/teams/{teamId}/location` | Chỉ admin, body `{ "latitude": 16.061, "longitude": 108.2238 }`. Chặn ngoài vùng và khi đội đang sẵn sàng/có ca hoặc đề nghị mở |
+
+Admin thêm/gắn thành viên bằng API hiện có sẽ tạo hồ sơ `pending`; duyệt provider và xác minh cửa hàng là hai việc riêng. Các thành viên active cũ không bị chuyển về pending khi nâng cấp. File SQL thủ công và thứ tự chạy nằm trong [scripts/README.md](../scripts/README.md); không chạy lại init trên database đang có dữ liệu.
 
 ## Kết thúc ca và xử lý ngoại lệ
 

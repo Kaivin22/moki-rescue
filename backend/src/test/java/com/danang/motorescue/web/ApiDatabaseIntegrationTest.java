@@ -118,6 +118,24 @@ class ApiDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
                 .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isForbidden());
     }
 
+    @Test
+    void providerStatisticsAreSelfScopedAndOperatorApprovalRoutesAreAdminOnly() throws Exception {
+        String provider = tokenFor("provider", true);
+        String customer = tokenFor("customer", true);
+        String admin = tokenFor("admin", true);
+        mvc.perform(get("/api/provider/statistics").header("Authorization", "Bearer " + provider))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.completedCases").value(0));
+        mvc.perform(get("/api/provider/statistics").header("Authorization", "Bearer " + customer))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/operator/providers").header("Authorization", "Bearer " + provider))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/operator/providers/" + UUID.randomUUID() + "/review")
+                .header("Authorization", "Bearer " + provider).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"decision\":\"active\"}")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/operator/providers").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].status").value("unassigned"));
+    }
+
     private String tokenFor(String role, boolean consent) {
         UUID id = UUID.randomUUID();
         var owner = new JdbcTemplate(dataSourceFor(POSTGRES));

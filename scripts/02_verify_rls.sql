@@ -1,4 +1,4 @@
--- Kiểm tra trạng thái ĐẾN V9; không dùng để xác minh schema legacy chỉ ở B1.
+-- Kiểm tra trạng thái ĐẾN V10; không dùng để xác minh schema legacy chỉ ở B1.
 -- Chỉ đọc metadata và một số bất biến dữ liệu; không thay thế test RLS bằng JWT.
 BEGIN TRANSACTION READ ONLY;
 
@@ -619,5 +619,15 @@ BEGIN
 END;
 $$;
 
-SELECT 'V9 schema/security checks passed; JWT and end-to-end tests still required' AS result;
+DO $shop_contract$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+      AND table_name = 'provider_members' AND column_name = 'status' AND column_default LIKE '%pending%')
+    OR position('team.base_latitude' IN pg_get_functiondef('public.capture_assignment_position()'::regprocedure)) = 0
+    OR position('team.base_latitude' IN pg_get_functiondef('public.enforce_assignment_service_area()'::regprocedure)) = 0 THEN
+    RAISE EXCEPTION 'V10_SHOP_DISPATCH_AND_APPROVAL_MISSING';
+  END IF;
+END;
+$shop_contract$;
+SELECT 'V10 schema/security checks passed; JWT and end-to-end tests still required' AS result;
 COMMIT;

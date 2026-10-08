@@ -17,6 +17,8 @@ import com.danang.motorescue.model.ApiModels.AttentionFlagResponse;
 import com.danang.motorescue.model.ApiModels.AttentionResolutionRequest;
 import com.danang.motorescue.model.ApiModels.IncidentResolutionRequest;
 import com.danang.motorescue.model.ApiModels.ProviderMemberResponse;
+import com.danang.motorescue.model.ApiModels.ProviderDirectoryResponse;
+import com.danang.motorescue.model.ApiModels.TeamLocationRequest;
 import com.danang.motorescue.model.ApiModels.AuditLogResponse;
 import com.danang.motorescue.service.ActorService.Actor;
 import com.danang.motorescue.web.ApiException;
@@ -41,9 +43,9 @@ public class OperatorService {
             int activeProviderCount,
             int capabilityCount,
             int completedRequiredCount,
-            int requiredCount) {
+            int requiredCount, boolean shopInServiceArea) {
         boolean ready() {
-            return PartnerVerificationPolicy.isReady(
+            return shopInServiceArea && PartnerVerificationPolicy.isReady(
                     activeProviderCount, capabilityCount, completedRequiredCount, requiredCount);
         }
     }
@@ -73,7 +75,8 @@ public class OperatorService {
     public List<TeamResponse> teams(Actor actor) {
         requireAdmin(actor);
         return jdbc.query("""
-                SELECT team.id, team.name, team.status,
+                SELECT team.id, team.name, team.status, team.base_latitude, team.base_longitude,
+                       public.api_is_in_service_area(team.base_latitude, team.base_longitude) AS shop_in_area,
                        (SELECT COUNT(*) FROM public.provider_members pm
                         WHERE pm.team_id = team.id AND pm.status = 'active') AS active_providers,
                        ARRAY(
@@ -128,7 +131,8 @@ public class OperatorService {
                             rs.getInt("rating_count")),
                     warningCount,
                     qualityPolicy.recommendsSuspensionReview(warningCount),
-                    alert);
+                    alert, rs.getObject("base_latitude", Double.class), rs.getObject("base_longitude", Double.class),
+                    rs.getBoolean("shop_in_area"));
         });
     }
 
@@ -355,7 +359,7 @@ public class OperatorService {
                 readiness.capabilityCount(),
                 readiness.completedRequiredCount(),
                 readiness.requiredCount(),
-                readiness.ready(),
+                readiness.ready(), readiness.shopInServiceArea(),
                 checks);
     }
 
@@ -431,6 +435,14 @@ public class OperatorService {
                     (rs, rowNum) -> rs.getString("status"), teamId);
             if (lockedStatuses.isEmpty()) return 0;
             if ("verified".equals(nextStatus)) {
+                Boolean validShop = jdbc.queryForObject("""
+                        SELECT public.api_is_in_service_area(base_latitude, base_longitude)
+                        FROM public.rescue_teams WHERE id = ?
+                        """, Boolean.class, teamId);
+                if (!Boolean.TRUE.equals(validShop)) {
+                    throw new ApiException(HttpStatus.CONFLICT, "SHOP_OUTSIDE_SERVICE_AREA",
+                            "Hãy lưu tọa độ cửa hàng trong vùng phục vụ trước khi xác minh đội.");
+                }
                 if (!verificationReadiness(teamId).ready()) {
                     throw new ApiException(HttpStatus.CONFLICT, "TEAM_VERIFICATION_INCOMPLETE",
                             "Hãy hoàn tất checklist, năng lực và ít nhất 1 cứu hộ viên trước khi xác minh đội.");
@@ -542,14 +554,14 @@ public class OperatorService {
             jdbc.update("UPDATE public.profiles SET role = 'provider' WHERE id = ?", input.userId());
             jdbc.update("""
                     INSERT INTO public.provider_members(
-                      user_id, team_id, display_name, contact_phone_e164, rescue_vehicle_label
-                    ) VALUES (?, ?, ?, ?, ?)
+                      user_id, team_id, display_name, contact_phone_e164, rescue_vehicle_label, status
+                    ) VALUES (?, ?, ?, ?, ?, 'pending')
                     ON CONFLICT (user_id) DO UPDATE SET
                       team_id = EXCLUDED.team_id,
                       display_name = EXCLUDED.display_name,
                       contact_phone_e164 = EXCLUDED.contact_phone_e164,
                       rescue_vehicle_label = EXCLUDED.rescue_vehicle_label,
-                      status = 'active',
+                      status = 'pending',
                       is_available = FALSE
                     """, input.userId(), teamId, input.displayName().trim(), input.contactPhone(),
                     clean(input.rescueVehicleLabel()));
@@ -564,7 +576,7 @@ public class OperatorService {
                        rescue_vehicle_label, location_updated_at
                 FROM public.provider_members
                 WHERE team_id = ?
-                ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'suspended' THEN 1 ELSE 2 END,
+                ORDER BY CASE status WHEN 'pending' THEN 0 WHEN 'active' THEN 1 ELSE 2 END,
                          display_name, user_id
                 """, (rs, rowNum) -> new ProviderMemberResponse(
                 rs.getObject("user_id", UUID.class), rs.getString("display_name"),
@@ -583,6 +595,10 @@ public class OperatorService {
                     WHERE user_id = ? AND team_id = ? FOR UPDATE
                     """, (rs, rowNum) -> rs.getString("status"), providerId, teamId);
             if (current.isEmpty()) return 0;
+            if ("pending".equals(current.getFirst()) || "rejected".equals(nextStatus)) {
+                throw new ApiException(HttpStatus.CONFLICT, "PROVIDER_REVIEW_REQUIRED",
+                        "Hãy dùng danh sách duyệt cứu hộ viên để chấp nhận hoặc từ chối hồ sơ đang chờ.");
+            }
             int updated = jdbc.update("""
                     UPDATE public.provider_members
                     SET status = ?, is_available = FALSE, last_latitude = NULL, last_longitude = NULL,
@@ -616,6 +632,76 @@ public class OperatorService {
             throw new ApiException(HttpStatus.NOT_FOUND, "PROVIDER_NOT_FOUND",
                     "Không tìm thấy cứu hộ viên trong đội đã chọn.");
         }
+    }
+
+    public List<ProviderDirectoryResponse> providerDirectory(Actor actor) {
+        requireAdmin(actor);
+        return jdbc.query("""
+                SELECT profile.id, COALESCE(pm.display_name, profile.display_name) AS display_name,
+                       pm.team_id, team.name AS team_name, team.status AS team_status,
+                       COALESCE(pm.status, 'unassigned') AS member_status,
+                       profile.is_active, COALESCE(pm.is_available, FALSE) AS is_available
+                FROM public.profiles profile
+                LEFT JOIN public.provider_members pm ON pm.user_id = profile.id
+                LEFT JOIN public.rescue_teams team ON team.id = pm.team_id
+                WHERE profile.role = 'provider'
+                ORDER BY CASE WHEN pm.status = 'pending' THEN 0 WHEN pm.user_id IS NULL THEN 1 ELSE 2 END,
+                         display_name, profile.id
+                """, (rs, rowNum) -> new ProviderDirectoryResponse(
+                rs.getObject("id", UUID.class), rs.getString("display_name"),
+                rs.getObject("team_id", UUID.class), rs.getString("team_name"), rs.getString("team_status"),
+                rs.getString("member_status"), rs.getBoolean("is_active"), rs.getBoolean("is_available")));
+    }
+
+    public void reviewProvider(Actor actor, UUID providerId, String decision) {
+        requireAdmin(actor);
+        if (!Set.of("active", "rejected").contains(decision)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PROVIDER_DECISION", "Quyết định không hợp lệ.");
+        }
+        transactions.executeWithoutResult(transaction -> {
+            int changed = jdbc.update("""
+                    UPDATE public.provider_members pm SET status = ?, is_available = FALSE, available_since = NULL
+                    WHERE pm.user_id = ? AND pm.status = 'pending'
+                      AND EXISTS (SELECT 1 FROM public.profiles profile
+                        WHERE profile.id = pm.user_id AND profile.role = 'provider' AND profile.is_active)
+                      AND (? = 'rejected' OR EXISTS (SELECT 1 FROM public.rescue_teams team
+                        WHERE team.id = pm.team_id AND team.status <> 'suspended'))
+                    """, decision, providerId, decision);
+            if (changed == 0) {
+                throw new ApiException(HttpStatus.CONFLICT, "PROVIDER_REVIEW_CHANGED",
+                        "Hồ sơ không còn chờ duyệt, tài khoản bị khóa hoặc đội bị đình chỉ. Hãy tải lại danh sách.");
+            }
+            audit.record(actor.id(), "provider.review." + decision, "provider", providerId);
+        });
+    }
+
+    public void setTeamLocation(Actor actor, UUID teamId, TeamLocationRequest input) {
+        requireAdmin(actor);
+        Boolean valid = jdbc.queryForObject("SELECT public.api_is_in_service_area(?, ?)",
+                Boolean.class, input.latitude(), input.longitude());
+        if (!Boolean.TRUE.equals(valid)) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "SHOP_OUTSIDE_SERVICE_AREA",
+                    "Tọa độ cửa hàng phải nằm trong vùng phục vụ demo Đà Nẵng.");
+        }
+        transactions.executeWithoutResult(transaction -> {
+            List<UUID> teams = jdbc.query("SELECT id FROM public.rescue_teams WHERE id = ? FOR UPDATE",
+                    (rs, row) -> rs.getObject("id", UUID.class), teamId);
+            if (teams.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "TEAM_NOT_FOUND", "Không tìm thấy đội.");
+            // Serialize against availability, acceptance and offer publication. No
+            // shop move can slip between the eligibility check and offer creation.
+            jdbc.query("SELECT user_id FROM public.provider_members WHERE team_id = ? ORDER BY user_id FOR UPDATE",
+                    (rs, row) -> rs.getObject("user_id", UUID.class), teamId);
+            Boolean busy = jdbc.queryForObject("""
+                    SELECT EXISTS (SELECT 1 FROM public.provider_members WHERE team_id = ? AND is_available)
+                      OR EXISTS (SELECT 1 FROM public.dispatch_offers WHERE team_id = ? AND status = 'pending' AND expires_at > NOW())
+                      OR EXISTS (SELECT 1 FROM public.rescue_requests WHERE assigned_team_id = ? AND status NOT IN ('completed', 'cancelled'))
+                    """, Boolean.class, teamId, teamId, teamId);
+            if (Boolean.TRUE.equals(busy)) throw new ApiException(HttpStatus.CONFLICT, "TEAM_LOCATION_IN_USE",
+                    "Tắt nhận ca của cả đội và kết thúc ca/đề nghị đang mở trước khi đổi vị trí cửa hàng.");
+            jdbc.update("UPDATE public.rescue_teams SET base_latitude = ?, base_longitude = ? WHERE id = ?",
+                    input.latitude(), input.longitude(), teamId);
+            audit.record(actor.id(), "team.location.updated", "rescue_team", teamId);
+        });
     }
 
     public void setAdminRole(Actor actor, AdminRoleRequest input) {
@@ -689,6 +775,7 @@ public class OperatorService {
     private VerificationReadiness verificationReadiness(UUID teamId) {
         return jdbc.query("""
                         SELECT team.name, team.status, team.partner_reference,
+                               public.api_is_in_service_area(team.base_latitude, team.base_longitude) AS shop_in_area,
                                verifier.display_name AS verified_by_name, team.verified_at,
                                (SELECT COUNT(*) FROM public.provider_members member
                                 WHERE member.team_id = team.id AND member.status = 'active') AS active_provider_count,
@@ -719,7 +806,7 @@ public class OperatorService {
                             rs.getInt("active_provider_count"),
                             rs.getInt("capability_count"),
                             rs.getInt("completed_required_count"),
-                            rs.getInt("required_count"));
+                            rs.getInt("required_count"), rs.getBoolean("shop_in_area"));
                 }, teamId)
                 .stream()
                 .findFirst()
