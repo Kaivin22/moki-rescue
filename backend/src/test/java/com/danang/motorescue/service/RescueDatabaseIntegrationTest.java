@@ -114,7 +114,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         qualityPolicy = new QualityProperties(5, 3.5, 3.0, 3, 3, 30);
         push = mock(PushNotificationService.class);
         routing = mock(RoadRoutingService.class);
-        matchingDispatch = new DispatchService(runtimeJdbc, runtimeTransactions, routing, matchingPolicy, push);
+        matchingDispatch = new DispatchService(runtimeJdbc, runtimeTransactions, routing, push);
         creationDispatch = mock(DispatchService.class);
         providers = new ProviderService(
                 runtimeJdbc, runtimeTransactions, matchingDispatch, new AuditService(runtimeJdbc), push,
@@ -356,9 +356,8 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
                     matching_experience_reference_cases = 2
                 WHERE code = 'flat_tire'
                 """);
-        matchingPolicy = new MatchingProperties(180, 150);
         matchingDispatch = new DispatchService(
-                runtimeJdbc, runtimeTransactions, routing, matchingPolicy, push);
+                runtimeJdbc, runtimeTransactions, routing, push);
         when(routing.routesToDestination(anyList(), any())).thenAnswer(invocation -> {
             List<RoadPoint> origins = invocation.getArgument(0);
             return origins.stream().map(origin -> {
@@ -754,6 +753,25 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         matchingDispatch.match(request);
         assertThat(count("public.dispatch_offers")).isZero();
         assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, request)).isEqualTo("no_provider");
+    }
+
+    @Test
+    void repeatedSupportRequestRecordsOnlyOneFlagAuditAndNotification() {
+        Actor customer = createActor("customer");
+        UUID requestId = insertRequest(customer, "searching", null);
+        var incidents = new RescueIncidentService(runtimeJdbc, runtimeTransactions,
+                new AuditService(runtimeJdbc), push, new RescueRequestAccess(runtimeJdbc));
+        var input = new com.danang.motorescue.model.ApiModels.SupportRequest(
+                "other", "Please help with this request");
+
+        incidents.requestSupport(customer, requestId, input);
+        incidents.requestSupport(customer, requestId, input);
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM public.case_attention_flags "
+                + "WHERE request_id = ? AND code = 'customer_support_requested'", Long.class, requestId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM public.audit_logs "
+                + "WHERE entity_id = ? AND action = 'support.requested'", Long.class, requestId.toString())).isEqualTo(1);
+        verify(push, times(1)).notifyStaff(NotificationKind.SUPPORT_REQUESTED, "other", requestId);
     }
 
     @Test

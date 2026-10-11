@@ -1,6 +1,5 @@
 package com.danang.motorescue.service;
 
-import com.danang.motorescue.config.MatchingProperties;
 import com.danang.motorescue.service.RoadRoutingService.RoadRoute;
 import com.danang.motorescue.service.RoadRoutingService.RoadPoint;
 import com.danang.motorescue.web.ApiException;
@@ -84,19 +83,16 @@ public class DispatchService {
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transactions;
     private final RoadRoutingService routing;
-    private final MatchingProperties properties;
     private final PushNotificationService push;
 
     public DispatchService(
             JdbcTemplate jdbc,
             TransactionTemplate transactions,
             RoadRoutingService routing,
-            MatchingProperties properties,
             PushNotificationService push) {
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.routing = routing;
-        this.properties = properties;
         this.push = push;
     }
 

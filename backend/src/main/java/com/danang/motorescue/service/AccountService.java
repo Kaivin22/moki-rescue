@@ -82,7 +82,7 @@ public class AccountService {
     }
 
     public void unregisterAllPushDevices(Actor actor) {
-        int changed = jdbc.update(
+        jdbc.update(
                 "UPDATE public.push_devices SET is_active = FALSE WHERE user_id = ? AND is_active",
                 actor.id());
         audit.record(actor.id(), "push_devices.revoked_all", "profile", actor.id());

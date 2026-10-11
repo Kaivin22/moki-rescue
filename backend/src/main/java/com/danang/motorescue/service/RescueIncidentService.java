@@ -47,7 +47,7 @@ public class RescueIncidentService {
                     "Hãy mô tả nội dung cần hỗ trợ bằng ít nhất 5 ký tự.");
         }
         String context = note == null ? input.reasonCode() : input.reasonCode() + ": " + note;
-        int inserted = transactions.execute(status -> {
+        transactions.executeWithoutResult(status -> {
             access.setActor(actor.id());
             int changed = jdbc.update("""
                     INSERT INTO public.case_attention_flags(request_id, code, context_note)
@@ -56,7 +56,6 @@ public class RescueIncidentService {
                     """, requestId, context);
             if (changed > 0) audit.record(actor.id(), "support.requested", "rescue_request", requestId);
             if (changed > 0) push.notifyStaff(NotificationKind.SUPPORT_REQUESTED, input.reasonCode(), requestId);
-            return changed;
         });
     }
 
