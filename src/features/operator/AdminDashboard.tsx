@@ -10,6 +10,7 @@ import { ApiClientError } from '@/src/features/rescue/api/client';
 import { rescueApi } from '@/src/features/rescue/api/rescueApi';
 import { useI18n } from '@/src/i18n';
 import { AdminCharts } from './AdminCharts';
+import { NotificationEntry } from '@/src/features/communications/InboxScreens';
 
 export function AdminDashboard() {
   const english = useI18n((state) => state.language === 'en');
@@ -39,6 +40,7 @@ export function AdminDashboard() {
         refreshControl={<RefreshControl refreshing={statistics.isRefetching} onRefresh={refresh} />}
       >
         <Text style={styles.title}>{english ? 'Operations overview' : 'Tổng quan vận hành'}</Text>
+        <NotificationEntry />
         <Text style={styles.subtitle}>
           {english
             ? 'Monitor the network and handle exceptions. This account does not receive rescue offers.'

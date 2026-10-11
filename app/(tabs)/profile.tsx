@@ -10,6 +10,7 @@ import { unregisterPushNotifications } from '@/src/features/notifications/pushNo
 import { stopAllProviderBackgroundTracking } from '@/src/features/rescue/services/backgroundLocation';
 import { roleLabel } from '@/src/features/auth/roles';
 import { useCopy, useI18n } from '@/src/i18n';
+import { NotificationEntry } from '@/src/features/communications/InboxScreens';
 
 const COPY = {
   vi: {
@@ -165,6 +166,7 @@ export default function ProfileScreen() {
         </View>
 
         <Text style={styles.section}>{c.support}</Text>
+        <NotificationEntry />
         <View style={styles.card}>
           <MenuRow
             icon="help-buoy-outline"

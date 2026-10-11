@@ -11,6 +11,7 @@ import { ApiClientError } from '@/src/features/rescue/api/client';
 import { rescueApi } from '@/src/features/rescue/api/rescueApi';
 import { useI18n } from '@/src/i18n';
 import { OperatorPage } from './OperatorPage';
+import { IncidentConversationLink } from '@/src/features/communications/SupportScreens';
 import { moderationApi, type ModerationCursor, type ModerationKind } from './moderationApi';
 
 const TITLES = {
@@ -206,6 +207,7 @@ function ModerationDetailBody({ kind, id }: { kind: ModerationKind; id: string }
               </Text>
             </View>
           )}
+          {kind === 'incidents' && <IncidentConversationLink incidentId={id} />}
           {item.requestId && (
             <NavigationCard
               title={en ? 'Related rescue case' : 'Ca cứu hộ liên quan'}

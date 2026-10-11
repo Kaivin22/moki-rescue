@@ -62,6 +62,22 @@ public class PushNotificationService {
         if (detail != null && !detail.matches("^[a-z0-9_]{1,100}$")) {
             throw new IllegalArgumentException("Push detail must be an operational code");
         }
+        // One inbox item per account/event, even without a registered device (e.g. Expo Go).
+        // Incident creation already produces a ticket-linked item via the V11 trigger.
+        if (!(kind == NotificationKind.SUPPORT_REQUESTED && "incident_report".equals(detail))) {
+            Copy vi = copy(kind, detail == null ? "" : detail, false);
+            Copy en = copy(kind, detail == null ? "" : detail, true);
+            jdbc.update("""
+                    INSERT INTO public.user_notifications(user_id, kind, title, body, target_type, target_id, event_key)
+                    SELECT profile.id, ?, CASE WHEN profile.locale = 'en' THEN ? ELSE ? END,
+                      CASE WHEN profile.locale = 'en' THEN ? ELSE ? END, 'rescue', rr.id,
+                      'rescue:' || rr.id || ':' || rr.version || ':' || ? || ':' || ?
+                    FROM public.profiles profile JOIN public.rescue_requests rr ON rr.id = ?
+                    WHERE profile.is_active AND ((? AND profile.role = 'admin') OR profile.id = ?)
+                    ON CONFLICT (user_id, event_key) DO NOTHING
+                    """, kind.name(), en.title(), vi.title(), en.body(), vi.body(), kind.name(),
+                    detail == null ? "" : detail, requestId, staff, userId);
+        }
         jdbc.update("""
                 INSERT INTO public.push_outbox(device_id, request_id, request_version, kind, detail, expires_at)
                 SELECT device.id, rr.id, rr.version, ?, ?,

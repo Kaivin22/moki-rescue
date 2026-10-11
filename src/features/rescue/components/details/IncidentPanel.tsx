@@ -11,6 +11,7 @@ import type { ProfileRole } from '@/src/types/profile';
 import type { IncidentReport, RequestDetails } from '@/src/types/rescue';
 import { useRescueDetailsCopy } from './rescueDetailsCopy';
 import { rescueDetailsStyles as styles } from './rescueDetailsStyles';
+import { IncidentConversationLink } from '@/src/features/communications/SupportScreens';
 
 export function IncidentPanel({
   request,
@@ -89,6 +90,7 @@ export function IncidentPanel({
           <Text style={styles.infoLabel}>{incident.description}</Text>
           <Text style={styles.incidentStatus}>{c.incidentStatuses[incident.status]}</Text>
           {incident.resolutionNote ? <Text style={styles.infoLabel}>{incident.resolutionNote}</Text> : null}
+          <IncidentConversationLink incidentId={incident.id} />
           {isStaff && incident.status === 'open' ? (
             selectedIncident === incident.id ? (
               <View style={styles.actions}>

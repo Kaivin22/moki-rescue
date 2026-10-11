@@ -1,7 +1,7 @@
 import { router, type Href } from 'expo-router';
 import { NavigationCard } from '@/src/components/atoms/NavigationCard';
 import { OperatorPage } from '@/src/features/operator/OperatorPage';
-import { useCopy } from '@/src/i18n';
+import { useCopy, useI18n } from '@/src/i18n';
 
 const COPY = {
   vi: {
@@ -37,8 +37,19 @@ const COPY = {
 } as const;
 export default function ManagementScreen() {
   const c = useCopy(COPY);
+  const en = useI18n((state) => state.language === 'en');
   return (
     <OperatorPage title={c.title} fallback="/(tabs)/operations">
+      <NavigationCard
+        title={en ? 'Support conversations' : 'Phiếu hỗ trợ và trao đổi'}
+        icon="chatbubbles-outline"
+        onPress={() => router.push('/operator/support' as Href)}
+      />
+      <NavigationCard
+        title={en ? 'Manage announcements' : 'Quản lý thông báo'}
+        icon="megaphone-outline"
+        onPress={() => router.push('/operator/announcements' as Href)}
+      />
       <NavigationCard
         title={c.providerApprovals}
         icon="person-add-outline"

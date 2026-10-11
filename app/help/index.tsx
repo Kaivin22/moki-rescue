@@ -1,12 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/src/components/atoms/ScreenHeader';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
-import { useCopy } from '@/src/i18n';
+import { useCopy, useI18n } from '@/src/i18n';
 
 const SUPPORT_HOTLINE = String(Constants.expoConfig?.extra?.supportHotline ?? '').replace(/[^+\d]/g, '');
 const COPY = {
@@ -104,6 +104,7 @@ function HelpRow({
 
 export default function HelpCenterScreen() {
   const c = useCopy(COPY);
+  const en = useI18n((state) => state.language === 'en');
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScreenHeader title={c.header} />
@@ -120,6 +121,14 @@ export default function HelpCenterScreen() {
 
         <Text style={styles.section}>{c.quick}</Text>
         <View style={styles.card}>
+          <HelpRow
+            icon="chatbubbles-outline"
+            title={en ? 'Support tickets' : 'Phiếu hỗ trợ và phản hồi'}
+            subtitle={
+              en ? 'Discuss an issue with administrators' : 'Gửi vấn đề và trao đổi với quản trị viên'
+            }
+            onPress={() => router.push('/support' as Href)}
+          />
           <HelpRow
             icon="warning-outline"
             title={c.safety}

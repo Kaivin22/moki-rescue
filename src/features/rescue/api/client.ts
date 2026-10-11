@@ -26,11 +26,16 @@ export class ApiClientError extends Error {
 }
 
 const ENGLISH_API_ERRORS: Record<string, string> = {
+  COMMUNICATION_NOT_FOUND: 'This item was not found or you do not have access to it.',
+  COMMUNICATION_CHANGED: 'This item changed. Refresh before trying again.',
+  SUPPORT_CLOSED: 'This ticket is closed and no longer accepts replies.',
+  SUPPORT_LIMIT: 'You already have 10 open tickets. Please continue an existing conversation.',
   INVALID_PROVIDER_DECISION: 'Choose approve or reject.',
   PROVIDER_REVIEW_CHANGED:
     'This application changed, the account is inactive or the shop is suspended. Refresh the list.',
   PROVIDER_REVIEW_REQUIRED: 'Use the provider approval list to approve or reject a pending application.',
   SHOP_OUTSIDE_SERVICE_AREA: 'Ask an administrator to save valid shop coordinates inside the service area.',
+  INVALID_SHOP_ADDRESS: 'Enter a shop address of 5–300 characters, excluding leading/trailing spaces.',
   TEAM_LOCATION_IN_USE:
     'Turn off availability for all members and finish open cases/offers before moving the shop.',
   API_NOT_CONFIGURED: 'The API server is not configured.',
@@ -58,6 +63,8 @@ const ENGLISH_API_ERRORS: Record<string, string> = {
     'Several recent requests were cancelled after a provider departed. Contact dispatch if you need urgent help.',
   SAFETY_NOT_ACKNOWLEDGED: 'Confirm that you and the motorcycle are in a safe position.',
   SERVICE_NOT_AVAILABLE: 'This rescue service is currently unavailable.',
+  VEHICLE_OUTSIDE_SCOPE:
+    'Only gasoline motorcycles are currently supported. Electric and unidentified vehicle types are outside the service scope.',
   SERVICE_NOT_FOUND: 'The rescue service was not found.',
   INVALID_SERVICE_CODE: 'The rescue service code is invalid.',
   INVALID_SERVICE_ICON: 'The rescue service icon is not supported by this app version.',
