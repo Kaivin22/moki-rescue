@@ -26,6 +26,8 @@ app/
   service/             Catalog và chi tiết dịch vụ từ backend
   help/                Trợ giúp và an toàn bên đường
   operator/           Quản lý đội và quyền quản trị
+  notifications/      Hộp thông báo và chi tiết
+  support/            Phiếu hỗ trợ, trao đổi với admin
   profile/, legal/    Hồ sơ, cài đặt, xóa dữ liệu, pháp lý
 src/
   components/         UI atoms và map adapter native/web
@@ -33,7 +35,8 @@ src/
   features/safety/    Danh bạ khẩn cấp dùng chung
   features/location/  Foreground permission/current GPS
   features/maps/      Leaflet/OpenStreetMap adapter qua WebView và iframe
-  features/rescue/    API, query, status, GPS chờ ca, liên kết dẫn đường
+  features/rescue/    API, query, status, sẵn sàng từ cửa hàng, liên kết dẫn đường
+  features/communications/ Hộp thông báo, phiếu hỗ trợ, thông báo chung
   features/assistant/ ChatBox phiên hiện tại; chỉ gọi backend, không có Gemini key
   features/notifications/ Push registration, token rollover và retry theo app installation
   stores/             Session/profile duy nhất
@@ -49,7 +52,7 @@ Route có thể import feature; feature không import từ `app/`. Component dù
 1. Khách trả lời phân loại nguy cơ. Ca có người bị thương/cháy/rò rỉ dừng ở luồng gọi khẩn cấp.
 2. App chỉ xin GPS khi khách bấm lấy vị trí; khách kiểm tra hoặc kéo ghim trên bản đồ rồi mới gửi UUID `Idempotency-Key` cùng loại sự cố và mô tả tối thiểu.
 3. Backend khóa advisory theo customer, kiểm tra payload của key cũ, một ca đang mở, rate limit và polygon `service_zones` đang hoạt động trong PostGIS.
-4. PostGIS lọc provider active/available, đội verified, capability đúng, GPS có sai số trong ngưỡng, vị trí không quá ba phút và nằm trong bán kính đội.
+4. PostGIS lọc provider active/available, đội verified, capability đúng; cửa hàng nằm trong vùng phục vụ và điểm đón nằm trong bán kính đội. Không lấy GPS thiết bị làm vị trí chờ ca.
 5. Backend gọi OSRM Table cho toàn bộ ứng viên hợp lệ theo các lô tối đa 99 điểm gốc, loại `NoRoute`, tạo nhóm có ETA không vượt quá ngưỡng so với người nhanh nhất, rồi xếp hạng trong nhóm theo chính sách của loại dịch vụ.
 6. Backend chỉ gửi đề nghị cho một provider tại một thời điểm. Provider nhận push chỉ có khu vực tương đối; phản hồi đến muộn vẫn bị SQL function từ chối nếu đề nghị hoặc ca đã thay đổi.
 7. Sau khi nhận ca, API trả tên và số liên hệ công việc đã được admin xác minh cho participant. Số không nằm trong offer/push và được ẩn khi ca đóng.
@@ -93,17 +96,19 @@ Mỗi transition được kiểm tra hai lần: service xác định action hợ
 
 ## Vị trí và tuyến tham khảo
 
-- Provider bật sẵn sàng: GPS foreground/background phục vụ matching, khách không thấy.
-- Khi nhận ca, trigger V8 lưu vị trí chờ ca gần nhất trong `rescue_requests`; API trả `providerLocationStatus=snapshot`. Không ghi đè bằng GPS sau đó.
+- Provider bật sẵn sàng nghĩa là có thể xuất phát từ cửa hàng; matching/ETA dùng tọa độ cửa hàng đã cấu hình, không xin GPS nền.
+- Khi nhận ca, trigger được cập nhật ở V10 lưu tọa độ cửa hàng trong `rescue_requests`; API trả `providerLocationStatus=snapshot`. Không ghi đè bằng GPS sau đó.
 - OpenStreetMap hiển thị tuyến OSRM từ vị trí đó tới pickup. App không polling tuyến theo GPS; chỉ cập nhật trạng thái ca và đổi dữ liệu khi đổi phân công.
 - Google Maps bên ngoài dùng GPS thiết bị để dẫn đường. Điểm đích là pickup hoặc điểm giao khi đang vận chuyển; đường Google Maps có thể khác OSRM.
-- Đã gỡ GPS tracking/outbox của ca; endpoint GPS cũ trả lỗi, Broadcast bị chặn và không tạo cờ thiếu GPS live. GPS chờ ca vẫn giữ.
+- Không nhận GPS tracking hoặc GPS chờ ca; endpoint GPS cũ trả 410, Broadcast bị chặn và không tạo cờ thiếu GPS live. Mã task cũ chỉ để dừng/dọn tác vụ trên thiết bị nâng cấp.
 - Ca đóng/thu hồi phân công xóa snapshot; đổi provider chụp vị trí mới. Ca cũ không có snapshot báo thiếu vị trí, không giả lập.
 - Map/OSRM cần kiểm chứng trên thiết bị và tuyến thật; xem [tích hợp bản đồ và routing](MAP_ROUTING.md). Bộ demo/dataset local không được phân phối trong repository.
 
 ## Dữ liệu và RLS
 
-Ngoài hồ sơ, đội, catalog và ca cứu hộ, schema có các nhóm dữ liệu riêng cho vùng phục vụ, offer/báo giá, cờ cần điều phối, phản hồi xác nhận, khiếu nại, đánh giá, cảnh báo chất lượng, push receipt, audit, quota AI và cửa sổ rate limit. Khi ca đóng, hủy, bị thu hồi hoặc tài khoản provider bị vô hiệu, tọa độ matching cuối của provider được xóa; checkpoint có retention riêng.
+Ngoài hồ sơ, đội, catalog và ca cứu hộ, schema có các nhóm dữ liệu riêng cho vùng phục vụ, offer/báo giá, cờ cần điều phối, phản hồi xác nhận, khiếu nại, đánh giá, cảnh báo chất lượng, push receipt, audit, quota AI và cửa sổ rate limit. V11 thêm hộp thông báo, phiếu hỗ trợ, tin nhắn và thông báo chung, tổng cộng 30 bảng ứng dụng. Khi ca đóng hoặc thu hồi phân công, snapshot của ca được xóa; tọa độ cửa hàng vẫn là dữ liệu của đội, không phải hành trình thiết bị.
+
+Thông báo hỗ trợ/chung hiện lưu trong app, không đồng nghĩa remote push. Trao đổi người dùng–admin cập nhật bằng polling khi trang mở, không phải WebSocket chat. Quyền xem, ghi chú nội bộ và API nằm trong [COMMUNICATIONS.md](COMMUNICATIONS.md).
 
 `push_devices.installation_id` cho phép một cài đặt app đổi tài khoản hoặc refresh token một cách nguyên tử. Mobile lắng nghe native token rollover, lấy lại Expo token và đăng ký lại mà không tự mở permission prompt. Backend gửi tối đa 100 message mỗi request, lưu ticket tối thiểu, bắt đầu hỏi receipt sau 15 phút theo lô tối đa 1.000 và vô hiệu đúng device khi Expo trả `DeviceNotRegistered`. `push_delivery_receipts` không lưu title, body, payload, token bản sao hoặc dữ liệu ca và được xóa định kỳ.
 

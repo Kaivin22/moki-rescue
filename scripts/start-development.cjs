@@ -1,4 +1,5 @@
 /* Local development only. No installs, migrations, Docker, or firewall changes. */
+/* global __dirname */
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');

@@ -1,471 +1,384 @@
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ĐẶC TẢ KỸ THUẬT — MOKI RESCUE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Tên sản phẩm : Moki Rescue Đà Nẵng
-Mục tiêu     : Điều phối cứu hộ xe máy theo thời gian thực
-Android ID   : com.danang.motorescue
-iOS Bundle ID: com.danang.motorescue
-Phiên bản    : 1.0.0
-Cập nhật     : 30/08/2026
-
-Tài liệu này mô tả codebase đang tồn tại. Khi có mâu thuẫn, thứ tự ưu tiên là:
-  1. Flyway migrations trong backend/src/main/resources/db/migration và RLS đang triển khai;
-  2. backend Spring Boot và contract API;
-  3. type/domain và route trong mobile;
-  4. tài liệu này.
-
-Không lấy dữ liệu trong test, placeholder .env.example hoặc nội dung Figma làm
-dữ liệu production.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. BÀI TOÁN VÀ PHẠM VI
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Moki Rescue hỗ trợ khách gặp sự cố kỹ thuật xe máy tại vùng phục vụ Đà Nẵng:
-  - phân loại nguy cơ trước khi tạo ca;
-  - xác nhận/kéo ghim vị trí nhận cứu hộ;
-  - tìm đội đối tác đã được xác minh, có đúng năng lực;
-  - tạo nhóm provider có ETA chấp nhận được rồi xếp hạng theo chính sách cấu hình và chống bỏ đói;
-  - chống hai provider nhận cùng một ca;
-  - theo dõi provider sau khi nhận ca;
-  - xác nhận hai phía khi đến và khi hoàn tất;
-  - báo giá, duyệt báo giá, review 1–5 sao có sửa/xóa;
-  - điểm uy tín thật cho provider/đội và cảnh báo chất lượng có admin kiểm duyệt;
-  - ChatBox AI hướng dẫn cách dùng app và quy trình cứu hộ trong app;
-  - điều phối lại ca không tìm được đội;
-  - quản trị đội, cứu hộ viên và các ca cần can thiệp.
-
-Mô hình vận hành:
-  - Một đơn vị vận hành quản lý mạng lưới kín gồm nhiều đội cứu hộ nhỏ.
-  - Provider không tự đăng ký công khai. Mỗi người tự đăng nhập OTP một lần với
-    tài khoản riêng; admin chỉ cấp quyền sau khi đơn vị đã hợp tác ngoại tuyến.
-  - Không có mật khẩu do admin cấp, tài khoản đội dùng chung hoặc upload tài liệu pháp lý/
-    CCCD. App chỉ lưu mã hồ sơ nội bộ và kết quả checklist tối thiểu.
-  - Khách không xem danh sách provider gần đó và không tự chọn provider.
-  - App không quản lý kế toán, đơn hàng nội bộ hay dòng tiền của đội đối tác.
-
-Ngoài phạm vi v1:
-  - thanh toán, ví, hoa hồng;
-  - AI chẩn đoán xe;
-  - chatbot kiến thức chung hoặc trả lời câu hỏi ngoài Moki Rescue;
-  - dashboard web và CMS giao diện;
-  - marketplace mở cho thợ tự do;
-  - cứu hộ ô tô;
-  - tự động xác nhận provider đã đến chỉ bằng GPS;
-  - thay thế 113, 114 hoặc 115.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-2. VAI TRÒ VÀ QUYỀN
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-customer:
-  - đăng nhập OTP, sửa tên, tạo một ca hoạt động tại một thời điểm;
-  - xem ca của mình, duyệt báo giá, xác nhận đến/hoàn tất, hủy theo policy;
-  - review duy nhất cho ca completed, có thể sửa và xóa.
-  - thấy điểm trung bình và số lượt đánh giá thật của provider/đội sau khi được gán.
-
-provider:
-  - phải thuộc provider_members active và rescue_team verified;
-  - bật/tắt sẵn sàng, gửi vị trí matching, nhận offer đúng capability;
-  - chỉ provider thắng transaction mới xem vị trí chính xác và xử lý ca;
-  - gửi vị trí live, trạng thái, work type và báo giá.
-  - thấy điểm đội và nội dung cảnh báo chất lượng do admin đã phát hành.
-
-admin:
-  - xem ca vận hành, theo dõi no_provider, kích hoạt tìm lại;
-  - có quyền dừng ca với lý do được audit;
-  - tạo đội bằng mã hồ sơ nội bộ, cấp tài khoản provider, khai báo capability;
-  - hoàn tất checklist, xem người/thời điểm kiểm tra, xác minh/tạm ngưng đội;
-  - xem điểm đội, review gần đây và tín hiệu điểm thấp;
-  - ẩn/khôi phục review spam với lý do được audit;
-  - gửi cảnh báo hoặc đình chỉ đội sau khi kiểm tra; không auto-lock chỉ từ điểm sao;
-  - cấp/thu quyền admin cho tài khoản vận hành;
-  - không mặc nhiên đóng vai provider nếu chưa có provider_members hợp lệ.
-
-Tài khoản mới từ Supabase Auth luôn nhận role customer. Admin đầu tiên chỉ được
-bootstrap bằng một số điện thoại E.164 khớp đúng một auth.users.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-3. STACK THỰC TẾ
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Mobile:
-  - Expo SDK 54, React Native 0.81, React 19, TypeScript strict;
-  - Expo Router 6 file-based routes;
-  - Zustand cho session/profile/language;
-  - TanStack Query cho server state;
-  - Supabase JS cho Auth, profile self-service và private Realtime;
-  - react-native-maps cho iOS/Android;
-  - expo-location + expo-task-manager cho GPS foreground/background;
-  - expo-notifications cho push;
-  - expo-secure-store cho session trên native;
-  - react-native-safe-area-context cho notch/Dynamic Island/cutout.
-
-Backend:
-  - Java 21, Spring Boot 3, Maven Wrapper;
-  - OAuth2 Resource Server xác minh Supabase JWT;
-  - JdbcTemplate + TransactionTemplate;
-  - PostgreSQL/PostGIS trên Supabase;
-  - OSRM được preprocess bằng profile xe máy đã kiểm chứng;
-  - Expo Push API;
-  - Gemini GenerateContent API, chỉ được gọi từ backend cho trợ lý trong phạm vi app.
-
-SDK 54 được giữ để tương thích Expo Go theo yêu cầu dự án. Khi dùng API mới,
-phải đọc đúng tài liệu versioned Expo SDK 54 và chỉ cài package theo ma trận SDK 54.
-Background GPS và remote push phải kiểm thử bằng development/preview build,
-không dùng Expo Go làm bằng chứng production.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-4. BIÊN HỆ THỐNG VÀ TRUST MODEL
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Expo app (untrusted client)
-  │ HTTPS + Supabase access token
-  ▼
-Spring Boot API (trusted business mutations)
-  ├── JDBC/TLS ──► Supabase PostgreSQL + PostGIS + RLS
-  ├── HTTPS ─────► OSRM motorcycle router
-  ├── HTTPS ─────► Expo Push API
-  └── HTTPS ─────► Gemini GenerateContent API (app-support only)
-
-Supabase Realtime private topic: request:<uuid>
-  - assigned provider được ghi;
-  - customer của ca, assigned provider và staff được đọc;
-  - policy không dựa vào việc UI có ẩn nút hay không.
-
-Mobile không được có database service key, database password, Expo push access
-token, Gemini API key hoặc credential OSRM nội bộ. EXPO_PUBLIC_* là cấu hình công
-khai được nhúng vào binary; secret backend không được dùng prefix này.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-5. CẤU TRÚC ROUTE VÀ MÃ NGUỒN
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-app/
-  index.tsx                       bootstrap/redirect
-  onboarding.tsx                  3 slide giới thiệu
-  (auth)/login.tsx                số điện thoại + OTP + chấp nhận điều khoản
-  (tabs)/index.tsx                home theo role
-  (tabs)/request.tsx              tạo yêu cầu customer
-  (tabs)/activity.tsx             ca mở/lịch sử
-  (tabs)/operations.tsx           provider/admin
-  (tabs)/profile.tsx              tài khoản theo role
-  rescue/[id].tsx                 chi tiết ca, action, quote, review
-  rescue/[id]/map.tsx             bản đồ ca toàn màn hình
-  service/index.tsx               catalog từ backend
-  service/[code].tsx              chi tiết/quy trình dịch vụ
-  help/index.tsx                  trung tâm trợ giúp
-  help/safety.tsx                 an toàn và gọi khẩn cấp
-  operator/teams.tsx              quản trị đội/role
-  profile/edit.tsx                sửa tên hiển thị
-  profile/settings.tsx            ngôn ngữ/quyền/push/xóa dữ liệu
-  profile/security.tsx            trạng thái OTP/phiên
-  profile/delete-account.tsx      yêu cầu xóa tài khoản
-  legal/privacy.tsx               chính sách quyền riêng tư
-  legal/terms.tsx                 điều khoản
-
-Tổng: 20 route điều hướng + 1 bootstrap = 21 file màn hình.
-
-src/components/   UI atoms và adapter map native/web
-src/features/     auth, safety, onboarding, notification, location, rescue, assistant
-src/stores/       auth/profile và language preference
-src/types/        contract canonical của mobile
-backend/          business layer tin cậy
-scripts/          database runbook, verify, bootstrap, retention
-backend/src/main/resources/db/migration/  Flyway baseline và versioned migrations
-docs/             kiến trúc, deployment, release và inventory Figma
-
-Quy tắc phụ thuộc:
-  - route được import feature; feature không import app/;
-  - component dùng chung không truy vấn database;
-  - mutation nghiệp vụ đi qua backend;
-  - type request/response phải đồng bộ ApiModels.java và src/types/rescue.ts.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-6. DATABASE SUPABASE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-17 bảng production:
-  profiles, rescue_teams, team_verification_requirements,
-  team_verification_checks, service_types, provider_members,
-  team_capabilities, rescue_requests, dispatch_offers, quotes,
-  request_status_events, provider_location_checkpoints, reviews, team_quality_alerts,
-  push_devices, push_delivery_receipts, audit_logs, assistant_usage_events.
-
-`assistant_usage_events` chỉ lưu user_id và created_at để giới hạn quota theo
-tài khoản. Không lưu prompt, câu trả lời hoặc lịch sử hội thoại.
-
-Catalog baseline chính thức trong B1__initial_schema.sql gồm 6 loại:
-  flat_tire, dead_battery, electric_battery, out_of_fuel,
-  minor_repair, motorbike_transport.
-
-Đây là cấu hình sản phẩm có thể sửa bằng SQL/admin backend, không phải mock data.
-Không seed team, provider, vị trí, request, quote hoặc review giả vào production.
-Sáu requirement xác minh baseline là policy/reference data; không seed check
-completed cho bất kỳ đội nào.
-`push_devices` liên kết Expo token với UUID cài đặt app để xử lý token refresh,
-đổi tài khoản và cài lại app mà không gửi nhầm binding cũ.
-Mobile lắng nghe token rollover và đăng ký lại Expo token mà không tự bật prompt.
-Backend chia batch gửi tối đa 100 message, lưu ticket tối thiểu, hỏi receipt sau
-15 phút theo lô tối đa 1.000, retry có giới hạn và chỉ vô hiệu device nhận lỗi
-`DeviceNotRegistered`. Receipt không lưu title/body/payload/token bản sao/dữ liệu ca.
-
-Ràng buộc quan trọng:
-  - một customer chỉ có một request chưa completed/cancelled;
-  - một provider chỉ có một request hoạt động;
-  - partner_reference của đội là mã nội bộ uppercase, duy nhất, không chứa số
-    giấy tờ cá nhân;
-  - đội chỉ verified khi đủ requirement bắt buộc đang active, ít nhất một
-    capability và một provider active; lần verify ghi admin + thời điểm;
-  - provider contact phải E.164;
-  - location accuracy trong DB từ 0..1000 m; backend áp ngưỡng vận hành nhỏ hơn;
-  - event là append-only;
-  - review chỉ cho customer của request completed;
-  - review giữ team_id tại thời điểm phục vụ; điểm uy tín bỏ qua review bị admin ẩn;
-  - đủ số mẫu và điểm thấp mới tạo quality alert; SQL/backend không tự đổi team sang suspended;
-  - function privileged bị revoke khỏi anon/authenticated;
-  - mọi bảng public bật RLS.
-
-Thứ tự chạy database mới:
-  Flyway info → migrate B1 → validate
-  02_verify_rls.sql
-  03_bootstrap_operator.sql
-  04_schedule_retention.sql (nếu Supabase có pg_cron)
-
-Database trống không chạy 00_reset.sql và không dùng flyway:baseline. Database
-legacy khớp chính xác B1 mới được baseline version 1 theo scripts/README.md.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-7. LUỒNG TẠO VÀ GHÉP CA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. Customer trả lời hasInjury và hasImmediateHazard.
-2. Nếu có nguy cơ, dừng tạo ca kỹ thuật và bàn giao 113/114/115.
-3. Customer chọn service từ catalog backend, loại xe và lấy GPS.
-4. Customer kiểm tra/chạm/kéo ghim, nhập điểm nhận biết và xác nhận đã an toàn.
-5. Mobile gửi UUID Idempotency-Key và payload tối thiểu.
-6. Backend kiểm tra role, service active, bounding box, rate limit, idempotency,
-   advisory lock theo customer và unique active request.
-7. PostGIS lọc provider active/available, team verified, đúng capability,
-   GPS có accuracy hợp lệ/còn mới, trong service radius và không bận ca khác.
-8. OSRM Table tính route cho toàn bộ candidate hợp lệ theo lô tối đa cấu hình;
-   NoRoute bị loại và thứ tự lô được ghép lại nguyên vẹn.
-9. Lấy ETA tốt nhất làm mốc và loại ứng viên có ETA vượt quá cửa sổ cấu hình của dịch vụ.
-   Trong nhóm còn lại, chi phí chuẩn hóa kết hợp chênh lệch ETA, số ca completed đúng
-   service_code, thời gian chờ và số ca đã nhận gần đây. Không dùng Haversine quyết định
-   shortlist hoặc kết quả cuối.
-10. Nếu provider liên tục đủ điều kiện và thuộc nhóm ETA nhưng chưa được mời đến ngưỡng
-   cấu hình, họ được đưa lên trước ở lần phù hợp tiếp theo. Mỗi thời điểm chỉ tạo một offer;
-   từ chối hoặc hết TTL mới chuyển sang người kế tiếp.
-11. SQL api_accept_dispatch_offer khóa request, offer và provider; chỉ một bên thắng.
-12. Sau assigned mới trả tên, đội, phương tiện và contact phone đã xác minh.
-
-Nếu router lỗi hoặc mọi candidate NoRoute: routing_status=unavailable và không vẽ
-đường chim bay. Nếu không có candidate phù hợp: no_provider. Admin có thể retry.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-8. STATE MACHINE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-searching → offered → assigned → en_route
-  → awaiting_arrival_confirmation
-  ├── customer reject_arrival → en_route
-  └── customer confirm_arrival → arrived → diagnosing
-
-diagnosing
-  ├── dịch vụ không cần quote: start_work → repairing|transporting
-  └── submit quote → awaiting_quote
-       ├── customer reject → diagnosing
-       └── customer approve → repairing|transporting
-
-repairing|transporting → awaiting_completion
-  ├── customer reject đúng work_type → repairing|transporting
-  └── customer confirm → completed
-
-searching|offered → no_provider
-no_provider → searching khi admin retry
-trạng thái policy cho phép → cancelled có reason/audit
-
-Mọi action gửi expectedVersion. Service kiểm graph, PostgreSQL trigger kiểm cạnh lần
-hai và tăng version. Client phải xử lý 409 conflict bằng tải lại state, không tự ép.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-9. VỊ TRÍ, BẢN ĐỒ VÀ ROUTING
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Trước khi gửi ca:
-  - xin foreground permission khi customer chủ động bấm;
-  - hiển thị map xác nhận ghim, không chỉ tin reverse geocode/GPS thô.
-
-Provider available:
-  - foreground watch cập nhật vị trí matching;
-  - điểm không có accuracy hữu hạn bị client bỏ và API/SQL cũng từ chối;
-  - backend từ chối accuracy vượt PROVIDER_LOCATION_MAX_ACCURACY_METERS;
-  - vị trí quá PROVIDER_LOCATION_MAX_AGE_SECONDS không được matching.
-
-Sau assigned:
-  - provider gửi foreground/background checkpoint;
-  - private Realtime broadcast cập nhật marker cho participant;
-  - outbox chỉ giữ điểm mới nhất và bỏ điểm quá 2 phút;
-  - map detail/fullscreen chỉ render Polyline từ RoadRoute.coordinates.
-
-Tuyệt đối không:
-  - nối thẳng hai marker làm route fallback;
-  - dùng Haversine làm ETA cuối;
-  - cho customer chọn provider từ danh sách gần đó;
-  - tự xác nhận arrived/completed bằng geofence.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-10. API CONTRACT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Account/catalog:
-  GET    /api/me
-  GET    /api/catalog/service-types
-  POST   /api/me/deletion-request
-  PUT    /api/me/push-device
-  DELETE /api/me/push-device
-
-Assistant (mọi tài khoản đã xác thực và đang active):
-  POST   /api/assistant/message
-
-Endpoint assistant nhận tối đa 500 ký tự. Bộ lọc local xử lý lời chào, câu ngoài
-phạm vi, yêu cầu chẩn đoán xe, prompt injection rõ ràng và tình huống khẩn cấp
-trước khi gọi Gemini. Chỉ câu thuộc cách dùng Moki Rescue/quy trình trong app mới
-được giữ quota và gửi đi; nội dung không được ghi database/log.
-
-Customer/participants:
-  POST   /api/requests
-  GET    /api/requests?history=true|false
-  GET    /api/requests/{id}
-  GET    /api/requests/{id}/road-route
-  POST   /api/requests/{id}/cancel
-  POST   /api/requests/{id}/actions
-  POST   /api/requests/{id}/quotes
-  POST   /api/requests/{id}/quotes/{quoteId}/decision
-  PUT    /api/requests/{id}/review
-  DELETE /api/requests/{id}/review
-
-Provider:
-  GET    /api/provider/status
-  PUT    /api/provider/availability
-  GET    /api/provider/offers
-  POST   /api/provider/offers/{offerId}/accept
-  POST   /api/provider/requests/{requestId}/location
-  POST   /api/provider/location
-
-Operator/admin:
-  GET    /api/operator/teams
-  POST   /api/operator/requests/{requestId}/retry
-  POST   /api/operator/teams
-  PUT    /api/operator/teams/{teamId}/status
-  GET    /api/operator/teams/{teamId}/verification
-  PUT    /api/operator/teams/{teamId}/verification
-  PUT    /api/operator/teams/{teamId}/providers
-  GET    /api/operator/teams/{teamId}/reviews
-  POST   /api/operator/quality-alerts/{alertId}/warn
-  POST   /api/operator/quality-alerts/{alertId}/resolve
-  PUT    /api/operator/reviews/{reviewId}/visibility
-  PUT    /api/operator/staff-role
-  GET    /api/operator/service-types
-  PUT    /api/operator/service-types/{code}
-
-Health:
-  GET    /api/health
-
-Error trả JSON có timestamp, status, code, message, path. UI hiển thị message an toàn,
-không hiển thị stack trace hoặc SQL error.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-11. BẢO MẬT VÀ QUYỀN RIÊNG TƯ
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  - OTP phone do Supabase Auth xử lý; app không lưu mật khẩu riêng.
-  - Hồ sơ tối thiểu: display name, role, locale, trạng thái và consent.
-  - Consent phải khớp đúng TERMS_VERSION ở mobile lẫn backend; timestamp đơn lẻ
-    không đủ cấp quyền khi điều khoản đã đổi.
-  - Không yêu cầu CCCD, GPLX, danh bạ, micro hoặc thông tin thanh toán.
-  - Quan hệ đối tác và giấy tờ được xác minh ngoại tuyến; DB chỉ lưu mã hồ sơ nội bộ,
-    checklist, người/thời điểm xác minh và capability. Không lưu file/số giấy tờ.
-  - Contact provider chỉ hiện cho participant của ca trackable.
-  - Checkpoint GPS purge mặc định sau 24 giờ.
-  - Ca đóng giảm chi tiết vị trí/note mặc định sau 30 ngày.
-  - Request status event và audit không cho client sửa/xóa.
-  - Spring dùng role `motorescue_api` không có DDL/superuser; không dùng `postgres` runtime.
-  - Gemini key chỉ ở secret store backend; mobile chỉ gọi `/api/assistant/message`.
-  - Trợ lý lọc cả input và output, có giới hạn theo phút/ngày trong database và
-    rate limit API theo tài khoản; không lưu nội dung hội thoại.
-  - CORS production phải allowlist origin thật; không dùng wildcard.
-  - Production build fail nếu thiếu API URL, map key hoặc support hotline.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-12. CẤU HÌNH, HARDCODE VÀ DỮ LIỆU MẪU
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Bắt buộc qua environment:
-  Supabase URL/anon key, API URL, EAS project ID, Google Maps key,
-  support hotline, database credential, OSRM URL/profile, matching thresholds,
-  service-area bounds, provider GPS freshness/accuracy, CORS, Expo access token,
-  Gemini key/model/quota và rate-limit API.
-
-Được phép bundle trong code:
-  design tokens, status/action graph, validation bounds, 113/114/115,
-  legal version, copy onboarding/help/legal và icon name.
-
-Không được phép trong runtime:
-  mock user/team/provider/request/location/route/quote/review;
-  URL server production cố định trong source;
-  fake Polyline khi OSRM lỗi;
-  service role/database password/Gemini key trong mobile;
-  lưu prompt hoặc lịch sử ChatBox trong database;
-  random business result để demo.
-
-.env.example chỉ chứa placeholder. Test fixture chỉ nằm trong __tests__ hoặc
-backend/src/test và không được import vào app/backend main.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-13. UI, ACCESSIBILITY VÀ I18N
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  - 70 frame Figma nghiệp vụ, chi tiết ở Moki_Rescue_UI_Stitch.txt.
-  - Safe area bắt buộc cho iOS notch/Dynamic Island và Android cutout.
-  - Touch target tối thiểu 44×44 pt; nút chính không bị tab bar/keyboard che.
-  - Map phải có status scrim/header đọc được trên nền bản đồ.
-  - Status luôn có text + icon/màu, không truyền đạt chỉ bằng màu.
-  - reduce motion phải tắt press animation không thiết yếu.
-  - Bản v1 hỗ trợ đầy đủ tiếng Việt và tiếng Anh cho UI runtime chính.
-  - Backend chọn label catalog/push theo locale hồ sơ; đổi ngôn ngữ phải invalidate
-    cache dữ liệu đã địa phương hóa.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-14. TEST, CI VÀ RELEASE GATE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Mobile gate:
-  npm run lint
-  npm run typecheck
-  npm run test:ci
-  npx expo install --check
-  expo config --type public
-  expo export Android + iOS + web
-
-Backend gate:
-  mvnw test
-
-Database gate:
-  chạy Flyway info → migrate → validate trên Supabase staging mới;
-  02_verify_rls.sql phải đạt;
-  test hai provider nhận đồng thời chỉ một người thành công;
-  kiểm participant không đọc được ca/contact/GPS của người khác.
-
-Thiết bị thật:
-  customer + provider trên hai máy;
-  permission denied/granted;
-  GPS background, push, app restart, mất mạng/outbox;
-  OSRM profile xe máy với tuyến cấm ô tô/xe máy phù hợp dữ liệu địa phương;
-  notch/cutout, bàn phím và tab bar.
-
-Không gọi sản phẩm là production-ready chỉ vì unit test/export thành công. Cần
-Supabase staging, OSRM thật, EAS build ký, push thật và đội đối tác thật.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ĐẶC TẢ NGHIỆP VỤ VÀ KỸ THUẬT — MOKI RESCUE
+Dùng kèm Moki_Rescue_UI_Stitch.txt để giao cho Claude Design
+Ngày đối chiếu mã nguồn: 09/10/2026
+
+0. CÁCH ĐỌC VÀ MỨC ĐỘ XÁC THỰC
+
+Đây là bản mô tả dự án tại workspace hiện tại, gồm cả phần code chưa commit.
+Tài liệu giúp thiết kế đúng chức năng; không phải yêu cầu bổ sung nghiệp vụ, đổi
+framework hay bằng chứng mọi tính năng đã chạy trên điện thoại/Supabase thật.
+
+Nguồn đối chiếu:
+- app/: route và điều hướng; src/features/: giao diện, quyền và hành động.
+- src/types/rescue.ts; src/features/communications/api.ts: dữ liệu UI.
+- backend/src/main/java/com/danang/motorescue/: API, chính sách và xử lý nghiệp vụ.
+- backend/src/main/resources/db/migration/: schema đến V11.
+- package.json, backend/pom.xml: phiên bản dependency đang khai báo.
+- docs/COMMUNICATIONS.md; scripts/README.md: phạm vi hỗ trợ/thông báo và cài database.
+Nếu tài liệu lệch code: ghi nhận chỗ lệch, không tự tạo chức năng cho khớp bản vẽ.
+
+Các thông số mặc định dưới đây là mặc định trong source, không khẳng định trùng
+cấu hình môi trường đang chạy. Không đưa .env, mật khẩu, token, tài khoản thật
+hoặc dữ liệu khách hàng vào công cụ thiết kế.
+
+1. SẢN PHẨM VÀ PHẠM VI
+
+Tên hiện trong app: Moki Rescue. Cứu hộ kỹ thuật xe máy xăng tại vùng phục vụ Đà Nẵng.
+Xe máy điện, kể cả vận chuyển, ngoài phạm vi hiện tại. Không xóa lịch sử ca cũ.
+Ba vai trò: customer (khách hàng), provider (cứu hộ viên), admin (quản trị viên).
+Không có vai trò quản lý cửa hàng riêng, không dùng chung tài khoản cho cả đội.
+
+Luồng cốt lõi:
+- Kiểm tra an toàn, chọn sự cố/mô tả xe xăng, xác nhận vị trí, gửi yêu cầu.
+- Tự lọc và xếp hạng cứu hộ viên từ vị trí cửa hàng; lần lượt mời nhận ca.
+- Cứu hộ viên chấp nhận/từ chối; đến nơi, kiểm tra, báo giá nếu cần và làm việc.
+- Khách xác nhận đã đến và hoàn tất; có xử lý tranh chấp, rút ca và can thiệp admin.
+- Đánh giá sau ca là tùy chọn; báo cáo sự cố/khiếu nại có quản trị xử lý.
+- Hộp thông báo; phiếu trao đổi người dùng–admin; thông báo chung theo nhóm vai trò.
+- Quản trị mạng lưới, duyệt người cứu hộ, xác minh cửa hàng, dịch vụ và chất lượng.
+
+Chưa thuộc phạm vi hiện tại:
+- Thanh toán/QR/ví, doanh thu, lợi nhuận, hoa hồng, hóa đơn thanh toán.
+- Khách tự chọn cứu hộ viên hoặc chọn bộ tiêu chí “gần nhất/nhiều kinh nghiệm”.
+- Bản đồ theo dõi xe di chuyển trực tiếp như ứng dụng đặt xe.
+- Chat trực tiếp khách–cứu hộ viên, gọi video, gửi file/ảnh trong phiếu hỗ trợ.
+- Đăng ký công khai để tự trở thành cứu hộ viên, quản lý đội là vai trò thứ tư.
+- AI chẩn đoán xe. Trợ lý hiện có chỉ hướng dẫn sử dụng app/quy trình trong app.
+- Một dashboard web quản trị độc lập: admin hiện là các màn trong cùng app.
+Expo có thể export web để xem/test, nhưng không vì vậy mà có thêm sản phẩm web riêng.
+
+2. VAI TRÒ, ĐỘI VÀ QUYỀN
+
+Khách hàng:
+- Tạo/xem ca của mình; một ca chưa kết thúc tại một thời điểm.
+- Xác nhận vị trí, duyệt/từ chối báo giá, xác nhận/từ chối đã đến và hoàn tất.
+- Hủy theo giai đoạn; giai đoạn đã phục vụ có luồng yêu cầu điều phối hỗ trợ.
+- Đánh giá ca completed: 1–5 sao, nhận xét, sửa/xóa theo policy; có thể bỏ qua.
+- Báo sự cố ca của mình; tạo phiếu hỗ trợ chung; trả lời admin; đọc thông báo riêng.
+
+Cứu hộ viên:
+- Tài khoản cá nhân có provider_members, trạng thái active; cửa hàng verified,
+  vị trí cửa hàng trong vùng phục vụ và có năng lực dịch vụ thích hợp.
+- Bật sẵn sàng nghĩa là có thể xuất phát từ cửa hàng; không yêu cầu GPS liên tục.
+- Nhận/từ chối đề nghị; chỉ người nhận thành công mới được xử lý ca được giao.
+- Dùng Google Maps bên ngoài app để dẫn đường; không tự xác nhận thay khách.
+- Thống kê CÁ NHÂN: ca hoàn thành, đang xử lý, đã hủy, điểm và số đánh giá.
+  Uy tín đội/cảnh báo đội là khối riêng; không phải thống kê cá nhân đồng nghiệp.
+- Xem phiếu hỗ trợ và thông báo của mình; không được quản trị thành viên khác.
+
+Admin:
+- Tổng quan toàn mạng lưới, điều phối ngoại lệ, tìm lại/điều phối lại ca.
+- Quản lý cửa hàng, thành viên, vị trí cửa hàng, năng lực và checklist xác minh.
+- Danh sách tài khoản cứu hộ riêng: chờ duyệt/đã duyệt/từ chối/tất cả.
+  Tài khoản pending có Chấp nhận/Từ chối và bước xác nhận.
+- Cấp/thu quyền admin; chỉnh danh mục dịch vụ; xem nhật ký.
+- Kiểm duyệt đánh giá, xử lý khiếu nại, cảnh báo chất lượng và hỗ trợ.
+- Gửi thông báo tất cả hoặc nhóm customer/provider/admin; chưa chọn từng tài khoản.
+- Không nhận offer như provider; không thay khách xác nhận đến bằng một nút tùy ý.
+- Ở awaiting_completion có xác minh kết thúc ngoại lệ: ghi căn cứ, xác nhận lần hai;
+  chưa xác minh thì giữ ca mở, không tự hoàn thành chỉ vì khách không phản hồi.
+
+Cửa hàng/đội là rescue_teams, tài khoản cá nhân là profiles/provider_members.
+12 cửa hàng trong script mẫu KHÔNG phải 12 tài khoản cứu hộ.
+Duyệt tài khoản không tự xác minh cửa hàng và ngược lại.
+Admin toàn hệ thống quản lý mạng lưới, không có tài khoản chủ đội mới.
+
+3. STACK ĐANG KHAI BÁO — KHÔNG PHẢI CHỈ DẪN NÂNG CẤP
+
+package.json hiện khai báo:
+- Expo ~57.0.27; Expo Router ~57.0.25.
+- React Native 0.86.3; React 19.2.3; TypeScript ~6.0.3.
+- TanStack Query, Zustand; Supabase JS cho xác thực/hồ sơ.
+- Bản đồ: Leaflet qua react-native-webview trên mobile, iframe trên web.
+- expo-location cho lấy vị trí khi cần; expo-notifications cho tích hợp push ca.
+- Be Vietnam Pro; Ionicons; safe-area-context.
+Không còn mô tả react-native-maps là bộ hiển thị bản đồ hiện tại.
+
+Lưu ý quy tắc repository: AGENTS.md vẫn ghi chính sách giữ SDK 54 trừ khi chủ dự án
+duyệt chuyển phiên bản; dependency hiện tại đã khác mốc đó. Bản mô tả này chỉ ghi
+nhận package.json, không sửa dependency và không cấp quyền nâng/hạ SDK. Claude
+Design chỉ thiết kế; khi triển khai cần đối chiếu chính sách với chủ dự án.
+
+Backend: Java 21; Spring Boot 3.5.16; Maven; JdbcTemplate/TransactionTemplate.
+Database: Supabase PostgreSQL + PostGIS, Supabase Auth, Row-Level Security (RLS).
+API nghiệp vụ: HTTPS/JSON + Bearer JWT tới Spring Boot; backend gọi database/OSRM.
+Trợ lý: backend gọi Gemini khi phù hợp phạm vi; secret không nằm trong frontend.
+
+4. BẢN ĐỒ, ETA VÀ GOOGLE MAPS
+
+Thuật ngữ:
+- OSM: OpenStreetMap, dữ liệu bản đồ mở; ảnh nền tile là một dịch vụ hiển thị.
+- OSRM: Open Source Routing Machine, bộ tính tuyến trên dữ liệu đường đã xử lý.
+- ETA: Estimated Time of Arrival, thời gian đến dự kiến; trong dự án là ước tính
+  thời gian đi đường, không phải thời gian chắc chắn có người nhận ca.
+- GPS: Global Positioning System, hệ thống định vị.
+- API: Application Programming Interface; JWT: JSON Web Token.
+- OTP: One-Time Password; SMS: Short Message Service.
+- TTL: Time to Live, thời hạn hiệu lực của một offer.
+- CRUD: Create, Read, Update, Delete; UI: User Interface; UX: User Experience.
+
+4.1. Hiển thị nền
+MapWrapper -> src/features/maps/OpenStreetMap.tsx -> MapSurface + mapDocument.ts.
+Leaflet được đóng gói trong dự án; tile XYZ mặc định:
+https://tile.openstreetmap.org/{z}/{x}/{y}.png
+Có thể đổi qua EXPO_PUBLIC_MAP_TILE_URL. Hiển thị attribution OpenStreetMap.
+Mobile dùng WebView; web dùng iframe. Tile cần internet; có OSRM local không có
+nghĩa tile nền đã tải offline. Lỗi tile và lỗi routing là hai lỗi khác nhau.
+
+4.2. Tính ưu tiên trước khi gán
+Vị trí khách + vị trí CỬA HÀNG -> Spring Boot/DispatchService -> OSRM Table
+-> durationSeconds, distanceMeters cho từng ứng viên -> xếp hạng -> gửi offer.
+PostGIS lọc phạm vi ban đầu; không dùng khoảng cách đường chim bay làm ETA cuối.
+OSRM không gọi Google Maps để lấy nền hay kết quả điều phối.
+
+4.3. Hiển thị tuyến sau khi gán
+Khi nhận ca, backend lưu tọa độ cửa hàng thành snapshot của lần gán.
+GET /api/requests/{id}/road-route -> RescueQueryService -> RoadRoutingService
+-> OSRM Route -> geometry GeoJSON -> chuyển về {latitude, longitude}
+-> app vẽ polyline trên nền OSM.
+Đầu ra gồm purpose=to_pickup, distanceMeters, durationSeconds, coordinates.
+URL OSRM nhận longitude,latitude; UI và Google Maps dùng latitude,longitude.
+Tuyến hiện tại là cửa hàng đã lưu -> điểm nhận cứu hộ, KHÔNG phải marker GPS live.
+useRoadRoute cache theo ca/người được gán/snapshot; không gọi lại mỗi giây theo xe.
+Trong code có file/API GPS và nền tảng Realtime cũ, nhưng không dùng sự tồn tại
+của chúng để mô tả luồng hiện tại là đang phát trực tiếp hành trình cứu hộ viên.
+
+4.4. Chỉ đường thực tế cho cứu hộ viên
+ProviderRescueActions -> navigation.ts -> Linking.openURL:
+https://www.google.com/maps/dir/?api=1&destination=LAT,LNG&travelmode=two-wheeler&dir_action=navigate
+Không truyền origin: Google Maps dùng vị trí thực tế của thiết bị.
+Thông thường đích là khách; khi đang transporting/awaiting_completion với
+work_type=transport thì đích là điểm giao xe đã xác nhận.
+Google Maps tự tính đường/ETA riêng. Không gửi polyline OSRM sang Google Maps,
+không hứa hai dịch vụ cho ETA/tuyến giống nhau; chế độ thực tế tùy Google Maps.
+Đây là mở app/trang Google Maps bên ngoài, không nhúng Directions SDK trong app.
+
+4.5. Giới hạn và lỗi
+V9/V10 dùng vùng demo: latitude 15.95–16.18, longitude 108.05–108.34 kết hợp
+service_zones đang active. Đây không phải ranh giới hành chính toàn Đà Nẵng,
+và nằm trong vùng vẫn có thể không có đường hợp lệ trong dữ liệu OSRM.
+Điểm khách, cửa hàng và điểm giao phải qua kiểm tra vùng tương ứng.
+Thiếu tuyến/OSRM lỗi: không vẽ nối thẳng, không tự tạo ETA; cho biết chưa có tuyến.
+Tile lỗi: thông báo ảnh nền chưa tải; không diễn giải thành chưa cài dữ liệu OSRM.
+Tâm bản đồ mặc định chỉ để xem khu vực, không được coi là vị trí đã chọn của khách.
+Nhập nhãn địa chỉ không tự đổi tọa độ; khách phải chọn ghim/GPS và kiểm tra.
+Vị trí triển khai OSRM do URL backend quyết định; không gắn app với WSL hay thư mục
+routing đã bỏ. Tài liệu này không khẳng định OSRM đang chạy hoặc đã test lại hôm nay.
+
+5. ĐIỀU PHỐI TỰ ĐỘNG VÀ CHỐNG BỎ ĐÓI
+
+Nguồn: DispatchService.java; V7__configurable_fair_dispatch.sql; V10 shop dispatch.
+Khách chỉ chọn dịch vụ và dữ liệu ca, KHÔNG chọn trọng số hoặc ưu tiên nhiều mục.
+“Experience” còn trong tên biến kỹ thuật, nhưng số đo là số ca hoàn thành ĐÚNG
+LOẠI DỊCH VỤ của từng người, không đại diện toàn bộ kinh nghiệm nghề nghiệp.
+
+Lọc: tài khoản hoạt động, thành viên active/available, đội verified, có capability,
+cửa hàng/khách trong vùng và bán kính phục vụ, không bận ca hoặc offer khác.
+Loại người đã từ chối/hết hạn với yêu cầu này theo policy hiện tại.
+OSRM Table tính ETA; chỉ giữ người có ETA <= ETA thấp nhất + cửa sổ Δ.
+
+Chi phí, càng THẤP càng ưu tiên:
+C = wETA * A + wCompleted * B + wWait * D + wRecent * R
+A = min(max(ETA_i - ETA_min, 0) / Δ, 1)
+B = 1 - min(max(completed_i, 0) / completed_ref, 1)
+D = 1 - min(max(wait_seconds_i, 0) / wait_ref, 1)
+R = min(max(recent_accepted_i, 0) / recent_ref, 1)
+
+completed_i: số ca completed cùng service_code.
+wait_seconds_i: thời gian từ mốc muộn hơn giữa lần bật sẵn sàng và lần được mời
+gần nhất của dịch vụ; nếu chưa có dùng mốc tạo hồ sơ. KHÔNG phải khách chờ.
+recent_accepted_i: số offer đã accepted cùng dịch vụ trong cửa sổ gần đây.
+Cộng R là tăng chi phí của người vừa nhận nhiều ca, nên giảm ưu tiên, không tăng.
+Trọng số không âm, backend chuẩn hóa tổng về 1.
+
+Mặc định migration V7:
+Δ=300 giây; wETA=0.55; ba trọng số còn lại=0.15;
+completed_ref=50; wait_ref=7200 giây; recent window=7 ngày; recent_ref=10;
+ngưỡng bỏ qua=3; TTL offer=45 giây. Cấu hình theo service_types.
+Giao diện sửa dịch vụ hiện CHƯA có bộ điều chỉnh trọng số; không tự thiết kế nó
+như một chức năng đã có.
+
+Chống bỏ đói:
+- Đếm consecutive_skips theo người và dịch vụ, chỉ khi nằm trong nhóm ETA hợp lệ
+  nhưng không được chọn trong lần phát offer thành công.
+- Từ ngưỡng cấu hình, nhóm này đứng trước nhóm thông thường; số lần bỏ qua cao hơn
+  đứng trước, rồi mới chi phí C.
+- Được phát offer thì reset lượt bỏ qua, dù sau đó người nhận không bấm chấp nhận.
+- Hòa tiếp: ETA, quãng đường, chờ lâu hơn, số ca hoàn thành, UUID ổn định.
+Không bảo đảm người quá xa/không sẵn sàng/không đủ năng lực vẫn phải nhận được ca.
+
+Mỗi thời điểm một offer cho một yêu cầu. Từ chối hoặc hết hạn -> lọc/xếp lại
+người còn phù hợp, không gửi lại ngay cho chính người vừa bỏ offer.
+Quét hết hạn mặc định 15 giây/lần, nên chuyển lượt không phải đúng tuyệt đối giây 45.
+Ba người đều không nhận: kết thúc tìm kiếm bằng no_provider, cho khách thử lại/
+yêu cầu điều phối/gọi hotline nếu đã cấu hình, hoặc hủy theo quyền.
+Không hứa “chắc chắn nhận trong X giây”. 3 x 45 giây chỉ là tổng cửa sổ offer theo
+mặc định, chưa tính quét hạn, API/OSRM, mạng và thay đổi ứng viên.
+Khách thử lại có cooldown và số lần tối đa (mặc định 2 phút, 3 lần).
+API xử lý nhận đồng thời trong transaction; UI phải hỗ trợ offer mất hiệu lực.
+
+6. VÒNG ĐỜI CA
+
+searching -> offered -> assigned -> en_route -> awaiting_arrival_confirmation
+- Khách confirm_arrival -> arrived -> diagnosing.
+- Khách reject_arrival có lý do -> quay lại en_route.
+- diagnosing, không cần báo giá -> start_work -> repairing hoặc transporting.
+- diagnosing, cần báo giá -> awaiting_quote.
+  Từ chối báo giá -> diagnosing.
+  Duyệt báo giá -> quote_approved -> provider bấm bắt đầu -> repairing/transporting.
+- Công việc vận chuyển cần điểm giao theo policy; khách xác nhận tọa độ trước
+  bước duyệt/bắt đầu tương ứng, không chỉ nhập một dòng địa chỉ.
+- repairing/transporting -> awaiting_completion.
+  Khách xác nhận -> completed; phản hồi chưa xong -> đúng trạng thái công việc trước.
+- Không tìm được người -> no_provider.
+- Provider rút ca/cần thay người -> needs_dispatch -> admin điều phối lại.
+- Hủy ở trạng thái được phép -> cancelled, có lý do và lịch sử.
+
+Thao tác đổi trạng thái cần version; gặp xung đột thì tải lại, không giả thành công.
+Quá hạn bắt đầu/duyệt báo giá/xác nhận/công việc tạo cảnh báo can thiệp, KHÔNG
+tự hoàn tất. Admin có luồng xác minh riêng tại awaiting_completion với căn cứ.
+Ca completed có lời mời đánh giá tùy chọn; không bắt buộc đánh giá mới được thoát.
+Ca đóng không tiếp tục lộ số liên hệ/vị trí chính xác như một ca đang phục vụ.
+
+7. ĐÁNH GIÁ, KHIẾU NẠI, PHIẾU HỖ TRỢ
+
+Ba khái niệm phải phân biệt:
+- Review: số sao/nhận xét về ca hoàn thành, tùy chọn; admin ẩn/khôi phục có lý do,
+  không sửa sao/lời khách. Điểm trung bình chỉ dùng review chưa bị ẩn.
+- Incident: báo cáo sự cố của ca; customer gửi từ chi tiết ca, admin giải quyết
+  hoặc bác bỏ có lý do; màn quản trị riêng, không gom vào trang quản lý đội.
+- Support ticket: vấn đề app/tài khoản hoặc cuộc trao đổi gắn với incident.
+  Mỗi incident có một ticket liên kết, không yêu cầu khách gửi trùng.
+
+Phiếu hỗ trợ:
+- Người dùng chỉ xem phiếu của mình; admin xem hàng đợi toàn hệ thống.
+- Tiêu đề 5–160 ký tự; mô tả 10–4000; tối đa 10 phiếu chưa đóng/người.
+- Tin nhắn văn bản tối đa 4000 ký tự; tối đa 30 tin/phút/người.
+- open: chờ admin; waiting_user: chờ người dùng; resolved/dismissed: đã đóng.
+- Admin trả lời công khai -> waiting_user; khách/provider trả lời -> open.
+- Chế độ “Ghi chú nội bộ” chỉ admin thấy, không gửi cho người dùng.
+- Đóng phiếu cần lý do 5–500 ký tự và version; phiếu đã đóng chỉ đọc,
+  không có nút mở lại trong bản hiện tại.
+- Khi phiếu còn mở, admin cũng có thể chuyển open/waiting_user với lý do;
+  đây là đổi trạng thái phiếu, không phải tự phân công nhân viên hỗ trợ.
+- Gắn incident thì đồng bộ kết quả với màn quản trị khiếu nại.
+- Poll hội thoại mỗi 10 giây khi đang mở/foreground; không phải chat WebSocket,
+  không có typing indicator, seen receipt, online status hoặc gửi ngoại tuyến.
+
+8. THÔNG BÁO
+
+Hộp thông báo:
+- Trang danh sách riêng; lọc Tất cả/Chưa đọc, số chưa đọc, phân trang.
+- Mở chi tiết đánh dấu đã đọc, có lối vào ca/phiếu liên quan khi tồn tại.
+- Không có nút đánh dấu tất cả đã đọc, xóa thông báo hay tìm kiếm nếu API chưa có.
+- Các sự kiện ca mới lưu vào hộp dù thiết bị chưa đăng ký push.
+
+Admin thông báo chung:
+- Danh sách đã gửi -> soạn -> xem trước nội dung/nhóm/số dự kiến -> xác nhận gửi.
+- Chọn một nhóm all/customer/provider/admin.
+- Tiêu đề 5–160 ký tự; nội dung 10–4000.
+- Chỉ tài khoản đang hoạt động tại lúc gửi; không gửi ngược cho tài khoản tạo sau.
+- Số “hộp thông báo” là số bản ghi giao vào inbox, KHÔNG phải số người đã đọc.
+- Không có chọn cá nhân, lập lịch, sửa/thu hồi thông báo đã gửi.
+Hỗ trợ và thông báo chung mới là IN-APP; chưa gửi SMS/email/remote push.
+Push ca cứu hộ là tích hợp riêng đã có; không suy ra mọi thông báo đều đẩy ra
+màn khóa hoặc nhận được khi app đóng.
+
+9. XÁC THỰC, MẠNG VÀ DỮ LIỆU
+
+Ba trang riêng: chọn cách đăng nhập, SMS/OTP, email/mật khẩu kiểm thử.
+Đăng nhập kiểm thử chỉ hiển thị khi môi trường/cấu hình cho phép, dùng tài khoản
+Auth thật của môi trường test; không phải “bỏ kiểm tra quyền” hay tài khoản giả UI.
+Không hiển thị chọn role để tự cấp quyền. Role lấy từ tài khoản sau xác thực.
+Trang kiểm thử có nút chọn email mẫu theo ba vai trò; nút chỉ điền email,
+không đổi quyền hay miễn kiểm tra mật khẩu. Bảo mật tài khoản có thu hồi tất cả phiên.
+Provider được thêm/duyệt trong mạng đối tác; không có biểu mẫu đăng ký thợ công khai.
+
+Mất internet thì không thể tạo ca/nhận ca/đồng bộ bằng API. Giữ thông báo lỗi và
+dữ liệu đang nhập phù hợp, không dựng trạng thái gửi thành công hoặc tự xếp hàng
+offline nếu chưa có. Gọi điện chỉ là mở trình quay số nếu thiết bị/mạng thoại cho phép.
+Tile, OSRM và API có thể hỏng độc lập; UI phân biệt, có thử lại thay vì loading vô hạn.
+Dữ liệu thiếu hiển thị “—/Chưa có dữ liệu”, không thay bằng số 0 hoặc 5 sao tưởng tượng.
+
+10. DATABASE VÀ API PHỤC VỤ THIẾT KẾ
+
+Schema nguồn đến V11: 30 bảng ứng dụng public, không tính auth.users, bảng của
+extension hoặc flyway_schema_history. Đây là trạng thái migration, không phải
+xác nhận project Supabase của người dùng đã chạy đủ V11.
+
+Danh sách:
+profiles, rescue_teams, team_verification_requirements, team_verification_checks,
+service_types, service_zones, provider_members, team_capabilities, rescue_requests,
+dispatch_offers, quotes, request_status_events, case_attention_flags,
+request_feedback_events, provider_location_checkpoints, reviews, incident_reports,
+team_quality_alerts, push_devices, push_delivery_receipts, audit_logs,
+assistant_usage_events, api_rate_limit_windows, dispatch_recovery_jobs, push_outbox,
+provider_dispatch_stats, user_notifications, support_tickets, support_messages,
+announcements.
+
+Cài schema mới qua SQL Editor: scripts/01_init_database.sql, đã gộp kiểm tra schema/RLS.
+Tùy chọn scripts/02_seed_demo_teams.sql cho 12 cửa hàng test; tài khoản mẫu được tạo
+qua scripts/create-test-accounts.cjs. Reset/bootstrap/retention ở scripts/optional,
+SQL kiểm tra/nâng cấp cũ được sinh khi cần bằng scripts/build-init-sql.cjs vào .tmp.
+Claude Design KHÔNG chạy các script này.
+Không chạy reset trên dữ liệu thật; không trộn SQL Editor và Flyway tùy tiện.
+
+Nhóm API chính (không phải danh sách endpoint đầy đủ):
+- /api/me, /api/catalog/service-types: tài khoản và danh mục.
+- /api/requests: ca, lịch sử, chi tiết, road-route, actions, quotes, destination,
+  review, incidents, retry, support và cancel.
+- /api/provider: status, statistics, availability, offers nhận/từ chối, withdraw.
+- /api/operator: teams, providers/review, capabilities, verification, admin-role,
+  service-types, statistics, attention, audit-logs, retry/reassign/resolution.
+- /api/operator/moderation/{kind}: reviews, incidents, quality-alerts.
+- /api/notifications: danh sách, unread-count, chi tiết, đánh dấu đọc.
+- /api/support/tickets: tạo/xem, messages, status; /api/support/incidents/{id}.
+- /api/operator/announcements: danh sách, preview, gửi và chi tiết.
+- /api/assistant/message: trợ lý trong phạm vi app.
+
+JWT/quyền sở hữu/quyền admin được backend kiểm tra. Không cho công cụ thiết kế
+kết nối service-role/database password. Prototype dùng dữ liệu mô phỏng tách biệt.
+
+11. KIỂM KÊ GIAO DIỆN VÀ QUY TẮC BÀN GIAO
+
+app/ hiện có 60 file màn hình TSX, bỏ _layout:
+- 58 màn điều hướng (gồm trang đăng nhập kiểm thử có điều kiện).
+- 2 route bootstrap/chuyển hướng: app/index.tsx và app/support/incidents/[id].tsx.
+Không gọi 58 route là 58 thiết kế độc lập:
+- Home có 3 giao diện thực sự khác nhau theo role.
+- /support và /operator/support dùng chung list component, khác phạm vi.
+- Một route ca chứa nhiều trạng thái và quyền, không cần tạo route mới cho mỗi trạng thái.
+Danh mục R01–R58 và biến thể cần thiết nằm trong file UI đi kèm. Bỏ mốc 70/83 frame cũ.
+
+Điều hướng thực tế:
+- Customer: Trang chủ | Cứu hộ | Hoạt động | Tài khoản.
+- Provider: Nhận ca | Ca của tôi | Tài khoản (không thêm tab Vận hành trùng lặp).
+- Admin: Tổng quan | Toàn bộ ca | Điều phối | Tài khoản.
+- Quản lý admin mở từ tổng quan/điều phối/tài khoản, chia trang theo chức năng.
+- Hộp thông báo mở từ home theo role/tài khoản; không phải một tab đáy mới.
+
+Chỉ thiết kế chức năng đã có. Có thể cải thiện hệ thống component, thứ bậc thị giác,
+bố cục và khả năng đọc; đề xuất mới phải ghi riêng, không trộn vào bản hiện trạng.
+Thiết kế kéo/cuộn/click được với chữ/component chỉnh sửa được, không ảnh chụp
+toàn màn. Dữ liệu mô phỏng phải ghi “Dữ liệu minh họa”, không chứng minh API thật.
+
+12. NGUỒN THAM CHIẾU NHANH
+
+- Tabs và home: app/(tabs)/_layout.tsx; app/(tabs)/index.tsx.
+- Nhận ca/thống kê cá nhân: src/features/rescue/screens/OperationsWorkspace.tsx.
+- Tổng quan/biểu đồ: src/features/operator/AdminDashboard.tsx; AdminCharts.tsx.
+- Quản trị: app/operator/; src/features/operator/TeamManagementScreen.tsx;
+  ProviderDirectoryScreen.tsx; ModerationScreens.tsx.
+- Vòng đời: src/features/rescue/status.ts; services/caseProgress.ts;
+  components/details/CustomerRescueActions.tsx, ProviderRescueActions.tsx,
+  OperatorCompletionPanel.tsx (các đường dẫn tương đối trong src/features/rescue/).
+- Bản đồ: src/features/maps/; src/features/rescue/services/navigation.ts;
+  backend/src/main/java/com/danang/motorescue/service/RoadRoutingService.java;
+  backend/src/main/java/com/danang/motorescue/service/RescueQueryService.java.
+- Ưu tiên: backend/src/main/java/com/danang/motorescue/service/DispatchService.java.
+- Vòng đời backend: backend/src/main/java/com/danang/motorescue/service/CaseLifecycleService.java.
+- Thông báo/hỗ trợ: src/features/communications/;
+  backend/src/main/java/com/danang/motorescue/controller/CommunicationController.java.
+
+Không khẳng định “production-ready”, “đã test trực tiếp” hoặc “đã triển khai”
+chỉ từ việc có code, tài liệu hay bản thiết kế.

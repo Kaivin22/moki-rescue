@@ -77,7 +77,7 @@ chỉ tạo cảnh báo vận hành; không tự chuyển ca thành hoàn thành
 - Kết thúc ca đóng cảnh báo vòng đời, không tự đóng khiếu nại/sự cố hay yêu cầu hỗ trợ.
   Không cho đóng riêng cảnh báo hoàn tất/tranh chấp hoàn tất khi ca còn mở.
 - Sau hoàn thành/hủy, cứu hộ viên hết bị ràng buộc bởi ca cũ nhưng ở trạng thái tắt nhận ca;
-  phải chủ động bật hoạt động để cập nhật GPS và nhận ca mới.
+  phải chủ động bật hoạt động để sẵn sàng xuất phát từ cửa hàng và nhận ca mới.
 
 Kiểm thử thủ công trên app: chạy một ca đến bước chờ hoàn tất, thử lần lượt khách xác nhận,
 khách báo chưa xong, admin ghi chưa xác minh, và admin xác minh hoàn tất (có bước xác nhận lại).
@@ -88,13 +88,15 @@ phải khởi động lại backend để nạp code mới.
 
 ## Chạy
 
-Code hiện cần V9 cho vùng phục vụ demo. Database SQL thủ công đang ở V8: chạy file
-`scripts/06_upgrade_demo_service_coverage.sql`, rồi `scripts/02_verify_rls.sql` trước khi
-khởi động backend mới. Không chạy lại init/reset. Xem [thứ tự nâng cấp](../scripts/README.md#database-đã-tồn-tại).
+Code hiện cần V13 cho phạm vi xe máy xăng (V12 thêm địa chỉ cửa hàng, V11 thêm hộp thông báo và trao đổi hỗ trợ). Cài mới trên schema trống:
+`scripts/01_init_database.sql` đã gộp kiểm tra schema/RLS trước commit; sau đó tùy chọn `scripts/02_seed_demo_teams.sql`.
+Đọc [hướng dẫn cài lại và tài khoản demo](../scripts/README.md) trước khi tự reset dữ liệu cũ.
+Nếu muốn giữ database cũ để nâng cấp, đọc `scripts/archive/README.md`; không chạy lại init trên schema có dữ liệu.
+Xem [API/cách kiểm thử thông báo–hỗ trợ](../docs/COMMUNICATIONS.md).
 Khách/điểm giao/cứu hộ viên dùng chung kiểm tra vùng đang bật, giới hạn trong khung
 OSRM demo 15.95–16.18 Bắc, 108.05–108.34 Đông (gồm biên). Đây không phải toàn thành phố;
-vẫn phải có đường OSRM hợp lệ. GPS chờ ra ngoài vùng sẽ tắt nhận ca, xóa tọa độ cũ và
-trả `PROVIDER_OUTSIDE_SERVICE_AREA` (422), không tự hủy công việc đã nhận.
+vẫn phải có đường OSRM hợp lệ. Cửa hàng ngoài vùng không được dùng để bật nhận ca.
+Hai endpoint GPS cũ trả 410; tọa độ thiết bị không được dùng để cập nhật vị trí ghép ca.
 
 ```powershell
 .\mvnw.cmd test
@@ -122,7 +124,7 @@ Delivery là at-least-once: crash sau khi Expo nhận nhưng trước khi lưu k
 thể gửi lặp cùng `notificationId`; không cam kết exactly-once. Theo dõi bản ghi
 `failed`, `expired`, backlog và receipt khi vận hành.
 
-Flyway đọc migration từ `src/main/resources/db/migration`. `B1__initial_schema.sql` là baseline tích lũy cho database PostgreSQL/PostGIS sạch; V2 sửa khóa khi nhận offer, V3 phục hồi điều phối và V4 thêm push outbox. Hiện có V5 gộp vai trò, V6/V7 ghép ca có cấu hình/công bằng, V8 lưu vị trí lúc nhận ca và chặn GPS live, V9 đồng bộ giới hạn vùng OSRM demo. Thay đổi tiếp theo phải dùng V10 trở lên; không sửa migration đã applied.
+Flyway đọc migration từ `src/main/resources/db/migration`. `B1__initial_schema.sql` là baseline tích lũy cho database PostgreSQL/PostGIS sạch; V2 sửa khóa khi nhận offer, V3 phục hồi điều phối và V4 thêm push outbox. Hiện có V5 gộp vai trò, V6/V7 ghép ca có cấu hình/công bằng, V8 lưu vị trí lúc nhận ca và chặn GPS live, V9 đồng bộ giới hạn vùng OSRM demo, V10 điều phối từ cửa hàng/duyệt thành viên, V11 hộp thông báo/phiếu hỗ trợ/thông báo admin, V12 địa chỉ cửa hàng, V13 ngừng tiếp nhận xe máy điện và giữ lịch sử. Thay đổi tiếp theo phải dùng V14 trở lên; không sửa migration đã applied.
 
 Migration được chạy như một deployment job bằng database owner riêng:
 
@@ -135,7 +137,7 @@ $env:FLYWAY_PASSWORD = '<database-password>'
 .\mvnw.cmd flyway:validate
 ```
 
-Auto-migration khi application startup mặc định tắt. Chỉ bật `SPRING_FLYWAY_ENABLED=true` trong một migration job có `SPRING_FLYWAY_URL/USER/PASSWORD` riêng; runtime thường xuyên tiếp tục dùng role ít quyền `motorescue_api`. Xem đầy đủ luồng database mới, legacy baseline, staging và rollback tại [`scripts/README.md`](../scripts/README.md).
+Auto-migration khi application startup mặc định tắt. Chỉ bật `SPRING_FLYWAY_ENABLED=true` trong một migration job có `SPRING_FLYWAY_URL/USER/PASSWORD` riêng; runtime thường xuyên tiếp tục dùng role ít quyền `motorescue_api`. Cài mới bằng SQL Editor theo [`scripts/README.md`](../scripts/README.md); không trộn với Flyway trên cùng database.
 
 `OSRM_MOTORBIKE_BASE_URL` phải trỏ tới dataset đã preprocess bằng profile xe máy được kiểm chứng. Chuỗi `driving` trong URL không tự biến dataset ô tô thành xe máy. Khi router không trả tuyến hợp lệ, API trả trạng thái không khả dụng thay vì bịa Polyline thẳng.
 

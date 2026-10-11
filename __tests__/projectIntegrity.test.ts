@@ -137,9 +137,9 @@ describe('project integrity', () => {
       });
     const routes = collectRoutes(path.join(process.cwd(), 'app'));
     const inventory = fs.readFileSync(path.join(process.cwd(), 'docs', 'FIGMA_SCREEN_INVENTORY.md'), 'utf8');
-    expect(routes).toHaveLength(50);
+    expect(routes).toHaveLength(60);
     expect(inventory).toContain(`**${routes.length} màn hình ở cấp mã nguồn**`);
-    expect(inventory).toContain(`**${routes.length - 1} màn hình điều hướng thực tế**`);
+    expect(inventory).toContain(`**${routes.length - 2} màn hình điều hướng thực tế**`);
     for (const section of ['reviews', 'incidents', 'quality-alerts']) {
       expect(inventory).toContain(`/operator/${section}/[id]`);
     }
@@ -161,8 +161,21 @@ describe('project integrity', () => {
     expect(fs.existsSync(path.join(process.cwd(), 'specs', 'DaNang_RN_UI_Stitch.txt'))).toBe(false);
     const technical = fs.readFileSync(technicalPath, 'utf8');
     const ui = fs.readFileSync(uiPath, 'utf8');
-    expect(technical).toContain('ĐẶC TẢ KỸ THUẬT — MOKI RESCUE');
-    expect(ui.match(/^FRAME \d{2} —/gm)).toHaveLength(70);
+    expect(technical).toContain('ĐẶC TẢ NGHIỆP VỤ VÀ KỸ THUẬT — MOKI RESCUE');
+    expect(ui).toContain('CLAUDE DESIGN');
+    const collectRoutes = (directory: string): string[] =>
+      fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+        const fullPath = path.join(directory, entry.name);
+        if (entry.isDirectory()) return collectRoutes(fullPath);
+        return entry.name.endsWith('.tsx') && entry.name !== '_layout.tsx' ? [fullPath] : [];
+      });
+    const routePaths = collectRoutes(path.join(process.cwd(), 'app'))
+      .map((file) => path.relative(path.join(process.cwd(), 'app'), file).replace(/\\/g, '/'))
+      .filter((file) => !['index.tsx', 'support/incidents/[id].tsx'].includes(file))
+      .map((file) => `/${file.replace(/\.tsx$/, '').replace(/\/index$/, '')}`);
+    const entries = [...ui.matchAll(/^R(\d{2}) \| (\S+) \| /gm)];
+    expect(entries.map((entry) => entry[2]).sort()).toEqual(routePaths.sort());
+    expect(entries.map((entry) => Number(entry[1]))).toEqual(entries.map((_, index) => index + 1));
     expect(`${technical}\n${ui}`).not.toContain('Lịch Trình Đà Nẵng');
     expect(fs.existsSync(path.join(process.cwd(), 'docs', 'HARDCODE_AND_MOCK_AUDIT.md'))).toBe(true);
   });

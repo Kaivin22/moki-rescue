@@ -15,26 +15,26 @@ updates:
         patterns:
           - expo
           - expo-*
-          - "@expo/*"
+          - '@expo/*'
           - react
           - react-dom
           - react-native
           - react-native-*
-          - "@react-native*"
+          - '@react-native*'
         update-types:
           - patch
       frontend-minor-patches:
         patterns:
-          - "*"
+          - '*'
         exclude-patterns:
           - expo
           - expo-*
-          - "@expo/*"
+          - '@expo/*'
           - react
           - react-dom
           - react-native
           - react-native-*
-          - "@react-native*"
+          - '@react-native*'
         update-types:
           - minor
           - patch
@@ -45,7 +45,7 @@ updates:
         update-types: [version-update:semver-minor, version-update:semver-major]
       - dependency-name: expo-*
         update-types: [version-update:semver-minor, version-update:semver-major]
-      - dependency-name: "@expo/*"
+      - dependency-name: '@expo/*'
         update-types: [version-update:semver-minor, version-update:semver-major]
       - dependency-name: react
         update-types: [version-update:semver-minor, version-update:semver-major]
@@ -55,7 +55,7 @@ updates:
         update-types: [version-update:semver-minor, version-update:semver-major]
       - dependency-name: react-native-*
         update-types: [version-update:semver-minor, version-update:semver-major]
-      - dependency-name: "@react-native*"
+      - dependency-name: '@react-native*'
         update-types: [version-update:semver-minor, version-update:semver-major]
 
   - package-ecosystem: maven
@@ -66,12 +66,12 @@ updates:
     groups:
       backend-minor-patches:
         patterns:
-          - "*"
+          - '*'
         update-types:
           - minor
           - patch
     ignore:
-      - dependency-name: "*"
+      - dependency-name: '*'
         update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
@@ -82,4 +82,4 @@ updates:
     groups:
       github-actions:
         patterns:
-          - "*"
+          - '*'

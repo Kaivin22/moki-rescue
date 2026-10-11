@@ -4,9 +4,10 @@
 
 ## Kết luận số lượng
 
-- **49 màn hình điều hướng thực tế**: gồm màn đăng nhập kiểm thử chỉ mở ở môi trường cho phép.
-- **1 màn hình khởi động/điều hướng** tại `app/index.tsx`.
-- **50 màn hình ở cấp mã nguồn** nếu tính cả màn hình khởi động.
+- **58 màn hình điều hướng thực tế** (đếm theo route): gồm màn đăng nhập kiểm thử chỉ mở ở môi trường cho phép; không đồng nghĩa 58 thiết kế độc lập.
+- **2 route chỉ khởi động/chuyển hướng**: `app/index.tsx` và `/support/incidents/[id]` (tìm cuộc trao đổi gắn với khiếu nại).
+- **60 màn hình ở cấp mã nguồn** nếu tính cả hai route chuyển hướng, không tính `_layout.tsx`.
+- `/support` và `/operator/support` dùng chung giao diện danh sách, dữ liệu và quyền khác nhau theo vai trò; không tính là hai thiết kế độc lập.
 - 83 frame là số đề xuất Figma của bản cũ, chưa kiểm kê lại sau lần tách này; không dùng để báo cáo số interface đã có.
 
 ## Các màn hình tách thêm ngày 07/10/2026 — 12 route
@@ -31,6 +32,23 @@ Bổ sung ngày 08/10: `/operator/providers` — danh sách tài khoản cứu h
 36 màn cũ + 12 màn trên = 48. Trang chi tiết ca dẫn sang các trang con, không nhúng các biểu mẫu đánh giá/khiếu nại nữa. Trang chất lượng đội giữ phần tổng quan và liên kết tới trang kiểm duyệt từng nội dung. Quyền truy cập vẫn do backend kiểm tra, không chỉ ẩn nút trên app.
 
 Mã nguồn có màn hình không đồng nghĩa tất cả đã được chạy thử trên thiết bị. Không thay đổi PRD/SRS trong lần tách này.
+
+## Bổ sung thông báo và hỗ trợ ngày 08/10/2026
+
+| Route | Chức năng |
+|---|---|
+| `/notifications` | Hộp thông báo, lọc chưa đọc, phân trang |
+| `/notifications/[id]` | Đọc nội dung, đánh dấu đã đọc, mở ca/phiếu liên quan |
+| `/support` | Người dùng xem phiếu của mình; admin xem hàng đợi |
+| `/support/new` | Tạo phiếu vấn đề ứng dụng/tài khoản |
+| `/support/[id]` | Trao đổi, ghi chú nội bộ admin, trạng thái và kết quả xử lý |
+| `/support/incidents/[id]` | Chỉ chuyển hướng tới phiếu gắn với khiếu nại, không tính giao diện mới |
+| `/operator/support` | Lối vào hàng đợi hỗ trợ cho admin, dùng chung trang danh sách |
+| `/operator/announcements` | Danh sách thông báo admin đã gửi |
+| `/operator/announcements/new` | Soạn, chọn nhóm, xem trước và xác nhận gửi |
+| `/operator/announcements/[id]` | Nội dung đã gửi và số hộp thông báo được ghi nhận |
+
+Không dùng số route mới để khẳng định đã kiểm thử giao diện thực tế. Không cập nhật các frame lịch sử bên dưới.
 
 ## Bản đề xuất frame lịch sử (24/09/2026)
 

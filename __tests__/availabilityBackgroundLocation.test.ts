@@ -1,3 +1,12 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+import * as Location from 'expo-location';
+import * as TaskManager from 'expo-task-manager';
+import {
+  AVAILABILITY_TASK,
+  stopAvailabilityBackgroundTracking,
+} from '../src/features/rescue/services/availabilityBackgroundLocation';
+
 jest.mock('@react-native-async-storage/async-storage', () => ({
   __esModule: true,
   default: { removeItem: jest.fn() },
@@ -15,14 +24,6 @@ jest.mock('expo-location', () => ({
   startLocationUpdatesAsync: jest.fn(),
   requestBackgroundPermissionsAsync: jest.fn(),
 }));
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
-import * as Location from 'expo-location';
-import * as TaskManager from 'expo-task-manager';
-import {
-  AVAILABILITY_TASK,
-  stopAvailabilityBackgroundTracking,
-} from '../src/features/rescue/services/availabilityBackgroundLocation';
 const oldTask = jest.mocked(TaskManager.defineTask).mock.calls[0][1];
 
 beforeEach(() => {

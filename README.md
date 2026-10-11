@@ -1,6 +1,6 @@
 # Moki Rescue
 
-Ứng dụng điều phối cứu hộ xe máy theo thời gian thực cho một mạng lưới kín gồm các đội đối tác đã được xác minh tại Đà Nẵng. Sản phẩm không phải sàn mở cho thợ tự đăng ký và không thay thế 113/114/115.
+Ứng dụng điều phối cứu hộ xe máy xăng theo thời gian thực cho một mạng lưới kín gồm các đội đối tác đã được xác minh trong vùng phục vụ tại Đà Nẵng. Hiện chưa tiếp nhận xe máy điện, kể cả vận chuyển. Sản phẩm không phải sàn mở cho thợ tự đăng ký và không thay thế 113/114/115.
 
 ## Mô hình sử dụng
 
@@ -22,19 +22,20 @@ MVP chưa thu tiền trong ứng dụng. Cứu hộ viên gửi báo giá, khác
 - Catalog/chi tiết dịch vụ lấy từ backend; có trung tâm trợ giúp, hướng dẫn an toàn và trạng thái bảo mật tài khoản.
 - Tạo ca có idempotency, giới hạn spam, kiểm tra vùng phục vụ và chỉ một ca đang mở mỗi khách.
 - Khách có thể chọn điểm giao cho ca vận chuyển, hủy có lý do trước khi xác nhận đội đã đến, hoặc gửi yêu cầu hỗ trợ/khiếu nại khi ca đã đi sâu hơn.
-- Lọc PostGIS theo năng lực/bán kính/độ mới và độ chính xác GPS, sau đó xếp hạng toàn bộ ứng viên bằng ETA OSRM theo đường xe máy. Không dùng đường chim bay làm kết quả cuối.
-- Phát nhiều đề nghị có thời hạn; chỉ một cứu hộ viên có thể nhận ca nhờ transaction nguyên tử.
+- Lọc PostGIS theo trạng thái/năng lực/bán kính và tọa độ cửa hàng, sau đó dùng ETA OSRM, số ca hoàn thành và chính sách công bằng để xếp hạng trong nhóm ETA phù hợp. Không dùng đường chim bay làm kết quả cuối.
+- Gửi đề nghị có thời hạn lần lượt từng cứu hộ viên; từ chối hoặc hết hạn thì thử người tiếp theo. Nhận ca được bảo vệ bằng transaction nguyên tử.
 - State machine phía server, optimistic version, lịch sử chỉ thêm và audit log.
-- GPS chờ ca chỉ dùng nội bộ để ghép ca; lưu vị trí lúc nhận ca để vẽ tuyến tham khảo, không theo dõi di chuyển trực tiếp.
+- Lưu tọa độ cửa hàng khi phân công để vẽ tuyến tham khảo; không yêu cầu GPS chờ ca hoặc theo dõi di chuyển trực tiếp.
 - Sau khi nhận ca, khách thấy tên, đội, phương tiện và số liên hệ công việc đã xác minh của cứu hộ viên; số bị ẩn khi ca đóng.
 - Bản đồ OpenStreetMap chỉ vẽ geometry OSRM; cứu hộ viên mở Google Maps bên ngoài để dẫn đường. Xem [cấu hình bản đồ/OSRM](docs/MAP_ROUTING.md).
 - Xác nhận hai phía khi đến và hoàn thành; báo giá phải được khách duyệt.
 - Đánh giá chỉ gắn với ca đã hoàn thành, có sửa và xóa.
-- Ca mất provider chuyển sang hàng chờ điều phối lại; timeout, GPS cũ và xác nhận quá hạn tạo cờ attention thay vì quay loading vô hạn.
+- Ca mất provider chuyển sang hàng chờ điều phối lại; timeout và xác nhận quá hạn tạo cờ cần can thiệp thay vì quay loading vô hạn.
 - Điểm uy tín cứu hộ viên/đội chỉ tính từ đánh giá thật không bị ẩn. Hệ thống mở tín hiệu khi đủ mẫu và điểm thấp; admin kiểm tra review, gửi cảnh báo hoặc đình chỉ thủ công. Không tự khóa đội chỉ bằng điểm sao.
 - Push notification theo cài đặt thiết bị, tự đồng bộ token rollover, kiểm tra Expo receipt để dừng token không còn hợp lệ; onboarding, giao diện vi/en, consent versioned, yêu cầu xóa tài khoản và quy trình xác minh đội đối tác có audit.
 - Admin chỉnh được nội dung catalog nghiệp vụ song ngữ và trạng thái nhận ca; layout giao diện vẫn được kiểm soát trong codebase.
 - Admin có danh sách nhân sự đội, khiếu nại, cờ cần can thiệp và audit phân trang.
+- Hộp thông báo, phiếu hỗ trợ trao đổi với admin và thông báo chung theo nhóm vai trò; xem [phạm vi và giới hạn](./docs/COMMUNICATIONS.md).
 - ChatBox Gemini dạng bong bóng nổi chỉ hướng dẫn cách dùng Moki Rescue/quy trình trong app; câu ngoài lề, chẩn đoán xe và khẩn cấp được chặn cục bộ trước khi dùng quota.
 
 Thanh toán, ví, AI chẩn đoán, chatbot kiến thức chung, dashboard web và marketplace mở không thuộc MVP.
@@ -89,7 +90,7 @@ cd ..
 npm run dev:backend # nạp .env cho backend
 ```
 
-Database mới được dựng bằng Flyway theo đúng thứ tự trong [scripts/README.md](./scripts/README.md). Không có seed ca, vị trí, đội hay review giả; danh mục loại sự cố là cấu hình sản phẩm.
+Database mới/schema trống chỉ cần chạy `scripts/01_init_database.sql`: dựng schema B1–V13 và kiểm tra RLS/quyền trước khi commit. Tùy chọn chạy `scripts/02_seed_demo_teams.sql` để thêm 12 cửa hàng mô phỏng, không seed ca hay review giả. Xem [thứ tự SQL và tài khoản demo](./scripts/README.md). Database đã có dữ liệu không chạy lại init; migration Flyway gốc vẫn được giữ và không trộn hai cách quản lý trên cùng database.
 
 ## Expo SDK 57
 
@@ -99,11 +100,11 @@ Sau khi cập nhật mã nguồn, dừng Metro cũ, chạy `npm ci` rồi `npm s
 
 Expo Go trên thiết bị **phải hỗ trợ SDK 57**; số phiên bản ứng dụng Expo Go không phải số SDK. Theo [hướng dẫn xử lý lệch phiên bản của Expo](https://docs.expo.dev/troubleshooting/expo-go-version-mismatch/), tại thời điểm rà soát 21/09/2026, bản App Store được tài liệu ghi nhận vẫn ở SDK 54. Vì vậy, nâng source lên 57 không tự nâng khả năng của bản Expo Go đã cài: cần kiểm tra thông báo SDK trên chính thiết bị. Nếu bản đó không hỗ trợ 57, cần Expo Go 57 qua kênh iOS được Expo hỗ trợ hoặc development build; không thể ép tương thích bằng cách sửa manifest.
 
-Expo Go chỉ dùng cho các luồng tương thích với môi trường này. App không đăng ký remote push và không bật cập nhật GPS nền trong Expo Go; kiểm thử các chức năng đó cần development/preview build. Type-check, unit test và export bundle không thay thế kiểm thử đăng nhập OTP, bản đồ, quyền GPS và điều hướng trên iPhone thật.
+Expo Go chỉ dùng cho các luồng tương thích với môi trường này. App không đăng ký remote push trong Expo Go; kiểm thử push cần development/preview build. Cơ chế hiện tại không dùng GPS nền để nhận ca. Type-check, unit test và export bundle không thay thế kiểm thử đăng nhập OTP, bản đồ, quyền GPS và điều hướng trên iPhone thật.
 
 ## Kiểm tra
 
-Để thử đủ ba vai trò mà không nhận SMS/email, dùng [thiết lập tài khoản kiểm thử](./scripts/README.md#đăng-nhập-ba-vai-trò-không-cần-smsemail-chỉ-localstaging).
+Để thử đủ ba vai trò mà không nhận SMS/email, dùng [thiết lập tài khoản kiểm thử](./scripts/README.md).
 Mục đăng nhập email/mật khẩu chỉ hiện trong bản phát triển; phiên Supabase và quyền trong database
 vẫn là thật. Chỉ có code/script không có nghĩa tài khoản đã được tạo trên cloud: phải hoàn tất bước setup.
 
@@ -113,4 +114,4 @@ cd backend
 .\mvnw.cmd clean test
 ```
 
-Repository chỉ được coi là release candidate. Các gate Supabase staging, OSRM xe máy, push, background GPS và hai thiết bị thật nằm trong [release checklist](./docs/RELEASE_READINESS.md).
+Chưa đủ bằng chứng để gọi dự án production-ready. Các gate Supabase staging, OSRM xe máy, push và hai thiết bị thật nằm trong [release checklist](./docs/RELEASE_READINESS.md). Biên bản rà soát local trước đây: [09/10/2026](./docs/PROJECT_AUDIT_2026-10-09.md); hướng dẫn cài hiện hành nằm ở [scripts/README.md](./scripts/README.md).

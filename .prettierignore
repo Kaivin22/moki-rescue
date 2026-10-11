@@ -2,6 +2,13 @@ node_modules/
 backend/
 dist/
 .expo/
+.tmp/
+.credentials/
+.claude/
+.vscode/
+routing/
+SoDo_DuAn/
+task.md
 specs/
 docs/
 package-lock.json

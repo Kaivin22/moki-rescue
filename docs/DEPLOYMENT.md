@@ -2,10 +2,10 @@
 
 ## 1. Yêu cầu
 
-- Node `>=20.19`, npm, JDK 21.
+- Node `^22.13.0 || >=24.3.0` theo `package.json`, npm, JDK 21.
 - Supabase project riêng cho staging và production.
 - OSRM instance có dataset/profile xe máy đã kiểm chứng tại Đà Nẵng.
-- EAS project, Android/iOS credential và thiết bị thật cho background location/push.
+- EAS project, Android/iOS credential và thiết bị thật cho push/native permissions.
 - SMS provider được cấu hình trong Supabase Auth cho phone OTP.
 
 ## 2. Cấu hình
@@ -18,18 +18,18 @@ Chính sách ghép ca được lưu theo từng dòng `service_types`: ngưỡng
 
 ## 3. Supabase
 
-Với project mới:
+Với project mới, chọn đúng một cách quản lý schema:
 
-1. Dùng direct connection Supabase port `5432` (hoặc session pooler port `5432` khi chỉ có IPv4) và database owner riêng để chạy `flyway:info`, `flyway:migrate`, `flyway:validate` từ thư mục `backend`. Database chưa từng chạy SQL **không được** dùng `flyway:baseline`.
-2. Xác nhận B1/V2/V3/V4/V5/V6/V7/V8 thành công trong `flyway_schema_history`, sau đó chạy `scripts/02_verify_rls.sql`.
+1. Cài thủ công qua SQL Editor: chạy `scripts/01_init_database.sql` trên schema trống. File đã gộp B1–V13 và kiểm tra schema/RLS trước commit; không chạy lại các migration riêng. Tùy chọn `scripts/02_seed_demo_teams.sql` chỉ cho local/staging, xem cờ xác nhận trong file.
+2. Hoặc quản lý bằng Flyway: dùng direct connection Supabase port `5432` (hoặc session pooler port `5432` khi chỉ có IPv4) và database owner riêng chạy `flyway:info`, `flyway:migrate`, `flyway:validate` từ `backend`. Xác nhận B1–V13 trong `flyway_schema_history`; database trống **không được** baseline. Sinh kiểm tra chỉ đọc bằng `node scripts/build-init-sql.cjs --verify` từ gốc dự án rồi chạy `.tmp/verify-database.sql`. Không chạy bundle cài thủ công trên database do Flyway quản lý.
 3. Đặt mật khẩu ngẫu nhiên cho role `motorescue_api` bằng câu lệnh trong `scripts/README.md`, lưu vào secret manager và cấu hình `SPRING_DATASOURCE_USERNAME=motorescue_api`. Không dùng database owner hoặc `postgres` cho runtime.
-4. Bật phone auth và SMS provider. Đặt OTP expiry ngắn, rate limit, CAPTCHA/bot protection theo gói Supabase.
-5. Đăng nhập OTP cho tài khoản admin đầu tiên. Thay đúng một số E.164 trong `03_bootstrap_operator.sql` rồi chạy. Không dùng UPDATE không có `WHERE`.
-6. Bật Supabase Cron/`pg_cron`, sau đó chạy `04_schedule_retention.sql`.
-7. V8 chặn toàn bộ GPS Broadcast của ca, kể cả app cũ; kiểm tra tài khoản ngoài ca không đọc được vị trí qua API. Trạng thái ca dùng polling.
+4. Khi chuẩn bị vận hành thật mới cấu hình phone auth/SMS provider, OTP expiry, rate limit và bot protection. Khi test ba vai trò, dùng `scripts/create-test-accounts.cjs` theo runbook; việc rút gọn SQL không tự bật/tắt xác thực toàn project.
+5. Nếu dùng OTP cho admin thật: đăng nhập trước, thay đúng một số E.164 trong `scripts/optional/03_bootstrap_operator.sql` rồi chạy. Không cần bước này khi đã tạo admin bằng script tài khoản demo. Không dùng UPDATE không có `WHERE`.
+6. Nếu cần retention tự động, bật Supabase Cron/`pg_cron`, đọc kỹ rồi chạy `scripts/optional/04_schedule_retention.sql`. Đây là lịch xóa dữ liệu theo chính sách, không phải bước cài bắt buộc.
+7. V8 chặn GPS Broadcast của ca; V10 chuyển matching sang tọa độ cửa hàng và chặn endpoint GPS cũ. Kiểm tra tài khoản ngoài ca không đọc được vị trí qua API. Trạng thái ca dùng polling.
 8. Với đối tác thật, dùng mã hồ sơ nội bộ không chứa số CCCD/số điện thoại. Từng provider tự đăng nhập OTP trước; admin cấp quyền, khai báo capability, hoàn tất checklist và kích hoạt đội. Không đưa tài liệu pháp lý hoặc ảnh giấy tờ vào Supabase Storage.
 
-Chi tiết biến môi trường Flyway, bootstrap database sạch, cách baseline database legacy, quy trình staging và rollback nằm tại [`scripts/README.md`](../scripts/README.md). `baselineOnMigrate=false` và `cleanDisabled=true` là guard bắt buộc. `00_reset.sql` chỉ dùng local/staging được phép xóa và yêu cầu cờ xác nhận trong cùng SQL session; sau reset phải chạy lại Flyway. Không chạy reset trên production có dữ liệu cần giữ.
+Hướng dẫn SQL/tài khoản mẫu nằm tại [`scripts/README.md`](../scripts/README.md); migration backend tại [`backend/README.md`](../backend/README.md). `baselineOnMigrate=false` và `cleanDisabled=true` là guard bắt buộc. `scripts/optional/00_reset.sql` chỉ dùng local/staging được phép xóa và yêu cầu cờ xác nhận trong cùng SQL session; database mới không cần reset. Schema có dữ liệu cần giữ phải được backup và nâng cấp theo đúng phương thức quản lý, không đoán version hoặc tự baseline database legacy.
 
 ## 4. Routing
 
@@ -67,7 +67,7 @@ Liveness dùng `GET /api/health`; readiness kiểm database bằng `GET /api/hea
 
 ## 6. Mobile
 
-Expo Go SDK 54 phù hợp smoke luồng foreground. Background location, push token/channel và native permissions phải kiểm chứng bằng preview/development build:
+`package.json` hiện khai báo Expo SDK 57; `AGENTS.md` vẫn ghi chính sách SDK 54. Đây là điểm cần chủ dự án xác nhận để đồng bộ chính sách, không tự nâng/hạ package. Chỉ smoke bằng Expo Go hỗ trợ đúng SDK của source; không suy ra khả năng tương thích từ số phiên bản ứng dụng. Push token/channel và native permissions phải kiểm chứng bằng preview/development build:
 
 ```powershell
 npx eas-cli build --platform android --profile preview
@@ -77,13 +77,12 @@ npx eas-cli build --platform ios --profile production
 
 Kiểm tra chọn/kéo ghim OpenStreetMap, geometry OSRM, attribution không bị che, lỗi mạng, quyền location, kill/resume, push và nút Google Maps trên Android/iOS thật.
 
-Availability từ 05/09/2026: provider có task nền riêng khi bật sẵn sàng, gắn với
-user của installation. Khi nhận ca, task này dừng; chỉ lưu vị trí lúc nhận ca cho tuyến tham khảo, không khởi động tracking ca;
-tắt sẵn sàng/đăng xuất phải dừng task. Không cấp quyền nền hoặc Expo Go thì UI báo
-foreground-only. Cần build native mới vì nội dung quyền location đã thay đổi.
-Test trên thiết bị: đứng yên và khóa màn hình trên 3 phút, chuyển app, thu hồi quyền,
-đổi tài khoản, tắt sẵn sàng khi prompt đang mở. Force-stop/hệ điều hành chặn chạy nền
-vẫn có thể ngừng GPS; backend tiếp tục loại GPS quá 180 giây, không giả lập heartbeat.
+Availability hiện dùng vị trí cửa hàng đã cấu hình; không yêu cầu quyền GPS để bật sẵn sàng.
+Khi nhận ca, lưu tọa độ cửa hàng cho tuyến tham khảo, không khởi động tracking ca.
+Mã xử lý task GPS cũ được giữ để dừng task và dọn chủ sở hữu trên bản app nâng cấp,
+không phải tính năng GPS nền đang dùng. Test thu hồi quyền location vẫn bật nhận ca được
+khi cửa hàng/thành viên hợp lệ; cửa hàng ngoài vùng hoặc thành viên chưa duyệt phải bị chặn.
+Thử đóng/mở lại app, đổi tài khoản, nhận push đề nghị và mở Google Maps đến đúng điểm đón.
 
 ## 7. CI/CD và release
 

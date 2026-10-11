@@ -1,434 +1,627 @@
-Design a complete production mobile UI for “Moki Rescue” —
-a real-time motorcycle roadside-assistance dispatch application.
-
-Platform : React Native / Expo (iOS + Android)
-Language : Vietnamese (vi-VN authoritative)
-Frame    : 390×844 px base; also validate 360×800 and tall Android devices
-Scope    : customer, verified provider, operations admin
-Total    : exactly 70 business frames below
-
-Do not invent provider names, teams, prices, requests, routes or user data.
-Use placeholders such as [Tên cứu hộ viên] only in design annotations. Runtime
-content comes from backend/Supabase. Emergency numbers 113/114/115 are official
-operational constants, not demo data.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FOUNDATIONS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Visual direction: “Operational Calm”. Trustworthy, high contrast, compact enough
-for roadside use, but not a police/emergency-service impersonation.
-
-Core colors (match src/constants/colors.ts):
-  #F7FBFD  Cloud canvas       page background and text on strong status colors
-  #282E30  Ink                primary text and icons only; never a background
-  #92C5FD  Brand blue         icon wells, informational emphasis
-  #DDF186  Brand lime         primary CTA and active navigation
-  #2B659B  Accessible blue    links, focus, routes and selected controls
-  #465154  Secondary text
-  #5C686C  Muted text
-  #28744B  Success
-  #875400  Warning
-  #B4232C  Error/destructive
-
-Brand blue and brand lime always use ink text/icons on top. They are not used
-as body text on the cloud canvas because those pairings do not meet WCAG AA.
-No page, hero, navigation bar, card or modal header uses #282E30 as a fill.
-
-Typography: Be Vietnam Pro.
-  Display 34/42 Bold; H1 28/36 Bold; H2 22/28 Bold; H3 18/24 Semibold;
-  Body 15/22 Regular; Caption 13/18; Label 12/16 sentence case.
-
-Spacing: 4, 8, 16, 24, 32, 48, 64.
-Radius: 8, 12, 16, 24, 28; avoid excessive pill shapes.
-
-Status bar and safe area:
-  - Never place content under iOS notch/Dynamic Island or Android cutout.
-  - All light app pages use dark status icons.
-  - Full-screen map includes a readable top scrim and controls below top inset.
-  - Bottom CTA includes tab-bar/gesture inset and remains visible with keyboard.
-
-Accessibility:
-  - minimum target 44×44 pt, preferred 48×48;
-  - status always uses text plus icon/color;
-  - body contrast WCAG AA where practical;
-  - form errors sit next to the relevant action and use accessibility alert;
-  - dynamic text may wrap; never clip phone, price, status or safety copy.
-
-Motion:
-  - press feedback 120–200 ms;
-  - navigation uses native stack transition;
-  - route line only animates when geometry exists;
-  - no decorative animation over a map or behind critical text;
-  - reduce-motion removes scale/bounce and keeps state changes immediate.
-
-Map rules:
-  - red marker = customer pickup; accessible-blue marker = assigned provider;
-  - Polyline is drawn only from backend RoadRoute.coordinates;
-  - never draw a straight line between markers as fallback;
-  - show “Chưa có tuyến đường giao thông hợp lệ” when router fails;
-  - provider identity/contact appears only after assignment and during active ca.
-
-Shared components:
-  AppButton, AppInput, ScreenHeader, RequestSummaryCard, status badge,
-  service card, offer card, quote panel, timeline item, map marker/callout,
-  loading/error/empty panel, permission notice and destructive confirmation.
-
-Bottom navigation:
-  Light card surface with a subtle top divider, safe-area aware.
-  Customer: Trang chủ | Cứu hộ | Hoạt động | Tài khoản.
-  Provider: Trang chủ | Hoạt động | Vận hành | Tài khoản.
-  Admin: Trang chủ | Hoạt động | Vận hành | Tài khoản.
-  Accessible-blue active icon/label; muted-ink inactive icon/label.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-70 BUSINESS FRAMES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-═══ BOOTSTRAP & ONBOARDING — 4 FRAMES ═════════════
-
-FRAME 01 — Bootstrap
-Cloud-canvas screen, centered approved Moki Rescue monkey/motorcycle logo and
-native loading indicator. No fake progress percentage. Route decision waits for
-fonts, session and onboarding flag. Status bar dark and safe-area clean.
-
-FRAME 02 — Onboarding: đúng loại sự cố
-Cloud-canvas background with the approved monkey logo as a low-opacity watermark;
-dark construct icon in a brand-blue tile. Title “Gửi đúng loại sự cố”.
-Explain that short description, vehicle type and location support capability
-matching. Skip in top-right; progress 1/3; “Tiếp tục” at safe bottom.
-
-FRAME 03 — Onboarding: tuyến đường thật
-Navigate-circle illustration with a road-shaped path, never a straight connector.
-Title “Ghép theo tuyến đường thật”. Explain road ETA and verified teams. Progress
-2/3, same component geometry as frame 02.
-
-FRAME 04 — Onboarding: dữ liệu tối thiểu
-Shield-check icon. Title “Ít dữ liệu, nhiều kiểm soát”. Explain active-case GPS,
-two-sided confirmation and no personal documents. Progress 3/3; CTA “Bắt đầu”.
-
-═══ AUTH — 4 FRAMES ═══════════════════════════════
-
-FRAME 05 — Login: phone
-Light canvas, approved logo, title “Đăng nhập an toàn” and card form. Display-name input for first-time
-profile, Vietnamese phone input, terms/privacy links, required consent checkbox,
-CTA “Gửi mã OTP”. Explain that new accounts receive customer role.
-
-FRAME 06 — Login: OTP
-Masked E.164/local phone, six-digit numeric input, verify CTA, resend countdown,
-change-phone action. Do not expose Supabase error internals.
-
-FRAME 07 — Login: send/validation error
-Same phone form with inline error for invalid Vietnamese number, SMS failure or
-rate limit. Keep entered non-sensitive fields and provide retry only when allowed.
-
-FRAME 08 — Login: OTP invalid/expired
-OTP form with error alert, clear next step, resend cooldown and change-phone link.
-Differentiate expired/too-many-attempts in text, not only color.
-
-═══ HOME BY ROLE — 3 FRAMES ═══════════════════════
-
-FRAME 09 — Customer home
-Brand-blue hero greeting + “Khách hàng” using ink text. Primary CTA “Yêu cầu cứu hộ xe máy”. Red-soft
-115 handoff card, active request list, backend service cards and “Xem tất cả”.
-Empty active-request state is honest, not populated with mock cards.
-
-FRAME 10 — Provider home
-Hero identifies “Cứu hộ viên”. CTA opens Vận hành. Show only provider’s active ca;
-do not show customer service catalog as a creation flow.
-
-FRAME 11 — Admin home
-Operational summary copy and CTA to Vận hành. Active requests use real backend
-cards. The admin role is identified clearly without a fake VIP theme.
-
-═══ CREATE REQUEST — 7 FRAMES ═════════════════════
-
-FRAME 12 — Request step 1: safety
-Safe-area ScreenHeader with back-to-home action, visible 1/3 progress, two safety
-questions and one bottom CTA. Do not show service or location fields yet.
-
-FRAME 13 — Emergency handoff
-When injury/fire/fuel leak/continuing danger is true, insert red safety panel and
-three call buttons 115/114/113. Explain Moki Rescue technical request is stopped.
-
-FRAME 14 — Request step 2: issue and vehicle
-Visible 2/3 progress, backend service radio cards, vehicle-power segments and
-optional description. Back returns to safety answers; continue requires a service.
-
-FRAME 15 — Request step 3: pickup map confirmed
-Map dominates the upper area. A rounded bottom sheet contains GPS action, draggable
-red marker state, accuracy/manual-adjust label, landmark/note, safety checkbox and
-the primary “Tìm đội cứu hộ” CTA. Back returns to step 2; no field is lost.
-
-FRAME 16 — Service catalog unavailable
-Error panel in step 2, retry action and no fake service choices. Continue is not
-allowed while the backend catalog is unknown.
-
-FRAME 17 — GPS denied/requesting
-Step 3 shows deterministic loading or an inline denial plus “Mở cài đặt hệ thống”.
-Do not insert Da Nang center coordinates and do not show an endless animation.
-
-FRAME 18 — Backend rejects creation
-Preserve form and map after OUTSIDE_SERVICE_AREA, REQUEST_RATE_LIMITED or an active
-request conflict. Show server-safe message and direct user to active ca if relevant.
-
-═══ ACTIVITY — 2 FRAMES ═══════════════════════════
-
-FRAME 19 — Active requests
-Segment/header for open work. Request cards show service icon, status text,
-pickup landmark, ETA only when available and latest update. Tap opens detail.
-
-FRAME 20 — Request history
-Completed/cancelled list from backend. Empty state uses icon/copy, not sample jobs.
-Closed cards never expose provider contact or exact live GPS.
-
-═══ OPERATIONS — 4 FRAMES ═════════════════════════
-
-FRAME 21 — Provider operations
-Verified team/status card, availability switch, GPS tracking state, expiring offer
-cards with road distance/ETA and atomic “Nhận ca”. Show active ca link when busy.
-
-FRAME 22 — Admin operations: monitoring
-List operational requests, no-provider indicators and links to detail. Normal
-matching remains automatic; this view supports monitoring rather than manual assignment.
-
-FRAME 23 — Admin operations: intervention
-Show requests that require intervention plus entry to “Đội và phân quyền”. Role
-boundaries are visible; admin does not receive provider availability controls.
-
-FRAME 24 — Provider GPS denied/stale/error
-Availability cannot be represented as safely active. Show permission/network/GPS
-reason, system-settings action and last-known-state warning without fake location.
-
-═══ PROFILE, SETTINGS, LEGAL, ADMIN — 8 FRAMES ════
-
-FRAME 25 — Customer profile
-Brand-blue identity card with ink text, minimal display name, masked phone and customer role.
-Rows: edit, security, settings, help, privacy, terms, logout.
-
-FRAME 26 — Internal profile
-Same information architecture with verified provider/admin role label.
-Do not display fabricated ratings, revenue, completed jobs or rank.
-
-FRAME 27 — Settings
-Language selector, foreground-location permission, push-registration status,
-privacy explanation and delete-account link. Vietnamese and English copy are
-complete; changing language refreshes server-localized catalog/request data.
-
-FRAME 28 — Edit profile
-Single minimal display-name input with current backend value, validation, save and
-loading/error states. No avatar/personality fields not supported by backend.
-
-FRAME 29 — Delete account
-Risk explanation, active-case block, typed/explicit confirmation and destructive
-CTA. Clarify this creates a deletion request and audit retention may remain.
-
-FRAME 30 — Privacy policy
-Versioned long-form page: minimal profile, Auth phone, active-case GPS, provider
-verification, processors, sharing, retention and user rights.
-
-FRAME 31 — Terms of use
-Versioned long-form page: technical-only scope, safety handoff, truthful location,
-two-sided confirmations, quote responsibility and prohibited abuse.
-
-FRAME 32 — Teams and roles (admin)
-Real backend teams with status. Create a pending team only with team name, internal
-partner file code, verified operations hotline and radius. Search an existing account
-that has signed in with OTP before assigning provider/contact/vehicle; never create a
-provider password, shared team login or ask the admin to copy a UUID. Configure team
-capabilities, then show the database-driven offline checklist, progress, minimal notes,
-provider/capability prerequisites and verified-by/time. The activate action stays
-disabled until saved data is ready; never upload legal or identity documents.
-Verify/suspend and admin grant/revoke remain admin-only. Include an inline
-bilingual service-catalog editor. Catalog code is
-immutable; admin may edit approved icon, labels, descriptions, order, quote policy
-and active state. Show real team rating/count, recent reviews, hidden-review state,
-quality signal severity, issued-warning count and the manual suspension-review hint.
-Warning, resolve, hide/restore and suspend actions require explicit reasons and audit.
-Never auto-lock a team from rating alone. No seeded teams or fabricated reputation.
-
-═══ REQUEST DETAIL — CUSTOMER — 10 FRAMES ═════════
-
-FRAME 33 — Searching/offered
-Map centered on pickup, no provider identity. Status text differentiates searching
-and offer distribution while keeping the same allowed customer actions.
-
-FRAME 34 — No provider
-Clear terminal state, support hotline only when configured, customer cancel and
-staff retry separation. Never show indefinite spinner.
-
-FRAME 35 — Assigned
-Provider name, verified team, rescue vehicle and job phone become visible. Full-map
-button appears; route state may still be pending.
-
-FRAME 36 — Provider en route
-Live marker, real road Polyline/ETA, call action, real provider rating/count and GPS update timestamp. Routing
-failure uses warning, not straight line.
-
-FRAME 37 — Arrival confirmation
-Two prominent actions: “Xác nhận cứu hộ viên đã đến” and “Chưa thấy cứu hộ viên”.
-Provider identity remains visible for real-world verification.
-
-FRAME 38 — Arrived/diagnosing
-Confirmed presence, diagnostic status and timeline. Customer waits; no premature
-completion or review control.
-
-FRAME 39 — Quote approval
-Quote version, description, repair/transport work type and VND amount. Approve and
-reject are equally clear; show loading/conflict response.
-
-FRAME 40 — Repairing/transporting
-Status and selected work type prominent. Map/contact remain for active case. No
-payment UI and no unapproved price mutation.
-
-FRAME 41 — Completion confirmation
-Actions “Xác nhận đã hoàn tất” and “Công việc chưa hoàn tất”. Rejection returns to
-the exact active work type, not a generic state.
-
-FRAME 42 — Completed + review
-Closed timeline, provider contact hidden by backend, 1–5 star editor, optional
-comment, save/edit and destructive delete confirmation. Place the review prompt before
-the long timeline and show provider/team reputation computed from non-hidden reviews.
-
-═══ REQUEST DETAIL — PROVIDER — 8 FRAMES ══════════
-
-FRAME 43 — Provider assigned
-Customer pickup/map visible only after atomic acceptance. CTA “Bắt đầu di chuyển”
-and active GPS sharing notice.
-
-FRAME 44 — Provider en route
-Road route, pickup marker, provider GPS state and CTA to request arrival
-confirmation. Do not let provider self-confirm arrival.
-
-FRAME 45 — Waiting for customer arrival confirmation
-Status explains customer must confirm. Provider can continue tracking or perform
-audited operational cancellation when truly blocked.
-
-FRAME 46 — Arrival confirmed
-CTA “Bắt đầu kiểm tra xe”, pickup/context information and timeline.
-
-FRAME 47 — Diagnosing without required quote
-Two work-type actions: repair at location or transport. The choice is persisted in
-request work_type before work begins.
-
-FRAME 48 — Diagnosing with quote
-Description input, VND numeric input, repair/transport selector and submit. Inline
-validation; no prefilled fake amount.
-
-FRAME 49 — Repairing/transporting
-Selected work status, tracking notice and CTA requesting customer completion
-confirmation. Provider cannot mark completed alone.
-
-FRAME 50 — Waiting for completion confirmation
-Read-only wait state with timeline and audited stop-case action. No repeated submit
-button that could duplicate transition.
-
-═══ REQUEST DETAIL — STAFF — 2 FRAMES ═════════════
-
-FRAME 51 — Staff active-case monitor
-Full status, real route/provider/team data and timeline. Staff may cancel with a
-specific audit reason but cannot impersonate customer confirmations.
-
-FRAME 52 — Staff no-provider recovery
-No-provider cause/routing status, timeline and “Tìm lại đội phù hợp”. Retrying
-returns request to searching and must show backend conflict/error.
-
-═══ SERVICE CATALOG — 7 FRAMES ════════════════════
-
-FRAME 53 — Service catalog success
-Backend list with icon, label, description and quote policy. Cards navigate to
-details; no static fallback catalog.
-
-FRAME 54 — Service catalog loading
-Centered/contained loader and descriptive text; preserve header/back navigation.
-
-FRAME 55 — Service catalog error
-Cloud-offline/error icon, explanation that mock data is not substituted, retry.
-
-FRAME 56 — Empty service catalog
-Operational empty state: no active services published. No request CTA.
-
-FRAME 57 — Service detail requiring quote
-Dynamic service identity plus process timeline including diagnosis and customer
-quote approval. Customer CTA passes the real service code to request form.
-
-FRAME 58 — Service detail without required quote
-Dynamic identity and shorter process. Explain two-sided arrival/completion still
-apply even without a pre-work quote.
-
-FRAME 59 — Service unavailable/not found
-Safe error page for deactivated/unknown code with return-to-catalog action.
-
-═══ HELP & SAFETY — 3 FRAMES ══════════════════════
-
-FRAME 60 — Help center with hotline
-Safety, service and security quick links; guidance for missing provider, route
-failure and quote rejection; configured support hotline tap-to-call.
-
-FRAME 61 — Help center without hotline
-Development/configuration state clearly says hotline is not configured. Legal and
-safety help remain accessible; never insert a fake phone number.
-
-FRAME 62 — Roadside safety
-Red danger panel, 115/114/113 call cards, five practical safety steps and a scope
-disclaimer. Calls open the OS dialer; app never claims the call succeeded.
-
-═══ ACCOUNT SECURITY — 2 FRAMES ═══════════════════
-
-FRAME 63 — OTP verified
-Light sky shield hero, masked phone, verified state, real last-sign-in/account-created
-timestamps and anti-phishing guidance from the current Supabase session.
-
-FRAME 64 — OTP unverified/unavailable state
-Same structure with clear unverified status and support direction. Do not fabricate
-session history or a multi-device list unsupported by backend.
-
-═══ FULL-SCREEN RESCUE MAP — 4 FRAMES ═════════════
-
-FRAME 65 — Live road route
-Full map, safe top back/title controls, pickup/provider markers, backend Polyline,
-road km/minutes, provider card, last GPS update and call button in bottom sheet.
-
-FRAME 66 — Waiting for provider location
-Pickup marker only, bottom status “Đang chờ vị trí cứu hộ viên”. Identity may be
-shown if assigned; no estimated line or invented coordinate.
-
-FRAME 67 — Routing unavailable
-Both real markers when available, no Polyline, explicit router warning and the rule
-that the app does not replace it with a straight connector.
-
-FRAME 68 — Map access/not-found error
-No map leakage. Error explains request is absent or current account has no access;
-single safe back-to-activity action.
-
-═══ RESTRICTED APP ASSISTANT — 2 FRAMES ════════════
-
-FRAME 69 — Moki Rescue assistant ready/in-scope
-Authenticated app surface with a 56 pt floating lime chat button above bottom
-navigation and gesture inset. Open state is a safe-area bottom sheet with scope
-label “Hỗ trợ cách dùng app · Không chẩn đoán xe”, session-only messages, three
-real feature prompts, multiline 500-character composer, sending state and clear/
-close 44 pt controls. No Gemini key, raw model metadata or fake chat history.
-
-FRAME 70 — Assistant guard/quota/upstream state
-Same sheet shows a deterministic local refusal for off-topic/vehicle-diagnosis
-requests, emergency handoff to 113/114/115, or an explicit quota/upstream error.
-Outside-scope requests do not call Gemini. Keep the composer usable when safe;
-do not imply that the assistant replaces a mechanic or emergency service.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DELIVERY RULES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. Design all 70 frames and keep the numbering above.
-2. Use one component system across roles; role changes permission/content, not brand.
-3. Every frame includes top/bottom safe-area annotation.
-4. Map frames include status-bar scrim and no straight-line fallback.
-5. Loading, error and empty frames use no sample business records.
-6. Payment, AI diagnosis, general-purpose AI chat, hotel/tourism, VIP and travel-place UI are forbidden. The restricted Moki Rescue app-support assistant in frames 69–70 is allowed.
-7. Customer never browses or selects nearby providers.
-8. Provider contact is absent before assignment and after case closure.
-9. All Vietnamese text must be proofread with full diacritics.
-10. Figma prototype paths: happy path, emergency handoff, no provider, quote reject,
-    GPS denied, router unavailable and concurrent offer loss.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ĐỀ BÀI THIẾT KẾ UI/UX CHO CLAUDE DESIGN — MOKI RESCUE
+Đối chiếu mã nguồn ngày 09/10/2026
+Tên file giữ lại để không mất liên kết cũ; nội dung này không còn là prompt Stitch.
+
+CÁCH SỬ DỤNG
+
+Đọc file này cùng Moki_Rescue_ky_thuat.txt. Thiết kế lại trải nghiệm thị giác cho
+ứng dụng cứu hộ xe máy xăng đang có, không tự mở rộng chức năng/backend.
+Xe máy điện (kể cả vận chuyển) hiện ngoài phạm vi tiếp nhận mới; giữ lịch sử cũ.
+Nếu công cụ chỉ nhận một file, vẫn phải giữ các ràng buộc nghiệp vụ ở phần A.
+Đầu ra là prototype tương tác và thành phần chỉnh sửa được, không bộ ảnh chụp.
+Không cần kết nối Figma, Google Stitch, Supabase hoặc chạy mã dự án để thiết kế.
+Không coi bản prototype là bằng chứng phần mềm đã chạy thật.
+
+Mục tiêu: giao diện rõ ràng, dùng nhanh khi đang gặp sự cố; ba vai trò có nhiệm vụ
+và bố cục khác nhau, dùng chung ngôn ngữ thiết kế. Có thể sáng tạo lại layout,
+component, khoảng trắng và phân cấp thông tin, nhưng không đổi quyền/hành động.
+
+A. RÀNG BUỘC NGHIỆP VỤ KHÔNG ĐƯỢC THIẾT KẾ SAI
+
+1. Ba vai trò:
+   Customer: gửi ca và theo dõi/xác nhận.
+   Provider: nhận ca, xử lý ca, xem thống kê cá nhân.
+   Admin: theo dõi mạng lưới, duyệt, điều phối ngoại lệ và hỗ trợ.
+   Không thêm chủ cửa hàng/quản lý đội hoặc giao diện tự chọn role sau đăng nhập.
+2. Cửa hàng/đội KHÁC tài khoản cứu hộ viên. Nhiều thành viên có thể thuộc một đội.
+   12 cửa hàng seed không đồng nghĩa 12 người dùng hay 12 hồ sơ đang chờ duyệt.
+3. Trước khi gửi yêu cầu, khách không chọn cứu hộ viên, trọng số, “gần nhất” hoặc
+   “nhiều kinh nghiệm”. Hệ thống tự xếp theo ETA, số ca hoàn thành cùng dịch vụ,
+   thời gian chờ được mời, tải ca gần đây và chống bỏ đói.
+4. Matching dùng vị trí CỬA HÀNG. Bật sẵn sàng không bắt xin GPS live.
+   Người đang ở xa cửa hàng cần tắt sẵn sàng; không vẽ xe di chuyển trên bản đồ.
+5. Bản đồ trong app = nền OSM + tuyến OSRM từ cửa hàng đã lưu tới khách.
+   Nhãn phù hợp: “Điểm xuất phát”, “Tuyến đường ban đầu”, “ETA ước tính”.
+   Không dùng “Vị trí trực tiếp/Live tracking/Còn đúng X phút” cho snapshot này.
+   Provider có nút mở Google Maps bên ngoài để dẫn đường từ vị trí thật.
+6. OSM tile lỗi khác OSRM route lỗi; không có route thì không vẽ đường thẳng
+   thay thế và không tạo ETA giả. Vùng phục vụ chỉ là vùng demo trong Đà Nẵng,
+   không nói hỗ trợ toàn thành phố/tỉnh hay toàn quốc.
+7. Khách phải xác nhận đã đến và hoàn tất; provider không tự đóng completed.
+   Báo giá được duyệt -> quote_approved -> provider bấm bắt đầu công việc.
+   Admin xác minh hoàn thành ngoại lệ có căn cứ, không auto-complete do chờ lâu.
+8. Review là tùy chọn, ở trang riêng; khiếu nại và hỗ trợ có trang riêng.
+   Không gom mọi form vào chi tiết ca hoặc một trang quản trị khổng lồ.
+9. Phiếu hỗ trợ là trao đổi người dùng–admin, không phải khách–provider.
+   Chỉ văn bản; không typing/online/seen, không đính kèm ảnh/file, không chat video.
+   Ghi chú nội bộ admin tuyệt đối không hiện cho khách/provider.
+10. Thông báo chung: một nhóm all/customer/provider/admin; in-app, không chọn
+    từng người, không lên lịch, không sửa/xóa/thu hồi bản đã gửi.
+    “Số hộp được ghi nhận” không phải “số người đã đọc”.
+11. Không thêm thanh toán, doanh thu/lợi nhuận, ví/QR, voucher, hạng VIP,
+    thương mại điện tử, du lịch, AI chẩn đoán, tìm kiếm toàn cục hoặc chức năng
+    xuất báo cáo khi code chưa có. Có thể ghi các ý tưởng đó riêng, ngoài hiện trạng.
+12. Prototype được dùng dữ liệu mô phỏng nhất quán để đánh giá bố cục, nhưng ghi
+    “Dữ liệu minh họa” trong trang hướng dẫn. Không lấy dữ liệu cá nhân thật,
+    không viết “đã kiểm thử OSRM thực tế” từ dữ liệu vẽ.
+    Ảnh logo/asset minh họa được dùng, nhưng không ghép ảnh toàn màn thay interface.
+
+B. HỆ THỐNG THỊ GIÁC
+
+Ưu tiên mobile iOS + Android, tiếng Việt có đầy đủ dấu; hỗ trợ độ dài tiếng Anh.
+Viewport cơ sở 390 x 844; kiểm tra 360 x 800 và màn Android dài.
+Một trang cuộn là một nội dung dài liên tục; không cắt thành nhiều “màn hình”
+vì chụp không hết. Có vùng cuộn, footer/nút đáy và safe area rõ ràng.
+
+Màu đang dùng trong src/constants/colors.ts:
+- #F7FBFD: nền trang.
+- #282E30: chữ/icon chính, không dùng làm mảng nền chủ đạo.
+- #92C5FD: xanh thương hiệu, khối nhấn/hero.
+- #DDF186: lime thương hiệu, CTA chính.
+- #2B659B: liên kết, trạng thái chọn, tuyến đường.
+- #EFF7FD: card; #E5F1FD: surface.
+- #465154: chữ phụ; #5C686C: chú thích.
+- #28744B: thành công; #875400: cảnh báo; #B4232C: lỗi/nguy hiểm.
+Xanh sáng/lime đi cùng chữ ink, không dùng chữ sáng trên nền sáng.
+Có thể tinh chỉnh bố cục và sắc độ phụ; không biến ba vai trò thành ba thương hiệu.
+
+Font: Be Vietnam Pro. Nếu không có font, ghi fallback, không giả đã dùng font gốc.
+Display 34/42 bold; H1 28/36 bold; H2 22/28 bold; H3 18/24 semibold;
+body 15/22; caption 13/18; label 12/16; nav nhỏ nhưng dễ đọc.
+Spacing 4/8/16/24/32/48/64; radius 8/12/16/24/28; pill chỉ khi có ý nghĩa.
+Logo hiện có: assets/branding/moki-rescue-logo.png, không tự coi logo mới là đã duyệt.
+
+Component nền tảng:
+- Header có back, title, trạng thái; thanh tab tùy vai trò.
+- Nút primary/outline/ghost/destructive + loading/disabled.
+- Input có label, helper, validation; ô nhiều dòng tránh bị bàn phím che.
+- Navigation card, service card, request card, offer có hạn nhận.
+- Badge trạng thái, chỉ số, rating “chưa có đánh giá”, alert/error/empty/loading.
+- Bản đồ, marker có nhãn, polyline, thông tin tuyến và bottom sheet.
+- Timeline, báo giá, review sao, xác nhận thao tác nguy hiểm.
+- Thông báo đọc/chưa đọc; phiếu hỗ trợ; tin nhắn công khai và ghi chú nội bộ.
+- Biểu đồ cột đứng 7 ngày và biểu đồ tròn kèm số/chú giải dễ đọc.
+
+Safe area:
+- Không che nội dung dưới notch/Dynamic Island/cutout.
+- Màn sáng dùng status bar tương phản; bản đồ có lớp nền dưới header.
+- CTA không bị tab bar/gesture/bàn phím che; tap target tối thiểu 44 x 44.
+- Dòng dài xuống dòng; không tràn hero sang phải, không cắt tên/địa chỉ/nhãn nút.
+- Trạng thái luôn có chữ, không chỉ màu; focus/label cho tương tác.
+- Hạn chế animation; reduce motion không làm mất thông tin.
+Đây là tiêu chí thiết kế cần kiểm tra, không phải khẳng định UI hiện tại đã đạt hết.
+
+C. ĐIỀU HƯỚNG VÀ CÁCH ĐẾM
+
+Code hiện có 60 file route TSX không tính _layout:
+58 màn điều hướng + 2 route bootstrap/chuyển hướng.
+KHÔNG yêu cầu đúng 70/83 frame như đề bài cũ, không độn số bằng ảnh hay loading.
+R01–R58 bên dưới là danh mục route để kiểm đủ chức năng, không đồng nghĩa
+58 bố cục khác nhau. Home theo vai trò và ca theo trạng thái cần biến thể riêng.
+Loading/error/empty/confirmation có thể làm component variant/overlay.
+
+Tab thực tế:
+- Customer: Trang chủ | Cứu hộ | Hoạt động | Tài khoản.
+- Provider: Nhận ca | Ca của tôi | Tài khoản.
+- Admin: Tổng quan | Toàn bộ ca | Điều phối | Tài khoản.
+Thông báo không là tab mới. Admin vào menu Quản lý từ tổng quan/điều phối/tài khoản.
+Màn con có back/breadcrumb hợp lý; đừng nhét tất cả biểu mẫu trong menu Quản lý.
+
+Đặt tên thiết kế: Rxx / Vai trò / Tên / Trạng thái.
+Đầu ra có index liệt kê route và biến thể đã dựng, tránh đánh đồng số frame với route.
+Nếu xuất canvas nhiều frame: bố trí 5 frame mỗi hàng; hàng sau nằm dưới frame cao
+nhất của hàng trước. Cho phép chiều cao nội dung dài; không chia trang dài thành
+nhiều ảnh. Nếu xuất prototype chạy được: thêm index/role switch CHỈ ở bộ điều khiển
+demo bên ngoài app, không biến nó thành tính năng đổi quyền trong sản phẩm.
+
+D. DANH MỤC 58 ROUTE CẦN BAO PHỦ
+
+NHÓM 1 — KHỞI ĐẦU VÀ XÁC THỰC
+
+R01 | /onboarding | Mọi người
+Nguồn: app/onboarding.tsx.
+Ba slide: Gửi đúng loại sự cố; Ghép theo tuyến đường thật; Ít dữ liệu, nhiều kiểm soát.
+Logo/minh họa, progress, Bỏ qua/Tiếp tục/Bắt đầu. Đây là một route, ba trạng thái.
+Không hứa theo dõi GPS trực tiếp; lời giới thiệu bám cơ chế tuyến cửa hàng.
+
+R02 | /(auth)/login | Mọi người
+Nguồn: app/(auth)/login.tsx.
+Trang chọn cách đăng nhập, không chứa form SMS và form mật khẩu cùng lúc.
+Logo, chào mừng, thẻ số điện thoại, thẻ kiểm thử nếu môi trường cho phép, đổi ngôn ngữ.
+Chọn một thẻ -> R03 hoặc R04.
+
+R03 | /(auth)/sms-login | Mọi người
+Nguồn: app/(auth)/sms-login.tsx.
+Biến thể nhập thông tin/số điện thoại/đồng ý điều khoản -> nhập OTP.
+Gửi mã, xác minh, gửi lại khi được phép, sửa số; link R14/R15.
+Có lỗi số không hợp lệ, không gửi được mã, mã sai/hết hạn và giới hạn thử.
+Không dùng dữ liệu nhạy cảm thật, không lộ lỗi SQL/Supabase thô.
+
+R04 | /(auth)/test-login | Chỉ môi trường cho phép
+Nguồn: app/(auth)/test-login.tsx.
+Email/mật khẩu kiểm thử, đồng ý điều khoản khi cần; loading/lỗi/đăng nhập.
+Ba nút Khách hàng/Cứu hộ viên/Admin chỉ điền email mẫu tương ứng; vẫn cần
+mật khẩu và quyền từ backend, không phải chuyển role hoặc bỏ qua xác thực.
+Không đòi SMS đối với luồng test được cho phép; không in mật khẩu thật lên thiết kế.
+Không thêm nút tự phong admin/provider.
+
+NHÓM 2 — CÁC TAB THEO VAI TRÒ
+
+R05 | /(tabs) | Customer / Provider / Admin — BA BỐ CỤ
+Nguồn: app/(tabs)/index.tsx.
+Customer: lời chào, hero/logo không tràn, nút yêu cầu cứu hộ, thông báo,
+cảnh báo an toàn/gọi 115, ca đang mở và danh mục dịch vụ từ backend.
+Provider: dùng OperationsWorkspace, tiêu đề “Trạm nhận ca của tôi”; thông báo,
+trạng thái thành viên/cửa hàng, switch sẵn sàng, thông tin xuất phát từ cửa hàng,
+đề nghị nhận/từ chối, ca được giao, thống kê cá nhân, uy tín/cảnh báo đội.
+Không sao chép customer home rồi chỉ đổi nhãn vai trò.
+Admin: dùng AdminDashboard, bốn KPI ca mở/chờ tiếp nhận/đội xác minh/cảnh báo;
+cột đứng số yêu cầu 7 ngày, chênh hôm nay–hôm qua; tròn tỷ lệ trạng thái trong
+cùng tập ca; link điều phối, can thiệp, quản lý và audit; thông báo.
+Không biểu đồ doanh thu, không thêm bộ lọc thời gian tùy ý chưa có API.
+
+R06 | /(tabs)/request | Customer
+Nguồn: app/(tabs)/request.tsx.
+Bước 1 an toàn: bị thương/nguy hiểm; có nguy cơ thì dừng ca kỹ thuật,
+hiện hướng dẫn gọi 113/114/115, không “đặt cứu hộ rồi mới gọi cấp cứu”.
+Bước 2: chọn dịch vụ từ catalog, mô tả xe xăng tùy chọn. Không có bộ chọn xe điện/không rõ.
+Hiển thị giới hạn chỉ xe máy xăng ở bước an toàn và chọn sự cố.
+Bước 3: OSM, lấy vị trí hiện tại hoặc chạm/kéo ghim, nhãn điểm nhận biết,
+ghi chú, xác nhận an toàn và CTA gửi.
+Dịch vụ yêu cầu điểm giao: thêm lựa chọn điểm nhận/điểm giao trên cùng bước,
+tọa độ/nhãn/ghi chú của từng điểm tách biệt.
+Nhập nhãn không tự đổi ghim; tâm bản đồ chưa phải vị trí khách.
+Giữ dữ liệu khi quay bước. Có lỗi catalog, GPS từ chối, tile, ngoài vùng,
+đã có ca đang hoạt động, gửi quá nhanh và mạng lỗi. Không chọn “ưu tiên ai”.
+
+R07 | /(tabs)/activity | Ba vai trò, phạm vi khác nhau
+Nguồn: app/(tabs)/activity.tsx.
+Customer chỉ ca của mình; provider chỉ ca cá nhân; admin toàn bộ ca.
+Ca đang mở/lịch sử đã kết thúc, card dịch vụ/trạng thái/địa điểm/thời gian,
+tải lại và tải thêm lịch sử. Mở card -> R20.
+Empty/error không làm như dữ liệu thành công; ca đóng không hiện liên hệ live.
+
+R08 | /(tabs)/operations | Admin là tab; code cũng hỗ trợ Provider
+Nguồn: app/(tabs)/operations.tsx; src/features/rescue/screens/OperationsWorkspace.tsx.
+Admin: hàng đợi ca, trạng thái đội, tìm lại/điều phối lại ca đủ điều kiện,
+link quản lý/can thiệp/audit. Không switch sẵn sàng hoặc nhận offer cho admin.
+Provider dùng chung workspace với home R05; không thêm tab Vận hành trùng lặp.
+Dựng một component/biến thể dùng lại thay vì nhân đôi thiết kế.
+
+R09 | /(tabs)/profile | Ba vai trò
+Nguồn: app/(tabs)/profile.tsx.
+Tên, vai trò, số điện thoại che phù hợp/trạng thái tài khoản, mã tài khoản.
+Nhóm thông tin cá nhân: sửa tên, bảo mật, cài đặt.
+Nhóm hỗ trợ: thông báo, trợ giúp, riêng tư, điều khoản; đăng xuất/phiên bản.
+Provider có link Trạm nhận ca; admin có link Quản lý mạng lưới.
+Không hiển thị hồ sơ thống kê đồng nghiệp hoặc số dư ví.
+
+NHÓM 3 — HỒ SƠ VÀ PHÁP LÝ
+
+R10 | /profile/edit | Đã đăng nhập
+Nguồn: app/profile/edit.tsx.
+Một form tên hiển thị, validate/lưu/kết quả. Không upload avatar/CCCD tùy tiện.
+
+R11 | /profile/settings | Đã đăng nhập
+Nguồn: app/profile/settings.tsx.
+Ngôn ngữ, quyền vị trí, trạng thái/đăng ký push và lựa chọn dữ liệu tài khoản
+theo code. Link xóa tài khoản; không tự thêm dark mode hay setting thuật toán.
+
+R12 | /profile/security | Đã đăng nhập
+Nguồn: app/profile/security.tsx.
+Phương thức/trạng thái xác thực và mốc thời gian tài khoản/đăng nhập nếu có.
+Phân biệt OTP và tài khoản email test; không giả lịch sử thiết bị hay OTP đã xác minh.
+Có “Đăng xuất trên tất cả thiết bị”, hộp xác nhận và lỗi thu hồi phiên nếu thất bại.
+Hướng dẫn an toàn tài khoản, không thêm trang đổi mật khẩu nếu chưa có luồng.
+
+R13 | /profile/delete-account | Đã đăng nhập
+Nguồn: app/profile/delete-account.tsx.
+Giải thích yêu cầu xóa tài khoản, bị chặn khi còn ca, xác nhận hành động nguy hiểm,
+gửi yêu cầu/kết quả. Không hứa xóa ngay toàn bộ audit/database.
+
+R14 | /legal/privacy | Trang chính sách
+Nguồn: app/legal/privacy.tsx.
+Nội dung dài có tiêu đề/phiên bản và cuộn được. Giữ ý pháp lý hiện có;
+không tự thêm cam kết bảo mật hoặc thay nội dung như một chính sách mới.
+
+R15 | /legal/terms | Trang điều khoản
+Nguồn: app/legal/terms.tsx.
+Bố cục đọc dài, phiên bản, back. Không biến xác nhận thiết kế thành sự đồng ý thật.
+
+NHÓM 4 — DỊCH VỤ VÀ TRỢ GIÚP
+
+R16 | /service | Danh mục dịch vụ
+Nguồn: app/service/index.tsx.
+Card icon/tên/mô tả/đòi báo giá -> R17. Loading/error/empty; không catalog giả
+khi backend thất bại. Năm mã được tiếp nhận: flat_tire, dead_battery,
+out_of_fuel, minor_repair, motorbike_transport; nội dung/active là cấu hình.
+electric_battery đã ngừng nhận mới, chỉ giữ dữ liệu lịch sử; admin không bật lại.
+
+R17 | /service/[code] | Chi tiết dịch vụ
+Nguồn: app/service/[code].tsx.
+Phạm vi và các bước phục vụ, có/không cần báo giá và điểm giao theo dữ liệu.
+Customer CTA sang R06 giữ service code; không tự đặt giá cố định khi chưa có giá.
+Biến thể không tồn tại/ngừng hoạt động, quay lại catalog.
+
+R18 | /help | Trợ giúp
+Nguồn: app/help/index.tsx.
+An toàn, dịch vụ, bảo mật; hướng dẫn khi không có đội hoặc có vấn đề;
+link “Phiếu hỗ trợ và phản hồi” -> R31; hotline chỉ khi đã cấu hình.
+Không tạo số hotline giả và không hứa admin trả lời ngay.
+
+R19 | /help/safety | An toàn bên đường
+Nguồn: app/help/safety.tsx.
+Hướng dẫn an toàn và các nút gọi 113/114/115 theo nội dung code.
+Mở trình quay số, không hiển thị “cuộc gọi thành công” chỉ vì đã nhấn nút.
+
+NHÓM 5 — CA CỨU HỘ VÀ CÁC TRANG CON
+
+R20 | /rescue/[id] | Ba vai trò theo quyền
+Nguồn: app/rescue/[id].tsx; src/features/rescue/components/details/.
+Bản đồ và panel thông tin ca, trạng thái + bước tiếp theo, địa điểm, provider/đội
+sau gán, uy tín thật, liên hệ theo quyền, ETA ban đầu/quãng đường khi có.
+Nhóm CTA theo role/status; link báo giá, lịch sử, đánh giá và khiếu nại tới trang con.
+Cần các biến thể nghiệp vụ ở phần E, không một form dài chứa mọi chức năng.
+
+R21 | /rescue/[id]/map | Người có quyền với ca
+Nguồn: app/rescue/[id]/map.tsx.
+Bản đồ lớn với điểm nhận, điểm xuất phát cửa hàng/snapshot, điểm giao nếu có;
+polyline OSRM tới điểm nhận, khoảng cách/thời gian dự kiến, back.
+Có tải lại tuyến; liên hệ theo quyền và nút Google Maps cho provider được gán.
+Có trạng thái thiếu snapshot, lỗi router/tile, không có quyền/ca không còn hoạt động.
+Không hoạt họa xe chạy hoặc dự đoán hành trình giữa hai điểm.
+Không vẽ tuyến vận chuyển tới điểm giao như API đã trả nếu chỉ có purpose=to_pickup.
+
+R22 | /rescue/[id]/destination | Customer đúng giai đoạn
+Nguồn: app/rescue/[id]/destination.tsx.
+Chọn/kéo ghim điểm giao xe, nhãn/ghi chú, xác nhận và lưu version hiện tại.
+Giải thích điểm dùng khi vận chuyển; kiểm vùng và lỗi xung đột, không geocode giả.
+
+R23 | /rescue/[id]/quote | Người có quyền với ca
+Nguồn: app/rescue/[id]/quote.tsx.
+Chi tiết báo giá hiện tại: nội dung, VND, loại việc repair/transport, trạng thái.
+Đường quay lại ca để thực hiện hành động phù hợp; không trang thanh toán.
+Đây là trang chi tiết đã tách, không thêm endpoint thanh toán.
+
+R24 | /rescue/[id]/timeline | Người có quyền với ca
+Nguồn: app/rescue/[id]/timeline.tsx.
+Danh sách sự kiện/trạng thái và thời gian; cuộn, read-only.
+Không cho sửa/xóa sự kiện.
+
+R25 | /rescue/[id]/review | Customer của ca completed
+Nguồn: app/rescue/[id]/review.tsx; ReviewPanel.tsx.
+1–5 sao, nhận xét tối đa 1000 ký tự, lưu/sửa, xác nhận xóa.
+Nhấn mạnh không bắt buộc; back/bỏ qua được. Có lỗi hết cửa sổ đánh giá theo policy.
+Không ép review để hoàn tất ca hoặc để gửi ca mới.
+
+R26 | /rescue/[id]/incidents | Customer/admin có quyền
+Nguồn: app/rescue/[id]/incidents/index.tsx.
+Danh sách báo cáo của ca, nhãn trạng thái; khách có lối tạo mới -> R27.
+Mở một báo cáo -> R28; admin xem/xử lý theo quyền, không sửa lời khách.
+
+R27 | /rescue/[id]/incident-new | Customer có quyền
+Nguồn: app/rescue/[id]/incident-new.tsx.
+Chọn loại sự cố và mô tả, validate/gửi/kết quả. Không sao review và không upload file.
+Sau gửi có cuộc trao đổi hỗ trợ gắn incident, không bắt gửi lại tại hỗ trợ.
+
+R28 | /rescue/[id]/incidents/[incidentId] | Customer/admin có quyền
+Nguồn: app/rescue/[id]/incidents/[incidentId].tsx.
+Nội dung, thời gian, trạng thái/kết quả xử lý; admin có hành động theo quyền.
+Nút “Trao đổi về khiếu nại này” -> ticket R33 qua route chuyển hướng.
+Không hiện ghi chú nội bộ admin cho khách.
+
+NHÓM 6 — THÔNG BÁO VÀ HỖ TRỢ CHUNG
+
+R29 | /notifications | Mỗi tài khoản
+Nguồn: app/notifications/index.tsx; InboxScreens.tsx.
+Tất cả/Chưa đọc, badge unread, tiêu đề/tóm tắt/thời gian, dấu chưa đọc,
+tải lại/tải thêm. Mở item -> R30. Không thêm xóa hoặc đánh dấu tất cả khi chưa có.
+
+R30 | /notifications/[id] | Chủ thông báo
+Nguồn: app/notifications/[id].tsx; InboxScreens.tsx.
+Tiêu đề/nội dung/thời gian; mở đánh dấu đã đọc; CTA ca/phiếu liên quan khi có.
+Thông báo không tự có ô trả lời; muốn trao đổi đi vào phiếu hỗ trợ.
+Nội dung không thuộc quyền hoặc đích đã không còn xem được cần lỗi an toàn.
+
+R31 | /support | Chủ phiếu; admin thấy hàng đợi
+Nguồn: app/support/index.tsx; SupportScreens.tsx.
+Khách/provider thấy phiếu của mình và nút tạo -> R32.
+Lọc tất cả/open/waiting_user/resolved/dismissed; tiêu đề/trạng thái/thời gian,
+tải thêm. Admin dùng cùng list nhưng thấy tên người gửi và không tạo phiếu cho mình.
+R55 là lối vào quản trị dùng chung component, không “thêm tính năng” để đủ số màn.
+
+R32 | /support/new | Customer/provider
+Nguồn: app/support/new.tsx; SupportScreens.tsx.
+Tiêu đề 5–160, mô tả 10–4000 ký tự; cảnh báo không gửi OTP/mật khẩu.
+Submit -> R33; lỗi tối đa 10 phiếu mở, mạng lỗi và loading.
+Admin vào route này được chuyển về hàng đợi, không có form tạo phiếu admin.
+
+R33 | /support/[id] | Chủ phiếu và admin
+Nguồn: app/support/[id].tsx; SupportScreens.tsx.
+Tiêu đề/mô tả/trạng thái/người gửi; admin có link khiếu nại liên quan nếu có;
+lịch sử tin nhắn văn bản,
+người gửi/thời gian, tải thêm/tải lại; ô trả lời tối đa 4000 ký tự.
+Admin có bật “Ghi chú nội bộ” phân biệt rõ; đổi trạng thái open/waiting_user
+hoặc đóng bằng resolved/dismissed, kèm lý do công khai 5–500 ký tự.
+Người dùng không thấy control/nội dung nội bộ.
+Đã đóng: chỉ đọc, ẩn composer; không mở lại trong phiên bản này.
+Ghi chú UI “cập nhật định kỳ”; không seen/typing, không chat tức thì được bảo đảm.
+
+NHÓM 7 — QUẢN TRỊ MẠNG LƯỚI (MỖI CHỨC NĂNG MỘT TRANG)
+
+R34 | /operator | Admin
+Nguồn: app/operator/index.tsx.
+Menu thẻ/link: hỗ trợ, thông báo, duyệt cứu hộ viên, khiếu nại, review, chất lượng,
+đội, dịch vụ, phân quyền, ca cần chú ý và audit.
+Đây chỉ là menu điều hướng, không chèn các form quản trị vào bên dưới.
+
+R35 | /operator/teams | Admin
+Nguồn: app/operator/teams.tsx; TeamManagementScreen.tsx.
+Danh sách cửa hàng/đội với pending/verified/suspended, số thành viên,
+rating/cảnh báo, link tạo đội R36 và chi tiết R37. Xác nhận khi đình chỉ.
+Phân biệt đội chưa có người với lỗi không tải được tài khoản.
+
+R36 | /operator/team-new | Admin
+Nguồn: app/operator/team-new.tsx; TeamManagementScreen.tsx.
+Tên đội, mã hồ sơ đối tác nội bộ, hotline và bán kính phục vụ; tạo pending.
+Vị trí cửa hàng hoàn thiện ở R37, không tự coi đội mới là verified.
+Không upload giấy tờ/CCCD, không tạo tài khoản dùng chung cho đội.
+
+R37 | /operator/team/[id] | Admin
+Nguồn: app/operator/team/[id]/index.tsx; TeamManagementScreen.tsx; ShopLocationEditor.tsx.
+Thông tin/nhãn trạng thái đội, vị trí cửa hàng trên bản đồ/chọn ghim và lưu.
+Cảnh báo vị trí chưa có/ngoài vùng; điều hướng thành viên/năng lực/xác minh/chất lượng.
+Không nhét cả bốn form vào trang này; không hiển thị vị trí cửa hàng là GPS live.
+
+R38 | /operator/team/[id]/providers | Admin
+Nguồn: app/operator/team/[id]/providers.tsx.
+Thành viên của đội: tên, liên hệ, trạng thái, sẵn sàng; thêm -> R39.
+Các hành động trạng thái theo code: kích hoạt/đình chỉ/rời đội; xác nhận và
+cảnh báo ca đang xử lý có thể cần điều phối lại. Không phải bảng thống kê cá nhân
+mà đồng nghiệp thường được xem.
+
+R39 | /operator/team/[id]/provider-new | Admin
+Nguồn: app/operator/team/[id]/provider-new.tsx.
+Tra cứu tài khoản đã đăng nhập bằng số điện thoại, hiển thị tài khoản tìm được,
+thông tin nghiệp vụ/liên hệ/phương tiện, gửi vào luồng duyệt.
+Không nhập UUID thủ công, không cấp mật khẩu, không tạo public marketplace.
+Tài khoản email demo được tạo bằng script môi trường test, không bịa luồng tra cứu email.
+
+R40 | /operator/team/[id]/capabilities | Admin
+Nguồn: app/operator/team/[id]/capabilities.tsx.
+Chọn dịch vụ đội có năng lực cung cấp, lưu/kết quả. Đây không phải trọng số ưu tiên.
+
+R41 | /operator/team/[id]/verification | Admin
+Nguồn: app/operator/team/[id]/verification.tsx; PartnerVerificationEditor.tsx.
+Mã hồ sơ nội bộ, checklist bắt buộc/tùy chọn, ghi chú, tiến độ đã lưu,
+người/thời gian xác minh. Nêu rõ prerequisite: vị trí hợp lệ, người active và năng lực.
+Nút xác minh chỉ khi backend cho phép; chưa sẵn sàng phải có lý do.
+Duyệt member không tự tick đầy checklist cửa hàng.
+
+R42 | /operator/team/[id]/quality | Admin
+Nguồn: app/operator/team/[id]/quality.tsx.
+Tổng quan rating/số mẫu/cảnh báo đội và lối vào quản lý chi tiết liên quan.
+Không phải doanh thu/công việc của từng nhân viên. Không auto-lock từ sao thấp.
+
+R43 | /operator/providers | Admin
+Nguồn: app/operator/providers.tsx; ProviderDirectoryScreen.tsx.
+Danh sách TÀI KHOẢN toàn mạng lưới: tất cả/chờ duyệt/đã duyệt/từ chối, số lượng;
+tên, cửa hàng, trạng thái tài khoản và đội. Có nút tải lại.
+Pending đủ điều kiện: Chấp nhận và Từ chối -> xác nhận quyết định.
+Hiển thị lý do không thể nhận ca dù tài khoản duyệt (cửa hàng chưa verified/...).
+Link cửa hàng tương ứng. Rỗng do chưa có member phải nói rõ, không vẽ 12 tài khoản giả.
+
+R44 | /operator/admins | Admin
+Nguồn: app/operator/admins.tsx.
+Tra cứu tài khoản hiện có bằng số điện thoại, cấp/thu quyền admin với xác nhận.
+Không quản lý mật khẩu, không tạo role mới hay bỏ các ràng buộc bảo vệ admin.
+
+R45 | /operator/services | Admin
+Nguồn: app/operator/services.tsx.
+Danh sách loại dịch vụ, active/quote/destination theo dữ liệu; chọn -> R46.
+Không đặt cả sáu form chỉnh sửa trong danh sách.
+
+R46 | /operator/service/[code] | Admin
+Nguồn: app/operator/service/[code].tsx; ServiceCatalogEditor.tsx.
+Mã read-only; tên/mô tả Việt–Anh, icon hợp lệ, thứ tự, cần báo giá,
+cần điểm giao, đang nhận yêu cầu; lưu/kết quả.
+CHƯA có UI trọng số matching, cấu hình TTL hay vùng phục vụ ở đây;
+không thêm slider ưu tiên để minh họa như đã có.
+
+R47 | /operator/attention | Admin
+Nguồn: app/operator/attention.tsx.
+Hàng đợi cảnh báo vận hành/ca cần can thiệp, trạng thái, mở ca,
+ghi kết quả giải quyết. Đóng cảnh báo không tự hoàn tất ca.
+
+R48 | /operator/audit | Admin
+Nguồn: app/operator/audit.tsx.
+Nhật ký read-only: người thao tác, hành động, loại đối tượng và thời gian,
+phân trang. Không nút sửa/xóa lịch sử hay xuất file chưa có API.
+
+NHÓM 8 — KIỂM DUYỆT VÀ CHẤT LƯỢNG
+
+R49 | /operator/reviews | Admin
+Nguồn: app/operator/reviews/index.tsx; ModerationScreens.tsx.
+Review toàn hệ thống, lọc đang hiển thị/đã ẩn, phân trang, mở R50.
+
+R50 | /operator/reviews/[id] | Admin
+Nguồn: app/operator/reviews/[id].tsx.
+Sao/nhận xét/ca/đội tương ứng; ẩn/khôi phục với lý do và xác nhận.
+Không sửa nội dung hay tăng sao thay khách.
+
+R51 | /operator/incidents | Admin
+Nguồn: app/operator/incidents/index.tsx.
+Danh sách khiếu nại/báo sự cố, lọc trạng thái, phân trang -> R52.
+Phân biệt với cảnh báo tự động và phiếu app/tài khoản.
+
+R52 | /operator/incidents/[id] | Admin
+Nguồn: app/operator/incidents/[id].tsx.
+Nội dung báo cáo/ca, xác minh, ghi kết quả giải quyết/bác bỏ.
+Link cuộc trao đổi R33; kết quả đồng bộ với incident của khách và ticket liên kết.
+
+R53 | /operator/quality-alerts | Admin
+Nguồn: app/operator/quality-alerts/index.tsx.
+Danh sách tín hiệu chất lượng và trạng thái, phân trang -> R54.
+Điểm thấp là tín hiệu xem xét, không kết luận tự động người cứu hộ vi phạm.
+
+R54 | /operator/quality-alerts/[id] | Admin
+Nguồn: app/operator/quality-alerts/[id].tsx.
+Chi tiết tín hiệu/số mẫu/đội, ghi căn cứ, gửi cảnh báo hoặc giải quyết sau kiểm tra.
+Đình chỉ đội dùng luồng quản lý đội; không thêm khóa tự động chỉ vì số sao.
+
+NHÓM 9 — HỖ TRỢ VÀ THÔNG BÁO QUẢN TRỊ
+
+R55 | /operator/support | Admin
+Nguồn: app/operator/support.tsx; SupportScreens.tsx.
+Hàng đợi hỗ trợ dùng list của R31, lọc trạng thái/tên người gửi/thời gian,
+mở R33 với chế độ admin. Không tính là một thiết kế hoàn toàn độc lập.
+Không có gán nhân viên, SLA hay mở lại phiếu chưa được xây dựng.
+
+R56 | /operator/announcements | Admin
+Nguồn: app/operator/announcements/index.tsx; AnnouncementScreens.tsx.
+Danh sách đã gửi: tiêu đề, nhóm nhận, số inbox, ngày giờ; phân trang.
+CTA “Soạn thông báo” -> R57; item -> R58.
+
+R57 | /operator/announcements/new | Admin
+Nguồn: app/operator/announcements/new.tsx; AnnouncementScreens.tsx.
+Chọn MỘT nhóm Tất cả/Khách hàng/Cứu hộ viên/Admin; tiêu đề 5–160,
+nội dung 10–4000 ký tự.
+Hai bước cùng route: soạn -> xem trước nội dung/nhóm/số người dự kiến -> xác nhận gửi.
+Có quay lại sửa, lỗi preview/gửi, nhóm rỗng; số dự kiến có thể khác lúc gửi.
+Không có chọn người riêng, file, lịch gửi, push/SMS/email.
+
+R58 | /operator/announcements/[id] | Admin
+Nguồn: app/operator/announcements/[id].tsx.
+Nội dung đã gửi, nhóm, thời gian và số hộp được ghi nhận. API hiện không trả tên
+người tạo thông báo, nên không thêm trường tên người tạo vào bản hiện trạng.
+Read-only; không “đã xem”, không sửa/rút/xóa.
+
+E. BIẾN THỂ TRẠNG THÁI CẦN THỂ HIỆN
+
+E1. R05 Provider — nhận ca và điều kiện sẵn sàng:
+- Offline/sẵn sàng; pending/rejected/suspended; đội chưa xác minh hoặc thiếu vị trí;
+  cửa hàng ngoài vùng; API lỗi; đang có ca nên không bật nhận ca mới.
+- Offer còn hạn: loại việc, khu vực, ETA/quãng đường từ cửa hàng, hạn nhận,
+  Nhận ca/Từ chối, trạng thái đang gửi và đã hết hạn.
+- Thời hạn lấy từ expiresAt; mặc định backend 45 giây, không hardcode vào thiết kế.
+  Nếu thêm đếm ngược trực quan thì là cách trình bày của expiresAt, không SLA mới.
+- Nhận thành công -> R20; lỗi cạnh tranh -> tải lại, không giả đã gán.
+- Thống kê cá nhân tách rõ uy tín đội; không tạo một trang mới chỉ để độn số route.
+
+E2. R20 Customer:
+- searching/offered: đang tìm/đã gửi lời mời, chưa có tên hay số điện thoại provider.
+- no_provider: không spinner vô hạn; thử lại có cooldown/giới hạn, nhờ điều phối,
+  hotline nếu có, hủy theo quyền. Không hứa chắc chắn nhận trong 30 giây.
+- assigned/en_route: thông tin được gán, liên hệ và ETA ban đầu/tuyến cửa hàng;
+  không live marker. “Đang đến” là trạng thái do provider cập nhật.
+- awaiting_arrival_confirmation: xác nhận đã đến hoặc chưa thấy, lý do phản hồi.
+- arrived/diagnosing: hướng dẫn chờ kiểm tra, không cho đánh giá sớm.
+- awaiting_quote: xem báo giá; điểm giao nếu transport cần bổ sung; duyệt/từ chối.
+- quote_approved: chờ provider bắt đầu, không tự hiển thị đang sửa.
+- repairing/transporting: loại công việc, điểm giao nếu có, các lối hỗ trợ.
+- awaiting_completion: xác nhận xong/chưa xong + lý do.
+- completed: tổng kết, R25 đánh giá TÙY CHỌN, R24 lịch sử; liên hệ riêng tư đã ẩn.
+- cancelled: lý do/tổng kết; needs_dispatch: đang chờ thay đội, lối hỗ trợ đúng quyền.
+Hủy ở giai đoạn cho phép; sau khi bắt đầu phục vụ dùng hỗ trợ/hủy có can thiệp,
+không một nút hủy tùy ý ở mọi trạng thái.
+
+E3. R20 Provider:
+- assigned: nút Bắt đầu di chuyển + Google Maps.
+- en_route: Yêu cầu khách xác nhận đã đến.
+- awaiting_arrival_confirmation: chờ khách; không có nút tự xác nhận.
+- arrived: Bắt đầu kiểm tra xe.
+- diagnosing: dịch vụ không yêu cầu quote chọn sửa/vận chuyển; dịch vụ có quote
+  thì mô tả + VND + loại việc, gửi báo giá.
+- awaiting_quote: chờ quyết định khách.
+- quote_approved: Bắt đầu sửa/Bắt đầu vận chuyển đúng loại đã duyệt.
+- repairing/transporting: Yêu cầu xác nhận hoàn tất.
+- awaiting_completion: chờ khách; không tự completed.
+- Rút ca có lý do là xử lý nghiệp vụ đưa về điều phối, không tự giả thành hoàn tất.
+Nút Google Maps dùng đích nhận hoặc giao theo giai đoạn, nêu rõ mở ứng dụng ngoài.
+
+E4. R20 Admin:
+- Theo dõi ca với lối can thiệp, retry/reassign đúng trạng thái, hủy có lý do.
+- awaiting_completion: nhập căn cứ 10–500 ký tự -> “Đã xác minh công việc hoàn tất”
+  -> xác nhận lần hai; “Chưa xác minh” giữ ca mở. Ghi chú căn cứ chỉ admin thấy.
+- Không xác nhận arrived thay khách bằng thao tác thường; không nhận ca như provider.
+
+E5. Hỗ trợ/thông báo:
+- Inbox đọc/chưa đọc, rỗng và lỗi; nhấn thông báo -> đúng ticket/ca.
+- Ticket open/waiting_user; composer customer/provider chỉ công khai;
+  admin công khai/nội bộ phân biệt cả màu và chữ.
+- Ticket resolved/dismissed chỉ đọc; lý do đóng, không nút gửi tin hoặc mở lại.
+- Announcement preview/error/published; số inbox không được diễn đạt là seen.
+
+E6. Lỗi dùng chung:
+- API/backend lỗi, mất mạng, phiên hết hạn/không có quyền, dữ liệu không tồn tại.
+- GPS denied/error ở nơi người dùng chủ động lấy GPS, không khóa switch nhận ca
+  vì GPS khi cơ chế đã dùng vị trí cửa hàng.
+- OSM tile chưa tải; OSRM không có tuyến; ngoài vùng phục vụ.
+- Conflict 409 tải lại trạng thái; 429 báo giới hạn/thử lại khi phù hợp.
+- Loading giữ điều hướng; không dùng ca giả/giá giả như kết quả thật.
+Không bắt vẽ một frame độc lập cho mỗi lỗi trên mỗi route: dùng variants có sơ đồ ánh xạ.
+
+F. CÁC BỀ MẶT KHÔNG PHẢI ROUTE MỚI
+
+1. app/index.tsx: bootstrap/redirect; nếu dựng loading thì ghi là trạng thái khởi động,
+   không tính thêm một màn nghiệp vụ.
+2. app/support/incidents/[id].tsx: tìm ticket gắn incident rồi chuyển R33;
+   chỉ loading/error/redirect, không tạo một cuộc hội thoại thứ hai.
+3. Trợ lý nổi: src/features/assistant/components/AssistantBubble.tsx.
+   Nút chat và sheet có thể đóng, gợi ý cách dùng app, hội thoại trong phiên,
+   ô nhập tối đa 500 ký tự. Scope “Hỗ trợ cách dùng app · Không chẩn đoán xe”.
+   Có từ chối ngoài phạm vi, khẩn cấp, quota/lỗi dịch vụ; không lưu lịch sử giả.
+   Phân biệt trợ lý AI với phiếu hỗ trợ người thật R33.
+4. Popup/dialog/bottom sheet, chọn sao, xác nhận xóa, preview announcement là
+   trạng thái/component của route liên quan, không dùng để nâng số màn tùy ý.
+
+G. CÁC LUỒNG PROTOTYPE PHẢI CLICK/CUỘN ĐƯỢC
+
+- Khách: onboarding -> chọn đăng nhập -> customer home -> chọn dịch vụ ->
+  kiểm an toàn -> vị trí -> gửi -> tìm -> được gán -> xác nhận đến ->
+  duyệt báo giá -> chờ bắt đầu -> làm việc -> xác nhận hoàn tất -> bỏ qua/gửi review.
+- Ca vận chuyển: điểm nhận + điểm giao -> báo giá/duyệt -> Google Maps tới điểm giao
+  từ phía provider khi đã vận chuyển -> xác nhận hoàn tất.
+- Cứu hộ viên: trang Nhận ca -> bật sẵn sàng -> nhận/từ chối/offer hết hạn ->
+  chi tiết ca -> bắt đầu/đã đến/kiểm tra/báo giá/làm việc/yêu cầu hoàn tất.
+- Ngoại lệ: không ai nhận -> thử lại/hỗ trợ; provider rút -> needs_dispatch ->
+  admin điều phối lại; khách chưa xác nhận xong -> admin xem xét có căn cứ.
+- Quản trị: menu -> đội -> tạo -> vị trí -> thành viên -> duyệt tài khoản ->
+  năng lực -> checklist -> xác minh. Không tự đánh dấu tất cả thành công.
+- Review: ca hoàn tất -> đánh giá tùy chọn -> admin xem/ẩn có lý do.
+- Khiếu nại: ca -> báo sự cố -> admin nhận -> trao đổi -> xử lý ->
+  người gửi thấy kết quả; ghi chú nội bộ không lộ.
+- Hỗ trợ: tạo phiếu app/tài khoản -> admin trả lời -> inbox người dùng ->
+  mở phiếu -> trả lời -> đóng -> read-only.
+- Thông báo chung: admin soạn -> chọn nhóm provider -> preview -> gửi ->
+  provider có inbox mới, customer không có; thử nhóm all riêng.
+- Lỗi: OTP sai, GPS từ chối, ngoài vùng, tile lỗi, router lỗi, mạng lỗi, conflict.
+Các bước cần dữ liệu/backend có thể mô phỏng bằng state trong prototype, ghi rõ
+là demo; không gửi request thực hoặc thao tác tài khoản thật.
+
+H. TIÊU CHÍ BÀN GIAO
+
+- Có index R01–R58, ghi màn nào dùng lại component và vai trò/trạng thái đã dựng.
+- Có đủ customer/provider/admin, không chỉ một homepage đổi chữ.
+- Admin tách đúng các trang quản lý; xem danh sách -> xem chi tiết/chỉnh riêng.
+- Có thông báo, hội thoại hỗ trợ, ghi chú nội bộ và soạn thông báo theo nhóm.
+- Review không bắt buộc; ca có tiến trình hoàn tất, không để “đã nhận” mãi.
+- Có components/text/vector/layer hoặc code UI chỉnh sửa được; không screenshot
+  toàn màn làm ảnh nền và không đặt hotspot lên ảnh để giả interface thật.
+- Một màn dài cuộn liên tục; không tràn ngang, không che nút bởi tab/keyboard.
+- Dữ liệu minh họa có dấu rõ, nhất quán giữa các màn; không dữ liệu cá nhân thật.
+- Bản đồ snapshot và Google Maps ngoài app được phân biệt; không quảng cáo live tracking.
+- Kèm danh sách điểm đề xuất cải tiến ngoài phạm vi (nếu có), KHÔNG trộn vào
+  danh mục chức năng hiện tại hoặc nói chúng đã được xây dựng.
+- Kết quả là phương án thiết kế để chủ dự án xem xét, không tự sửa app/dependency,
+  triển khai database, commit hoặc phát hành sản phẩm.

@@ -1,11 +1,11 @@
+import { createUuid } from '../src/utils/uuid';
+
 jest.mock('expo-crypto', () => {
   let sequence = 0;
   return {
     randomUUID: () => `00000000-0000-4000-8000-${String(++sequence).padStart(12, '0')}`,
   };
 });
-
-import { createUuid } from '../src/utils/uuid';
 
 describe('createUuid', () => {
   it('returns RFC 4122 shaped unique idempotency keys', () => {
