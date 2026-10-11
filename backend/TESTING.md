@@ -24,3 +24,10 @@ $env:TEST_PG_PASSWORD = '<mat-khau-cluster-thu-nghiem>'
 Tài khoản test cần quyền tạo database, role và extension. Không dùng `SPRING_DATASOURCE_*`/`FLYWAY_*` của ứng dụng cho test. Thiếu môi trường thì full test **thất bại**, không tự bỏ qua integration test. Nếu tiến trình bị kill, database test có thể còn lại: xác minh đúng tên trước khi dọn, không xóa bằng wildcard.
 
 CI cài PostgreSQL/PostGIS trực tiếp trên Ubuntu 24.04 và chạy toàn bộ test. JWT/OSRM/Expo trong integration test vẫn là test double, không thay cho kiểm thử dịch vụ và thiết bị thật. Máy local chưa cài sẵn database thì cần chủ dự án chuẩn bị/phê duyệt trước; không tự cài thêm từ test.
+
+`CleanInstallBundleIntegrationTest` chạy chính `scripts/01_init_database.sql` trên database
+fixture sạch: kiểm 30 bảng, chặn chạy lại và rollback khi kiểm tra cuối thất bại.
+Kiểm thêm reset có xác nhận, giữ Auth users khi cài lại, seed 12 cửa hàng có thể
+chạy lại mà không trùng hoặc ghi đè địa chỉ; tất cả trên database fixture cô lập.
+`DatabaseMigrationIntegrationTest` chạy Flyway rồi chạy cùng khối kiểm tra schema/RLS
+trích từ bundle. Hai luồng này không dùng database Supabase thật.

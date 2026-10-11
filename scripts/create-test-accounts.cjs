@@ -1,4 +1,5 @@
 // Node-only fixture setup. Never import this file into the app or run it in production.
+/* global __dirname */
 const fs = require('node:fs');
 const path = require('node:path');
 const { randomBytes } = require('node:crypto');
@@ -7,11 +8,82 @@ const { createClient } = require('@supabase/supabase-js');
 const FIXTURE = 'rescue-auth-test-v1';
 const ACCOUNTS = [
   { email: 'customer.rescue@example.com', role: 'customer', name: '[TEST] Khách hàng' },
-  { email: 'provider.rescue@example.com', role: 'provider', name: '[TEST] Cứu hộ viên' },
+  {
+    email: 'provider.rescue@example.com',
+    role: 'provider',
+    name: '[TEST] Cứu hộ viên',
+    teamReference: 'TEST-AUTH-DN-01',
+    phone: '+12025550191',
+  },
+  {
+    email: 'provider2.rescue@example.com',
+    role: 'provider',
+    name: '[TEST] Cứu hộ viên 2',
+    teamReference: 'TEST-AUTH-DN-01',
+    phone: '+12025550192',
+  },
+  {
+    email: 'provider3.rescue@example.com',
+    role: 'provider',
+    name: '[TEST] Cứu hộ viên 3',
+    teamReference: 'TEST-AUTH-DN-02',
+    phone: '+12025550193',
+  },
+  {
+    email: 'provider4.rescue@example.com',
+    role: 'provider',
+    name: '[TEST] Cứu hộ viên 4',
+    teamReference: 'TEST-AUTH-DN-03',
+    phone: '+12025550194',
+  },
   { email: 'admin.rescue@example.com', role: 'admin', name: '[TEST] Quản trị viên' },
 ];
-const TEAM_REFERENCE = 'TEST-AUTH-DN-01';
-const TEAM_NAME = '[TEST] Đội kiểm thử đăng nhập Đà Nẵng';
+const TEAMS = [
+  {
+    reference: 'TEST-AUTH-DN-01',
+    name: '[TEST] Đội kiểm thử đăng nhập Đà Nẵng',
+    latitude: 16.061,
+    longitude: 108.2238,
+    address: '[TEST] Khu vực trung tâm Hải Châu, Đà Nẵng (cửa hàng mô phỏng)',
+    phone: '+12025550190',
+  },
+  {
+    reference: 'TEST-AUTH-DN-02',
+    name: '[TEST] Cửa hàng kiểm thử Mỹ An',
+    latitude: 16.041,
+    longitude: 108.245,
+    address: '[TEST] Khu vực Mỹ An, Đà Nẵng (cửa hàng mô phỏng)',
+    phone: '+12025550195',
+  },
+  {
+    reference: 'TEST-AUTH-DN-03',
+    name: '[TEST] Cửa hàng kiểm thử Hòa Xuân',
+    latitude: 16.006,
+    longitude: 108.225,
+    address: '[TEST] Khu vực Hòa Xuân, Đà Nẵng (cửa hàng mô phỏng)',
+    phone: '+12025550196',
+  },
+];
+
+function extendCredentials(record, existing) {
+  // Extend the old three-account fixture without changing any existing password.
+  const password = record.accounts.find((entry) => entry.email === 'provider.rescue@example.com')?.password;
+  if (typeof password !== 'string' || password.length < 12)
+    throw new Error('INCOMPLETE_LOCAL_CREDENTIAL_FILE');
+  for (const account of ACCOUNTS) {
+    const saved = record.accounts.find((entry) => entry.email === account.email);
+    if (saved && (typeof saved.password !== 'string' || saved.password.length < 12))
+      throw new Error('INCOMPLETE_LOCAL_CREDENTIAL_FILE');
+    if (!saved) {
+      if (existing.has(account.email))
+        throw new Error(
+          'EXISTING_TEST_ACCOUNT_PASSWORD_MISSING: restore the local credentials, do not reset silently.',
+        );
+      record.accounts.push({ ...account, password });
+    }
+  }
+  return record;
+}
 
 function configuration(env, args) {
   if (env.APP_ENV === 'production' || env.EAS_BUILD_PROFILE === 'production') {
@@ -55,8 +127,21 @@ function configuration(env, args) {
 }
 
 function checked(result, operation) {
-  if (result.error)
-    throw new Error(`${operation}: ${result.error.code || result.error.status || 'REQUEST_FAILED'}`);
+  if (result.error) {
+    const code = result.error.code || result.error.status || 'REQUEST_FAILED';
+    const error = new Error(`${operation}: ${code}`);
+    error.setupNotStarted = [
+      'READ_PROFILES',
+      'READ_SHOP_ADDRESS',
+      'READ_SERVICES',
+      'READ_CHECKLIST',
+    ].includes(operation);
+    if (error.setupNotStarted && code === '42501') {
+      error.message +=
+        '\nCheck the server key, project and table privileges against scripts/README.md. The current 01_init_database.sql includes all setup grants. Do not reset, rerun init on a populated database or disable RLS to bypass this error.';
+    }
+    throw error;
+  }
   return result.data;
 }
 
@@ -85,16 +170,32 @@ async function setup(env, args) {
   const admin = createClient(config.url, config.serviceKey, clientOptions);
   // Check app schema and service-key privileges before creating any Auth users.
   checked(await admin.from('profiles').select('id').limit(0), 'READ_PROFILES');
+  const addressCheck = await admin.from('rescue_teams').select('base_address').limit(0);
+  if (addressCheck.error?.code === '42703' || addressCheck.error?.code === 'PGRST204') {
+    const error = new Error(
+      'SHOP_ADDRESS_MIGRATION_REQUIRED: database does not match the current schema. See scripts/README.md; do not rerun init or reset a populated database to bypass this error.',
+    );
+    error.setupNotStarted = true;
+    throw error;
+  }
+  checked(addressCheck, 'READ_SHOP_ADDRESS');
   const services = checked(
     await admin.from('service_types').select('code').eq('is_active', true),
     'READ_SERVICES',
   );
+  if (services.some(({ code }) => code === 'electric_battery')) {
+    const error = new Error(
+      'GASOLINE_SCOPE_MIGRATION_REQUIRED: electric service is still active. See scripts/README.md; do not rerun init or reset a populated database to bypass this error.',
+    );
+    error.setupNotStarted = true;
+    throw error;
+  }
   const requirements = checked(
     await admin.from('team_verification_requirements').select('code,is_required').eq('is_active', true),
     'READ_CHECKLIST',
   );
   if (!services.length || !requirements.length)
-    throw new Error('Run the database setup and 02_verify_rls.sql first.');
+    throw new Error('Run 01_init_database.sql successfully (including its security checks) first.');
 
   const existing = new Map();
   let page = 1;
@@ -129,16 +230,7 @@ async function setup(env, args) {
       accounts: ACCOUNTS.map((account) => ({ ...account, password })),
     };
   }
-  for (const account of ACCOUNTS) {
-    if (
-      !record.accounts.some(
-        (entry) =>
-          entry.email === account.email && typeof entry.password === 'string' && entry.password.length >= 12,
-      )
-    ) {
-      throw new Error('INCOMPLETE_LOCAL_CREDENTIAL_FILE');
-    }
-  }
+  extendCredentials(record, existing);
   const saveRecord = () => {
     fs.mkdirSync(path.dirname(credentialsPath), { recursive: true });
     fs.writeFileSync(credentialsPath, `${JSON.stringify(record, null, 2)}\n`, { mode: 0o600 });
@@ -179,119 +271,132 @@ async function setup(env, args) {
         'ASSIGN_TEST_ROLE',
       );
     }
-    users[account.role] = user;
+    users[account.email] = user;
   }
 
-  let team = checked(
-    await admin
-      .from('rescue_teams')
-      .select('id,name,status,verified_by')
-      .eq('partner_reference', TEAM_REFERENCE)
-      .maybeSingle(),
-    'READ_TEST_TEAM',
-  );
-  if (
-    team &&
-    (team.name !== TEAM_NAME ||
-      team.status === 'suspended' ||
-      (team.verified_by && team.verified_by !== users.admin.id))
-  ) {
-    throw new Error('TEST_TEAM_WAS_CHANGED: refusing to overwrite it.');
-  }
-  if (!team) {
-    team = checked(
+  const adminUser = users['admin.rescue@example.com'];
+  for (const fixtureTeam of TEAMS) {
+    let team = checked(
       await admin
         .from('rescue_teams')
-        .insert({
-          name: TEAM_NAME,
-          partner_reference: TEAM_REFERENCE,
-          status: 'pending',
-          hotline: '+12025550190',
-          base_latitude: 16.061,
-          base_longitude: 108.2238,
-          service_radius_km: 15,
-        })
         .select('id,name,status,verified_by')
-        .single(),
-      'CREATE_TEST_TEAM',
+        .eq('partner_reference', fixtureTeam.reference)
+        .maybeSingle(),
+      'READ_TEST_TEAM',
     );
-  }
-  const member = checked(
-    await admin
-      .from('provider_members')
-      .select('user_id,team_id,status')
-      .eq('user_id', users.provider.id)
-      .maybeSingle(),
-    'READ_TEST_PROVIDER',
-  );
-  if (member && (member.team_id !== team.id || member.status !== 'active')) {
-    throw new Error('TEST_PROVIDER_WAS_CHANGED: refusing to move or reactivate it.');
-  }
-  if (!member)
+    if (
+      team &&
+      (team.name !== fixtureTeam.name ||
+        team.status === 'suspended' ||
+        (team.verified_by && team.verified_by !== adminUser.id))
+    ) {
+      throw new Error('TEST_TEAM_WAS_CHANGED: refusing to overwrite it.');
+    }
+    if (!team) {
+      team = checked(
+        await admin
+          .from('rescue_teams')
+          .insert({
+            name: fixtureTeam.name,
+            partner_reference: fixtureTeam.reference,
+            status: 'pending',
+            hotline: fixtureTeam.phone,
+            base_latitude: fixtureTeam.latitude,
+            base_longitude: fixtureTeam.longitude,
+            base_address: fixtureTeam.address,
+            service_radius_km: 15,
+          })
+          .select('id,name,status,verified_by')
+          .single(),
+        'CREATE_TEST_TEAM',
+      );
+    }
+    for (const account of ACCOUNTS.filter(
+      (account) => account.role === 'provider' && account.teamReference === fixtureTeam.reference,
+    )) {
+      const provider = users[account.email];
+      const member = checked(
+        await admin
+          .from('provider_members')
+          .select('user_id,team_id,status')
+          .eq('user_id', provider.id)
+          .maybeSingle(),
+        'READ_TEST_PROVIDER',
+      );
+      if (member && (member.team_id !== team.id || member.status !== 'active')) {
+        throw new Error('TEST_PROVIDER_WAS_CHANGED: refusing to move or reactivate it.');
+      }
+      if (!member)
+        checked(
+          await admin.from('provider_members').insert({
+            user_id: provider.id,
+            team_id: team.id,
+            display_name: account.name,
+            contact_phone_e164: account.phone,
+            rescue_vehicle_label: '[TEST] Xe cứu hộ mô phỏng',
+            status: 'active', // Explicit test fixture approval; normal admin enrollment starts pending.
+            is_available: false,
+          }),
+          'CREATE_TEST_PROVIDER',
+        );
+    }
     checked(
-      await admin.from('provider_members').insert({
-        user_id: users.provider.id,
-        team_id: team.id,
-        display_name: '[TEST] Cứu hộ viên',
-        contact_phone_e164: '+12025550191',
-        rescue_vehicle_label: '[TEST] Xe cứu hộ mô phỏng',
-        status: 'active', // Explicit test fixture approval; normal admin enrollment starts pending.
-        is_available: false,
-      }),
-      'CREATE_TEST_PROVIDER',
+      await admin.from('team_capabilities').upsert(
+        services.map(({ code }) => ({
+          team_id: team.id,
+          service_code: code,
+          is_active: true,
+        })),
+        { onConflict: 'team_id,service_code', ignoreDuplicates: true },
+      ),
+      'CREATE_TEST_CAPABILITIES',
     );
-  checked(
-    await admin.from('team_capabilities').upsert(
-      services.map(({ code }) => ({
-        team_id: team.id,
-        service_code: code,
-        is_active: true,
-      })),
-      { onConflict: 'team_id,service_code', ignoreDuplicates: true },
-    ),
-    'CREATE_TEST_CAPABILITIES',
-  );
-  checked(
-    await admin.from('team_verification_checks').upsert(
-      requirements.map(({ code }) => ({
-        team_id: team.id,
-        requirement_code: code,
-        completed: true,
-        note: '[TEST] Checklist mô phỏng cho tài khoản kiểm thử, không phải xác minh đối tác thật.',
-        checked_by: users.admin.id,
-        checked_at: new Date().toISOString(),
-      })),
-      { onConflict: 'team_id,requirement_code', ignoreDuplicates: true },
-    ),
-    'CREATE_TEST_CHECKLIST',
-  );
-  const checks = checked(
-    await admin.from('team_verification_checks').select('requirement_code,completed').eq('team_id', team.id),
-    'VERIFY_TEST_CHECKLIST',
-  );
-  if (
-    requirements.some(
-      (requirement) =>
-        requirement.is_required &&
-        !checks.some((check) => check.requirement_code === requirement.code && check.completed),
-    )
-  ) {
-    throw new Error('TEST_CHECKLIST_WAS_CHANGED: review incomplete checks manually.');
-  }
-  if (team.status === 'pending')
     checked(
+      await admin.from('team_verification_checks').upsert(
+        requirements.map(({ code }) => ({
+          team_id: team.id,
+          requirement_code: code,
+          completed: true,
+          note: '[TEST] Checklist mô phỏng cho tài khoản kiểm thử, không phải xác minh đối tác thật.',
+          checked_by: adminUser.id,
+          checked_at: new Date().toISOString(),
+        })),
+        { onConflict: 'team_id,requirement_code', ignoreDuplicates: true },
+      ),
+      'CREATE_TEST_CHECKLIST',
+    );
+    const checks = checked(
       await admin
-        .from('rescue_teams')
-        .update({
-          status: 'verified',
-          verified_by: users.admin.id,
-          verified_at: new Date().toISOString(),
-        })
-        .eq('id', team.id),
-      'ACTIVATE_TEST_TEAM',
+        .from('team_verification_checks')
+        .select('requirement_code,completed')
+        .eq('team_id', team.id),
+      'VERIFY_TEST_CHECKLIST',
     );
+    if (
+      requirements.some(
+        (requirement) =>
+          requirement.is_required &&
+          !checks.some((check) => check.requirement_code === requirement.code && check.completed),
+      )
+    ) {
+      throw new Error('TEST_CHECKLIST_WAS_CHANGED: review incomplete checks manually.');
+    }
+    if (team.status === 'pending')
+      checked(
+        await admin
+          .from('rescue_teams')
+          .update({
+            status: 'verified',
+            verified_by: adminUser.id,
+            verified_at: new Date().toISOString(),
+          })
+          .eq('id', team.id),
+        'ACTIVATE_TEST_TEAM',
+      );
+  }
 
-  for (const credential of record.accounts) {
+  for (const account of ACCOUNTS) {
+    const credential = record.accounts.find((entry) => entry.email === account.email);
     const sessionClient = createClient(config.url, config.publicKey, clientOptions);
     const signedIn = checked(
       await sessionClient.auth.signInWithPassword({ email: credential.email, password: credential.password }),
@@ -305,11 +410,13 @@ async function setup(env, args) {
     );
     if (profile.role !== credential.role) throw new Error('TEST_LOGIN_ROLE_MISMATCH');
     checked(await sessionClient.auth.signOut({ scope: 'local' }), 'CLOSE_TEST_SESSION');
-    console.log(`${credential.role}: password sign-in and own-profile RLS read passed.`);
+    console.log(
+      `${credential.email} (${credential.role}): password sign-in and own-profile RLS read passed.`,
+    );
   }
   console.log(`Passwords saved only in ${credentialsPath}`);
   console.log(
-    'Test provider starts offline. Dispatch uses the fixed test shop (16.061, 108.2238); enable availability in the app when ready.',
+    'Four test providers in three shops. New providers start offline; enable availability in each app session. Existing availability, shop coordinates and passwords are preserved.',
   );
   console.log('Global email/SMS settings and existing accounts/teams were not changed.');
 }
@@ -318,10 +425,12 @@ if (require.main === module) {
   setup(process.env, process.argv.slice(2)).catch((error) => {
     console.error(error.message);
     console.error(
-      'Setup may be partial; keep .tmp/test-accounts.local.json and rerun after resolving the error. No existing users are deleted.',
+      error.setupNotStarted
+        ? 'Stopped during read-only preflight, before Auth/account writes. Keep .tmp/test-accounts.local.json and rerun after resolving the error.'
+        : 'Setup may be partial; keep .tmp/test-accounts.local.json and rerun after resolving the error. No existing users are deleted.',
     );
     process.exitCode = 1;
   });
 }
 
-module.exports = { ACCOUNTS, FIXTURE, configuration, assertFixtureUser };
+module.exports = { ACCOUNTS, TEAMS, FIXTURE, configuration, assertFixtureUser, checked, extendCredentials };

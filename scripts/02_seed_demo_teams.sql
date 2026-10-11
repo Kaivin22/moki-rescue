@@ -1,4 +1,4 @@
--- DỮ LIỆU GIẢ LẬP: chỉ chạy trên local/staging dành cho demo, sau B1..V8 và 02.
+-- DỮ LIỆU GIẢ LẬP: chỉ chạy trên local/staging dành cho demo, sau 01_init_database.sql (đã kiểm tra RLS).
 -- 12 vị trí giả lập phân bố trong vùng dữ liệu OSRM demo ở Đà Nẵng.
 -- Không phải địa chỉ/đơn vị cứu hộ thực tế; chưa chứng minh điểm nào cũng snap được vào đường.
 -- Schema bắt buộc hotline E.164: dùng +1 202 555-0101..0112 thuộc dải hư cấu
@@ -7,6 +7,7 @@
 -- Chạy lại không tạo trùng và không ghi đè đội/năng lực đã được admin chỉnh.
 
 BEGIN;
+SELECT pg_advisory_xact_lock(225122, 274);
 
 DO $$
 DECLARE
@@ -18,13 +19,19 @@ BEGIN
   IF deployment_environment NOT IN ('local', 'staging') THEN
     RAISE EXCEPTION 'DEMO_SEED_ENVIRONMENT_NOT_CONFIRMED';
   END IF;
-  IF to_regclass('public.provider_dispatch_stats') IS NULL
+  IF to_regclass('public.support_tickets') IS NULL
     OR NOT EXISTS (
       SELECT 1 FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'rescue_requests'
-        AND column_name = 'assigned_provider_position_at'
+      WHERE table_schema = 'public' AND table_name = 'rescue_teams'
+        AND column_name = 'base_address'
+    ) OR NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('public.service_types')
+        AND conname = 'service_types_gasoline_scope' AND convalidated
+    ) OR NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('public.team_capabilities')
+        AND conname = 'team_capabilities_gasoline_scope' AND convalidated
     ) THEN
-    RAISE EXCEPTION 'RUN_MIGRATIONS_THROUGH_V8_FIRST';
+    RAISE EXCEPTION 'RUN_CURRENT_INIT_DATABASE_FIRST';
   END IF;
 
   FOR sample IN SELECT * FROM (VALUES
@@ -32,21 +39,32 @@ BEGIN
     ('DEMO-DN-02', '[DEMO] Đội 02 - khu vực Thuận Phước', 16.0900, 108.2180, 10.0, '+12025550102', ARRAY['flat_tire', 'out_of_fuel', 'motorbike_transport']),
     ('DEMO-DN-03', '[DEMO] Đội 03 - khu vực Thanh Khê', 16.0640, 108.1870, 9.0, '+12025550103', ARRAY['flat_tire', 'dead_battery', 'out_of_fuel']),
     ('DEMO-DN-04', '[DEMO] Đội 04 - khu vực Xuân Hà', 16.0780, 108.1810, 9.0, '+12025550104', ARRAY['flat_tire', 'minor_repair', 'motorbike_transport']),
-    ('DEMO-DN-05', '[DEMO] Đội 05 - khu vực Hòa Khánh', 16.0730, 108.1500, 12.0, '+12025550105', ARRAY['flat_tire', 'dead_battery', 'electric_battery']),
-    ('DEMO-DN-06', '[DEMO] Đội 06 - khu vực Hòa Hiệp', 16.1160, 108.1240, 14.0, '+12025550106', ARRAY['out_of_fuel', 'electric_battery', 'motorbike_transport']),
+    ('DEMO-DN-05', '[DEMO] Đội 05 - khu vực Hòa Khánh', 16.0730, 108.1500, 12.0, '+12025550105', ARRAY['flat_tire', 'dead_battery', 'minor_repair']),
+    ('DEMO-DN-06', '[DEMO] Đội 06 - khu vực Hòa Hiệp', 16.1160, 108.1240, 14.0, '+12025550106', ARRAY['out_of_fuel', 'dead_battery', 'motorbike_transport']),
     ('DEMO-DN-07', '[DEMO] Đội 07 - khu vực An Hải', 16.0650, 108.2400, 8.0, '+12025550107', ARRAY['flat_tire', 'dead_battery', 'minor_repair']),
     ('DEMO-DN-08', '[DEMO] Đội 08 - khu vực Thọ Quang', 16.1050, 108.2530, 12.0, '+12025550108', ARRAY['out_of_fuel', 'minor_repair', 'motorbike_transport']),
-    ('DEMO-DN-09', '[DEMO] Đội 09 - khu vực Mỹ An', 16.0410, 108.2450, 8.0, '+12025550109', ARRAY['flat_tire', 'electric_battery', 'motorbike_transport']),
+    ('DEMO-DN-09', '[DEMO] Đội 09 - khu vực Mỹ An', 16.0410, 108.2450, 8.0, '+12025550109', ARRAY['flat_tire', 'dead_battery', 'motorbike_transport']),
     ('DEMO-DN-10', '[DEMO] Đội 10 - khu vực Khuê Mỹ', 16.0160, 108.2540, 10.0, '+12025550110', ARRAY['dead_battery', 'minor_repair', 'motorbike_transport']),
-    ('DEMO-DN-11', '[DEMO] Đội 11 - khu vực Hòa Xuân', 16.0060, 108.2250, 11.0, '+12025550111', ARRAY['flat_tire', 'out_of_fuel', 'electric_battery']),
+    ('DEMO-DN-11', '[DEMO] Đội 11 - khu vực Hòa Xuân', 16.0060, 108.2250, 11.0, '+12025550111', ARRAY['flat_tire', 'out_of_fuel', 'minor_repair']),
     ('DEMO-DN-12', '[DEMO] Đội 12 - khu vực Hòa Cầm', 16.0130, 108.1800, 12.0, '+12025550112', ARRAY['flat_tire', 'dead_battery', 'motorbike_transport'])
   ) AS data(partner_reference, name, latitude, longitude, radius_km, hotline, services)
   LOOP
+    IF NOT public.api_is_in_service_area(sample.latitude, sample.longitude) THEN
+      RAISE EXCEPTION 'DEMO_SHOP_OUTSIDE_SERVICE_AREA: %', sample.partner_reference;
+    END IF;
+    IF EXISTS (
+      SELECT 1 FROM unnest(sample.services) AS requested(code)
+      LEFT JOIN public.service_types catalog ON catalog.code = requested.code
+      WHERE catalog.code IS NULL OR NOT catalog.is_active
+    ) THEN
+      RAISE EXCEPTION 'DEMO_SERVICE_NOT_ACTIVE: %', sample.partner_reference;
+    END IF;
     new_team_id := NULL;
     INSERT INTO public.rescue_teams
-      (name, partner_reference, status, hotline, base_latitude, base_longitude, service_radius_km)
+      (name, partner_reference, status, hotline, base_latitude, base_longitude, service_radius_km, base_address)
     VALUES (sample.name, sample.partner_reference, 'pending', sample.hotline,
-            sample.latitude, sample.longitude, sample.radius_km)
+            sample.latitude, sample.longitude, sample.radius_km,
+            regexp_replace(sample.name, '^\[DEMO\] Đội [0-9]+ - ', '') || ', Đà Nẵng (địa điểm mô phỏng)')
     ON CONFLICT (partner_reference) DO NOTHING
     RETURNING id INTO new_team_id;
 
@@ -65,7 +83,7 @@ $$;
 
 COMMIT;
 
-SELECT partner_reference, name, status, base_latitude, base_longitude, service_radius_km
+SELECT partner_reference, name, status, base_address, base_latitude, base_longitude, service_radius_km
 FROM public.rescue_teams
 WHERE partner_reference IN ('DEMO-DN-01', 'DEMO-DN-02', 'DEMO-DN-03', 'DEMO-DN-04',
                            'DEMO-DN-05', 'DEMO-DN-06', 'DEMO-DN-07', 'DEMO-DN-08',

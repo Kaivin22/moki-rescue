@@ -20,6 +20,8 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
     CREATE ROLE service_role NOLOGIN;
   END IF;
+  -- Native disposable test cluster only: mirror the real Supabase service role.
+  ALTER ROLE service_role BYPASSRLS;
 END;
 $$;
 

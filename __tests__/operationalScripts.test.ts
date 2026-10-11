@@ -2,14 +2,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+const {
+  generate,
+  cleanInstallContent,
+  generateVerification,
+  preflightSql,
+  verificationBlock,
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+} = require('../scripts/build-init-sql.cjs');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { setupPermissionsBlock } = require('../scripts/test-setup-permissions.cjs');
 
 const read = (name: string) => fs.readFileSync(path.join(process.cwd(), 'scripts', name), 'utf8');
 const sql = (name: string) => read(name).replace(/--[^\n]*/g, '');
-const verify = read('02_verify_rls.sql');
-const seed = read('05_seed_demo_teams.sql');
+const verify: string = generateVerification();
+const seed = read('02_seed_demo_teams.sql');
 
 describe('operational SQL safety contracts (static, not database execution)', () => {
-  it('ships a deterministic clean-install bundle matching every original migration', () => {
+  it('ships a deterministic bundle with only the documented B1 role adaptation', () => {
     const bundled = read('01_init_database.sql').replace(/\r\n/g, '\n');
     const dir = path.join(process.cwd(), 'backend/src/main/resources/db/migration');
     const files = fs
@@ -19,12 +29,31 @@ describe('operational SQL safety contracts (static, not database execution)', ()
     let previousEnd = 0;
     for (const file of files) {
       const content = fs.readFileSync(path.join(dir, file), 'utf8').replace(/\r\n/g, '\n');
-      const digest = createHash('sha256').update(content).digest('hex');
-      const start = bundled.indexOf(`-- BEGIN SOURCE: ${file}\n-- SHA256: ${digest}\n`);
+      const originalDigest = createHash('sha256').update(content).digest('hex');
+      const start = bundled.indexOf(`-- BEGIN SOURCE: ${file}\n`);
       expect(start).toBeGreaterThan(previousEnd);
-      const bodyStart = start + `-- BEGIN SOURCE: ${file}\n-- SHA256: ${digest}\n`.length;
+      const digestStart = bundled.indexOf('-- SHA256: ', start);
+      const bodyStart = bundled.indexOf('\n', digestStart) + 1;
       const end = bundled.indexOf(`-- END SOURCE: ${file}\n`, bodyStart);
-      expect(bundled.slice(bodyStart, end)).toBe(content + (content.endsWith('\n') ? '' : '\n'));
+      const body = bundled.slice(bodyStart, end);
+      const digest = createHash('sha256').update(body).digest('hex');
+      expect(bundled.slice(digestStart, bodyStart)).toBe(`-- SHA256: ${digest}\n`);
+      if (file === 'B1__initial_schema.sql') {
+        expect(bundled.slice(start, digestStart)).toContain(`-- ORIGINAL SHA256: ${originalDigest}`);
+        const adaptedBranches = body.match(
+          /  -- BEGIN INSTALL ADAPTATION:[\s\S]*?  -- END INSTALL ADAPTATION\n/g,
+        );
+        expect(adaptedBranches).toHaveLength(1);
+        // Outside this one branch, even B1 must remain byte-identical to its source.
+        const restored = body.replace(
+          adaptedBranches![0],
+          '  ELSE\n    ALTER ROLE motorescue_api\n' +
+            '      LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;\n',
+        );
+        expect(restored).toBe(content);
+      } else {
+        expect(body).toBe(content + (content.endsWith('\n') ? '' : '\n'));
+      }
       previousEnd = end;
     }
     expect(bundled.match(/-- BEGIN SOURCE:/g)).toHaveLength(files.length);
@@ -34,6 +63,39 @@ describe('operational SQL safety contracts (static, not database execution)', ()
         encoding: 'utf8',
       }),
     ).toContain('Init SQL matches');
+  });
+
+  it('reuses only an already safe runtime role without altering attributes or passwords', () => {
+    const init = sql('01_init_database.sql');
+    expect(init).not.toMatch(/ALTER ROLE motorescue_api|DROP ROLE|PASSWORD\s+/);
+    expect(init).toContain("IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'motorescue_api') THEN");
+    expect(init).toContain('CREATE ROLE motorescue_api');
+    const branch = init.slice(init.indexOf('ELSIF NOT EXISTS'), init.indexOf('CREATE TABLE public.profiles'));
+    for (const condition of [
+      'rolcanlogin',
+      'NOT rolinherit',
+      'NOT rolsuper',
+      'NOT rolcreatedb',
+      'NOT rolcreaterole',
+      'NOT rolreplication',
+      'rolbypassrls',
+    ])
+      expect(branch).toContain(condition);
+    expect(branch).toContain("RAISE EXCEPTION 'MOTORESCUE_API_ROLE_UNSAFE'");
+    expect(verify).toContain("RAISE EXCEPTION 'MOTORESCUE_API_ROLE_UNSAFE'");
+  });
+
+  it('refuses to guess if the immutable B1 role block has changed', () => {
+    const original = fs
+      .readFileSync('backend/src/main/resources/db/migration/B1__initial_schema.sql', 'utf8')
+      .replace(/\r\n/g, '\n');
+    expect(() =>
+      cleanInstallContent(
+        'B1__initial_schema.sql',
+        original.replace('ALTER ROLE motorescue_api', 'ALTER ROLE different_role'),
+      ),
+    ).toThrow('B1 runtime-role block changed');
+    expect(cleanInstallContent('V11__notification_inbox_and_support.sql', original)).toBe(original);
   });
 
   it('guards init before any app DDL, wraps it atomically and never resets the schema', () => {
@@ -49,41 +111,60 @@ describe('operational SQL safety contracts (static, not database execution)', ()
     expect(init).not.toMatch(/DROP SCHEMA|CREATE TABLE (?:public\.)?flyway_schema_history/);
   });
 
-  it('documents preflight then bundled init without instructing duplicate migration execution', () => {
-    const section = read('README.md')
-      .split('### Cài mới bằng SQL Editor')[1]
-      .split('### Database đã tồn tại')[0];
-    expect(section.indexOf('1. Chạy `scripts/01_preflight.sql`')).toBeLessThan(
-      section.indexOf('2. Chạy **toàn bộ `scripts/01_init_database.sql`'),
-    );
-    expect(section).toContain('Không chạy lại các file B1–V10 riêng lẻ');
-    expect(section).not.toContain('Không có `01_schema.sql`');
-  });
-
-  it.each(['01_preflight.sql', '02_verify_rls.sql'])('%s declares a read-only transaction', (name) => {
-    expect(sql(name)).toMatch(/BEGIN TRANSACTION READ ONLY;/);
-    expect(sql(name).trim()).toMatch(/COMMIT;$/);
-    expect(sql(name)).not.toMatch(/^\s*(INSERT INTO|UPDATE public\.|DELETE FROM|DROP |ALTER |CREATE )/m);
+  it('keeps two main SQL files, three deliberate maintenance scripts and no duplicate upgrade SQL', () => {
+    const files = fs
+      .readdirSync(path.join(process.cwd(), 'scripts'))
+      .filter((file) => file.endsWith('.sql'))
+      .sort();
+    expect(files).toEqual(['01_init_database.sql', '02_seed_demo_teams.sql']);
+    expect(
+      fs
+        .readdirSync('scripts/optional')
+        .filter((name) => name.endsWith('.sql'))
+        .sort(),
+    ).toEqual(['00_reset.sql', '03_bootstrap_operator.sql', '04_schedule_retention.sql']);
+    expect(fs.readdirSync('scripts/archive').filter((name) => name.endsWith('.sql'))).toEqual([]);
+    const section = read('README.md');
+    const orderedSql = [...section.matchAll(/^\|\s*(\d+)\s*\|\s*`([^`]+)`/gm)].map((match) => [
+      match[1],
+      match[2],
+    ]);
+    expect(orderedSql).toEqual([
+      ['1', '01_init_database.sql'],
+      ['2', '02_seed_demo_teams.sql'],
+    ]);
+    expect(section).toContain('Nếu database/project mới hoàn toàn thì bỏ qua bước reset');
+    expect(section).toContain('Không chạy lại các file B1–V13 riêng lẻ');
+    expect(section).toContain('Không cần chạy `optional/03_bootstrap_operator.sql`');
+    expect(section).toContain('không xóa file đó khi reset schema');
   });
 
   it.each([
-    '00_reset.sql',
-    '03_bootstrap_operator.sql',
-    '04_schedule_retention.sql',
-    '05_seed_demo_teams.sql',
-    '07_upgrade_shop_dispatch_and_provider_approval.sql',
-    '08_approve_existing_test_provider.sql',
+    ['preflight', preflightSql],
+    ['verification', verify],
+  ])('%s diagnostic declares a read-only transaction', (_name, source) => {
+    const statement = source.replace(/--[^\n]*/g, '');
+    expect(statement).toMatch(/BEGIN TRANSACTION READ ONLY;/);
+    expect(statement.trim()).toMatch(/COMMIT;$/);
+    expect(statement).not.toMatch(/^\s*(INSERT INTO|UPDATE public\.|DELETE FROM|DROP |ALTER |CREATE )/m);
+  });
+
+  it.each([
+    'optional/00_reset.sql',
+    'optional/03_bootstrap_operator.sql',
+    'optional/04_schedule_retention.sql',
+    '02_seed_demo_teams.sql',
   ])('%s wraps mutations in a transaction', (name) => {
     expect(sql(name).trim()).toMatch(/^BEGIN;/);
     expect(sql(name)).toContain('COMMIT;');
   });
 
   it('keeps reset opt-in and refuses extensions in public', () => {
-    expect(read('00_reset.sql')).toContain("confirm_reset CONSTANT TEXT := 'CHANGE_ME'");
-    expect(read('00_reset.sql')).toContain("deployment_environment NOT IN ('local', 'staging')");
-    expect(read('00_reset.sql')).toContain('RESET_REFUSED_EXTENSION_IN_PUBLIC');
-    expect(read('00_reset.sql').indexOf('RESET_NOT_CONFIRMED')).toBeLessThan(
-      read('00_reset.sql').indexOf('DROP SCHEMA'),
+    expect(read('optional/00_reset.sql')).toContain("confirm_reset CONSTANT TEXT := 'CHANGE_ME'");
+    expect(read('optional/00_reset.sql')).toContain("deployment_environment NOT IN ('local', 'staging')");
+    expect(read('optional/00_reset.sql')).toContain('RESET_REFUSED_EXTENSION_IN_PUBLIC');
+    expect(read('optional/00_reset.sql').indexOf('RESET_NOT_CONFIRMED')).toBeLessThan(
+      read('optional/00_reset.sql').indexOf('DROP SCHEMA'),
     );
   });
 
@@ -96,7 +177,7 @@ describe('operational SQL safety contracts (static, not database execution)', ()
           (match) => match[1],
         ),
       );
-    expect(tables).toHaveLength(26);
+    expect(tables).toHaveLength(30);
     const existence = verify.slice(0, verify.indexOf('MISSING_TABLES'));
     const rls = verify.slice(verify.indexOf('DECLARE\n  unprotected'), verify.indexOf('RLS_DISABLED_ON'));
     for (const name of tables) {
@@ -115,7 +196,7 @@ describe('operational SQL safety contracts (static, not database execution)', ()
   });
 
   it('bootstraps one known account without MIN(uuid), auth writes or reactivating users', () => {
-    const bootstrap = sql('03_bootstrap_operator.sql');
+    const bootstrap = sql('optional/03_bootstrap_operator.sql');
     expect(bootstrap).not.toMatch(/MIN\(id\)/i);
     expect(bootstrap).toContain('phone IN (admin_phone, substring(admin_phone FROM 2))');
     expect(bootstrap).toContain('INTO STRICT matched_user_id');
@@ -125,7 +206,7 @@ describe('operational SQL safety contracts (static, not database execution)', ()
   });
 
   it('validates retention functions before replacing exactly four schedules', () => {
-    const retention = sql('04_schedule_retention.sql');
+    const retention = sql('optional/04_schedule_retention.sql');
     expect(retention.match(/SELECT cron\.schedule\(/g)).toHaveLength(4);
     expect(retention.indexOf('RETENTION_FUNCTION_MISSING')).toBeLessThan(
       retention.indexOf('SELECT cron.unschedule'),
@@ -146,7 +227,6 @@ describe('operational SQL safety contracts (static, not database execution)', ()
     const catalog = new Set([
       'flat_tire',
       'dead_battery',
-      'electric_battery',
       'out_of_fuel',
       'minor_repair',
       'motorbike_transport',
@@ -168,17 +248,77 @@ describe('operational SQL safety contracts (static, not database execution)', ()
     expect(seed).toContain("sample.partner_reference, 'pending'");
     expect(seed).toContain('ON CONFLICT (partner_reference) DO NOTHING');
     expect(seed).toContain('IF new_team_id IS NOT NULL THEN');
-    expect(sql('05_seed_demo_teams.sql')).not.toMatch(
+    expect(sql('02_seed_demo_teams.sql')).not.toMatch(
       /INSERT INTO (auth\.|public\.(provider_members|rescue_requests))|DO UPDATE|DROP |DELETE FROM/,
     );
   });
 
   it('documents manual order without pretending cloud email settings were changed', () => {
     const readme = read('README.md');
-    expect(readme).toContain('Cài mới bằng SQL Editor');
-    expect(readme).toContain('Không trộn hai cách quản lý');
-    expect(readme).toContain('Confirm email: OFF');
-    expect(readme).toContain('chưa được thay đổi trong lần rà soát này');
+    expect(readme).toContain('SQL cài mới Supabase — bộ rút gọn');
+    expect(readme).toContain('không trộn với Flyway baseline/migrate');
+    expect(readme).toContain('Tài khoản mẫu được xác nhận email riêng');
+    expect(readme).toContain('Không đổi cài đặt xác thực toàn project trong lần rút gọn này');
     expect(readme).not.toContain('Không có seed đội cứu hộ');
+  });
+
+  it('runs all security checks before committing the complete installation', () => {
+    for (const bundle of [generate()]) {
+      expect(bundle).toContain(verificationBlock());
+      expect(bundle.indexOf('-- END SCHEMA VERIFICATION')).toBeLessThan(bundle.indexOf('\nCOMMIT;'));
+      expect(bundle.match(/^COMMIT;$/gm)).toHaveLength(1);
+      expect(bundle).not.toContain('BEGIN TRANSACTION READ ONLY;');
+      expect(bundle).toContain('MOTORESCUE_API_HAS_DDL_PRIVILEGE');
+    }
+  });
+
+  it.each(['--repair-test-setup', '--upgrade-from=8', '--upgrade-from=12'])(
+    'rejects the removed patch command %s instead of generating more SQL files',
+    (mode) => {
+      expect(() =>
+        execFileSync(process.execPath, ['scripts/build-init-sql.cjs', mode], {
+          cwd: process.cwd(),
+          stdio: 'pipe',
+        }),
+      ).toThrow('standalone patch generation is not supported');
+    },
+  );
+
+  it('grants fixture permissions without changing roles or opening mobile privileges', () => {
+    const statements = setupPermissionsBlock().replace(/--[^\n]*/g, '');
+    expect(statements).not.toMatch(
+      /\b(?:DROP|TRUNCATE|REVOKE)\b|ALTER ROLE|ALTER TABLE|CREATE POLICY|INSERT INTO|DELETE FROM|UPDATE public\.|GRANT ALL|ALL TABLES|ALTER DEFAULT PRIVILEGES/,
+    );
+    const grants = statements.match(/GRANT[\s\S]*?;/g)!;
+    expect(grants).toHaveLength(5);
+    for (const grant of grants) expect(grant).toMatch(/ TO service_role;$/);
+    expect(statements).toContain('GRANT UPDATE (role) ON public.profiles TO service_role');
+    expect(statements).toContain(
+      'GRANT UPDATE (status, verified_by, verified_at) ON public.rescue_teams TO service_role',
+    );
+    expect(statements).toContain("RAISE EXCEPTION 'TEST_SETUP_SELECT_MISSING: %'");
+    expect(statements).toContain("RAISE EXCEPTION 'SUPABASE_SERVICE_ROLE_REQUIRED'");
+    expect(statements).not.toMatch(/\bTO (?:PUBLIC|anon|authenticated|motorescue_api)\b/i);
+  });
+
+  it('includes and verifies explicit fixture grants before committing init', () => {
+    for (const bundle of [generate()]) {
+      expect(bundle).toContain(setupPermissionsBlock());
+      expect(bundle.indexOf('-- BEGIN TEST SETUP PERMISSIONS')).toBeLessThan(
+        bundle.indexOf('-- BEGIN SCHEMA VERIFICATION'),
+      );
+    }
+  });
+
+  it('validates the current schema, active services and shop coverage before demo inserts', () => {
+    expect(seed).toContain('RUN_CURRENT_INIT_DATABASE_FIRST');
+    expect(seed).toContain('service_types_gasoline_scope');
+    expect(seed).toContain('team_capabilities_gasoline_scope');
+    expect(seed).toContain('base_address');
+    expect(seed.indexOf('DEMO_SHOP_OUTSIDE_SERVICE_AREA')).toBeLessThan(seed.indexOf('INSERT INTO'));
+    expect(seed.indexOf('DEMO_SERVICE_NOT_ACTIVE')).toBeLessThan(seed.indexOf('INSERT INTO'));
+    for (const name of ['01_init_database.sql', '02_seed_demo_teams.sql', 'optional/00_reset.sql']) {
+      expect(read(name)).toContain('pg_advisory_xact_lock(225122, 274)');
+    }
   });
 });

@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { generate } = require('../scripts/build-init-sql.cjs');
 const read = (name: string) => fs.readFileSync(path.join(process.cwd(), name), 'utf8').replace(/\r\n/g, '\n');
 const migration = read('backend/src/main/resources/db/migration/V9__align_demo_service_coverage.sql');
 const shopMigration = read(
@@ -27,14 +29,13 @@ describe('service coverage wiring (static contracts, not PostgreSQL execution)',
     expect(migration).toContain('NEW.destination_latitude, NEW.destination_longitude');
   });
 
-  it('ships an atomic incremental copy without touching auth or cancelling jobs', () => {
-    const upgrade = read('scripts/06_upgrade_demo_service_coverage.sql');
-    expect(upgrade).toContain(migration);
-    expect(upgrade).toContain('V8_PREREQUISITES_MISSING_DO_NOT_RESET');
-    expect(upgrade).toContain('DATABASE_MANAGED_BY_FLYWAY_USE_FLYWAY_MIGRATE');
-    expect(upgrade).toMatch(/^BEGIN;/m);
-    expect(upgrade).toMatch(/^COMMIT;/m);
-    expect(upgrade).not.toMatch(/DROP SCHEMA|UPDATE auth\.|SET status = 'cancelled'/);
+  it('includes coverage in the complete atomic installer without a separate patch', () => {
+    const init = generate();
+    expect(init).toContain(migration);
+    expect(init).toContain('DATABASE_ALREADY_MANAGED_BY_FLYWAY');
+    expect(init).toMatch(/^BEGIN;/m);
+    expect(init).toMatch(/^COMMIT;/m);
+    expect(migration).not.toMatch(/DROP SCHEMA|UPDATE auth\.|SET status = 'cancelled'/);
   });
 
   it('keeps the region policy private and stops stale provider readiness', () => {
@@ -49,11 +50,9 @@ describe('service coverage wiring (static contracts, not PostgreSQL execution)',
     expect(cleanup).not.toContain('requestBackgroundPermissionsAsync');
   });
   it('upgrades shop dispatch atomically and never silently approves existing members', () => {
-    const upgrade = read('scripts/07_upgrade_shop_dispatch_and_provider_approval.sql');
-    expect(upgrade).toContain(shopMigration);
-    expect(upgrade).toContain('V10_ALREADY_APPLIED_DO_NOT_RERUN');
-    expect(upgrade).not.toContain("SET status = 'active'");
-    expect(upgrade).not.toMatch(/DROP SCHEMA|UPDATE auth\./);
+    expect(generate()).toContain(shopMigration);
+    expect(shopMigration).not.toContain("SET status = 'active'");
+    expect(shopMigration).not.toMatch(/DROP SCHEMA|UPDATE auth\./);
     expect(shopMigration).toContain("SET status = 'no_provider'");
   });
   it('rechecks the shop origin before publishing an OSRM offer', () => {

@@ -55,23 +55,30 @@ class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
         MigrateResult remainingMigrations = flyway.migrate();
 
         assertTrue(remainingMigrations.success);
-        assertEquals(6, remainingMigrations.migrationsExecuted); // V5 through V10
-        assertEquals(MigrationVersion.fromVersion("10"), flyway.info().current().getVersion());
+        assertEquals(9, remainingMigrations.migrationsExecuted); // V5 through V13
+        assertEquals(MigrationVersion.fromVersion("13"), flyway.info().current().getVersion());
         assertTrue(flyway.validateWithResult().validationSuccessful);
         assertEquals(0, flyway.migrate().migrationsExecuted);
 
         try (Connection connection = DriverManager.getConnection(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())) {
-            String verificationSql = Files.readString(
-                    Path.of(System.getProperty("user.dir"), "..", "scripts", "02_verify_rls.sql").normalize());
+            String bundle = Files.readString(
+                    Path.of(System.getProperty("user.dir"), "..", "scripts", "01_init_database.sql").normalize())
+                    .replace("\r\n", "\n");
+            String startMarker = "-- BEGIN SCHEMA VERIFICATION\n";
+            int start = bundle.indexOf(startMarker);
+            int end = bundle.indexOf("-- END SCHEMA VERIFICATION", start);
+            assertTrue(start >= 0 && end > start, "Missing bundled security checks");
+            String verificationSql = "BEGIN TRANSACTION READ ONLY;\n"
+                    + bundle.substring(start + startMarker.length(), end) + "\nCOMMIT;";
             try (Statement verification = connection.createStatement()) {
                 verification.execute(verificationSql);
             }
-            assertEquals(26, queryForInt(connection,
+            assertEquals(30, queryForInt(connection,
                     "SELECT COUNT(*) FROM information_schema.tables "
                             + "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
                             + "AND table_name <> 'flyway_schema_history'"));
-            assertEquals(26, queryForInt(connection,
+            assertEquals(30, queryForInt(connection,
                     "SELECT COUNT(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
                             + "WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity"));
             assertEquals(6, queryForInt(connection, "SELECT COUNT(*) FROM public.service_types"));

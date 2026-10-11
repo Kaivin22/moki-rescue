@@ -1,4 +1,4 @@
--- TÙY CHỌN: chỉ chạy khi đã đồng ý tự động xóa/làm mờ dữ liệu theo retention.
+-- TÙY CHỌN, KHÔNG CẦN CHO DEMO: chỉ chạy khi đã đồng ý tự động xóa/làm mờ dữ liệu theo retention.
 -- Chạy sau migrate và verify; chạy lại bằng CÙNG tài khoản quản trị để thay lịch.
 -- Bốn job: checkpoint mỗi giờ; ba job hàng ngày lúc 02:35/02:45/02:55 giờ VN
 -- khi cron.timezone là GMT/UTC. Không thay đổi timezone chung của project.

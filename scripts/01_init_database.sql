@@ -1,10 +1,14 @@
--- FILE TỰ SINH: chạy node scripts/build-init-sql.cjs để tạo lại, không chỉnh riêng.
--- KHỞI TẠO SUPABASE MỚI từ B1 đến V10; không dùng nâng cấp hoặc chạy lại.
--- Chạy 01_preflight.sql trước. Dán TOÀN BỘ file này vào SQL Editor và Run một lần.
--- Không cần mở/chạy từng file trong backend. Không tạo flyway_schema_history.
--- Không seed đội mẫu, không đổi cấu hình xác nhận email, không đặt mật khẩu runtime.
--- Lỗi: dừng, ROLLBACK; nếu cần rồi điều tra; không reset hay bỏ kiểm tra để ép chạy.
--- SHA-256 bên dưới tính trên nguồn UTF-8 đã chuẩn hóa CRLF thành LF.
+-- FILE TỰ SINH: node scripts/build-init-sql.cjs; không sửa riêng.
+-- CÀI MỚI + KIỂM TRA schema/quyền/RLS đến V13 trong CÙNG transaction.
+-- Dán TOÀN BỘ file vào Supabase SQL Editor và Run MỘT LẦN trên public trống.
+-- Kiểm tra thất bại thì transaction không commit; không bỏ qua guard để ép chạy.
+-- Không cần chạy migration backend hoặc file verify riêng.
+-- Đã gồm mọi sửa lỗi đến V13 và quyền tạo tài khoản test; không chạy SQL vá lẻ.
+-- Không seed demo/reset/Auth settings/mật khẩu; tùy chọn 02_seed_demo_teams.sql sau đó.
+-- Database đang có dữ liệu: KHÔNG chạy lại init; đọc scripts/README.md.
+-- SHA256 tính trên SQL được nhúng, UTF-8 chuẩn hóa CRLF thành LF.
+-- B1 chỉ điều chỉnh nhánh role đã tồn tại: kiểm tra/dùng lại, không ALTER ROLE.
+-- ORIGINAL SHA256 ở B1 là checksum migration gốc, không sửa lịch sử Flyway.
 
 BEGIN;
 SELECT pg_advisory_xact_lock(225122, 274);
@@ -43,7 +47,8 @@ END;
 $init_guard$;
 
 -- BEGIN SOURCE: B1__initial_schema.sql
--- SHA256: d46826f0c04851b1dff576c6c7f53adf38d95eae17a6a1d9762ab61d14e925b2
+-- ORIGINAL SHA256: d46826f0c04851b1dff576c6c7f53adf38d95eae17a6a1d9762ab61d14e925b2
+-- SHA256: 4552ac3cef5fb854282f9d7b04cdd8efba7597fb99cbe56c07f8678b623e6728
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA extensions;
 
@@ -54,9 +59,15 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'motorescue_api') THEN
     CREATE ROLE motorescue_api
       LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
-  ELSE
-    ALTER ROLE motorescue_api
-      LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
+  -- BEGIN INSTALL ADAPTATION: reuse a safe existing runtime role without ALTER ROLE.
+  ELSIF NOT EXISTS (
+    SELECT 1 FROM pg_roles WHERE rolname = 'motorescue_api'
+      AND rolcanlogin AND NOT rolinherit AND NOT rolsuper
+      AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolreplication AND rolbypassrls
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_ROLE_UNSAFE'
+      USING HINT = 'Review existing role attributes with an authorized administrator; do not drop the role or disable security checks.';
+  -- END INSTALL ADAPTATION
   END IF;
 END;
 $$;
@@ -1756,6 +1767,884 @@ UPDATE public.dispatch_offers SET status = 'withdrawn'
 WHERE status = 'pending';
 -- END SOURCE: V10__shop_dispatch_and_provider_approval.sql
 
+-- BEGIN SOURCE: V11__notification_inbox_and_support.sql
+-- SHA256: b1e0fb89b639792efc0ef923a4c9b0ab6664ef8b9814d4d4e2346dbee1d09c86
+-- In-app delivery is persistent and independent of device push registration.
+CREATE TABLE public.user_notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 160),
+  body TEXT NOT NULL CHECK (char_length(body) BETWEEN 1 AND 4000),
+  target_type TEXT NOT NULL CHECK (target_type IN ('rescue', 'support', 'announcement')),
+  target_id UUID NOT NULL,
+  event_key TEXT NOT NULL,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, event_key)
+);
+CREATE INDEX user_notifications_history_idx ON public.user_notifications(user_id, created_at DESC, id DESC);
+CREATE INDEX user_notifications_unread_idx ON public.user_notifications(user_id) WHERE read_at IS NULL;
+
+CREATE TABLE public.support_tickets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  incident_id UUID UNIQUE REFERENCES public.incident_reports(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL CHECK (char_length(subject) BETWEEN 5 AND 160),
+  description TEXT NOT NULL CHECK (char_length(description) BETWEEN 10 AND 4000),
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'waiting_user', 'resolved', 'dismissed')),
+  version BIGINT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX support_tickets_owner_idx ON public.support_tickets(owner_id, created_at DESC, id DESC);
+CREATE INDEX support_tickets_queue_idx ON public.support_tickets(status, created_at DESC, id DESC);
+CREATE TABLE public.support_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticket_id UUID NOT NULL REFERENCES public.support_tickets(id) ON DELETE CASCADE,
+  author_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  author_role TEXT NOT NULL CHECK (author_role IN ('customer', 'provider', 'admin', 'system')),
+  body TEXT NOT NULL CHECK (char_length(body) BETWEEN 1 AND 4000),
+  internal BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (NOT internal OR author_role = 'admin')
+);
+CREATE INDEX support_messages_thread_idx ON public.support_messages(ticket_id, created_at DESC, id DESC);
+CREATE INDEX support_messages_rate_idx ON public.support_messages(author_id, created_at DESC);
+
+CREATE TABLE public.announcements (
+  id UUID PRIMARY KEY,
+  created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  audience TEXT NOT NULL CHECK (audience IN ('all', 'customer', 'provider', 'admin')),
+  title TEXT NOT NULL CHECK (char_length(title) BETWEEN 5 AND 160),
+  body TEXT NOT NULL CHECK (char_length(body) BETWEEN 10 AND 4000),
+  recipient_count INTEGER NOT NULL DEFAULT 0 CHECK (recipient_count >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX announcements_history_idx ON public.announcements(created_at DESC, id DESC);
+
+-- Existing complaints are linked once, not copied into an unrelated complaint workflow.
+INSERT INTO public.support_tickets(incident_id, owner_id, subject, description, status, created_at, updated_at)
+SELECT id, customer_id, 'Khiếu nại ca cứu hộ', description, status, created_at, COALESCE(resolved_at, created_at)
+FROM public.incident_reports;
+INSERT INTO public.support_messages(ticket_id, author_id, author_role, body, created_at)
+SELECT ticket.id, incident.resolved_by, 'system', incident.resolution_note, incident.resolved_at
+FROM public.support_tickets ticket JOIN public.incident_reports incident ON incident.id = ticket.incident_id
+WHERE incident.resolution_note IS NOT NULL AND incident.resolved_at IS NOT NULL;
+
+CREATE FUNCTION public.sync_incident_support_ticket()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE ticket_id UUID;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO public.support_tickets(incident_id, owner_id, subject, description, status)
+    VALUES (NEW.id, NEW.customer_id, 'Khiếu nại ca cứu hộ', NEW.description, NEW.status)
+    RETURNING id INTO ticket_id;
+    INSERT INTO public.user_notifications(user_id, kind, title, body, target_type, target_id, event_key)
+    SELECT id, 'support', 'Khiếu nại mới', 'Có khiếu nại cần kiểm tra và phản hồi.', 'support', ticket_id,
+      'incident-new:' || NEW.id FROM public.profiles WHERE role = 'admin' AND is_active;
+  ELSIF NEW.status IS DISTINCT FROM OLD.status THEN
+    UPDATE public.support_tickets SET status = NEW.status, updated_at = NOW(), version = version + 1
+    WHERE incident_id = NEW.id RETURNING id INTO ticket_id;
+    IF ticket_id IS NOT NULL THEN
+      INSERT INTO public.support_messages(ticket_id, author_id, author_role, body)
+      VALUES (ticket_id, NEW.resolved_by, 'system', COALESCE(NEW.resolution_note, 'Trạng thái khiếu nại đã thay đổi.'));
+      INSERT INTO public.user_notifications(user_id, kind, title, body, target_type, target_id, event_key)
+      VALUES (NEW.customer_id, 'support', 'Khiếu nại đã có kết quả',
+        'Mở phiếu hỗ trợ để xem phản hồi của quản trị viên.', 'support', ticket_id,
+        'incident-status:' || NEW.id || ':' || NEW.status) ON CONFLICT (user_id, event_key) DO NOTHING;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER incident_support_ticket AFTER INSERT OR UPDATE OF status ON public.incident_reports
+FOR EACH ROW EXECUTE FUNCTION public.sync_incident_support_ticket();
+REVOKE ALL ON FUNCTION public.sync_incident_support_ticket() FROM PUBLIC, anon, authenticated, motorescue_api;
+
+ALTER TABLE public.user_notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.support_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
+-- API-only tables. Actor ownership, admin role and private-note checks are server-side.
+REVOKE ALL ON public.user_notifications, public.support_tickets, public.support_messages, public.announcements
+FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_notifications, public.support_tickets,
+public.support_messages, public.announcements TO motorescue_api;
+-- END SOURCE: V11__notification_inbox_and_support.sql
+
+-- BEGIN SOURCE: V12__shop_address.sql
+-- SHA256: 641f6ae5fa9e0b6fb3de277928afde024f3aa9351a49c5a5bde225ff3958c0f3
+-- Human-readable shop address is separate from the routing coordinate.
+-- Existing coordinates, assignments and dispatch state are deliberately untouched.
+ALTER TABLE public.rescue_teams
+  ADD COLUMN base_address TEXT CHECK (base_address IS NULL OR char_length(btrim(base_address)) BETWEEN 5 AND 300);
+COMMENT ON COLUMN public.rescue_teams.base_address IS
+  'Operator-confirmed display address. OSRM continues using base_latitude/base_longitude; editing the text never geocodes or moves the pin automatically.';
+NOTIFY pgrst, 'reload schema';
+-- END SOURCE: V12__shop_address.sql
+
+-- BEGIN SOURCE: V13__gasoline_rescue_scope.sql
+-- SHA256: 83c81ae3d09346315693e0a924eca1e083117a0988b07ee7a591f53bb679c296
+-- Retire electric-motorcycle services without deleting catalog/history records.
+-- Existing assigned cases remain readable and can be completed/cancelled normally.
+UPDATE public.service_types SET is_active = FALSE WHERE code = 'electric_battery';
+UPDATE public.team_capabilities SET is_active = FALSE WHERE service_code = 'electric_battery';
+
+ALTER TABLE public.service_types ADD CONSTRAINT service_types_gasoline_scope
+  CHECK (code <> 'electric_battery' OR NOT is_active);
+ALTER TABLE public.team_capabilities ADD CONSTRAINT team_capabilities_gasoline_scope
+  CHECK (service_code <> 'electric_battery' OR NOT is_active);
+
+NOTIFY pgrst, 'reload schema';
+-- END SOURCE: V13__gasoline_rescue_scope.sql
+
+-- BEGIN TEST SETUP PERMISSIONS
+-- Explicit grants survive a reset of public and do not rely on Supabase defaults.
+-- Never grant these privileges to anon/authenticated or expose the server key in the app.
+DO $setup_role_guard$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role' AND rolbypassrls) THEN
+    RAISE EXCEPTION 'SUPABASE_SERVICE_ROLE_REQUIRED';
+  END IF;
+END;
+$setup_role_guard$;
+
+GRANT USAGE ON SCHEMA public, extensions TO service_role;
+GRANT SELECT ON public.profiles, public.service_types, public.team_verification_requirements,
+  public.rescue_teams, public.provider_members, public.team_capabilities,
+  public.team_verification_checks TO service_role;
+GRANT UPDATE (role) ON public.profiles TO service_role;
+GRANT INSERT ON public.rescue_teams, public.provider_members, public.team_capabilities,
+  public.team_verification_checks TO service_role;
+GRANT UPDATE (status, verified_by, verified_at) ON public.rescue_teams TO service_role;
+-- END TEST SETUP PERMISSIONS
+
+DO $setup_permissions_check$
+DECLARE
+  target_table TEXT;
+  target_column TEXT;
+BEGIN
+  IF NOT has_schema_privilege('service_role', 'public', 'USAGE')
+    OR NOT has_schema_privilege('service_role', 'extensions', 'USAGE') THEN
+    RAISE EXCEPTION 'TEST_SETUP_SCHEMA_USAGE_MISSING';
+  END IF;
+  FOREACH target_table IN ARRAY ARRAY['profiles', 'service_types', 'team_verification_requirements',
+    'rescue_teams', 'provider_members', 'team_capabilities', 'team_verification_checks'] LOOP
+    IF NOT has_table_privilege('service_role', 'public.' || target_table, 'SELECT') THEN
+      RAISE EXCEPTION 'TEST_SETUP_SELECT_MISSING: %', target_table;
+    END IF;
+  END LOOP;
+  FOREACH target_table IN ARRAY ARRAY['rescue_teams', 'provider_members',
+    'team_capabilities', 'team_verification_checks'] LOOP
+    IF NOT has_table_privilege('service_role', 'public.' || target_table, 'INSERT') THEN
+      RAISE EXCEPTION 'TEST_SETUP_INSERT_MISSING: %', target_table;
+    END IF;
+  END LOOP;
+  IF NOT has_column_privilege('service_role', 'public.profiles', 'role', 'UPDATE') THEN
+    RAISE EXCEPTION 'TEST_SETUP_PROFILE_ROLE_UPDATE_MISSING';
+  END IF;
+  FOREACH target_column IN ARRAY ARRAY['status', 'verified_by', 'verified_at'] LOOP
+    IF NOT has_column_privilege('service_role', 'public.rescue_teams', target_column, 'UPDATE') THEN
+      RAISE EXCEPTION 'TEST_SETUP_TEAM_UPDATE_MISSING: %', target_column;
+    END IF;
+  END LOOP;
+END;
+$setup_permissions_check$;
+
+-- BEGIN SCHEMA VERIFICATION
+-- Kiểm tra trạng thái ĐẾN V13; không dùng để xác minh schema legacy chỉ ở B1.
+-- Chỉ đọc metadata và một số bất biến dữ liệu; không thay thế test RLS bằng JWT.
+
+DO $$
+DECLARE
+  table_name TEXT;
+  missing_tables TEXT[] := ARRAY[]::TEXT[];
+BEGIN
+  FOREACH table_name IN ARRAY ARRAY[
+    'profiles', 'rescue_teams', 'team_verification_requirements', 'team_verification_checks',
+    'service_types', 'service_zones', 'provider_members', 'team_capabilities',
+    'rescue_requests', 'dispatch_offers', 'quotes', 'request_status_events',
+    'case_attention_flags', 'request_feedback_events', 'provider_location_checkpoints',
+    'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
+    'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
+    'provider_dispatch_stats', 'dispatch_recovery_jobs', 'push_outbox',
+    'user_notifications', 'support_tickets', 'support_messages', 'announcements'
+  ] LOOP
+    IF to_regclass('public.' || table_name) IS NULL THEN
+      missing_tables := array_append(missing_tables, table_name);
+    END IF;
+  END LOOP;
+
+  IF cardinality(missing_tables) > 0 THEN
+    RAISE EXCEPTION 'MISSING_TABLES: %', array_to_string(missing_tables, ', ');
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  missing_columns TEXT;
+BEGIN
+  SELECT string_agg(required.table_name || '.' || required.column_name, ', ' ORDER BY 1)
+  INTO missing_columns
+  FROM (VALUES
+    ('rescue_teams', 'partner_reference'),
+    ('rescue_teams', 'verified_by'),
+    ('rescue_teams', 'verified_at'),
+    ('team_verification_checks', 'checked_by'),
+    ('team_verification_checks', 'checked_at'),
+    ('provider_members', 'contact_phone_e164'),
+    ('provider_members', 'location_accuracy_m'),
+    ('provider_members', 'available_since'),
+    ('provider_location_checkpoints', 'accuracy_m'),
+    ('service_types', 'label_en'),
+    ('service_types', 'description_en'),
+    ('service_types', 'requires_destination'),
+    ('service_types', 'matching_eta_window_seconds'),
+    ('service_types', 'matching_eta_weight'),
+    ('service_types', 'matching_experience_weight'),
+    ('service_types', 'matching_waiting_weight'),
+    ('service_types', 'matching_recent_cases_weight'),
+    ('service_types', 'matching_experience_reference_cases'),
+    ('service_types', 'matching_waiting_reference_seconds'),
+    ('service_types', 'matching_recent_window_days'),
+    ('service_types', 'matching_recent_reference_cases'),
+    ('service_types', 'matching_starvation_skip_threshold'),
+    ('service_types', 'matching_offer_ttl_seconds'),
+    ('provider_dispatch_stats', 'consecutive_skips'),
+    ('provider_dispatch_stats', 'last_offered_at'),
+    ('dispatch_recovery_jobs', 'lease_id'),
+    ('dispatch_recovery_jobs', 'available_at'),
+    ('push_outbox', 'state'),
+    ('push_outbox', 'expires_at'),
+    ('push_outbox', 'lease_id'),
+    ('service_zones', 'boundary'),
+    ('rescue_requests', 'pickup_location'),
+    ('rescue_requests', 'pickup_source'),
+    ('rescue_requests', 'pickup_accuracy_m'),
+    ('rescue_requests', 'assigned_provider_latitude'),
+    ('rescue_requests', 'assigned_provider_longitude'),
+    ('rescue_requests', 'assigned_provider_accuracy_m'),
+    ('rescue_requests', 'assigned_provider_position_at'),
+    ('rescue_requests', 'destination_location'),
+    ('rescue_requests', 'work_type'),
+    ('rescue_requests', 'cancellation_code'),
+    ('rescue_requests', 'cancellation_stage'),
+    ('rescue_requests', 'is_late_cancellation'),
+    ('rescue_requests', 'provider_near_pickup_on_cancel'),
+    ('rescue_requests', 'cancelled_by'),
+    ('push_devices', 'installation_id'),
+    ('push_delivery_receipts', 'push_device_id'),
+    ('push_delivery_receipts', 'expo_ticket_id'),
+    ('push_delivery_receipts', 'status'),
+    ('push_delivery_receipts', 'next_check_at'),
+    ('push_delivery_receipts', 'attempt_count'),
+    ('reviews', 'team_id'),
+    ('reviews', 'moderation_note'),
+    ('incident_reports', 'resolution_note'),
+    ('team_quality_alerts', 'review_count_checkpoint')
+  ) AS required(table_name, column_name)
+  WHERE NOT EXISTS (
+    SELECT 1 FROM information_schema.columns column_info
+    WHERE column_info.table_schema = 'public'
+      AND column_info.table_name = required.table_name
+      AND column_info.column_name = required.column_name
+  );
+
+  IF missing_columns IS NOT NULL THEN
+    RAISE EXCEPTION 'MISSING_REQUIRED_COLUMNS: %', missing_columns;
+  END IF;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'push_delivery_receipts'
+      AND column_name IN (
+        'expo_push_token', 'title', 'body', 'message', 'payload', 'request_id', 'latitude', 'longitude'
+      )
+  ) THEN
+    RAISE EXCEPTION 'PUSH_RECEIPT_SENSITIVE_COLUMN_FOUND';
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  missing_indexes TEXT;
+BEGIN
+  SELECT string_agg(required.index_name, ', ' ORDER BY required.index_name)
+  INTO missing_indexes
+  FROM (VALUES
+    ('rescue_requests_one_active_customer_idx'),
+    ('rescue_requests_one_active_provider_idx'),
+    ('rescue_requests_pickup_gix'),
+    ('rescue_requests_destination_gix'),
+    ('service_zones_boundary_gix'),
+    ('provider_members_location_gix'),
+    ('push_devices_installation_id_key'),
+    ('push_delivery_receipts_pending_idx'),
+    ('provider_dispatch_stats_service_skips_idx'),
+    ('dispatch_offers_provider_accepted_recent_idx'),
+    ('rescue_requests_provider_service_completed_idx'),
+    ('dispatch_recovery_due_idx'),
+    ('push_outbox_due_idx'),
+    ('push_outbox_retention_idx')
+  ) AS required(index_name)
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_index i
+    WHERE i.indexrelid = to_regclass('public.' || required.index_name)
+      AND i.indisvalid AND i.indisready
+  );
+
+  IF missing_indexes IS NOT NULL THEN
+    RAISE EXCEPTION 'MISSING_SAFETY_INDEXES: %', missing_indexes;
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  unprotected TEXT;
+BEGIN
+  SELECT string_agg(c.relname, ', ' ORDER BY c.relname)
+  INTO unprotected
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relkind IN ('r', 'p')
+    AND c.relname IN (
+      'profiles', 'rescue_teams', 'team_verification_requirements', 'team_verification_checks',
+      'service_types', 'service_zones', 'provider_members', 'team_capabilities',
+      'rescue_requests', 'dispatch_offers', 'quotes', 'request_status_events',
+      'case_attention_flags', 'request_feedback_events', 'provider_location_checkpoints',
+      'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
+      'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
+      'provider_dispatch_stats', 'dispatch_recovery_jobs', 'push_outbox',
+      'user_notifications', 'support_tickets', 'support_messages', 'announcements'
+    )
+    AND NOT c.relrowsecurity;
+
+  IF unprotected IS NOT NULL THEN
+    RAISE EXCEPTION 'RLS_DISABLED_ON: %', unprotected;
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  exposed_function TEXT;
+BEGIN
+  SELECT p.proname
+  INTO exposed_function
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND (
+      has_function_privilege('anon', p.oid, 'EXECUTE')
+      OR (
+        has_function_privilege('authenticated', p.oid, 'EXECUTE')
+        AND p.proname NOT IN (
+          'current_profile_role', 'is_dispatch_staff',
+          'can_view_request', 'can_access_realtime_topic'
+        )
+      )
+    )
+  LIMIT 1;
+
+  IF exposed_function IS NOT NULL THEN
+    RAISE EXCEPTION 'UNEXPECTED_CLIENT_FUNCTION_EXECUTE: %', exposed_function;
+  END IF;
+
+  IF NOT has_function_privilege(
+    'authenticated', 'public.can_access_realtime_topic(text,boolean)', 'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'REALTIME_AUTH_FUNCTION_NOT_EXECUTABLE';
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  role_constraint TEXT;
+BEGIN
+  SELECT pg_get_constraintdef(constraint_record.oid)
+  INTO role_constraint
+  FROM pg_constraint constraint_record
+  WHERE constraint_record.conrelid = 'public.profiles'::regclass
+    AND constraint_record.conname = 'profiles_role_check';
+
+  IF role_constraint IS NULL
+    OR role_constraint LIKE '%dispatcher%'
+    OR role_constraint NOT LIKE '%customer%'
+    OR role_constraint NOT LIKE '%provider%'
+    OR role_constraint NOT LIKE '%admin%' THEN
+    RAISE EXCEPTION 'UNEXPECTED_PROFILE_ROLE_CONSTRAINT: %', role_constraint;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE role NOT IN ('customer', 'provider', 'admin')
+  ) THEN
+    RAISE EXCEPTION 'UNEXPECTED_PROFILE_ROLE_VALUE';
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  unsafe_grants TEXT;
+BEGIN
+  SELECT string_agg(table_name || ':' || privilege_type, ', ' ORDER BY table_name, privilege_type)
+  INTO unsafe_grants
+  FROM information_schema.role_table_grants
+  WHERE table_schema = 'public'
+    AND grantee IN ('anon', 'authenticated')
+    AND table_name IN (
+      'rescue_teams', 'team_verification_requirements', 'team_verification_checks',
+      'service_types', 'service_zones', 'provider_members', 'team_capabilities', 'rescue_requests',
+      'dispatch_offers', 'quotes', 'request_status_events', 'case_attention_flags',
+      'request_feedback_events', 'provider_location_checkpoints', 'reviews', 'incident_reports',
+      'team_quality_alerts', 'push_devices', 'push_delivery_receipts',
+      'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows', 'provider_dispatch_stats'
+    )
+    AND privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER');
+
+  IF unsafe_grants IS NOT NULL THEN
+    RAISE EXCEPTION 'DIRECT_BUSINESS_MUTATION_GRANTED: %', unsafe_grants;
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  exposed_reads TEXT;
+BEGIN
+  SELECT string_agg(table_name, ', ' ORDER BY table_name)
+  INTO exposed_reads
+  FROM information_schema.role_table_grants
+  WHERE table_schema = 'public'
+    AND grantee IN ('anon', 'authenticated')
+    AND privilege_type = 'SELECT'
+    AND table_name IN (
+      'rescue_teams', 'team_verification_requirements', 'team_verification_checks',
+      'service_types', 'service_zones', 'provider_members', 'team_capabilities',
+      'rescue_requests', 'dispatch_offers', 'quotes', 'request_status_events',
+      'case_attention_flags', 'request_feedback_events', 'provider_location_checkpoints',
+      'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
+      'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
+      'provider_dispatch_stats'
+    );
+
+  IF exposed_reads IS NOT NULL THEN
+    RAISE EXCEPTION 'SENSITIVE_POSTGREST_READ_GRANTED: %', exposed_reads;
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  missing_functions TEXT[] := ARRAY[]::TEXT[];
+BEGIN
+  IF to_regprocedure('public.current_profile_role()') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'current_profile_role');
+  END IF;
+  IF to_regprocedure('public.can_view_request(uuid)') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'can_view_request');
+  END IF;
+  IF to_regprocedure('public.api_accept_dispatch_offer(uuid,uuid,integer)') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'api_accept_dispatch_offer');
+  END IF;
+  IF to_regprocedure('public.api_lookup_account_by_phone(text)') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'api_lookup_account_by_phone');
+  END IF;
+  IF to_regprocedure('public.purge_expired_location_checkpoints(interval)') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'purge_expired_location_checkpoints');
+  END IF;
+  IF to_regprocedure('public.minimize_closed_request_data(interval)') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'minimize_closed_request_data');
+  END IF;
+  IF to_regprocedure('public.purge_assistant_usage_events(interval)') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'purge_assistant_usage_events');
+  END IF;
+  IF to_regprocedure('public.purge_push_delivery_receipts(interval)') IS NULL THEN
+    missing_functions := array_append(missing_functions, 'purge_push_delivery_receipts');
+  END IF;
+
+  IF cardinality(missing_functions) > 0 THEN
+    RAISE EXCEPTION 'MISSING_SECURITY_FUNCTIONS: %', array_to_string(missing_functions, ', ');
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  exposed_rpc TEXT;
+BEGIN
+  SELECT p.proname
+  INTO exposed_rpc
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname IN (
+      'api_accept_dispatch_offer', 'purge_expired_location_checkpoints',
+      'minimize_closed_request_data', 'purge_assistant_usage_events',
+      'purge_push_delivery_receipts'
+    )
+    AND (
+      has_function_privilege('anon', p.oid, 'EXECUTE')
+      OR has_function_privilege('authenticated', p.oid, 'EXECUTE')
+    )
+  LIMIT 1;
+
+  IF exposed_rpc IS NOT NULL THEN
+    RAISE EXCEPTION 'PRIVILEGED_RPC_EXPOSED_TO_CLIENT: %', exposed_rpc;
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  missing_policy_tables TEXT;
+BEGIN
+  SELECT string_agg(required.table_name, ', ' ORDER BY required.table_name)
+  INTO missing_policy_tables
+  FROM (VALUES
+    ('profiles'), ('rescue_teams'), ('team_verification_requirements'),
+    ('team_verification_checks'), ('service_types'), ('service_zones'), ('provider_members'),
+    ('team_capabilities'), ('rescue_requests'), ('dispatch_offers'), ('quotes'),
+    ('request_status_events'), ('case_attention_flags'), ('request_feedback_events'),
+    ('provider_location_checkpoints'), ('reviews'), ('incident_reports'), ('team_quality_alerts'),
+    ('push_devices'), ('push_delivery_receipts'), ('audit_logs'), ('assistant_usage_events'),
+    ('api_rate_limit_windows'), ('provider_dispatch_stats')
+  ) AS required(table_name)
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_policies p
+    WHERE p.schemaname = 'public' AND p.tablename = required.table_name
+  );
+
+  IF missing_policy_tables IS NOT NULL THEN
+    RAISE EXCEPTION 'TABLE_WITHOUT_POLICY: %', missing_policy_tables;
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  runtime_role RECORD;
+BEGIN
+  SELECT rolname, rolcanlogin, rolinherit, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls
+  INTO runtime_role
+  FROM pg_roles
+  WHERE rolname = 'motorescue_api';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_ROLE_MISSING';
+  END IF;
+  IF runtime_role.rolsuper OR runtime_role.rolcreatedb OR runtime_role.rolcreaterole
+    OR runtime_role.rolreplication OR NOT runtime_role.rolbypassrls
+    OR NOT runtime_role.rolcanlogin OR runtime_role.rolinherit THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_ROLE_UNSAFE';
+  END IF;
+  IF has_schema_privilege('motorescue_api', 'public', 'CREATE') THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_HAS_DDL_PRIVILEGE';
+  END IF;
+  IF NOT has_schema_privilege('motorescue_api', 'extensions', 'USAGE') THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_EXTENSION_USAGE_MISSING';
+  END IF;
+  IF NOT (
+    has_table_privilege('motorescue_api', 'public.assistant_usage_events', 'SELECT')
+    AND has_table_privilege('motorescue_api', 'public.assistant_usage_events', 'INSERT')
+    AND has_table_privilege('motorescue_api', 'public.assistant_usage_events', 'DELETE')
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_ASSISTANT_GRANT_MISSING';
+  END IF;
+  IF NOT (
+    has_table_privilege('motorescue_api', 'public.api_rate_limit_windows', 'SELECT')
+    AND has_table_privilege('motorescue_api', 'public.api_rate_limit_windows', 'INSERT')
+    AND has_table_privilege('motorescue_api', 'public.api_rate_limit_windows', 'UPDATE')
+    AND has_table_privilege('motorescue_api', 'public.api_rate_limit_windows', 'DELETE')
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_RATE_LIMIT_GRANT_MISSING';
+  END IF;
+  IF NOT (
+    has_table_privilege('motorescue_api', 'public.provider_dispatch_stats', 'SELECT')
+    AND has_table_privilege('motorescue_api', 'public.provider_dispatch_stats', 'INSERT')
+    AND has_table_privilege('motorescue_api', 'public.provider_dispatch_stats', 'UPDATE')
+    AND has_table_privilege('motorescue_api', 'public.provider_dispatch_stats', 'DELETE')
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_DISPATCH_STATS_GRANT_MISSING';
+  END IF;
+  IF NOT (
+    has_table_privilege('motorescue_api', 'public.service_types', 'SELECT')
+    AND has_table_privilege('motorescue_api', 'public.service_types', 'UPDATE')
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_CATALOG_GRANT_MISSING';
+  END IF;
+  IF NOT (
+    has_table_privilege('motorescue_api', 'public.team_quality_alerts', 'SELECT')
+    AND has_table_privilege('motorescue_api', 'public.team_quality_alerts', 'INSERT')
+    AND has_table_privilege('motorescue_api', 'public.team_quality_alerts', 'UPDATE')
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_QUALITY_ALERT_GRANT_MISSING';
+  END IF;
+  IF NOT (
+    has_table_privilege('motorescue_api', 'public.push_delivery_receipts', 'SELECT')
+    AND has_table_privilege('motorescue_api', 'public.push_delivery_receipts', 'INSERT')
+    AND has_table_privilege('motorescue_api', 'public.push_delivery_receipts', 'UPDATE')
+    AND has_table_privilege('motorescue_api', 'public.push_delivery_receipts', 'DELETE')
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_PUSH_RECEIPT_GRANT_MISSING';
+  END IF;
+  IF NOT has_table_privilege(
+    'motorescue_api', 'public.team_verification_requirements', 'SELECT'
+  ) OR NOT (
+    has_table_privilege('motorescue_api', 'public.team_verification_checks', 'SELECT')
+    AND has_table_privilege('motorescue_api', 'public.team_verification_checks', 'INSERT')
+    AND has_table_privilege('motorescue_api', 'public.team_verification_checks', 'UPDATE')
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_PARTNER_VERIFICATION_GRANT_MISSING';
+  END IF;
+  IF NOT has_function_privilege(
+    'motorescue_api', 'public.api_lookup_account_by_phone(text)', 'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_ACCOUNT_LOOKUP_GRANT_MISSING';
+  END IF;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'provider_location_checkpoints'
+      AND column_name = 'accuracy_m'
+      AND is_nullable = 'YES'
+  ) THEN
+    RAISE EXCEPTION 'CHECKPOINT_ACCURACY_MUST_BE_REQUIRED';
+  END IF;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name IN (
+        'profiles', 'rescue_teams', 'team_verification_checks',
+        'provider_members', 'rescue_requests', 'audit_logs'
+      )
+      AND column_name IN (
+        'cccd', 'citizen_id', 'driver_license', 'password', 'access_token', 'refresh_token',
+        'contract_file', 'contract_path', 'identity_document_path'
+      )
+  ) THEN
+    RAISE EXCEPTION 'FORBIDDEN_SENSITIVE_COLUMN_FOUND';
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  missing_profile_count BIGINT;
+BEGIN
+  SELECT COUNT(*)
+  INTO missing_profile_count
+  FROM auth.users auth_user
+  LEFT JOIN public.profiles profile ON profile.id = auth_user.id
+  WHERE profile.id IS NULL;
+
+  IF missing_profile_count > 0 THEN
+    RAISE EXCEPTION 'AUTH_USERS_WITHOUT_PROFILE: %', missing_profile_count;
+  END IF;
+
+  IF (SELECT COUNT(*) FROM public.service_types) <> 6 THEN
+    RAISE EXCEPTION 'UNEXPECTED_SERVICE_CATALOG_SIZE';
+  END IF;
+  IF (SELECT COUNT(*) FROM public.team_verification_requirements WHERE is_active AND is_required) <> 6 THEN
+    RAISE EXCEPTION 'UNEXPECTED_PARTNER_VERIFICATION_REQUIREMENTS';
+  END IF;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger trigger_info
+    WHERE trigger_info.tgrelid = 'auth.users'::regclass
+      AND trigger_info.tgname = 'on_auth_user_created'
+      AND trigger_info.tgenabled IN ('O', 'A')
+      AND NOT trigger_info.tgisinternal
+  ) THEN
+    RAISE EXCEPTION 'AUTH_PROFILE_TRIGGER_MISSING';
+  END IF;
+
+  IF to_regclass('realtime.messages') IS NULL THEN
+    RAISE EXCEPTION 'REALTIME_MESSAGES_TABLE_MISSING';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'realtime' AND tablename = 'messages'
+      AND policyname = 'motorescue_realtime_read'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'realtime' AND tablename = 'messages'
+      AND policyname = 'motorescue_realtime_write'
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_REALTIME_POLICIES_MISSING';
+  END IF;
+END;
+$$;
+
+-- Hai bảng hàng đợi bật RLS nhưng cố ý không có policy client (deny-by-default).
+-- Dùng effective privileges: phát hiện cả quyền qua PUBLIC hoặc role được kế thừa.
+DO $$
+DECLARE
+  queue_name TEXT;
+  client_role TEXT;
+  privilege_name TEXT;
+BEGIN
+  FOREACH queue_name IN ARRAY ARRAY['dispatch_recovery_jobs', 'push_outbox'] LOOP
+    FOREACH client_role IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+      FOREACH privilege_name IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'] LOOP
+        IF has_table_privilege(client_role, 'public.' || queue_name, privilege_name) THEN
+          RAISE EXCEPTION 'QUEUE_EXPOSED: %.% %', client_role, queue_name, privilege_name;
+        END IF;
+      END LOOP;
+      IF has_any_column_privilege(client_role, 'public.' || queue_name, 'SELECT,INSERT,UPDATE,REFERENCES') THEN
+        RAISE EXCEPTION 'QUEUE_COLUMN_EXPOSED: %.%', client_role, queue_name;
+      END IF;
+    END LOOP;
+    FOREACH privilege_name IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE'] LOOP
+      IF NOT has_table_privilege('motorescue_api', 'public.' || queue_name, privilege_name) THEN
+        RAISE EXCEPTION 'QUEUE_RUNTIME_GRANT_MISSING: % %', queue_name, privilege_name;
+      END IF;
+    END LOOP;
+  END LOOP;
+END;
+$$;
+
+DO $$
+DECLARE
+  column_name TEXT;
+  trigger_name TEXT;
+BEGIN
+  FOREACH column_name IN ARRAY ARRAY['id', 'role', 'is_active', 'deletion_requested_at'] LOOP
+    IF has_column_privilege('authenticated', 'public.profiles', column_name, 'UPDATE')
+      OR has_column_privilege('anon', 'public.profiles', column_name, 'UPDATE') THEN
+      RAISE EXCEPTION 'PROFILE_PRIVILEGED_COLUMN_WRITABLE: %', column_name;
+    END IF;
+  END LOOP;
+  FOREACH trigger_name IN ARRAY ARRAY['rescue_requests_dispatch_recovery', 'rescue_requests_assignment_position', 'rescue_requests_service_area'] LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_trigger t
+      WHERE t.tgrelid = 'public.rescue_requests'::regclass AND t.tgname = trigger_name
+        AND NOT t.tgisinternal AND t.tgenabled IN ('O', 'A')
+    ) THEN
+      RAISE EXCEPTION 'REQUIRED_TRIGGER_MISSING_OR_DISABLED: %', trigger_name;
+    END IF;
+  END LOOP;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF to_regprocedure('public.api_is_in_service_area(double precision,double precision)') IS NULL THEN
+    RAISE EXCEPTION 'V9_SERVICE_COVERAGE_FUNCTION_MISSING';
+  END IF;
+  IF NOT has_function_privilege('motorescue_api',
+    'public.api_is_in_service_area(double precision,double precision)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'SERVICE_COVERAGE_RUNTIME_GRANT_MISSING';
+  END IF;
+  IF public.api_is_in_service_area(16.180001, 108.20)
+    OR public.api_is_in_service_area(15.949999, 108.20)
+    OR public.api_is_in_service_area(16.06, 108.049999)
+    OR public.api_is_in_service_area(16.06, 108.340001) THEN
+    RAISE EXCEPTION 'SERVICE_AREA_EXCEEDS_DEMO_EXTRACT';
+  END IF;
+END;
+$$;
+
+DO $shop_contract$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+      AND table_name = 'provider_members' AND column_name = 'status' AND column_default LIKE '%pending%')
+    OR position('team.base_latitude' IN pg_get_functiondef('public.capture_assignment_position()'::regprocedure)) = 0
+    OR position('team.base_latitude' IN pg_get_functiondef('public.enforce_assignment_service_area()'::regprocedure)) = 0 THEN
+    RAISE EXCEPTION 'V10_SHOP_DISPATCH_AND_APPROVAL_MISSING';
+  END IF;
+END;
+$shop_contract$;
+DO $communication_contract$
+DECLARE
+  communication_table TEXT;
+  client_role TEXT;
+  privilege_name TEXT;
+BEGIN
+  FOREACH communication_table IN ARRAY ARRAY['user_notifications', 'support_tickets', 'support_messages', 'announcements'] LOOP
+    FOREACH client_role IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+      FOREACH privilege_name IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE'] LOOP
+        IF has_table_privilege(client_role, 'public.' || communication_table, privilege_name) THEN
+          RAISE EXCEPTION 'COMMUNICATION_CLIENT_GRANT: % % %', communication_table, client_role, privilege_name;
+        END IF;
+        IF privilege_name <> 'DELETE' THEN
+          IF has_any_column_privilege(client_role, 'public.' || communication_table, privilege_name) THEN
+            RAISE EXCEPTION 'COMMUNICATION_CLIENT_COLUMN_GRANT: % % %', communication_table, client_role, privilege_name;
+          END IF;
+        END IF;
+      END LOOP;
+    END LOOP;
+    FOREACH privilege_name IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE'] LOOP
+      IF NOT has_table_privilege('motorescue_api', 'public.' || communication_table, privilege_name) THEN
+        RAISE EXCEPTION 'COMMUNICATION_RUNTIME_GRANT_MISSING: % %', communication_table, privilege_name;
+      END IF;
+    END LOOP;
+  END LOOP;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.incident_reports'::regclass
+    AND tgname = 'incident_support_ticket' AND tgenabled IN ('O', 'A')) THEN
+    RAISE EXCEPTION 'INCIDENT_SUPPORT_TRIGGER_MISSING';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.incident_reports r LEFT JOIN public.support_tickets t ON t.incident_id = r.id
+    WHERE t.id IS NULL OR t.owner_id <> r.customer_id
+      OR (r.status <> 'open' AND t.status <> r.status)) THEN
+    RAISE EXCEPTION 'INCIDENT_SUPPORT_LINK_MISMATCH';
+  END IF;
+END;
+$communication_contract$;
+DO $shop_address_check$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rescue_teams' AND column_name = 'base_address') THEN
+    RAISE EXCEPTION 'V12_SHOP_ADDRESS_MISSING';
+  END IF;
+END;
+$shop_address_check$;
+DO $gasoline_scope_check$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.service_types'::regclass
+    AND conname = 'service_types_gasoline_scope' AND convalidated)
+    OR NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.team_capabilities'::regclass
+    AND conname = 'team_capabilities_gasoline_scope' AND convalidated)
+    OR EXISTS (SELECT 1 FROM public.service_types WHERE code = 'electric_battery' AND is_active)
+    OR EXISTS (SELECT 1 FROM public.team_capabilities WHERE service_code = 'electric_battery' AND is_active) THEN
+    RAISE EXCEPTION 'V13_GASOLINE_SCOPE_MISSING';
+  END IF;
+END;
+$gasoline_scope_check$;
+SELECT 'V13 schema/security checks passed; JWT and end-to-end tests still required' AS result;
+
+-- END SCHEMA VERIFICATION
+
 COMMIT;
 
-SELECT 'Database initialized through V10; run 02_verify_rls.sql next' AS result;
+SELECT 'Database initialized through V13; schema/security checks passed. Optional: 02_seed_demo_teams.sql' AS result;

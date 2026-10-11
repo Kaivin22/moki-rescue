@@ -1,3 +1,4 @@
+-- TÙY CHỌN: chỉ cần nếu không dùng scripts/create-test-accounts.cjs cho bộ tài khoản demo.
 -- Sửa DUY NHẤT số điện thoại E.164 bên dưới trước khi chạy.
 -- Ví dụ số Việt Nam: +84901234567.
 -- Tài khoản phải đăng nhập OTP thành công ít nhất một lần để profile được tạo.

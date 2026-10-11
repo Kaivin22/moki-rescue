@@ -1,6 +1,7 @@
--- Kiểm tra trạng thái ĐẾN V10; không dùng để xác minh schema legacy chỉ ở B1.
+// SQL sources for the bundled installer and optional read-only diagnostics.
+// Never connects to a database. Keep checks here, not in the generated SQL.
+const verificationSql = String.raw`-- Kiểm tra trạng thái ĐẾN V13; không dùng để xác minh schema legacy chỉ ở B1.
 -- Chỉ đọc metadata và một số bất biến dữ liệu; không thay thế test RLS bằng JWT.
-BEGIN TRANSACTION READ ONLY;
 
 DO $$
 DECLARE
@@ -14,7 +15,8 @@ BEGIN
     'case_attention_flags', 'request_feedback_events', 'provider_location_checkpoints',
     'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
     'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
-    'provider_dispatch_stats', 'dispatch_recovery_jobs', 'push_outbox'
+    'provider_dispatch_stats', 'dispatch_recovery_jobs', 'push_outbox',
+    'user_notifications', 'support_tickets', 'support_messages', 'announcements'
   ] LOOP
     IF to_regclass('public.' || table_name) IS NULL THEN
       missing_tables := array_append(missing_tables, table_name);
@@ -170,7 +172,8 @@ BEGIN
       'case_attention_flags', 'request_feedback_events', 'provider_location_checkpoints',
       'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
       'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
-      'provider_dispatch_stats', 'dispatch_recovery_jobs', 'push_outbox'
+      'provider_dispatch_stats', 'dispatch_recovery_jobs', 'push_outbox',
+      'user_notifications', 'support_tickets', 'support_messages', 'announcements'
     )
     AND NOT c.relrowsecurity;
 
@@ -629,5 +632,107 @@ BEGIN
   END IF;
 END;
 $shop_contract$;
-SELECT 'V10 schema/security checks passed; JWT and end-to-end tests still required' AS result;
+DO $communication_contract$
+DECLARE
+  communication_table TEXT;
+  client_role TEXT;
+  privilege_name TEXT;
+BEGIN
+  FOREACH communication_table IN ARRAY ARRAY['user_notifications', 'support_tickets', 'support_messages', 'announcements'] LOOP
+    FOREACH client_role IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+      FOREACH privilege_name IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE'] LOOP
+        IF has_table_privilege(client_role, 'public.' || communication_table, privilege_name) THEN
+          RAISE EXCEPTION 'COMMUNICATION_CLIENT_GRANT: % % %', communication_table, client_role, privilege_name;
+        END IF;
+        IF privilege_name <> 'DELETE' THEN
+          IF has_any_column_privilege(client_role, 'public.' || communication_table, privilege_name) THEN
+            RAISE EXCEPTION 'COMMUNICATION_CLIENT_COLUMN_GRANT: % % %', communication_table, client_role, privilege_name;
+          END IF;
+        END IF;
+      END LOOP;
+    END LOOP;
+    FOREACH privilege_name IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE'] LOOP
+      IF NOT has_table_privilege('motorescue_api', 'public.' || communication_table, privilege_name) THEN
+        RAISE EXCEPTION 'COMMUNICATION_RUNTIME_GRANT_MISSING: % %', communication_table, privilege_name;
+      END IF;
+    END LOOP;
+  END LOOP;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.incident_reports'::regclass
+    AND tgname = 'incident_support_ticket' AND tgenabled IN ('O', 'A')) THEN
+    RAISE EXCEPTION 'INCIDENT_SUPPORT_TRIGGER_MISSING';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.incident_reports r LEFT JOIN public.support_tickets t ON t.incident_id = r.id
+    WHERE t.id IS NULL OR t.owner_id <> r.customer_id
+      OR (r.status <> 'open' AND t.status <> r.status)) THEN
+    RAISE EXCEPTION 'INCIDENT_SUPPORT_LINK_MISMATCH';
+  END IF;
+END;
+$communication_contract$;
+DO $shop_address_check$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rescue_teams' AND column_name = 'base_address') THEN
+    RAISE EXCEPTION 'V12_SHOP_ADDRESS_MISSING';
+  END IF;
+END;
+$shop_address_check$;
+DO $gasoline_scope_check$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.service_types'::regclass
+    AND conname = 'service_types_gasoline_scope' AND convalidated)
+    OR NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.team_capabilities'::regclass
+    AND conname = 'team_capabilities_gasoline_scope' AND convalidated)
+    OR EXISTS (SELECT 1 FROM public.service_types WHERE code = 'electric_battery' AND is_active)
+    OR EXISTS (SELECT 1 FROM public.team_capabilities WHERE service_code = 'electric_battery' AND is_active) THEN
+    RAISE EXCEPTION 'V13_GASOLINE_SCOPE_MISSING';
+  END IF;
+END;
+$gasoline_scope_check$;
+SELECT 'V13 schema/security checks passed; JWT and end-to-end tests still required' AS result;
+`;
+
+const preflightSql = String.raw`-- TÙY CHỌN khi chưa rõ trạng thái database (chỉ đọc, KHÔNG tạo schema).
+-- Mục đích: xác định trạng thái trước khi chọn luồng cài mới/nâng cấp.
+BEGIN TRANSACTION READ ONLY;
+
+SELECT current_database() AS database_name, current_user AS executing_role,
+       current_setting('server_version') AS postgres_version,
+       to_regclass('auth.users') IS NOT NULL AS has_supabase_auth,
+       to_regclass('realtime.messages') IS NOT NULL AS has_supabase_realtime,
+       to_regclass('public.profiles') IS NOT NULL AS has_app_profiles,
+       to_regclass('public.flyway_schema_history') IS NOT NULL AS has_flyway_history;
+
+SELECT e.extname, n.nspname AS extension_schema
+FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace
+WHERE e.extname IN ('postgis', 'pgcrypto', 'pg_cron');
+
+SELECT c.relname AS public_table, c.relrowsecurity AS rls_enabled
+FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+ORDER BY c.relname;
+
+DO $$
+DECLARE
+  migration RECORD;
+BEGIN
+  IF to_regclass('public.flyway_schema_history') IS NOT NULL THEN
+    FOR migration IN EXECUTE
+      'SELECT installed_rank, version, description, type, success FROM public.flyway_schema_history ORDER BY installed_rank'
+    LOOP
+      RAISE NOTICE 'Migration rank=% version=% type=% success=% description=%',
+        migration.installed_rank, migration.version, migration.type, migration.success, migration.description;
+    END LOOP;
+  ELSE
+    RAISE NOTICE 'No Flyway history. This does NOT prove the database is empty; inspect public_table results.';
+  END IF;
+END;
+$$;
+
 COMMIT;
+`;
+
+function generateVerification() {
+  return `BEGIN TRANSACTION READ ONLY;\n\n${verificationSql}\nCOMMIT;\n`;
+}
+
+module.exports = { verificationSql, preflightSql, generateVerification };

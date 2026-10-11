@@ -28,13 +28,15 @@ describe('provider approval and private statistics wiring (static contracts)', (
     expect(service).toContain('WHERE rr.assigned_provider_id = ?');
     expect(service).toContain('}, actor.id());');
   });
-  it('approves only the existing marked test fixture, never all seeded shops or arbitrary auth users', () => {
-    const script = read('scripts/08_approve_existing_test_provider.sql');
-    expect(script).toContain("deployment_environment TEXT := 'CHANGE_ME'");
-    expect(script).toContain("u.raw_app_meta_data->>'test_fixture' = 'rescue-auth-test-v1'");
-    expect(script).toContain("team.partner_reference = 'TEST-AUTH-DN-01'");
-    expect(script).toContain("lower(u.email) = 'provider.rescue@example.com'");
-    expect(script).toContain('WHERE user_id = provider_uuid AND team_id = team_uuid');
-    expect(script).not.toMatch(/UPDATE auth\.|INSERT INTO auth\.|DELETE FROM|TRUNCATE/);
+  it('uses one marked fixture provisioner and never silently reactivates a changed member', () => {
+    const script = read('scripts/create-test-accounts.cjs');
+    expect(script).toContain("'rescue-auth-test-v1'");
+    expect(script).toContain('user.app_metadata?.test_fixture !== FIXTURE');
+    expect(script).toContain("'TEST-AUTH-DN-01'");
+    expect(script).toContain("'provider.rescue@example.com'");
+    expect(script).toContain("member.team_id !== team.id || member.status !== 'active'");
+    expect(script).toContain('TEST_PROVIDER_WAS_CHANGED: refusing to move or reactivate it.');
+    expect(script).toContain("status: 'active', // Explicit test fixture approval");
+    expect(fs.existsSync('scripts/archive/08_approve_existing_test_provider.sql')).toBe(false);
   });
 });

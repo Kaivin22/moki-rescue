@@ -14,7 +14,9 @@ const schema = fs.readFileSync(
   ),
   'utf8',
 );
-const verify = fs.readFileSync(path.join(process.cwd(), 'scripts', '02_verify_rls.sql'), 'utf8');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { generateVerification } = require('../scripts/database-checks.cjs');
+const verify: string = generateVerification();
 const qualityService = fs.readFileSync(
   path.join(
     process.cwd(),

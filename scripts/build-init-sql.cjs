@@ -1,8 +1,10 @@
-// Mechanical bundle generation only. Never connects to a database.
-/* global __dirname, Buffer */
+// Bundle generation with an explicit B1 role-compatibility adaptation. Never connects to a database.
+/* global __dirname */
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { verificationSql, preflightSql, generateVerification } = require('./database-checks.cjs');
+const { setupPermissionsBlock } = require('./test-setup-permissions.cjs');
 
 const root = path.resolve(__dirname, '..');
 const migrationDirectory = path.join(root, 'backend/src/main/resources/db/migration');
@@ -32,15 +34,59 @@ function migrationSources(directory = migrationDirectory) {
   });
 }
 
+function cleanInstallContent(name, content) {
+  if (name !== 'B1__initial_schema.sql') return content;
+  // Preserve applied Flyway checksums. Only the SQL Editor bundle adapts B1's
+  // unconditional ALTER ROLE: Supabase's postgres is not a true superuser.
+  const original = `  ELSE
+    ALTER ROLE motorescue_api
+      LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
+`;
+  if (content.split(original).length !== 2) {
+    throw new Error('B1 runtime-role block changed; review the clean-install adaptation before generating.');
+  }
+  return content.replace(
+    original,
+    `  -- BEGIN INSTALL ADAPTATION: reuse a safe existing runtime role without ALTER ROLE.
+  ELSIF NOT EXISTS (
+    SELECT 1 FROM pg_roles WHERE rolname = 'motorescue_api'
+      AND rolcanlogin AND NOT rolinherit AND NOT rolsuper
+      AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolreplication AND rolbypassrls
+  ) THEN
+    RAISE EXCEPTION 'MOTORESCUE_API_ROLE_UNSAFE'
+      USING HINT = 'Review existing role attributes with an authorized administrator; do not drop the role or disable security checks.';
+  -- END INSTALL ADAPTATION
+`,
+  );
+}
+
+function sourceBlocks(sources, cleanInstall = false) {
+  return sources
+    .map(({ name, content, sha256 }) => {
+      const bundled = cleanInstall ? cleanInstallContent(name, content) : content;
+      const digest = crypto.createHash('sha256').update(bundled).digest('hex');
+      const originalDigest = bundled === content ? '' : `-- ORIGINAL SHA256: ${sha256}\n`;
+      return `-- BEGIN SOURCE: ${name}\n${originalDigest}-- SHA256: ${digest}\n${bundled}${bundled.endsWith('\n') ? '' : '\n'}-- END SOURCE: ${name}\n`;
+    })
+    .join('\n');
+}
+
+function verificationBlock() {
+  return `-- BEGIN SCHEMA VERIFICATION\n${verificationSql}\n-- END SCHEMA VERIFICATION\n`;
+}
+
 function generate(sources = migrationSources()) {
-  const version = sources.length;
-  const header = `-- FILE TỰ SINH: chạy node scripts/build-init-sql.cjs để tạo lại, không chỉnh riêng.
--- KHỞI TẠO SUPABASE MỚI từ B1 đến V${version}; không dùng nâng cấp hoặc chạy lại.
--- Chạy 01_preflight.sql trước. Dán TOÀN BỘ file này vào SQL Editor và Run một lần.
--- Không cần mở/chạy từng file trong backend. Không tạo flyway_schema_history.
--- Không seed đội mẫu, không đổi cấu hình xác nhận email, không đặt mật khẩu runtime.
--- Lỗi: dừng, ROLLBACK; nếu cần rồi điều tra; không reset hay bỏ kiểm tra để ép chạy.
--- SHA-256 bên dưới tính trên nguồn UTF-8 đã chuẩn hóa CRLF thành LF.
+  return `-- FILE TỰ SINH: node scripts/build-init-sql.cjs; không sửa riêng.
+-- CÀI MỚI + KIỂM TRA schema/quyền/RLS đến V${sources.length} trong CÙNG transaction.
+-- Dán TOÀN BỘ file vào Supabase SQL Editor và Run MỘT LẦN trên public trống.
+-- Kiểm tra thất bại thì transaction không commit; không bỏ qua guard để ép chạy.
+-- Không cần chạy migration backend hoặc file verify riêng.
+-- Đã gồm mọi sửa lỗi đến V${sources.length} và quyền tạo tài khoản test; không chạy SQL vá lẻ.
+-- Không seed demo/reset/Auth settings/mật khẩu; tùy chọn 02_seed_demo_teams.sql sau đó.
+-- Database đang có dữ liệu: KHÔNG chạy lại init; đọc scripts/README.md.
+-- SHA256 tính trên SQL được nhúng, UTF-8 chuẩn hóa CRLF thành LF.
+-- B1 chỉ điều chỉnh nhánh role đã tồn tại: kiểm tra/dùng lại, không ALTER ROLE.
+-- ORIGINAL SHA256 ở B1 là checksum migration gốc, không sửa lịch sử Flyway.
 
 BEGIN;
 SELECT pg_advisory_xact_lock(225122, 274);
@@ -78,125 +124,54 @@ BEGIN
 END;
 $init_guard$;
 
-`;
-  return (
-    header +
-    sources
-      .map(
-        ({ name, content, sha256 }) =>
-          `-- BEGIN SOURCE: ${name}\n-- SHA256: ${sha256}\n${content}${content.endsWith('\n') ? '' : '\n'}-- END SOURCE: ${name}\n`,
-      )
-      .join('\n') +
-    `\nCOMMIT;\n\nSELECT 'Database initialized through V${version}; run 02_verify_rls.sql next' AS result;\n`
-  );
-}
-
-const upgradePath = path.join(__dirname, '06_upgrade_demo_service_coverage.sql');
-function generateCoverageUpgrade(sources = migrationSources()) {
-  const migration = sources.find((source) => source.name === 'V9__align_demo_service_coverage.sql');
-  if (!migration) throw new Error('Missing V9 coverage migration.');
-  return `-- FILE TỰ SINH từ V9; không sửa riêng, không dùng để reset database.
--- Chỉ dành cho database đã chạy thủ công đến V8; cài mới bằng 01 đã gồm V9 thì bỏ qua.
--- Dừng backend khi nâng cấp, backup trước; chạy 02_verify_rls.sql sau file này.
-BEGIN;
-SELECT pg_advisory_xact_lock(225122, 274);
-DO $guard$
-BEGIN
-  IF to_regclass('public.flyway_schema_history') IS NOT NULL THEN
-    RAISE EXCEPTION 'DATABASE_MANAGED_BY_FLYWAY_USE_FLYWAY_MIGRATE';
-  END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
-    AND table_name = 'provider_members' AND column_name = 'status' AND column_default LIKE '%pending%') THEN
-    RAISE EXCEPTION 'V10_ALREADY_APPLIED_DO_NOT_DOWNGRADE';
-  END IF;
-  IF to_regclass('public.service_zones') IS NULL
-    OR to_regclass('public.provider_dispatch_stats') IS NULL
-    OR NOT EXISTS (SELECT 1 FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'rescue_requests'
-        AND column_name = 'assigned_provider_position_at') THEN
-    RAISE EXCEPTION 'V8_PREREQUISITES_MISSING_DO_NOT_RESET';
-  END IF;
-END;
-$guard$;
--- SOURCE: ${migration.name}
--- SHA256: ${migration.sha256}
-${migration.content}
+${sourceBlocks(sources, true)}
+${setupPermissionsBlock()}
+${verificationBlock()}
 COMMIT;
-SELECT 'V9 coverage applied; run 02_verify_rls.sql, then restart backend' AS result;
+
+SELECT 'Database initialized through V${sources.length}; schema/security checks passed. Optional: 02_seed_demo_teams.sql' AS result;
 `;
 }
 
-const shopUpgradePath = path.join(__dirname, '07_upgrade_shop_dispatch_and_provider_approval.sql');
-function generateShopUpgrade(sources = migrationSources()) {
-  const migration = sources.find((source) => source.name === 'V10__shop_dispatch_and_provider_approval.sql');
-  if (!migration) throw new Error('Missing V10 shop dispatch migration.');
-  return `-- FILE TỰ SINH từ V10. Database đã chạy thủ công đến V9 mới dùng file này.
--- Không reset dữ liệu. Backup và dừng backend trước khi chạy. Cài mới bằng 01 thì bỏ qua.
--- Chỉ chạy MỘT LẦN: tắt sẵn sàng và rút các đề nghị chưa nhận khi đổi mô hình vị trí.
--- Không hủy ca đã nhận, không tự duyệt tài khoản. Sau đó chạy 02_verify_rls.sql.
-BEGIN;
-SELECT pg_advisory_xact_lock(225122, 274);
-DO $guard$
-BEGIN
-  IF to_regclass('public.flyway_schema_history') IS NOT NULL THEN
-    RAISE EXCEPTION 'DATABASE_MANAGED_BY_FLYWAY_USE_FLYWAY_MIGRATE';
-  END IF;
-  IF to_regprocedure('public.api_is_in_service_area(double precision,double precision)') IS NULL
-    OR to_regprocedure('public.capture_assignment_position()') IS NULL THEN
-    RAISE EXCEPTION 'V9_PREREQUISITES_MISSING_DO_NOT_RESET';
-  END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
-    AND table_name = 'provider_members' AND column_name = 'status' AND column_default LIKE '%pending%') THEN
-    RAISE EXCEPTION 'V10_ALREADY_APPLIED_DO_NOT_RERUN';
-  END IF;
-END;
-$guard$;
--- SOURCE: ${migration.name}
--- SHA256: ${migration.sha256}
-${migration.content}
-COMMIT;
-SELECT 'V10 applied; run 02_verify_rls.sql, then restart backend and app' AS result;
-`;
+function writeDiagnostic(name, sql) {
+  // Fixed filenames only, inside the ignored workspace directory; no arbitrary output target.
+  const directory = path.join(root, '.tmp');
+  fs.mkdirSync(directory, { recursive: true });
+  const target = path.join(directory, name);
+  fs.writeFileSync(target, sql, 'utf8');
+  console.log(`Generated ${target}. No SQL executed.`);
 }
 
 module.exports = {
   generate,
+  cleanInstallContent,
   migrationSources,
   outputPath,
-  generateCoverageUpgrade,
-  upgradePath,
-  generateShopUpgrade,
-  shopUpgradePath,
+  verificationBlock,
+  generateVerification,
+  preflightSql,
 };
 
 if (require.main === module) {
   const args = process.argv.slice(2);
-  if (args.some((arg) => arg !== '--check') || args.length > 1) {
-    throw new Error('Usage: node scripts/build-init-sql.cjs [--check]');
+  const mode = args[0];
+  if (args.length > 1 || (mode && !['--check', '--verify', '--preflight'].includes(mode))) {
+    throw new Error(
+      'Usage: node scripts/build-init-sql.cjs [--check|--verify|--preflight]. All clean-install fixes belong in 01_init_database.sql; standalone patch generation is not supported.',
+    );
   }
-  const expected = generate();
-  const upgrade = generateCoverageUpgrade();
-  const shopUpgrade = generateShopUpgrade();
-  if (args.includes('--check')) {
+  if (mode === '--verify') writeDiagnostic('verify-database.sql', generateVerification());
+  else if (mode === '--preflight') writeDiagnostic('preflight-database.sql', preflightSql);
+  else if (mode === '--check') {
     const actual = fs.existsSync(outputPath)
       ? fs.readFileSync(outputPath, 'utf8').replace(/\r\n/g, '\n')
       : '';
-    const actualUpgrade = fs.existsSync(upgradePath)
-      ? fs.readFileSync(upgradePath, 'utf8').replace(/\r\n/g, '\n')
-      : '';
-    const actualShopUpgrade = fs.existsSync(shopUpgradePath)
-      ? fs.readFileSync(shopUpgradePath, 'utf8').replace(/\r\n/g, '\n')
-      : '';
-    if (actual !== expected || actualUpgrade !== upgrade || actualShopUpgrade !== shopUpgrade) {
+    if (actual !== generate()) {
       console.error('Init SQL missing/outdated. Run: node scripts/build-init-sql.cjs');
       process.exitCode = 1;
-    } else {
-      console.log('Init SQL matches all migration sources (no database connection).');
-    }
+    } else console.log('Init SQL matches migration sources and security checks (no database connection).');
   } else {
-    fs.writeFileSync(outputPath, expected, 'utf8');
-    fs.writeFileSync(upgradePath, upgrade, 'utf8');
-    fs.writeFileSync(shopUpgradePath, shopUpgrade, 'utf8');
-    console.log(`Generated ${outputPath}; ${Buffer.byteLength(expected, 'utf8')} bytes. No SQL executed.`);
+    fs.writeFileSync(outputPath, generate(), 'utf8');
+    console.log(`Generated ${outputPath}. No SQL executed.`);
   }
 }

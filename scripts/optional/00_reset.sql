@@ -1,11 +1,12 @@
 -- CHỈ DÙNG CHO LOCAL/STAGING ĐƯỢC PHÉP MẤT DỮ LIỆU.
--- Script này xóa schema public; sau đó chạy lại toàn bộ Flyway migration từ B1 theo scripts/README.md.
+-- Script này xóa schema public; sau đó chạy scripts/01_init_database.sql theo scripts/README.md.
 -- KHÔNG thuộc thứ tự cài đặt thông thường. Backup trước, dừng backend và đăng ký
 -- tài khoản trong lúc reset. auth.users được giữ lại nhưng toàn bộ dữ liệu app mất.
 -- Chỉ dùng database riêng của dự án; CASCADE có thể ảnh hưởng đối tượng phụ thuộc.
 -- Sửa hai hằng bên dưới ngay trong bản chạy; không dựa vào cờ session còn sót.
 
 BEGIN;
+SELECT pg_advisory_xact_lock(225122, 274);
 
 DO $$
 DECLARE
