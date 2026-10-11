@@ -726,6 +726,21 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     }
 
     @Test
+    void adminCanMoveAnIdleShopAndSaveItsDisplayAddressButCannotMoveAnAvailableShop() {
+        UUID shop = createTeam();
+        var provider = createProvider(shop, 16.06, 108.21, 20, false);
+        var admin = createActor("admin");
+        var operator = new OperatorService(runtimeJdbc, matchingDispatch, new AuditService(runtimeJdbc), runtimeTransactions, qualityPolicy);
+        operator.setTeamLocation(admin, shop, new com.danang.motorescue.model.ApiModels.TeamLocationRequest(16.065, 108.24, "  Test relocated shop, Da Nang  "));
+        assertThat(jdbc.queryForObject("SELECT base_latitude FROM public.rescue_teams WHERE id = ?", Double.class, shop)).isEqualTo(16.065);
+        assertThat(operator.teams(admin).stream().filter(team -> team.id().equals(shop)).findFirst().orElseThrow().baseAddress()).isEqualTo("Test relocated shop, Da Nang");
+        assertThat(providers.status(provider.actor()).shopAddress()).isEqualTo("Test relocated shop, Da Nang");
+        providers.setAvailability(provider.actor(), new AvailabilityRequest(true, null, null, null));
+        assertApiCode("TEAM_LOCATION_IN_USE", () -> operator.setTeamLocation(admin, shop, new com.danang.motorescue.model.ApiModels.TeamLocationRequest(16.061, 108.2238, "Another address, Da Nang")));
+        assertThat(jdbc.queryForObject("SELECT base_address FROM public.rescue_teams WHERE id = ?", String.class, shop)).isEqualTo("Test relocated shop, Da Nang");
+    }
+
+    @Test
     void dispatchDoesNotPublishAnOldEtaIfShopMovesWhileOsrmIsResponding() {
         UUID shop = createTeam();
         addCapability(shop);
@@ -739,6 +754,53 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         matchingDispatch.match(request);
         assertThat(count("public.dispatch_offers")).isZero();
         assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, request)).isEqualTo("no_provider");
+    }
+
+    @Test
+    void incidentAndConversationStayLinkedWhenResolvedFromEitherInterface() {
+        Actor customer = createActor("customer"), admin = createActor("admin");
+        ProviderFixture provider = createProvider(createTeam(), PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        UUID requestId = insertRequest(customer, "assigned", provider);
+        var audit = new AuditService(runtimeJdbc);
+        var operator = new OperatorService(runtimeJdbc, matchingDispatch, audit, runtimeTransactions, qualityPolicy);
+        var incidents = new RescueIncidentService(runtimeJdbc, runtimeTransactions, audit, push, new RescueRequestAccess(runtimeJdbc));
+        var support = new SupportTicketService(runtimeJdbc, runtimeTransactions, audit, operator);
+        var inbox = new InboxService(runtimeJdbc, runtimeTransactions, audit);
+        incidents.reportIncident(customer, requestId, new com.danang.motorescue.model.ApiModels.IncidentReportRequest("safety", "Please investigate this safety issue"));
+        UUID incidentId = jdbc.queryForObject("SELECT id FROM public.incident_reports WHERE request_id = ?", UUID.class, requestId);
+        var ticket = support.forIncident(customer, incidentId);
+        assertThat(ticket.ownerId()).isEqualTo(customer.id());
+        assertThat(inbox.unread(admin).count()).isEqualTo(1);
+        assertApiCode("COMMUNICATION_NOT_FOUND", () -> support.forIncident(provider.actor(), incidentId));
+        support.reply(admin, ticket.id(), new CommunicationModels.SendMessage(UUID.randomUUID(), "We are reviewing your report", false));
+        var current = support.detail(admin, ticket.id());
+        support.changeStatus(admin, ticket.id(), new CommunicationModels.ChangeStatus(current.version(), "resolved", "Confirmed and resolved with the customer"));
+        assertThat(jdbc.queryForObject("SELECT status FROM public.incident_reports WHERE id = ?", String.class, incidentId)).isEqualTo("resolved");
+        assertThat(support.detail(customer, ticket.id()).status()).isEqualTo("resolved");
+        assertThat(support.messages(customer, ticket.id(), null, null, 30).items()).hasSize(2);
+        assertThat(inbox.unread(customer).count()).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT status FROM public.case_attention_flags WHERE request_id = ? AND code = 'customer_incident_reported'", String.class, requestId)).isEqualTo("resolved");
+
+        incidents.reportIncident(customer, requestId, new com.danang.motorescue.model.ApiModels.IncidentReportRequest("service_quality", "Please check this separate service issue"));
+        UUID second = jdbc.queryForObject("SELECT id FROM public.incident_reports WHERE request_id = ? AND category = 'service_quality'", UUID.class, requestId);
+        var linked = support.forIncident(customer, second);
+        operator.resolveIncident(admin, second, new com.danang.motorescue.model.ApiModels.IncidentResolutionRequest("dismissed", "Verified facts do not support this complaint"));
+        assertThat(support.detail(customer, linked.id()).status()).isEqualTo("dismissed");
+        assertThat(support.messages(customer, linked.id(), null, null, 30).items()).hasSize(1);
+        assertThat(inbox.unread(customer).count()).isEqualTo(3);
+    }
+
+    @Test
+    void caseInboxDoesNotNeedPushDevicesAndDeduplicatesRetries() {
+        var customer = createActor("customer");
+        UUID request = insertRequest(customer, "searching", null);
+        var pushConfig = new com.danang.motorescue.config.PushProperties(
+                "https://example.invalid/send", "https://example.invalid/receipts", "", null, 3, null, null, null, 3, 100, 15000);
+        var actualPush = new PushNotificationService(runtimeJdbc, org.springframework.web.client.RestClient.create(), pushConfig);
+        actualPush.notifyUser(customer.id(), NotificationKind.NO_PROVIDER, null, request);
+        actualPush.notifyUser(customer.id(), NotificationKind.NO_PROVIDER, null, request);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.user_notifications WHERE user_id = ?", Integer.class, customer.id())).isEqualTo(1);
+        assertThat(count("public.push_outbox")).isZero();
     }
 
     private RescueCreationService creationService() {

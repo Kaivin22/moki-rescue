@@ -24,6 +24,8 @@ export function useServiceTypes() {
   return useQuery({
     queryKey: rescueKeys.services,
     queryFn: rescueApi.serviceTypes,
+    // Also hide the retired service from a stale catalog during a backend rollout.
+    select: (services) => services.filter((service) => service.code !== 'electric_battery'),
     staleTime: RescueTiming.serviceCatalogStaleMs,
   });
 }

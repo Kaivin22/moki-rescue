@@ -57,6 +57,12 @@ public class RescueCreationService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "SAFETY_NOT_ACKNOWLEDGED",
                     "Hãy xác nhận bạn đang ở vị trí an toàn trước khi gửi yêu cầu.");
         }
+        // Apply the product scope on the server too; old clients can still send EV payloads.
+        // Read/history DTOs and existing records deliberately retain their original vehicle type.
+        if (!"gasoline".equals(input.vehiclePowerType()) || "electric_battery".equals(input.serviceCode())) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "VEHICLE_OUTSIDE_SCOPE",
+                    "Hiện ứng dụng chỉ tiếp nhận cứu hộ xe máy xăng, chưa hỗ trợ xe máy điện hoặc loại xe chưa xác định.");
+        }
         if ("gps".equals(input.pickupSource())
                 && (input.pickupAccuracyM() == null
                 || input.pickupAccuracyM() > policy.customerGpsMaxAccuracyMeters())) {

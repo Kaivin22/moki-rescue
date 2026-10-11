@@ -124,8 +124,12 @@ export function RescueOverview({
       ) : null}
       {role === 'customer' && request.status === 'no_provider' ? (
         <View style={styles.noProviderCard}>
-          <Text style={styles.noProviderTitle}>{c.noProviderTitle}</Text>
-          <Text style={styles.infoLabel}>{c.noProviderBody}</Text>
+          <Text style={styles.noProviderTitle}>
+            {request.routingStatus === 'unavailable' ? c.routingUnavailableTitle : c.noProviderTitle}
+          </Text>
+          <Text style={styles.infoLabel}>
+            {request.routingStatus === 'unavailable' ? c.routingUnavailableBody : c.noProviderBody}
+          </Text>
           <AppButton title={c.retry} loading={retryingDispatch} onPress={onRetryDispatch} />
           <AppButton
             title={c.requestDispatchSupport}

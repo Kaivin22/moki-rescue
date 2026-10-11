@@ -54,6 +54,7 @@ export interface MapSurfaceHandle {
 }
 export interface MapSurfaceProps {
   html: string;
+  tileUrl: string;
   onMessage: (message: string) => void;
   onError: () => void;
 }

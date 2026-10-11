@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { NotificationEntry } from '@/src/features/communications/InboxScreens';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -242,6 +243,7 @@ export function OperationsWorkspace() {
           />
         }
       >
+        <NotificationEntry />
         <Text style={styles.title}>
           {isProvider
             ? english
@@ -346,10 +348,13 @@ export function OperationsWorkspace() {
                   : 'Cửa hàng cần được xác minh và có tọa độ trong vùng phục vụ. Liên hệ admin để cập nhật.'}
               </Text>
             ) : null}
-            {provider.data?.shopLatitude != null && provider.data.shopLongitude != null ? (
+            {provider.data ? (
               <Text style={styles.notice}>
-                {english ? 'Shop' : 'Cửa hàng'}: {provider.data.shopLatitude.toFixed(5)},{' '}
-                {provider.data.shopLongitude.toFixed(5)}
+                {english ? 'Shop address' : 'Địa chỉ cửa hàng'}:{' '}
+                {provider.data.shopAddress ||
+                  (english
+                    ? 'Not entered yet. Ask an administrator to update it.'
+                    : 'Chưa nhập địa chỉ. Liên hệ admin để cập nhật.')}
               </Text>
             ) : null}
             {!provider.data?.available && requests.data?.length ? (

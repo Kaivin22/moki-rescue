@@ -22,6 +22,9 @@ export const RESCUE_DETAILS_COPY = {
     routingWarning:
       'Dịch vụ định tuyến không trả đường hợp lệ. Ứng dụng không thay bằng đường chim bay; quản trị viên vận hành cần tìm lại khi tuyến đường hoạt động.',
     noProviderTitle: 'Hiện chưa có đội nhận ca',
+    routingUnavailableTitle: 'Chưa tính được tuyến đường để gửi lời mời',
+    routingUnavailableBody:
+      'Có cứu hộ viên qua bộ lọc nhưng dịch vụ định tuyến chưa trả được tuyến/ETA hợp lệ. Đây không phải thông báo cứu hộ viên từ chối ca. Liên hệ quản trị viên kiểm tra OSRM rồi tìm lại.',
     noProviderBody:
       'Hệ thống đã dừng tìm, không hiển thị chờ vô thời hạn. Liên hệ hỗ trợ vận hành nếu bạn cần phương án khác.',
     callDispatch: 'Gọi hỗ trợ vận hành',
@@ -186,6 +189,9 @@ export const RESCUE_DETAILS_COPY = {
     routingWarning:
       'The routing service did not return a valid route. The app never substitutes a straight line; an operations administrator should retry when routing is available.',
     noProviderTitle: 'No team has accepted yet',
+    routingUnavailableTitle: 'Unable to calculate a route for dispatch',
+    routingUnavailableBody:
+      'Providers passed the eligibility filter, but routing did not return a valid route/ETA. This does not mean a provider declined. Ask an administrator to check OSRM, then retry.',
     noProviderBody:
       'The search has stopped instead of waiting forever. Contact operations support if you need another option.',
     callDispatch: 'Call operations support',

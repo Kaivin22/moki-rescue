@@ -75,7 +75,7 @@ public class OperatorService {
     public List<TeamResponse> teams(Actor actor) {
         requireAdmin(actor);
         return jdbc.query("""
-                SELECT team.id, team.name, team.status, team.base_latitude, team.base_longitude,
+                SELECT team.id, team.name, team.status, team.base_latitude, team.base_longitude, team.base_address,
                        public.api_is_in_service_area(team.base_latitude, team.base_longitude) AS shop_in_area,
                        (SELECT COUNT(*) FROM public.provider_members pm
                         WHERE pm.team_id = team.id AND pm.status = 'active') AS active_providers,
@@ -132,7 +132,7 @@ public class OperatorService {
                     warningCount,
                     qualityPolicy.recommendsSuspensionReview(warningCount),
                     alert, rs.getObject("base_latitude", Double.class), rs.getObject("base_longitude", Double.class),
-                    rs.getBoolean("shop_in_area"));
+                    rs.getBoolean("shop_in_area"), rs.getString("base_address"));
         });
     }
 
@@ -499,6 +499,10 @@ public class OperatorService {
     public void setTeamCapabilities(Actor actor, UUID teamId, List<String> capabilityCodes) {
         requireAdmin(actor);
         List<String> uniqueCodes = capabilityCodes.stream().distinct().toList();
+        if (uniqueCodes.contains("electric_battery")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CAPABILITIES",
+                    "Cứu hộ xe máy điện nằm ngoài phạm vi hiện tại.");
+        }
         transactions.executeWithoutResult(status -> {
             Boolean teamExists = jdbc.queryForObject(
                     "SELECT EXISTS(SELECT 1 FROM public.rescue_teams WHERE id = ?)", Boolean.class, teamId);
@@ -677,6 +681,10 @@ public class OperatorService {
 
     public void setTeamLocation(Actor actor, UUID teamId, TeamLocationRequest input) {
         requireAdmin(actor);
+        String address = input.address() == null ? "" : input.address().trim();
+        if (address.length() < 5 || address.length() > 300) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_SHOP_ADDRESS", "Địa chỉ cửa hàng cần từ 5–300 ký tự sau khi bỏ khoảng trắng thừa.");
+        }
         Boolean valid = jdbc.queryForObject("SELECT public.api_is_in_service_area(?, ?)",
                 Boolean.class, input.latitude(), input.longitude());
         if (!Boolean.TRUE.equals(valid)) {
@@ -698,8 +706,8 @@ public class OperatorService {
                     """, Boolean.class, teamId, teamId, teamId);
             if (Boolean.TRUE.equals(busy)) throw new ApiException(HttpStatus.CONFLICT, "TEAM_LOCATION_IN_USE",
                     "Tắt nhận ca của cả đội và kết thúc ca/đề nghị đang mở trước khi đổi vị trí cửa hàng.");
-            jdbc.update("UPDATE public.rescue_teams SET base_latitude = ?, base_longitude = ? WHERE id = ?",
-                    input.latitude(), input.longitude(), teamId);
+            jdbc.update("UPDATE public.rescue_teams SET base_latitude = ?, base_longitude = ?, base_address = ? WHERE id = ?",
+                    input.latitude(), input.longitude(), address, teamId);
             audit.record(actor.id(), "team.location.updated", "rescue_team", teamId);
         });
     }
@@ -739,6 +747,7 @@ public class OperatorService {
                 SELECT code, label_vi, description_vi, label_en, description_en,
                        icon_name, requires_quote, requires_destination, sort_order, is_active
                 FROM public.service_types
+                WHERE code <> 'electric_battery'
                 ORDER BY sort_order, code
                 """, (rs, rowNum) -> new AdminServiceTypeResponse(
                 rs.getString("code"), rs.getString("label_vi"), rs.getString("description_vi"),
@@ -751,6 +760,10 @@ public class OperatorService {
         requireAdmin(actor);
         if (code == null || !code.matches("^[a-z][a-z0-9_]{2,39}$")) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_SERVICE_CODE", "Mã dịch vụ không hợp lệ.");
+        }
+        if ("electric_battery".equals(code)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "SERVICE_NOT_AVAILABLE",
+                    "Dịch vụ xe máy điện đã ngừng tiếp nhận trong phạm vi hiện tại.");
         }
         if (!SERVICE_ICONS.contains(input.iconName())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_SERVICE_ICON", "Icon dịch vụ không được hỗ trợ.");

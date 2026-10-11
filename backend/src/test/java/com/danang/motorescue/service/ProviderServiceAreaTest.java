@@ -47,7 +47,7 @@ class ProviderServiceAreaTest {
         return new ProviderService(jdbc, transactions, null, audit, null, null) {
             @Override public ProviderStatusResponse status(Actor actor) {
                 return new ProviderStatusResponse(false, "Shop", memberStatus, new RatingSummary(null, 0),
-                        0, false, null, teamStatus, 16.061, 108.2238, validShop);
+                        0, false, null, teamStatus, 16.061, 108.2238, validShop, "Test shop address");
             }
         };
     }

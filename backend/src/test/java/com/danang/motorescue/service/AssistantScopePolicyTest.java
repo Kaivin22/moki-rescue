@@ -45,6 +45,16 @@ class AssistantScopePolicyTest {
     }
 
     @Test
+    void doesNotSuggestAnUnsupportedRequestForElectricMotorcycles() {
+        var decision = policy.classify("Xe máy điện bị gì, có thể gọi cứu hộ vận chuyển không?");
+        assertThat(decision.disposition()).isEqualTo(Disposition.OUT_OF_SCOPE);
+        assertThat(policy.classify("Can I request transport for my electric scooter?").disposition())
+                .isEqualTo(Disposition.OUT_OF_SCOPE);
+        assertThat(policy.classify("Xe điện bị cháy và có người bị thương").disposition())
+                .isEqualTo(Disposition.EMERGENCY);
+    }
+
+    @Test
     void rejectsUnsafeGeneratedContent() {
         assertThat(policy.allowsGeneratedReply("Mở mục Hoạt động để theo dõi yêu cầu.")).isTrue();
         assertThat(policy.allowsGeneratedReply("Here is a weather forecast for your app.")).isFalse();

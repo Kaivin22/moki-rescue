@@ -194,6 +194,7 @@ public class DispatchService {
                 FROM public.service_types service
                 WHERE rr.id = ? AND rr.status = 'no_provider'
                   AND service.code = rr.service_code AND service.is_active
+                  AND rr.vehicle_power_type = 'gasoline' AND rr.service_code <> 'electric_battery'
                 """, requestId);
         if (changed == 0) {
             throw new ApiException(HttpStatus.CONFLICT, "REQUEST_NOT_RETRYABLE", "Yêu cầu không ở trạng thái có thể tìm lại đội cứu hộ.");
@@ -345,6 +346,7 @@ public class DispatchService {
                 LEFT JOIN public.provider_dispatch_stats stats
                   ON stats.provider_id = pm.user_id AND stats.service_code = ?
                 WHERE pm.status = 'active'
+                  AND rr.vehicle_power_type = 'gasoline' AND rr.service_code <> 'electric_battery'
                   AND pm.is_available
                   AND public.api_is_in_service_area(team.base_latitude, team.base_longitude)
                   AND public.api_is_in_service_area(rr.pickup_latitude, rr.pickup_longitude)
@@ -386,7 +388,11 @@ public class DispatchService {
 
     private boolean writeOffer(RequestPoint request, List<Ranked> rankedCandidates, Ranked selected) {
         UUID requestId = request.id();
-        String current = jdbc.query("SELECT status FROM public.rescue_requests WHERE id = ? FOR UPDATE",
+        String current = jdbc.query("""
+                SELECT status FROM public.rescue_requests WHERE id = ?
+                  AND vehicle_power_type = 'gasoline' AND service_code <> 'electric_battery'
+                FOR UPDATE
+                """,
                 rs -> rs.next() ? rs.getString(1) : null, requestId);
         if (!"searching".equals(current)) return false;
 

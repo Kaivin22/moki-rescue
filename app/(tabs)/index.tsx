@@ -14,6 +14,7 @@ import { useCopy, useI18n } from '@/src/i18n';
 import { OperationsWorkspace } from '@/src/features/rescue/screens/OperationsWorkspace';
 import { AdminDashboard } from '@/src/features/operator/AdminDashboard';
 import { ApiClientError } from '@/src/features/rescue/api/client';
+import { NotificationEntry } from '@/src/features/communications/InboxScreens';
 
 const COPY = {
   vi: {
@@ -22,7 +23,7 @@ const COPY = {
     providerBody: 'Chỉ bật sẵn sàng khi có thể nhận ca và giữ vị trí chính xác trong lúc đang phục vụ.',
     staffBody: 'Theo dõi ca chưa có đội, độ trễ nhận ca và tình trạng mạng lưới đối tác.',
     greeting: 'Chào',
-    request: 'Yêu cầu cứu hộ xe máy',
+    request: 'Yêu cầu cứu hộ xe máy xăng',
     operations: 'Mở màn hình vận hành',
     emergencyTitle: 'Có người bị thương hoặc nguy hiểm?',
     emergencyBody: 'Moki Rescue không thay thế cấp cứu. Nhấn để gọi',
@@ -44,7 +45,7 @@ const COPY = {
       'Only go available when you can accept a request, and keep your location accurate while working.',
     staffBody: 'Monitor unmatched requests, acceptance delays, and partner network health.',
     greeting: 'Hello',
-    request: 'Request motorcycle rescue',
+    request: 'Request gasoline motorcycle rescue',
     operations: 'Open operations',
     emergencyTitle: 'Is anyone injured or in danger?',
     emergencyBody: 'Moki Rescue is not an emergency service. Tap to call',
@@ -102,6 +103,7 @@ function CustomerHomeScreen() {
       </SafeAreaView>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <NotificationEntry />
         {role === 'customer' ? (
           <AppButton title={c.request} onPress={() => router.push('/(tabs)/request')} />
         ) : (

@@ -13,6 +13,7 @@ const provider: ProviderStatus = {
   shopLatitude: 16.061,
   shopLongitude: 108.2238,
   shopInServiceArea: true,
+  shopAddress: 'Test shop address',
 };
 const ready = { loaded: true, failed: false, busy: false, provider, hasActiveRequest: false };
 describe('provider availability control', () => {

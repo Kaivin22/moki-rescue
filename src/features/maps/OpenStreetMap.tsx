@@ -34,6 +34,8 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>((props, ref) => {
   const [ready, setReady] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [tileFailed, setTileFailed] = useState(false);
+  const [tileLoading, setTileLoading] = useState(true);
+  const [tileFailureReason, setTileFailureReason] = useState('');
   const [failedTileUrl, setFailedTileUrl] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const markers: MapMarkerProps[] = [];
@@ -44,14 +46,10 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>((props, ref) => {
     if (child.type === Polyline) lines.push(child.props as MapPolylineProps);
   });
   const current = useRef({ props, markers });
+  const tileUrl = String(Constants.expoConfig?.extra?.mapTileUrl || DEFAULT_TILE_URL);
   const html = useMemo(
-    () =>
-      mapDocument(
-        String(Constants.expoConfig?.extra?.mapTileUrl || DEFAULT_TILE_URL),
-        String(Constants.expoConfig?.extra?.mapTileAttribution || ''),
-        english,
-      ),
-    [english],
+    () => mapDocument(tileUrl, String(Constants.expoConfig?.extra?.mapTileAttribution || ''), english),
+    [english, tileUrl],
   );
   const update = JSON.stringify({
     type: 'update',
@@ -71,39 +69,52 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>((props, ref) => {
     setReady(false);
     setFailure(null);
     setTileFailed(false);
+    setTileLoading(true);
+    setTileFailureReason('');
     setFailedTileUrl(null);
   }
   const onError = useCallback(() => setFailure('webview'), []);
-  const onMessage = useCallback((raw: string) => {
-    try {
-      const message = JSON.parse(raw);
-      if (message.source !== 'moki-map') return;
-      if (message.type === 'ready') {
-        if (timeout.current) clearTimeout(timeout.current);
-        setReady(true);
-        setFailure(null);
-        surface.current?.send(latestUpdate.current);
-        current.current.props.onMapReady?.();
-      } else if (message.type === 'error') setFailure(message.reason === 'library' ? 'library' : 'runtime');
-      else if (message.type === 'tileError') {
-        setTileFailed(true);
-        if (typeof message.url === 'string') {
-          const tile = new URL(message.url);
-          const configured = new URL(String(Constants.expoConfig?.extra?.mapTileUrl || DEFAULT_TILE_URL));
-          if (tile.protocol === 'https:' && tile.origin === configured.origin) setFailedTileUrl(tile.href);
+  const onMessage = useCallback(
+    (raw: string) => {
+      try {
+        const message = JSON.parse(raw);
+        if (message.source !== 'moki-map') return;
+        if (message.type === 'ready') {
+          if (timeout.current) clearTimeout(timeout.current);
+          setReady(true);
+          setFailure(null);
+          surface.current?.send(latestUpdate.current);
+          current.current.props.onMapReady?.();
+        } else if (message.type === 'error') setFailure(message.reason === 'library' ? 'library' : 'runtime');
+        else if (message.type === 'tileStatus') {
+          setTileFailed(message.failed > 0);
+          setTileLoading(Boolean(message.loading) && message.loaded === 0);
+          const reason =
+            typeof message.reason === 'string' && /^[a-z]{1,16}$/.test(message.reason) ? message.reason : '';
+          setTileFailureReason(
+            Number.isInteger(message.status) && message.status >= 400 && message.status < 600
+              ? `HTTP ${message.status}`
+              : reason,
+          );
+          if (typeof message.url === 'string') {
+            const tile = new URL(message.url);
+            const configured = new URL(tileUrl);
+            if (tile.protocol === 'https:' && tile.origin === configured.origin) setFailedTileUrl(tile.href);
+          } else setFailedTileUrl(null);
+        } else if (message.type === 'attribution')
+          void Linking.openURL(OSM_COPYRIGHT_URL).catch(() => undefined);
+        else if (validCoordinate(message.coordinate)) {
+          const event = { nativeEvent: { coordinate: message.coordinate } };
+          if (message.type === 'press') current.current.props.onPress?.(event);
+          if (message.type === 'drag' && Number.isInteger(message.index))
+            current.current.markers[message.index]?.onDragEnd?.(event);
         }
-      } else if (message.type === 'tileLoaded') setTileFailed(false);
-      else if (message.type === 'attribution') void Linking.openURL(OSM_COPYRIGHT_URL).catch(() => undefined);
-      else if (validCoordinate(message.coordinate)) {
-        const event = { nativeEvent: { coordinate: message.coordinate } };
-        if (message.type === 'press') current.current.props.onPress?.(event);
-        if (message.type === 'drag' && Number.isInteger(message.index))
-          current.current.markers[message.index]?.onDragEnd?.(event);
+      } catch {
+        /* Ignore malformed messages from the isolated map document. */
       }
-    } catch {
-      /* Ignore malformed messages from the isolated map document. */
-    }
-  }, []);
+    },
+    [tileUrl],
+  );
   useImperativeHandle(
     ref,
     () => ({
@@ -131,8 +142,15 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>((props, ref) => {
   }, [html, attempt, ready, failure]);
   return (
     <View style={[{ overflow: 'hidden' }, props.style]}>
-      <MapSurface key={attempt} ref={surface} html={html} onMessage={onMessage} onError={onError} />
-      {(!ready || failure || tileFailed) && (
+      <MapSurface
+        key={attempt}
+        ref={surface}
+        html={html}
+        tileUrl={tileUrl}
+        onMessage={onMessage}
+        onError={onError}
+      />
+      {(!ready || failure || tileFailed || tileLoading) && (
         <View style={[styles.notice, { top: (props.mapPadding?.top ?? 0) + 8 }]}>
           <Text style={styles.text}>
             {failure
@@ -141,8 +159,8 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>((props, ref) => {
                 : `Không khởi tạo được bản đồ (${failure}). Hãy bấm Thử lại.`
               : tileFailed
                 ? english
-                  ? 'OSM background images could not load. Check your Internet connection.'
-                  : 'Chưa tải được ảnh nền OSM. Kiểm tra kết nối Internet.'
+                  ? `Map images could not load (${tileFailureReason || 'network'}). Check the image source or try another network.`
+                  : `Chưa tải được ảnh nền (${tileFailureReason || 'network'}). Kiểm tra nguồn ảnh hoặc thử mạng khác.`
                 : english
                   ? 'Loading map…'
                   : 'Đang tải bản đồ…'}

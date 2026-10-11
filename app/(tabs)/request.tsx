@@ -17,6 +17,7 @@ import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
 import { ScreenHeader } from '@/src/components/atoms/ScreenHeader';
 import { MapView, Marker } from '@/src/components/MapWrapper';
+import { MapDetailsSheet } from '@/src/features/maps/MapDetailsSheet';
 import { Colors } from '@/src/constants/colors';
 import { Fonts, Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { ApiClientError } from '@/src/features/rescue/api/client';
@@ -68,13 +69,10 @@ const COPY = {
       'Di chuyển đến nơi an toàn nếu có thể và gọi đúng lực lượng. Ứng dụng không tự thực hiện cuộc gọi.',
     call: 'Gọi',
     issueTitle: 'Xe của bạn gặp vấn đề gì?',
-    issueBody: 'Chọn một dịch vụ để hệ thống tìm đúng đội có năng lực xử lý.',
+    issueBody: 'Chọn sự cố của xe máy xăng để hệ thống tìm đội có năng lực phù hợp.',
+    scope: 'Hiện chỉ hỗ trợ xe máy xăng. Xe máy điện chưa nằm trong phạm vi phục vụ, kể cả vận chuyển.',
     loadServicesError: 'Không tải được danh mục dịch vụ.',
     retry: 'Thử lại',
-    vehicleType: 'Loại xe',
-    gasoline: 'Xe xăng',
-    electric: 'Xe điện',
-    unknown: 'Không rõ',
     vehicle: 'Mô tả xe (không bắt buộc)',
     vehiclePlaceholder: 'Ví dụ: Wave RSX màu đen',
     locationTitle: 'Xác nhận điểm cứu hộ',
@@ -94,7 +92,7 @@ const COPY = {
     destinationTab: 'Điểm giao',
     destinationHint: 'Chạm bản đồ để đặt điểm giao xe. Điểm này phải cách điểm đón ít nhất 50 m.',
     destinationNearby: 'Tên điểm giao xe',
-    destinationPlaceholder: 'Cửa hàng, trạm sạc hoặc địa chỉ giao xe',
+    destinationPlaceholder: 'Cửa hàng sửa xe hoặc địa chỉ giao xe',
     destinationNote: 'Ghi chú tại điểm giao',
     mapHint:
       'Chạm bản đồ hoặc kéo ghim để chọn tọa độ. Nhập tên địa chỉ bên dưới chỉ là ghi chú, không di chuyển ghim. Kiểm tra đúng vị trí trước khi gửi.',
@@ -128,13 +126,11 @@ const COPY = {
       'Move somewhere safe if possible and call the appropriate service. The app never calls automatically.',
     call: 'Call',
     issueTitle: 'What is wrong with the motorcycle?',
-    issueBody: 'Select one service so the system can find a capable team.',
+    issueBody: 'Select the gasoline motorcycle issue so the system can find a capable team.',
+    scope:
+      'Currently for gasoline motorcycles only. Electric motorcycles are outside the service scope, including transport.',
     loadServicesError: 'Could not load the service catalog.',
     retry: 'Try again',
-    vehicleType: 'Motorcycle type',
-    gasoline: 'Gasoline',
-    electric: 'Electric',
-    unknown: 'Unknown',
     vehicle: 'Motorcycle description (optional)',
     vehiclePlaceholder: 'Example: black Wave RSX',
     locationTitle: 'Confirm rescue location',
@@ -154,7 +150,7 @@ const COPY = {
     destinationTab: 'Drop-off',
     destinationHint: 'Tap the map to set the drop-off point. It must be at least 50 m from pickup.',
     destinationNearby: 'Drop-off name',
-    destinationPlaceholder: 'Repair shop, charging station, or delivery address',
+    destinationPlaceholder: 'Repair shop or delivery address',
     destinationNote: 'Drop-off note',
     mapHint:
       'Tap the map or drag a pin to select coordinates. Typing an address below only changes its label, not the pin. Check the location before sending.',
@@ -184,7 +180,6 @@ function CustomerRequestForm() {
   const destination = useCurrentLocation();
   const [step, setStep] = useState<Step>(0);
   const [serviceCode, setServiceCode] = useState('');
-  const [power, setPower] = useState<'gasoline' | 'electric' | 'unknown'>('gasoline');
   const [vehicle, setVehicle] = useState('');
   const [note, setNote] = useState('');
   const [hasInjury, setHasInjury] = useState<boolean | null>(null);
@@ -193,6 +188,8 @@ function CustomerRequestForm() {
   const [mapTarget, setMapTarget] = useState<'pickup' | 'destination'>('pickup');
   const [destinationNote, setDestinationNote] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [locationHeight, setLocationHeight] = useState(0);
+  const [locationExpanded, setLocationExpanded] = useState(true);
   const c = useCopy(COPY);
   const selectedService = services.data?.find((service) => service.code === serviceCode);
   const needsDestination = Boolean(selectedService?.requiresDestination);
@@ -239,7 +236,7 @@ function CustomerRequestForm() {
     setError(null);
     const input = {
       serviceCode,
-      vehiclePowerType: power,
+      vehiclePowerType: 'gasoline' as const,
       vehicleDescription: vehicle.trim() || undefined,
       pickupAreaLabel: location.label.trim(),
       pickupNote: note.trim() || undefined,
@@ -289,6 +286,7 @@ function CustomerRequestForm() {
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>{c.safetyTitle}</Text>
             <Text style={styles.subtitle}>{c.safetyBody}</Text>
+            <Text style={styles.subtitle}>{c.scope}</Text>
             <SafetyQuestion
               label={c.injury}
               value={hasInjury}
@@ -313,6 +311,7 @@ function CustomerRequestForm() {
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>{c.issueTitle}</Text>
             <Text style={styles.subtitle}>{c.issueBody}</Text>
+            <Text style={styles.subtitle}>{c.scope}</Text>
             {services.isError ? (
               <View style={styles.errorCard}>
                 <Text style={styles.error}>
@@ -353,29 +352,6 @@ function CustomerRequestForm() {
                 );
               })}
             </View>
-            <Text style={styles.label}>{c.vehicleType}</Text>
-            <View style={styles.segmentRow} accessibilityRole="radiogroup">
-              {(
-                [
-                  ['gasoline', c.gasoline],
-                  ['electric', c.electric],
-                  ['unknown', c.unknown],
-                ] as const
-              ).map(([value, label]) => (
-                <Pressable
-                  key={value}
-                  onPress={() => setPower(value)}
-                  accessibilityRole="radio"
-                  accessibilityLabel={label}
-                  accessibilityState={{ checked: power === value }}
-                  style={[styles.segment, power === value && styles.segmentActive]}
-                >
-                  <Text style={[styles.segmentText, power === value && styles.segmentTextActive]}>
-                    {label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
             <AppInput
               label={c.vehicle}
               value={vehicle}
@@ -389,7 +365,10 @@ function CustomerRequestForm() {
         ) : null}
 
         {step === 2 ? (
-          <View style={styles.locationLayout}>
+          <View
+            style={styles.locationLayout}
+            onLayout={(event) => setLocationHeight(event.nativeEvent.layout.height)}
+          >
             <View style={styles.mapArea}>
               {location.coordinate || DEFAULT_MAP_CENTER ? (
                 <MapView
@@ -456,15 +435,30 @@ function CustomerRequestForm() {
                 </View>
               )}
             </View>
-            <View style={styles.locationSheet}>
-              <View style={styles.sheetHandle} />
+            <MapDetailsSheet
+              title={c.locationTitle}
+              availableHeight={locationHeight}
+              expanded={locationExpanded}
+              onExpandedChange={setLocationExpanded}
+              footer={
+                <View style={styles.sheetAction}>
+                  <AppButton
+                    title={c.submit}
+                    onPress={() => {
+                      setLocationExpanded(true);
+                      void submit();
+                    }}
+                    loading={create.isPending}
+                  />
+                </View>
+              }
+            >
               <ScrollView
                 style={styles.sheetScroll}
                 contentContainerStyle={styles.sheetContent}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
-                <Text style={styles.sheetTitle}>{c.locationTitle}</Text>
                 {needsDestination && location.coordinate ? (
                   <View style={styles.segmentRow} accessibilityRole="radiogroup">
                     {(
@@ -590,10 +584,7 @@ function CustomerRequestForm() {
                 </Pressable>
                 <InlineError value={error} />
               </ScrollView>
-              <View style={styles.sheetAction}>
-                <AppButton title={c.submit} onPress={() => void submit()} loading={create.isPending} />
-              </View>
-            </View>
+            </MapDetailsSheet>
           </View>
         ) : null}
       </KeyboardAvoidingView>
@@ -761,7 +752,7 @@ const styles = StyleSheet.create({
   segmentText: { ...Typography.caption, color: Colors.textSecondary },
   segmentTextActive: { color: Colors.white, fontFamily: Fonts.bodySemi },
   locationLayout: { flex: 1, backgroundColor: Colors.surface },
-  mapArea: { flex: 1, minHeight: 150 },
+  mapArea: { flex: 1, minHeight: 0 },
   mapEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl, gap: Spacing.md },
   mapEmptyIcon: {
     width: 64,
@@ -772,31 +763,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardBg,
   },
   mapEmptyText: { ...Typography.body, color: Colors.textSecondary, textAlign: 'center' },
-  locationSheet: {
-    maxHeight: '62%',
-    backgroundColor: Colors.cardBg,
-    borderTopLeftRadius: Radius.xxl,
-    borderTopRightRadius: Radius.xxl,
-    borderTopWidth: 1,
-    borderColor: Colors.border,
-  },
-  sheetHandle: {
-    alignSelf: 'center',
-    width: 44,
-    height: 4,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.mist,
-    marginTop: Spacing.sm,
-  },
   sheetContent: { padding: Spacing.lg, paddingTop: Spacing.md, gap: Spacing.sm },
-  sheetScroll: { flexShrink: 1 },
+  sheetScroll: { flex: 1 },
   sheetAction: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.md,
     backgroundColor: Colors.cardBg,
   },
-  sheetTitle: { ...Typography.h2, color: Colors.textPrimary },
   coordinate: { ...Typography.caption, color: Colors.success },
   mapHint: { ...Typography.caption, color: Colors.textSecondary },
   safety: {

@@ -30,6 +30,18 @@ public class HealthController {
             Integer result = jdbc.queryForObject("""
                     SELECT CASE WHEN
                       to_regprocedure('public.api_is_in_service_area(double precision,double precision)') IS NOT NULL
+                      AND to_regclass('public.user_notifications') IS NOT NULL
+                      AND to_regclass('public.support_tickets') IS NOT NULL
+                      AND to_regclass('public.support_messages') IS NOT NULL
+                      AND to_regclass('public.announcements') IS NOT NULL
+                      AND EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('public.service_types')
+                        AND conname = 'service_types_gasoline_scope' AND convalidated)
+                      AND EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('public.team_capabilities')
+                        AND conname = 'team_capabilities_gasoline_scope' AND convalidated)
+                      AND EXISTS (SELECT 1 FROM information_schema.columns
+                        WHERE table_schema = 'public' AND table_name = 'rescue_teams' AND column_name = 'base_address')
+                      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.incident_reports')
+                        AND tgname = 'incident_support_ticket' AND tgenabled IN ('O', 'A'))
                       AND EXISTS (SELECT 1 FROM pg_trigger
                         WHERE tgrelid = to_regclass('public.rescue_requests')
                           AND tgname = 'rescue_requests_service_area' AND tgenabled IN ('O', 'A'))

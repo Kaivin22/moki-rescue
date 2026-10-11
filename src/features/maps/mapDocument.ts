@@ -70,12 +70,43 @@ var osmLink=document.createElement('a');osmLink.href=${scriptJson(OSM_COPYRIGHT_
 osmLink.onclick=function(e){e.preventDefault();send({type:'attribution'});};
 map.attributionControl.setPrefix(false);map.attributionControl.getContainer().appendChild(osmLink);
 if(attribution.textContent){map.attributionControl.getContainer().appendChild(document.createTextNode(' · '));map.attributionControl.getContainer().appendChild(attribution);}
-var tiles=L.tileLayer(${scriptJson(tileUrl)},{maxZoom:19,updateWhenIdle:true,keepBuffer:1}).addTo(map);
-tiles.on('tileerror',function(event){send({type:'tileError',url:event.tile.src});});tiles.on('tileload',function(){send({type:'tileLoaded'});});
+var tiles=L.tileLayer(${scriptJson(tileUrl)},{maxZoom:19,updateWhenIdle:true,keepBuffer:1});
+var tileSequence=0,tileRequests={},tileStates={},documentId=Date.now().toString(36);
+function reportTiles(){var values=Object.keys(tileStates).map(function(id){return tileStates[id];});
+var failed=values.filter(function(value){return value.state==='error';});
+send({type:'tileStatus',loading:values.some(function(value){return value.state==='loading';}),loaded:values.filter(function(value){return value.state==='loaded';}).length,
+failed:failed.length,url:failed.length?failed[0].url:null,reason:failed.length?failed[0].reason:null,status:failed.length?failed[0].status:null});}
+// Keep direct browser image loading (and its HTTP cache) as the normal path.
+// Mobile retries a failed/stalled tile once through native networking, not a new provider.
+tiles.createTile=function(coords,done){var tile=document.createElement('img'),url=this.getTileUrl(coords),id=documentId+'-'+(++tileSequence);
+tile.alt='';tile.setAttribute('role','presentation');tile._mokiId=id;
+var request={tile:tile,url:url,native:false,timer:null,settled:false};tileRequests[id]=request;tileStates[id]={state:'loading',url:url};
+request.finish=function(reason,status){if(request.settled)return;request.settled=true;clearTimeout(request.timer);delete tileRequests[id];
+tile.onload=null;tile.onerror=null;tileStates[id]={state:reason?'error':'loaded',url:url,reason:reason,status:status};
+done(reason?new Error(reason):null,tile);reportTiles();};
+function fallback(){if(request.settled||request.native)return;clearTimeout(request.timer);
+if(!window.ReactNativeWebView){request.finish('network');return;}
+request.native=true;tile.onload=null;tile.onerror=null;
+request.timer=setTimeout(function(){send({type:'nativeTileCancel',id:id});request.finish('timeout');},25000);
+send({type:'nativeTileRequest',id:id,url:url});}
+tile.onload=function(){request.finish();};tile.onerror=fallback;
+request.timer=setTimeout(fallback,10000);reportTiles();tile.src=url;return tile;};
+tiles.on('loading',function(){reportTiles();});
+tiles.on('tileunload tileabort',function(event){var id=event.tile._mokiId,request=tileRequests[id];
+if(request){request.settled=true;clearTimeout(request.timer);event.tile.onload=null;event.tile.onerror=null;
+if(request.native)send({type:'nativeTileCancel',id:id});delete tileRequests[id];}
+delete tileStates[id];reportTiles();});
+tiles.addTo(map);
 var layers=L.layerGroup().addTo(map),lastRegion='',lastLayers='',padding={top:0,right:0,bottom:0,left:0};
 function point(p){return [p.latitude,p.longitude];}
 function fit(points,pad){if(!points.length)return;map.fitBounds(L.latLngBounds(points.map(point)),{animate:false,maxZoom:17,paddingTopLeft:[pad.left+12,pad.top+12],paddingBottomRight:[pad.right+12,pad.bottom+30]});}
 window.MokiMap=function(raw){var message=typeof raw==='string'?JSON.parse(raw):raw;
+if(message.type==='nativeTile'){var request=tileRequests[message.id];if(!request||!request.native)return;
+clearTimeout(request.timer);
+if(typeof message.data==='string'&&message.data.length<750000&&/^data:image\\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(message.data)){
+request.tile.onload=function(){request.finish();};request.tile.onerror=function(){request.finish('decode');};
+request.timer=setTimeout(function(){request.finish('decode');},5000);request.tile.src=message.data;
+}else{request.finish(message.reason||'network',message.status);}return;}
 if(message.type==='fit'){fit(message.coordinates,message.padding||padding);return;}
 if(message.type!=='update')return;
 padding=message.padding||{top:0,right:0,bottom:0,left:0};

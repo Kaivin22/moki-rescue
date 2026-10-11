@@ -264,6 +264,7 @@ export interface ProviderStatus {
   shopLatitude: number | null;
   shopLongitude: number | null;
   shopInServiceArea: boolean;
+  shopAddress: string | null;
 }
 
 export interface TeamSummary {
@@ -278,6 +279,7 @@ export interface TeamSummary {
   activeQualityAlert: QualityAlertSummary | null;
   baseLatitude: number | null;
   baseLongitude: number | null;
+  baseAddress: string | null;
   shopInServiceArea: boolean;
 }
 
@@ -353,7 +355,7 @@ export interface UpdateTeamVerificationInput {
 
 export interface CreateRescueInput {
   serviceCode: string;
-  vehiclePowerType: 'gasoline' | 'electric' | 'unknown';
+  vehiclePowerType: 'gasoline';
   vehicleDescription?: string;
   pickupAreaLabel: string;
   pickupNote?: string;

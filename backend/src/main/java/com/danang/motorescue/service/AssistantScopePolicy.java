@@ -29,6 +29,8 @@ public class AssistantScopePolicy {
     private static final Pattern DIAGNOSIS = Pattern.compile(
             "\\b(chan doan|xe bi gi|nguyen nhan hong|tu sua|cach sua|sua nhu the nao|thao may|" +
             "diagnose|what is wrong with my bike|repair it myself|how to repair)\\b");
+    private static final Pattern ELECTRIC_VEHICLE = Pattern.compile(
+            "\\b(xe (?:may )?dien|electric (?:motorcycle|motorbike|scooter)s?|e-?scooters?)\\b");
     private static final Pattern PROMPT_ATTACK = Pattern.compile(
             "\\b(bo qua huong dan|bo qua quy tac|tiet lo system|system prompt|ignore previous|ignore instructions|" +
             "jailbreak|developer message|api key|khoa api)\\b");
@@ -74,8 +76,8 @@ public class AssistantScopePolicy {
         if (ABOUT_APP.matcher(normalized).matches()) {
             return new Decision(Disposition.GREETING,
                     english
-                            ? "Moki Rescue coordinates verified motorcycle rescue teams. You can create and track a technical rescue request, review a quote, follow a real road route when available, and confirm arrival or completion in the app."
-                            : "Moki Rescue điều phối các đội cứu hộ xe máy đã xác minh. Bạn có thể tạo và theo dõi yêu cầu hỗ trợ kỹ thuật, xem báo giá, theo dõi tuyến đường thực tế khi khả dụng và xác nhận cứu hộ viên đã đến hoặc hoàn tất trong ứng dụng.");
+                            ? "Moki Rescue coordinates verified rescue teams for gasoline motorcycles only; electric motorcycles are not supported. You can create and track a technical rescue request, review a quote, follow a real road route when available, and confirm arrival or completion in the app."
+                            : "Moki Rescue điều phối các đội cứu hộ xe máy xăng đã xác minh, chưa hỗ trợ xe máy điện. Bạn có thể tạo và theo dõi yêu cầu hỗ trợ kỹ thuật, xem báo giá, theo dõi tuyến đường thực tế khi khả dụng và xác nhận cứu hộ viên đã đến hoặc hoàn tất trong ứng dụng.");
         }
         if (PROMPT_ATTACK.matcher(normalized).find()) {
             return outOfScope(english);
@@ -85,6 +87,12 @@ public class AssistantScopePolicy {
                     english
                             ? "Please remove phone numbers, OTP codes, email addresses, account IDs and exact coordinates before asking."
                             : "Hãy xóa số điện thoại, mã OTP, email, mã tài khoản và tọa độ chính xác trước khi đặt câu hỏi.");
+        }
+        if (ELECTRIC_VEHICLE.matcher(normalized).find()) {
+            return new Decision(Disposition.OUT_OF_SCOPE,
+                    english
+                            ? "The app currently supports gasoline motorcycles only, not electric motorcycles, including transport. Contact the manufacturer or an appropriate service provider; do not select a different issue type to bypass this limit."
+                            : "Ứng dụng hiện chỉ hỗ trợ xe máy xăng, chưa tiếp nhận xe máy điện, kể cả vận chuyển. Hãy liên hệ hãng hoặc cơ sở phù hợp; không chọn loại sự cố khác để gửi ca ngoài phạm vi.");
         }
         if (DIAGNOSIS.matcher(normalized).find()) {
             return new Decision(Disposition.DIAGNOSIS,

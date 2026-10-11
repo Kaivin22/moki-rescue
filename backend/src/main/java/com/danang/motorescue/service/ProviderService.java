@@ -48,7 +48,7 @@ public class ProviderService {
         requireProvider(actor);
         ProviderStatusResponse result = jdbc.query("""
                 SELECT pm.is_available, team.name, pm.status, team.status AS team_status,
-                       team.base_latitude, team.base_longitude,
+                       team.base_latitude, team.base_longitude, team.base_address,
                        public.api_is_in_service_area(team.base_latitude, team.base_longitude) AS shop_in_area,
                        rating.average_rating, rating.rating_count,
                        (SELECT COUNT(*) FROM public.team_quality_alerts alert
@@ -83,7 +83,7 @@ public class ProviderService {
                     qualityPolicy.recommendsSuspensionReview(warningCount),
                     rs.getString("quality_notice"), rs.getString("team_status"),
                     rs.getObject("base_latitude", Double.class), rs.getObject("base_longitude", Double.class),
-                    rs.getBoolean("shop_in_area"));
+                    rs.getBoolean("shop_in_area"), rs.getString("base_address"));
         }, actor.id());
         if (result == null) throw providerNotReady();
         return result;

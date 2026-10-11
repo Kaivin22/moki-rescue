@@ -19,7 +19,8 @@ public class CatalogService {
                        CASE WHEN ? = 'en' THEN label_en ELSE label_vi END AS label,
                        CASE WHEN ? = 'en' THEN description_en ELSE description_vi END AS description,
                        icon_name, requires_quote, requires_destination
-                FROM public.service_types WHERE is_active ORDER BY sort_order, code
+                FROM public.service_types WHERE is_active AND code <> 'electric_battery'
+                ORDER BY sort_order, code
                 """, (rs, index) -> new ServiceTypeResponse(
                 rs.getString("code"), rs.getString("label"), rs.getString("description"),
                 rs.getString("icon_name"), rs.getBoolean("requires_quote"),

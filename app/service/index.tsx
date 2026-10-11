@@ -14,7 +14,7 @@ const COPY = {
     header: 'Dịch vụ cứu hộ',
     title: 'Chọn đúng loại sự cố',
     subtitle:
-      'Danh mục được lấy từ hệ thống vận hành. Đội cứu hộ chỉ nhận ca đúng năng lực đã được xác minh.',
+      'Chỉ hỗ trợ xe máy xăng, chưa tiếp nhận xe máy điện. Danh mục lấy từ hệ thống; đội cứu hộ chỉ nhận ca đúng năng lực đã xác minh.',
     loading: 'Đang tải danh mục dịch vụ…',
     errorTitle: 'Chưa tải được danh mục',
     errorBody: 'Kiểm tra kết nối rồi thử lại. Ứng dụng không thay bằng dữ liệu mẫu.',
@@ -29,7 +29,7 @@ const COPY = {
     header: 'Rescue services',
     title: 'Choose the correct issue',
     subtitle:
-      'The catalog comes from the operations system. Rescue teams only receive requests matching verified capabilities.',
+      'Gasoline motorcycles only; electric motorcycles are not supported. The catalog comes from the system, and teams receive requests matching verified capabilities.',
     loading: 'Loading service catalog…',
     errorTitle: 'Could not load the catalog',
     errorBody: 'Check your connection and try again. The app does not substitute mock data.',

@@ -249,7 +249,7 @@ public final class ApiModels {
             int qualityWarningCount,
             boolean suspensionReviewRecommended,
             String qualityNotice,
-            String teamStatus, Double shopLatitude, Double shopLongitude, boolean shopInServiceArea) {}
+            String teamStatus, Double shopLatitude, Double shopLongitude, boolean shopInServiceArea, String shopAddress) {}
 
     public record ProviderStatisticsResponse(long completedCases, long activeCases, long cancelledCases, RatingSummary rating) {}
 
@@ -263,7 +263,7 @@ public final class ApiModels {
             int qualityWarningCount,
             boolean suspensionReviewRecommended,
             QualityAlertSummary activeQualityAlert,
-            Double baseLatitude, Double baseLongitude, boolean shopInServiceArea) {}
+            Double baseLatitude, Double baseLongitude, boolean shopInServiceArea, String baseAddress) {}
 
     public record QualityAlertActionRequest(@NotBlank @Size(min = 5, max = 500) String note) {}
 
@@ -357,7 +357,8 @@ public final class ApiModels {
 
     public record TeamLocationRequest(
             @NotNull @DecimalMin("-90") @DecimalMax("90") Double latitude,
-            @NotNull @DecimalMin("-180") @DecimalMax("180") Double longitude) {}
+            @NotNull @DecimalMin("-180") @DecimalMax("180") Double longitude,
+            @NotBlank @Size(min = 5, max = 300) String address) {}
 
     public record TeamCapabilitiesRequest(
             @NotNull @Size(min = 1, max = 6)

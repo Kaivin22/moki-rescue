@@ -14,7 +14,7 @@ const COPY = {
   vi: {
     title: 'Đăng nhập kiểm thử — không cần SMS',
     hint: 'Dùng tài khoản Supabase thật đã được tạo và xác nhận sẵn. Chọn bên dưới chỉ điền email; quyền vẫn do database quyết định.',
-    roles: ['Khách hàng', 'Cứu hộ viên', 'Admin'],
+    roles: ['Khách hàng', 'Cứu hộ 1', 'Cứu hộ 2', 'Cứu hộ 3', 'Cứu hộ 4', 'Admin'],
     email: 'Email kiểm thử',
     password: 'Mật khẩu kiểm thử',
     agree: 'Tôi đồng ý Điều khoản và Chính sách quyền riêng tư',
@@ -32,7 +32,7 @@ const COPY = {
   en: {
     title: 'Test sign-in — no SMS required',
     hint: 'Use real, pre-created and confirmed Supabase accounts. These buttons only fill the email; the database still controls roles.',
-    roles: ['Customer', 'Provider', 'Admin'],
+    roles: ['Customer', 'Provider 1', 'Provider 2', 'Provider 3', 'Provider 4', 'Admin'],
     email: 'Test email',
     password: 'Test password',
     agree: 'I accept the Terms and Privacy Policy',
@@ -52,6 +52,9 @@ const COPY = {
 const TEST_EMAILS = [
   'customer.rescue@example.com',
   'provider.rescue@example.com',
+  'provider2.rescue@example.com',
+  'provider3.rescue@example.com',
+  'provider4.rescue@example.com',
   'admin.rescue@example.com',
 ];
 

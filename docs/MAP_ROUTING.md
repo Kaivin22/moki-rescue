@@ -35,3 +35,19 @@ Migration V9 quy định vùng demo: vĩ độ `15.95–16.18`, kinh độ `108.
 Chú thích đường dẫn dataset cũ trong migration/SQL được giữ để lưu nguồn gốc vùng demo; SQL không đọc file tại đường dẫn đó. Không sửa checksum migration đã triển khai chỉ để đổi chú thích.
 
 CI chạy unit/integration test bằng dữ liệu kiểm thử và export bundle; **không chứng minh endpoint OSRM local đang chạy, tile tải trên điện thoại hoặc Google Maps mở đúng vị trí thực tế**. Trước demo thực tế cần kiểm tra riêng Table/Route trên endpoint đã cấu hình, ảnh nền và geometry trên thiết bị, vị trí đón/giao trong Google Maps, lỗi mất mạng và ngoài vùng. `/api/health/ready` kiểm tra database, không thay thế các kiểm tra này.
+
+## Kiểm tra bản đồ trắng và bảng thông tin trên điện thoại
+
+- Có ghim/nút phóng to nhưng không có đường phố là lỗi ở nhánh ảnh nền, không tự chứng minh OSRM lỗi hoặc thiếu dữ liệu đường. Ảnh nền lấy từ nguồn HTTPS cấu hình phía app, không cần tải bộ OSM xuống điện thoại.
+- `mapDocument.ts` vẫn tải tile trực tiếp như bình thường. Trên iOS/Android, nếu ảnh lỗi hoặc chưa tải sau 10 giây, `MapSurface.tsx` dùng `nativeTileLoader.ts` thử lại đúng tile đó qua mạng native rồi gửi ảnh về WebView. Không chuyển nhà cung cấp, không tải cả thành phố, không giả lập nền bản đồ. Mỗi tile chỉ thử native một lần; tối đa 4 yêu cầu đồng thời, có timeout và hủy khi tile bị loại/màn hình unmount. Header định danh app được gửi; không ép bỏ HTTP cache. Nếu mạng điện thoại cũng không đến được máy chủ, nhánh này vẫn thất bại và app báo lỗi, không bảo đảm hoạt động offline.
+- Lỗi HTTP (ví dụ `HTTP 403`, `HTTP 429`), `network`, `timeout`, `format` được hiển thị để phân biệt nguồn ảnh từ chối truy cập, kết nối thất bại, hết thời gian hoặc nội dung không phải ảnh hỗ trợ. Không xóa thông báo lỗi của tile còn hỏng chỉ vì một tile khác tải được.
+- Ở bước **Vị trí** của **Gọi cứu hộ**, kéo vùng tiêu đề **Xác nhận điểm cứu hộ** xuống để thu gọn, kéo lên để mở lại; cũng có thể chạm vùng này. Cuộn nội dung biểu mẫu và kéo bản đồ là hai thao tác độc lập. Thu gọn không xóa ghim, điểm giao hay nội dung đã nhập; nút tìm đội vẫn còn. Khi nhập liệu, bảng có thể dùng thêm diện tích để tránh bàn phím che phần nhập.
+
+Thử trực tiếp sau khi reload app trong Expo Go:
+
+1. Vào **Gọi cứu hộ → Vị trí**, lấy GPS; xác nhận nhìn thấy tên đường/đường phố, không chỉ ghim.
+2. Thu/mở bảng bằng cả kéo và chạm; thử kéo bản đồ, kéo ghim, nhập điểm nhận biết và mở/đóng bàn phím. Kiểm tra dữ liệu đã nhập vẫn còn.
+3. Nếu vẫn trắng, ghi lại mã lỗi và bấm **Kiểm tra nguồn ảnh trên trình duyệt** ngay trên cùng điện thoại. So sánh với Wi-Fi/dữ liệu di động khác; Safari tải được chưa chứng minh WebView tải được, và máy tính tải được chưa chứng minh điện thoại tải được.
+4. Kiểm tra bản đồ ca cứu hộ ở cả tài khoản khách và cứu hộ vì chúng dùng chung thành phần bản đồ. Kiểm tra tuyến OSRM riêng khi backend/OSRM đang chạy.
+
+Kiểm chứng ngày 10/10/2026: một tile ở tọa độ ảnh báo lỗi (`15/26236/14910.png`) tải từ máy tính trả HTTP 200, PNG 13.824 byte, đã kiểm tra nội dung ảnh đường phố. Unit test mô phỏng vòng đời tile, lỗi mạng/HTTP, hủy tải và chốt trạng thái kéo; không thay thế thao tác trên iPhone thật. Chưa xác nhận nguyên nhân mạng/WebView cụ thể trên iPhone từ kết quả này.

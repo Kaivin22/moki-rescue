@@ -165,10 +165,10 @@ export const rescueApi = {
       method: 'POST',
       body: JSON.stringify({ decision }),
     }),
-  setTeamLocation: (teamId: string, latitude: number, longitude: number) =>
+  setTeamLocation: (teamId: string, latitude: number, longitude: number, address: string) =>
     apiRequest<void>(`/api/operator/teams/${teamId}/location`, {
       method: 'PUT',
-      body: JSON.stringify({ latitude, longitude }),
+      body: JSON.stringify({ latitude, longitude, address }),
     }),
   providers: (teamId: string) => apiRequest<ProviderMember[]>(`/api/operator/teams/${teamId}/providers`),
   setProviderStatus: (teamId: string, providerId: string, status: 'active' | 'suspended' | 'left') =>
