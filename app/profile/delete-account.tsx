@@ -17,6 +17,9 @@ const COPY = {
   vi: {
     errorTitle: 'Chưa thể xóa tài khoản',
     retry: 'Vui lòng thử lại.',
+    acceptedTitle: 'Đã ghi nhận yêu cầu xóa',
+    signOutWarning:
+      'Tài khoản đã bị vô hiệu hóa, nhưng chưa xác nhận được việc thu hồi phiên đăng nhập trên máy chủ.',
     warningTitle: 'Yêu cầu không thể hoàn tác trong ứng dụng',
     warningBody:
       'Bạn phải hoàn tất hoặc hủy mọi ca đang hoạt động. Tài khoản sẽ bị vô hiệu hóa ngay, sau đó đơn vị vận hành xóa dữ liệu nhận dạng theo thời hạn chính sách; sự kiện audit tối thiểu có thể được giữ để chống gian lận và giải quyết tranh chấp.',
@@ -28,6 +31,8 @@ const COPY = {
   en: {
     errorTitle: 'Account cannot be deleted',
     retry: 'Please try again.',
+    acceptedTitle: 'Deletion request recorded',
+    signOutWarning: 'The account is disabled, but server session revocation could not be confirmed.',
     warningTitle: 'This request cannot be undone in the app',
     warningBody:
       'You must complete or cancel every active rescue request. The account is disabled immediately, then the operator removes identifying data within the policy period. Minimal audit events may be retained to prevent fraud and resolve disputes.',
@@ -47,14 +52,20 @@ export default function DeleteAccountScreen() {
   const requestDeletion = async () => {
     if (confirmation !== c.confirmation) return;
     setBusy(true);
+    let deletionAccepted = false;
     try {
       await rescueApi.requestAccountDeletion();
+      deletionAccepted = true;
       await stopAllProviderBackgroundTracking().catch(() => undefined);
       await clearStoredPushToken();
       await signOut();
       router.replace('/(auth)/login');
     } catch (error) {
-      Alert.alert(c.errorTitle, error instanceof ApiClientError ? error.message : c.retry);
+      if (deletionAccepted) {
+        Alert.alert(c.acceptedTitle, c.signOutWarning);
+      } else {
+        Alert.alert(c.errorTitle, error instanceof ApiClientError ? error.message : c.retry);
+      }
     } finally {
       setBusy(false);
     }

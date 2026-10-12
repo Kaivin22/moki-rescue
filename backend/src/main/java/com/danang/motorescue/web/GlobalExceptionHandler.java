@@ -9,6 +9,7 @@ import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.TransientDataAccessResourceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -39,8 +40,9 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.CONFLICT, "DATABASE_CONFLICT", "Dữ liệu đã thay đổi. Vui lòng tải lại.", request);
     }
 
-    @ExceptionHandler({DataAccessResourceFailureException.class, TransientDataAccessResourceException.class})
-    ResponseEntity<ErrorResponse> databaseUnavailable(DataAccessException ex, HttpServletRequest request) {
+    @ExceptionHandler({DataAccessResourceFailureException.class, TransientDataAccessResourceException.class,
+            CannotCreateTransactionException.class})
+    ResponseEntity<ErrorResponse> databaseUnavailable(Exception ex, HttpServletRequest request) {
         log.error("Database unavailable on {}", request.getRequestURI(), ex);
         return response(HttpStatus.SERVICE_UNAVAILABLE, "DATABASE_UNAVAILABLE",
                 "Máy chủ dữ liệu đang tạm thời không sẵn sàng. Vui lòng thử lại sau.", request);

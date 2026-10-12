@@ -58,6 +58,7 @@ const COPY = {
     destinationRequired: 'Hãy chọn và nhập điểm giao xe.',
     safeRequired: 'Hãy xác nhận bạn và xe đang ở vị trí an toàn.',
     createError: 'Không thể tạo yêu cầu.',
+    checkRequest: 'Kiểm tra yêu cầu đã gửi',
     title: 'Gọi cứu hộ',
     progress: ['An toàn', 'Sự cố', 'Vị trí'],
     safetyTitle: 'Trước tiên, bạn có an toàn không?',
@@ -115,6 +116,7 @@ const COPY = {
     destinationRequired: 'Select and name the motorcycle drop-off point.',
     safeRequired: 'Confirm that you and the motorcycle are in a safe position.',
     createError: 'Could not create the request.',
+    checkRequest: 'Check submitted requests',
     title: 'Request rescue',
     progress: ['Safety', 'Issue', 'Location'],
     safetyTitle: 'First, are you safe?',
@@ -188,6 +190,7 @@ function CustomerRequestForm() {
   const [mapTarget, setMapTarget] = useState<'pickup' | 'destination'>('pickup');
   const [destinationNote, setDestinationNote] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [outcomeUnknown, setOutcomeUnknown] = useState(false);
   const [locationHeight, setLocationHeight] = useState(0);
   const [locationExpanded, setLocationExpanded] = useState(true);
   const c = useCopy(COPY);
@@ -234,6 +237,7 @@ function CustomerRequestForm() {
     }
     if (!safe) return setError(c.safeRequired);
     setError(null);
+    setOutcomeUnknown(false);
     const input = {
       serviceCode,
       vehiclePowerType: 'gasoline' as const,
@@ -258,11 +262,13 @@ function CustomerRequestForm() {
         idempotencyKey,
         input,
       });
-      await clearRequestSubmission();
+      // Server success is authoritative; a local cleanup error must not present
+      // an already-created rescue request as a failed submission.
+      await clearRequestSubmission().catch(() => undefined);
       router.replace(`/rescue/${request.id}`);
     } catch (submitError) {
       if (submitError instanceof ApiClientError && submitError.code === 'ACTIVE_REQUEST_EXISTS') {
-        await clearRequestSubmission();
+        await clearRequestSubmission().catch(() => undefined);
         try {
           const requests = await rescueApi.requests(false);
           if (requests[0]) {
@@ -273,6 +279,7 @@ function CustomerRequestForm() {
           // Keep the original server error when the active request cannot be fetched.
         }
       }
+      setOutcomeUnknown(submitError instanceof ApiClientError && submitError.outcomeUnknown);
       setError(submitError instanceof ApiClientError ? submitError.message : c.createError);
     }
   };
@@ -583,6 +590,13 @@ function CustomerRequestForm() {
                   <Text style={styles.safetyText}>{c.safe}</Text>
                 </Pressable>
                 <InlineError value={error} />
+                {error && outcomeUnknown ? (
+                  <AppButton
+                    title={c.checkRequest}
+                    variant="outline"
+                    onPress={() => router.push('/(tabs)/activity')}
+                  />
+                ) : null}
               </ScrollView>
             </MapDetailsSheet>
           </View>

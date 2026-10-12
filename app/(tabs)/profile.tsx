@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
@@ -32,6 +32,7 @@ const COPY = {
     privacy: 'Chính sách quyền riêng tư',
     terms: 'Điều khoản sử dụng',
     logout: 'Đăng xuất',
+    logoutError: 'Chưa xác nhận được việc thu hồi phiên trên máy chủ. Vui lòng đăng nhập lại để thử lại.',
   },
   en: {
     hidden: 'Not displayed',
@@ -52,6 +53,7 @@ const COPY = {
     privacy: 'Privacy policy',
     terms: 'Terms of use',
     logout: 'Sign out',
+    logoutError: 'Server session revocation could not be confirmed. Sign in again to retry.',
   },
 } as const;
 
@@ -95,8 +97,12 @@ export default function ProfileScreen() {
   const maskedPhone = user?.phone ? `${user.phone.slice(0, 4)}••••${user.phone.slice(-3)}` : c.hidden;
   const logout = async () => {
     await Promise.allSettled([unregisterPushNotifications(), stopAllProviderBackgroundTracking()]);
-    await signOut();
-    router.replace('/(auth)/login');
+    try {
+      await signOut();
+      router.replace('/(auth)/login');
+    } catch {
+      Alert.alert(c.logout, c.logoutError);
+    }
   };
 
   return (

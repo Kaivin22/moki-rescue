@@ -19,6 +19,7 @@ export class ApiClientError extends Error {
     public readonly code: string,
     message: string,
     public readonly status?: number,
+    public readonly outcomeUnknown = false,
   ) {
     super(message);
     this.name = 'ApiClientError';
@@ -26,6 +27,10 @@ export class ApiClientError extends Error {
 }
 
 const ENGLISH_API_ERRORS: Record<string, string> = {
+  WORKING_HOURS_CLOSED:
+    'The shop is closed, paused, has no schedule, or this invitation belongs to an ended readiness session. Accepted cases can continue.',
+  WORKING_HOURS_CHANGED: 'The schedule was edited elsewhere. Reload it before saving.',
+  INVALID_WORKING_HOURS: 'Use one valid, non-overlapping interval per start day. All day is 00:00–24:00.',
   COMMUNICATION_NOT_FOUND: 'This item was not found or you do not have access to it.',
   COMMUNICATION_CHANGED: 'This item changed. Refresh before trying again.',
   SUPPORT_CLOSED: 'This ticket is closed and no longer accepts replies.',
@@ -40,6 +45,11 @@ const ENGLISH_API_ERRORS: Record<string, string> = {
     'Turn off availability for all members and finish open cases/offers before moving the shop.',
   API_NOT_CONFIGURED: 'The API server is not configured.',
   AUTH_REQUIRED: 'Your session has expired. Please sign in again.',
+  AUTH_UNAVAILABLE:
+    'The sign-in service is temporarily unreachable. Your session has not been cleared. Try again later.',
+  SERVICE_UNAVAILABLE: 'The service is temporarily unavailable. Please try again later.',
+  NETWORK_ERROR: 'Cannot reach the server. Check your connection.',
+  REQUEST_TIMEOUT: 'The server did not respond in time.',
   INVALID_SUBJECT: 'Your session identity is invalid. Please sign in again.',
   ACCESS_DENIED: 'You do not have permission to perform this action.',
   ACCOUNT_INACTIVE: 'This account is inactive.',
@@ -146,6 +156,31 @@ function localizedMessage(code: string, serverMessage: string | undefined, fallb
   return ENGLISH_API_ERRORS[code] ?? 'The server could not process the request.';
 }
 
+const UNAVAILABLE_MESSAGES: Record<string, string> = {
+  AUTH_UNAVAILABLE:
+    'Tạm thời không kết nối được dịch vụ đăng nhập. Phiên của bạn chưa bị xóa. Vui lòng thử lại sau.',
+  DATABASE_UNAVAILABLE: 'Máy chủ dữ liệu đang tạm thời không sẵn sàng.',
+  SERVICE_UNAVAILABLE: 'Dịch vụ đang tạm thời gián đoạn. Vui lòng thử lại sau.',
+  NETWORK_ERROR: 'Không thể kết nối máy chủ. Kiểm tra kết nối mạng.',
+  REQUEST_TIMEOUT: 'Máy chủ chưa phản hồi trong thời gian chờ.',
+  ROUTING_UNAVAILABLE: 'Tạm thời không tính được tuyến đường cứu hộ. Vui lòng thử lại sau.',
+  ASSISTANT_UNAVAILABLE: 'Trợ lý đang tạm thời không sẵn sàng.',
+  ASSISTANT_NOT_CONFIGURED: 'Trợ lý chưa được cấu hình.',
+};
+
+function unavailableError(code: string, status?: number, outcomeUnknown = false) {
+  const warning =
+    useI18n.getState().language === 'vi'
+      ? ' Chưa xác nhận được kết quả thao tác. Kiểm tra ca hoặc dữ liệu hiện tại trước khi gửi lại.'
+      : ' The operation outcome is unknown. Check the current case or data before submitting again.';
+  return new ApiClientError(
+    code,
+    localizedMessage(code, undefined, UNAVAILABLE_MESSAGES[code]) + (outcomeUnknown ? warning : ''),
+    status,
+    outcomeUnknown,
+  );
+}
+
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!baseUrl) {
     throw new ApiClientError(
@@ -153,17 +188,51 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
       localizedMessage('API_NOT_CONFIGURED', undefined, 'Máy chủ API chưa được cấu hình.'),
     );
   }
-  const { data, error } = await supabase.auth.getSession();
-  if (error || !data.session?.access_token) {
-    throw new ApiClientError(
-      'AUTH_REQUIRED',
-      localizedMessage('AUTH_REQUIRED', undefined, 'Phiên đăng nhập đã hết hạn.'),
-    );
-  }
-
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), RescueTiming.apiTimeoutMs);
-  try {
+  const mutation = !['GET', 'HEAD', 'OPTIONS'].includes((init.method ?? 'GET').toUpperCase());
+  let requestSent = false;
+  let sessionResolved = false;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  // Includes session refresh and response-body reading. Aborting fetch alone does
+  // not bound getSession, and a late session must never dispatch a timed-out write.
+  const deadline = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      controller.abort();
+      reject(
+        unavailableError(
+          sessionResolved ? 'REQUEST_TIMEOUT' : 'AUTH_UNAVAILABLE',
+          undefined,
+          mutation && requestSent,
+        ),
+      );
+    }, RescueTiming.apiTimeoutMs);
+  });
+  const send = async (): Promise<T> => {
+    let sessionResult;
+    try {
+      sessionResult = await supabase.auth.getSession();
+    } catch {
+      throw unavailableError('AUTH_UNAVAILABLE');
+    }
+    if (controller.signal.aborted) throw unavailableError('AUTH_UNAVAILABLE');
+    const { data, error } = sessionResult;
+    if (
+      error &&
+      (!error.status ||
+        error.status >= 500 ||
+        error.status === 429 ||
+        error.name === 'AuthRetryableFetchError')
+    ) {
+      throw unavailableError('AUTH_UNAVAILABLE');
+    }
+    if (error || !data.session?.access_token) {
+      throw new ApiClientError(
+        'AUTH_REQUIRED',
+        localizedMessage('AUTH_REQUIRED', undefined, 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'),
+      );
+    }
+    sessionResolved = true;
+    requestSent = true;
     const response = await fetch(`${baseUrl}${path}`, {
       ...init,
       signal: controller.signal,
@@ -178,9 +247,24 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     if (!response.ok) {
       let payload: ErrorPayload = {};
       try {
-        payload = (await response.json()) as ErrorPayload;
+        const body = (await response.json()) as ErrorPayload | null;
+        payload = {
+          code: typeof body?.code === 'string' ? body.code : undefined,
+          message: typeof body?.message === 'string' ? body.message : undefined,
+        };
       } catch {
         // Do not expose an HTML/proxy error body to the user.
+      }
+      if (response.status >= 500 || response.status === 408) {
+        // Neither a gateway failure nor a server error proves a write was rolled back.
+        // Do not expose database/proxy diagnostics supplied in a 5xx response.
+        const code =
+          response.status === 408
+            ? 'REQUEST_TIMEOUT'
+            : payload.code && Object.hasOwn(UNAVAILABLE_MESSAGES, payload.code)
+              ? payload.code
+              : 'SERVICE_UNAVAILABLE';
+        throw unavailableError(code, response.status, mutation);
       }
       throw new ApiClientError(
         payload.code ?? `HTTP_${response.status}`,
@@ -194,18 +278,15 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     }
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
+  };
+  try {
+    return await Promise.race([send(), deadline]);
   } catch (error) {
     if (error instanceof ApiClientError) throw error;
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new ApiClientError(
-        'REQUEST_TIMEOUT',
-        localizedMessage('REQUEST_TIMEOUT', undefined, 'Kết nối quá chậm. Vui lòng thử lại.'),
-      );
+      throw unavailableError('REQUEST_TIMEOUT', undefined, mutation && requestSent);
     }
-    throw new ApiClientError(
-      'NETWORK_ERROR',
-      localizedMessage('NETWORK_ERROR', undefined, 'Không thể kết nối máy chủ. Kiểm tra mạng và thử lại.'),
-    );
+    throw unavailableError('NETWORK_ERROR', undefined, mutation && requestSent);
   } finally {
     clearTimeout(timeout);
   }

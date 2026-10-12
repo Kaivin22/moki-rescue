@@ -83,17 +83,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   signOut: async () => {
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
     try {
-      await supabase.auth.signOut({ scope: 'local' });
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      if (error) throw error;
     } finally {
       set({ user: null, profile: null, isLoading: false, isProfileLoading: false, isHydrated: true });
     }
   },
   signOutEverywhere: async () => {
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
     try {
-      await supabase.auth.signOut({ scope: 'global' });
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      // Supabase may already remove the local session on a server error. Keep
+      // clearing local state, but reject so callers do not claim global success.
+      if (error) throw error;
     } finally {
       set({ user: null, profile: null, isLoading: false, isProfileLoading: false, isHydrated: true });
     }

@@ -42,7 +42,8 @@ const COPY = {
     signOutAllTitle: 'Thu hồi tất cả phiên đăng nhập?',
     signOutAllBody:
       'Tất cả refresh token và đăng ký nhận thông báo sẽ bị thu hồi. Bạn cần đăng nhập lại trên từng thiết bị.',
-    signOutAllError: 'Không thể thu hồi toàn bộ phiên. Vui lòng thử lại.',
+    signOutAllError:
+      'Chưa xác nhận được việc thu hồi tất cả phiên. Các thiết bị khác có thể vẫn đăng nhập. Nếu đã bị đưa về trang đăng nhập, hãy đăng nhập lại để thử lại.',
     cancel: 'Không',
     note: 'Ứng dụng chỉ hiển thị phiên hiện tại. Việc thay đổi số điện thoại cần quy trình xác minh riêng và không được giả lập trong bản production.',
   },
@@ -74,7 +75,8 @@ const COPY = {
     signOutAllTitle: 'Revoke all sign-in sessions?',
     signOutAllBody:
       'All refresh tokens and push registrations will be revoked. Each device must sign in again.',
-    signOutAllError: 'Could not revoke all sessions. Please try again.',
+    signOutAllError:
+      'Revocation of all sessions could not be confirmed. Other devices may still be signed in. If returned to the login page, sign in again to retry.',
     cancel: 'Cancel',
     note: 'The app only shows the current session. Changing a phone number requires a separate verification process and is not simulated in the production app.',
   },
