@@ -2,12 +2,16 @@
 
 Một file cài đặt đầy đủ, một file dữ liệu mẫu tùy chọn. Không cần chạy SQL vá lẻ.
 
+Sao lưu/diễn tập khôi phục: xem [DISASTER-RECOVERY.md](../docs/DISASTER-RECOVERY.md).
+`database-backup.cjs` là công cụ vận hành riêng, **không thêm bước vào thứ tự cài SQL**,
+không tự cài PostgreSQL/PostGIS, reset database hoặc chuyển app sang máy chủ khác.
+
 | Thứ tự | File                     | Công dụng                                                    |
 | ------ | ------------------------ | ------------------------------------------------------------ |
-| 1      | `01_init_database.sql`   | Tạo schema đến V13, cấp quyền, kiểm tra bảo mật trước COMMIT |
+| 1      | `01_init_database.sql`   | Tạo schema đến V14, cấp quyền, kiểm tra bảo mật trước COMMIT |
 | 2      | `02_seed_demo_teams.sql` | Tùy chọn: 12 cửa hàng mô phỏng, không phải 12 tài khoản      |
 
-**Không chạy lại các file B1–V13 riêng lẻ** sau file 01. Migration backend là nguồn
+**Không chạy lại các file B1–V14 riêng lẻ** sau file 01. Migration backend là nguồn
 để sinh bộ cài và giữ lịch sử Flyway, không phải bộ SQL thứ hai phải chạy.
 File 01 gồm 30 bảng, thông báo/hỗ trợ, địa chỉ cửa hàng, phạm vi xe máy xăng,
 quyền tạo tài khoản demo và kiểm tra schema/RLS; không cần file verify riêng.
@@ -23,7 +27,7 @@ quyền tạo tài khoản demo và kiểm tra schema/RLS; không cần file ver
    Chỉ khôi phục được từ backup; không dùng production/project chung.
    Auth users và mật khẩu database được giữ; hồ sơ/quyền app cần thiết lập lại.
 3. Chạy TOÀN BỘ `01_init_database.sql` một lần bằng chủ schema trong SQL Editor.
-   Thành công: `Database initialized through V13; schema/security checks passed...`.
+   Thành công: `Database initialized through V14; schema/security checks passed...`.
 4. Muốn thêm 12 cửa hàng mẫu: đổi `deployment_environment` trong `02_seed_demo_teams.sql`
    thành `staging` trong bản chạy rồi chạy toàn bộ. Có thể bỏ qua nếu chỉ cần 3 cửa hàng
    của bộ tài khoản kiểm thử bên dưới.
@@ -109,7 +113,7 @@ cứu hộ cho ca ngoài phạm vi. Ca cũ đã phân công vẫn có thể hoà
   Chưa ghi Auth khi các kiểm tra READ này thất bại; giữ file mật khẩu để chạy lại sau xử lý.
 - Thiếu địa chỉ/phạm vi xe xăng: database chưa khớp schema. Dừng để kiểm tra, không dùng
   init/reset như cách chữa lỗi tự động. Database có dữ liệu cần giữ phải có kế hoạch
-  nâng cấp riêng; database do Flyway quản lý dùng migrate/validate đến V13.
+  nâng cấp riêng; database do Flyway quản lý dùng migrate/validate đến V14.
 
 ## Các file SQL còn giữ
 
@@ -147,3 +151,4 @@ Test thực thi bundle, seed và rollback: `CleanInstallBundleIntegrationTest` t
 PostgreSQL/PostGIS cô lập theo [backend/TESTING.md](../backend/TESTING.md).
 Unit/static test không chứng minh SQL đã chạy trên Supabase.
 API thông báo/hỗ trợ: [COMMUNICATIONS.md](../docs/COMMUNICATIONS.md).
+Lịch nhận cứu hộ V14, cách cấu hình và kiểm tra: [WORKING-HOURS.md](../docs/WORKING-HOURS.md).

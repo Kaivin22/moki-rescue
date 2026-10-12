@@ -58,6 +58,12 @@ yarn-error.*
 # ─── Local environment ────────────────────────────────────────────────────────
 .env
 .env*.local
+# Customer/Auth backups and PostgreSQL password files must never enter Git.
+*.dump
+*.dump.partial
+*.backup
+*.pgpass
+/backups/
 
 # ─── TypeScript ───────────────────────────────────────────────────────────────
 *.tsbuildinfo
