@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -120,15 +121,22 @@ public class DispatchService {
             markNoProvider(requestId, true);
             return;
         }
-        Ranked selected = ordered.get(0);
-        Boolean offered = transactions.execute(status -> {
-            if (!writeOffer(request, ordered, selected)) return false;
-            push.notifyUser(selected.candidate().providerId(), NotificationKind.NEW_OFFER, null, requestId);
-            return true;
-        });
-        // Eligibility/shop coordinates can change while OSRM is responding.
-        // Stop explicitly instead of publishing an ETA for an outdated origin.
-        if (!Boolean.TRUE.equals(offered)) markNoProvider(requestId, false);
+        // A shop may close during OSRM calculation. Try the next eligible ranked
+        // provider, without rerouting or extending an invitation past closing.
+        for (Ranked selected : ordered) {
+            try {
+                Boolean offered = transactions.execute(status -> {
+                    if (!writeOffer(request, ordered, selected)) return false;
+                    push.notifyUser(selected.candidate().providerId(), NotificationKind.NEW_OFFER, null, requestId);
+                    return true;
+                });
+                if (Boolean.TRUE.equals(offered)) return;
+            } catch (DataAccessException ex) {
+                String detail = ex.getMostSpecificCause().getMessage();
+                if (detail == null || !detail.contains("OFFER_OUTSIDE_WORKING_HOURS")) throw ex;
+            }
+        }
+        markNoProvider(requestId, false);
     }
 
     static List<Ranked> rankCandidates(List<Ranked> candidates, MatchingPolicy policy) {
@@ -236,13 +244,27 @@ public class DispatchService {
     }
 
     public void expireOffers() {
+        // Separate statement/transaction: do not retain provider locks before
+        // acquiring request locks. Logical eligibility already expires exactly
+        // at availability_until, even when this background worker is stopped.
+        jdbc.update("""
+                WITH expired AS (
+                  SELECT pm.user_id FROM public.provider_members pm
+                  WHERE pm.is_available
+                    AND public.api_provider_receiving_until(pm.user_id, statement_timestamp()) IS NULL
+                  ORDER BY pm.user_id FOR UPDATE OF pm SKIP LOCKED LIMIT 500
+                )
+                UPDATE public.provider_members pm SET is_available = FALSE
+                FROM expired WHERE expired.user_id = pm.user_id
+                """);
         List<UUID> requestsToRematch = transactions.execute(status -> {
             // Same lock order as offer acceptance: request -> offers -> provider.
             List<UUID> requests = jdbc.query("""
                     SELECT rr.id FROM public.rescue_requests rr WHERE rr.status = 'offered'
                       AND (EXISTS (
                         SELECT 1 FROM public.dispatch_offers offer
-                        WHERE offer.request_id = rr.id AND offer.status = 'pending' AND offer.expires_at <= NOW()
+                        WHERE offer.request_id = rr.id AND offer.status = 'pending'
+                          AND NOT public.api_offer_is_receivable(offer.id, statement_timestamp())
                       ) OR NOT EXISTS (
                         SELECT 1 FROM public.dispatch_offers offer
                         WHERE offer.request_id = rr.id AND offer.status = 'pending' AND offer.expires_at > NOW()
@@ -252,8 +274,11 @@ public class DispatchService {
             List<UUID> rematch = new ArrayList<>();
             for (UUID requestId : requests) {
                 jdbc.update("""
-                        UPDATE public.dispatch_offers SET status = 'expired', responded_at = NOW()
-                        WHERE request_id = ? AND status = 'pending' AND expires_at <= NOW()
+                        UPDATE public.dispatch_offers offer
+                        SET status = CASE WHEN offer.expires_at <= statement_timestamp() THEN 'expired' ELSE 'withdrawn' END,
+                            responded_at = statement_timestamp()
+                        WHERE request_id = ? AND status = 'pending'
+                          AND NOT public.api_offer_is_receivable(offer.id, statement_timestamp())
                         """, requestId);
                 int changed = jdbc.update("""
                         UPDATE public.rescue_requests rr
@@ -344,6 +369,7 @@ public class DispatchService {
                 WHERE pm.status = 'active'
                   AND rr.vehicle_power_type = 'gasoline' AND rr.service_code <> 'electric_battery'
                   AND pm.is_available
+                  AND public.api_provider_receiving_until(pm.user_id, statement_timestamp()) IS NOT NULL
                   AND public.api_is_in_service_area(team.base_latitude, team.base_longitude)
                   AND public.api_is_in_service_area(rr.pickup_latitude, rr.pickup_longitude)
                   AND team.status = 'verified'
@@ -397,6 +423,7 @@ public class DispatchService {
                 JOIN public.rescue_teams team ON team.id = pm.team_id
                 JOIN public.profiles profile ON profile.id = pm.user_id
                 WHERE pm.user_id = ? AND pm.team_id = ? AND pm.status = 'active' AND pm.is_available
+                  AND public.api_provider_receiving_until(pm.user_id, statement_timestamp()) IS NOT NULL
                   AND profile.role = 'provider' AND profile.is_active AND team.status = 'verified'
                   AND team.base_latitude = ? AND team.base_longitude = ?
                   AND public.api_is_in_service_area(team.base_latitude, team.base_longitude)
@@ -411,17 +438,32 @@ public class DispatchService {
                 selected.candidate().latitude(), selected.candidate().longitude(), request.serviceCode());
         if (stillEligible.isEmpty()) return false;
 
+        // A separate statement AFTER obtaining the provider lock is intentional:
+        // under READ COMMITTED it sees offers committed while the lock was awaited.
+        // The pre-OSRM candidate snapshot (or a subquery inside the locking SELECT)
+        // cannot reserve a provider across simultaneous customer requests.
+        Boolean hasPendingOffer = jdbc.queryForObject("""
+                SELECT EXISTS (SELECT 1 FROM public.dispatch_offers
+                  WHERE provider_id = ? AND request_id <> ?
+                    AND status = 'pending' AND expires_at > clock_timestamp())
+                """, Boolean.class, selected.candidate().providerId(), requestId);
+        if (!Boolean.FALSE.equals(hasPendingOffer)) return false;
+
         jdbc.update("""
                 UPDATE public.dispatch_offers SET status = 'withdrawn'
                 WHERE request_id = ? AND status = 'pending'
                 """, requestId);
 
-        for (Ranked candidate : rankedCandidates) {
+        // Concurrent requests may rank the same providers in different orders.
+        // Take shared fairness-stat row locks in a stable order to avoid deadlocks.
+        for (Ranked candidate : rankedCandidates.stream()
+                .sorted(Comparator.comparing(value -> value.candidate().providerId())).toList()) {
             boolean receivesOffer = candidate.candidate().providerId().equals(selected.candidate().providerId());
             jdbc.update("""
                     INSERT INTO public.provider_dispatch_stats(
                       provider_id, service_code, consecutive_skips, last_offered_at
-                    ) VALUES (?, ?, ?, CASE WHEN ? THEN NOW() ELSE NULL END)
+                    ) SELECT ?, ?, ?, CASE WHEN ? THEN NOW() ELSE NULL END
+                    WHERE public.api_provider_receiving_until(?, statement_timestamp()) IS NOT NULL
                     ON CONFLICT (provider_id, service_code) DO UPDATE SET
                       consecutive_skips = CASE WHEN ? THEN 0 ELSE LEAST(
                         public.provider_dispatch_stats.consecutive_skips + 1, 1000000) END,
@@ -429,7 +471,7 @@ public class DispatchService {
                         ELSE public.provider_dispatch_stats.last_offered_at END,
                       updated_at = NOW()
                     """, candidate.candidate().providerId(), request.serviceCode(), receivesOffer ? 0 : 1,
-                    receivesOffer, receivesOffer, receivesOffer);
+                    receivesOffer, candidate.candidate().providerId(), receivesOffer, receivesOffer);
         }
 
         Instant expiresAt = Instant.now().plusSeconds(request.policy().offerTtlSeconds());

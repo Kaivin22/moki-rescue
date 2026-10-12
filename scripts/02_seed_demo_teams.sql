@@ -20,6 +20,7 @@ BEGIN
     RAISE EXCEPTION 'DEMO_SEED_ENVIRONMENT_NOT_CONFIRMED';
   END IF;
   IF to_regclass('public.support_tickets') IS NULL
+    OR to_regclass('public.team_working_hours') IS NULL
     OR NOT EXISTS (
       SELECT 1 FROM information_schema.columns
       WHERE table_schema = 'public' AND table_name = 'rescue_teams'
@@ -69,6 +70,9 @@ BEGIN
     RETURNING id INTO new_team_id;
 
     IF new_team_id IS NOT NULL THEN
+      -- Simulated hours, not a real business schedule: 07:00–21:00 daily.
+      INSERT INTO public.team_working_hours(team_id, day_of_week, opens_minute, closes_minute)
+      SELECT new_team_id, day, 420, 1260 FROM generate_series(1, 7) AS days(day);
       INSERT INTO public.team_capabilities(team_id, service_code)
       SELECT new_team_id, service_code FROM unnest(sample.services) AS service(service_code);
       INSERT INTO public.team_verification_checks(team_id, requirement_code, completed, note)

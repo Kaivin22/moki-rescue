@@ -47,7 +47,11 @@ public class ProviderService {
     public ProviderStatusResponse status(Actor actor) {
         requireProvider(actor);
         ProviderStatusResponse result = jdbc.query("""
-                SELECT pm.is_available, team.name, pm.status, team.status AS team_status,
+                SELECT public.api_provider_receiving_until(pm.user_id, statement_timestamp()) IS NOT NULL AS is_available,
+                       team.name, pm.status, team.status AS team_status,
+                       team.receiving_paused, pm.availability_until,
+                       EXISTS (SELECT 1 FROM public.team_working_hours hours WHERE hours.team_id = team.id) AS hours_configured,
+                       public.api_team_receiving_until(team.id, statement_timestamp()) AS receiving_until,
                        team.base_latitude, team.base_longitude, team.base_address,
                        public.api_is_in_service_area(team.base_latitude, team.base_longitude) AS shop_in_area,
                        rating.average_rating, rating.rating_count,
@@ -83,10 +87,18 @@ public class ProviderService {
                     qualityPolicy.recommendsSuspensionReview(warningCount),
                     rs.getString("quality_notice"), rs.getString("team_status"),
                     rs.getObject("base_latitude", Double.class), rs.getObject("base_longitude", Double.class),
-                    rs.getBoolean("shop_in_area"), rs.getString("base_address"));
+                    rs.getBoolean("shop_in_area"), rs.getString("base_address"),
+                    rs.getBoolean("hours_configured"), rs.getBoolean("receiving_paused"),
+                    rs.getTimestamp("receiving_until") == null ? null : rs.getTimestamp("receiving_until").toInstant(),
+                    rs.getTimestamp("availability_until") == null ? null : rs.getTimestamp("availability_until").toInstant());
         }, actor.id());
         if (result == null) throw providerNotReady();
         return result;
+    }
+
+    private ApiException workingHoursClosed() {
+        return new ApiException(HttpStatus.CONFLICT, "WORKING_HOURS_CLOSED",
+                "Cửa hàng chưa khai báo lịch, ngoài giờ, tạm ngừng hoặc lời mời thuộc phiên sẵn sàng đã kết thúc. Ca đã nhận vẫn tiếp tục xử lý.");
     }
 
     public ProviderStatisticsResponse statistics(Actor actor) {
@@ -121,6 +133,7 @@ public class ProviderService {
                 throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "SHOP_OUTSIDE_SERVICE_AREA",
                         "Cửa hàng chưa có tọa độ hợp lệ trong vùng phục vụ. Hãy nhờ admin cập nhật vị trí cửa hàng.");
             }
+            if (current.receivingUntil() == null) throw workingHoursClosed();
             Boolean busy = jdbc.queryForObject("""
                     SELECT EXISTS(
                       SELECT 1 FROM public.rescue_requests
@@ -131,30 +144,37 @@ public class ProviderService {
                 throw new ApiException(HttpStatus.CONFLICT, "PROVIDER_HAS_ACTIVE_REQUEST", "Không thể bật sẵn sàng khi đang xử lý một ca.");
             }
         }
-        int changed = transactions.execute(status -> {
-            int updated = jdbc.update("""
-                    UPDATE public.provider_members pm
-                    SET is_available = ?,
-                        available_since = CASE
-                          WHEN ? AND NOT pm.is_available THEN NOW()
-                          WHEN ? THEN pm.available_since
-                          ELSE NULL
-                        END,
-                        last_latitude = NULL, last_longitude = NULL, location_accuracy_m = NULL
-                    FROM public.rescue_teams team
-                    WHERE pm.user_id = ? AND team.id = pm.team_id
-                      AND (NOT ? OR (pm.status = 'active' AND team.status = 'verified'
-                        AND public.api_is_in_service_area(team.base_latitude, team.base_longitude)
-                        AND NOT EXISTS (SELECT 1 FROM public.rescue_requests rr
-                          WHERE rr.assigned_provider_id = pm.user_id
-                            AND rr.status NOT IN ('completed', 'cancelled'))))
-                    """, input.available(), input.available(), input.available(),
-                    actor.id(), input.available());
-            if (updated > 0) {
-                audit.record(actor.id(), input.available() ? "provider.available" : "provider.unavailable", "provider", actor.id());
-            }
-            return updated;
-        });
+        int changed;
+        try {
+            changed = transactions.execute(status -> {
+                int updated = jdbc.update("""
+                        UPDATE public.provider_members pm
+                        SET is_available = ?,
+                            available_since = CASE
+                              WHEN ? AND NOT pm.is_available THEN NOW()
+                              WHEN ? THEN pm.available_since
+                              ELSE NULL
+                            END,
+                            last_latitude = NULL, last_longitude = NULL, location_accuracy_m = NULL
+                        FROM public.rescue_teams team
+                        WHERE pm.user_id = ? AND team.id = pm.team_id
+                          AND (NOT ? OR (pm.status = 'active' AND team.status = 'verified'
+                            AND public.api_is_in_service_area(team.base_latitude, team.base_longitude)
+                            AND NOT EXISTS (SELECT 1 FROM public.rescue_requests rr
+                              WHERE rr.assigned_provider_id = pm.user_id
+                                AND rr.status NOT IN ('completed', 'cancelled'))))
+                        """, input.available(), input.available(), input.available(),
+                        actor.id(), input.available());
+                if (updated > 0) {
+                    audit.record(actor.id(), input.available() ? "provider.available" : "provider.unavailable", "provider", actor.id());
+                }
+                return updated;
+            });
+        } catch (DataAccessException ex) {
+            String detail = ex.getMostSpecificCause().getMessage();
+            if (detail != null && detail.contains("WORKING_HOURS_CLOSED")) throw workingHoursClosed();
+            throw ex;
+        }
         if (changed == 0) throw providerNotReady();
         return status(actor);
     }
@@ -173,7 +193,8 @@ public class ProviderService {
                 FROM public.dispatch_offers offer
                 JOIN public.rescue_requests rr ON rr.id = offer.request_id
                 JOIN public.service_types service ON service.code = rr.service_code
-                WHERE offer.provider_id = ? AND offer.status = 'pending' AND offer.expires_at > NOW()
+                WHERE offer.provider_id = ? AND offer.status = 'pending' AND offer.expires_at > statement_timestamp()
+                  AND public.api_offer_is_receivable(offer.id, statement_timestamp())
                 ORDER BY offer.eta_seconds, offer.offered_at
                 """, (rs, rowNum) -> new OfferResponse(
                 rs.getObject("id", UUID.class), rs.getObject("request_id", UUID.class),
@@ -200,6 +221,7 @@ public class ProviderService {
             return accepted.requestId();
         } catch (DataAccessException ex) {
             String detail = ex.getMostSpecificCause().getMessage();
+            if (detail != null && detail.contains("OFFER_OUTSIDE_WORKING_HOURS")) throw workingHoursClosed();
             if (detail != null && detail.contains("OFFER_OUTSIDE_SERVICE_AREA")) {
                 throw new ApiException(HttpStatus.CONFLICT, "OFFER_OUTSIDE_SERVICE_AREA",
                         "Vị trí cửa hàng hoặc địa điểm của ca nằm ngoài vùng phục vụ hiện tại. Không thể nhận đề nghị này.");

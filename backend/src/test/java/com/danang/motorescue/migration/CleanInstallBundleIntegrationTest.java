@@ -57,7 +57,7 @@ class CleanInstallBundleIntegrationTest extends PostgisIntegrationTestSupport {
                 SQLException guardedReset = assertThrows(SQLException.class, () -> statement.execute(reset));
                 assertTrue(guardedReset.getMessage().contains("RESET_NOT_CONFIRMED"));
                 statement.execute("ROLLBACK");
-                assertEquals(30, publicTableCount(connection));
+                assertEquals(31, publicTableCount(connection));
                 // Only this fixture's randomly named database, never Supabase or app credentials.
                 statement.execute(reset.replace("confirm_reset CONSTANT TEXT := 'CHANGE_ME'",
                                 "confirm_reset CONSTANT TEXT := 'RESET_MOTORESCUE'")
@@ -66,7 +66,7 @@ class CleanInstallBundleIntegrationTest extends PostgisIntegrationTestSupport {
                 assertEquals(0, publicTableCount(connection));
                 assertEquals(1, count(connection, "SELECT count(*) FROM auth.users"));
                 statement.execute(bundle());
-                assertEquals(30, publicTableCount(connection));
+                assertEquals(31, publicTableCount(connection));
                 assertEquals(1, count(connection, "SELECT count(*) FROM public.profiles WHERE role = 'customer'"));
                 assertEquals(0, count(connection, "SELECT count(*) FROM public.rescue_teams"));
                 statement.execute(confirmedSeed);
@@ -136,7 +136,7 @@ class CleanInstallBundleIntegrationTest extends PostgisIntegrationTestSupport {
                     postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
                     var statement = connection.createStatement()) {
                 statement.execute(bundle());
-                assertEquals(30, publicTableCount(connection));
+                assertEquals(31, publicTableCount(connection));
                 try (var result = statement.executeQuery(
                         "SELECT to_regclass('public.flyway_schema_history') IS NULL")) {
                     result.next();
@@ -145,7 +145,7 @@ class CleanInstallBundleIntegrationTest extends PostgisIntegrationTestSupport {
                 SQLException conflict = assertThrows(SQLException.class, () -> statement.execute(bundle()));
                 assertTrue(conflict.getMessage().contains("PUBLIC_NOT_EMPTY_DO_NOT_RUN_CLEAN_INSTALL"));
                 statement.execute("ROLLBACK");
-                assertEquals(30, publicTableCount(connection));
+                assertEquals(31, publicTableCount(connection));
             }
         } finally {
             postgres.afterAll(null); // Only removes this fixture's randomly named database.

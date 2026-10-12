@@ -576,7 +576,8 @@ public class OperatorService {
     public List<ProviderMemberResponse> providers(Actor actor, UUID teamId) {
         requireAdmin(actor);
         return jdbc.query("""
-                SELECT user_id, display_name, contact_phone_e164, status, is_available,
+                SELECT user_id, display_name, contact_phone_e164, status,
+                       public.api_provider_receiving_until(user_id, statement_timestamp()) IS NOT NULL AS is_available,
                        rescue_vehicle_label, location_updated_at
                 FROM public.provider_members
                 WHERE team_id = ?
@@ -644,7 +645,8 @@ public class OperatorService {
                 SELECT profile.id, COALESCE(pm.display_name, profile.display_name) AS display_name,
                        pm.team_id, team.name AS team_name, team.status AS team_status,
                        COALESCE(pm.status, 'unassigned') AS member_status,
-                       profile.is_active, COALESCE(pm.is_available, FALSE) AS is_available
+                       profile.is_active,
+                       public.api_provider_receiving_until(pm.user_id, statement_timestamp()) IS NOT NULL AS is_available
                 FROM public.profiles profile
                 LEFT JOIN public.provider_members pm ON pm.user_id = profile.id
                 LEFT JOIN public.rescue_teams team ON team.id = pm.team_id

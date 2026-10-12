@@ -14,6 +14,9 @@ export function canChangeAvailability(input: {
     input.provider.status === 'active' &&
     input.provider.teamStatus === 'verified' &&
     input.provider.shopInServiceArea &&
+    input.provider.hoursConfigured &&
+    !input.provider.receivingPaused &&
+    Boolean(input.provider.receivingUntil) &&
     !input.hasActiveRequest
   );
 }

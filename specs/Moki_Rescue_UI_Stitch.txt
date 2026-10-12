@@ -103,11 +103,11 @@ Safe area:
 
 C. ĐIỀU HƯỚNG VÀ CÁCH ĐẾM
 
-Code hiện có 60 file route TSX không tính _layout:
-58 màn điều hướng + 2 route bootstrap/chuyển hướng.
+Code hiện có 61 file route TSX không tính _layout:
+59 màn điều hướng + 2 route bootstrap/chuyển hướng.
 KHÔNG yêu cầu đúng 70/83 frame như đề bài cũ, không độn số bằng ảnh hay loading.
-R01–R58 bên dưới là danh mục route để kiểm đủ chức năng, không đồng nghĩa
-58 bố cục khác nhau. Home theo vai trò và ca theo trạng thái cần biến thể riêng.
+R01–R59 bên dưới là danh mục route để kiểm đủ chức năng, không đồng nghĩa
+59 bố cục khác nhau. Home theo vai trò và ca theo trạng thái cần biến thể riêng.
 Loading/error/empty/confirmation có thể làm component variant/overlay.
 
 Tab thực tế:
@@ -124,7 +124,7 @@ nhất của hàng trước. Cho phép chiều cao nội dung dài; không chia 
 nhiều ảnh. Nếu xuất prototype chạy được: thêm index/role switch CHỈ ở bộ điều khiển
 demo bên ngoài app, không biến nó thành tính năng đổi quyền trong sản phẩm.
 
-D. DANH MỤC 58 ROUTE CẦN BAO PHỦ
+D. DANH MỤC 59 ROUTE CẦN BAO PHỦ
 
 NHÓM 1 — KHỞI ĐẦU VÀ XÁC THỰC
 
@@ -506,11 +506,21 @@ Nội dung đã gửi, nhóm, thời gian và số hộp được ghi nhận. AP
 người tạo thông báo, nên không thêm trường tên người tạo vào bản hiện trạng.
 Read-only; không “đã xem”, không sửa/rút/xóa.
 
+R59 | /operator/team/[id]/working-hours | Admin
+Nguồn: app/operator/team/[id]/working-hours.tsx, WorkingHoursEditor.tsx.
+Trang riêng từ chi tiết đội: 7 ngày, bật/tắt ngày bắt đầu ca, giờ đầu/cuối HH:mm,
+ca qua đêm, chọn cả tuần 00:00–24:00 và tạm ngừng nhận ca. Có loading/error,
+kiểm tra chồng lấn, lỗi version thay đổi và tải lại. Cảnh báo lưu lịch tắt sẵn sàng,
+không hủy ca đã nhận; cứu hộ viên tự bật lại trong giờ, phiên cả ngày hết lúc 00:00.
+Cứu hộ viên đọc lịch/trạng thái trong trang Nhận ca; không thêm role quản lý đội.
+
 E. BIẾN THỂ TRẠNG THÁI CẦN THỂ HIỆN
 
 E1. R05 Provider — nhận ca và điều kiện sẵn sàng:
 - Offline/sẵn sàng; pending/rejected/suspended; đội chưa xác minh hoặc thiếu vị trí;
   cửa hàng ngoài vùng; API lỗi; đang có ca nên không bật nhận ca mới.
+- Hiển thị lịch nhận ca, chưa có lịch/ngoài giờ/tạm ngừng; chỉ bật trong giờ.
+  Ca qua đêm thuộc ngày bắt đầu; hết giờ không hủy ca đã nhận, không tự bật phiên mới.
 - Offer còn hạn: loại việc, khu vực, ETA/quãng đường từ cửa hàng, hạn nhận,
   Nhận ca/Từ chối, trạng thái đang gửi và đã hết hạn.
 - Thời hạn lấy từ expiresAt; mặc định backend 45 giây, không hardcode vào thiết kế.
@@ -611,7 +621,7 @@ là demo; không gửi request thực hoặc thao tác tài khoản thật.
 
 H. TIÊU CHÍ BÀN GIAO
 
-- Có index R01–R58, ghi màn nào dùng lại component và vai trò/trạng thái đã dựng.
+- Có index R01–R59, ghi màn nào dùng lại component và vai trò/trạng thái đã dựng.
 - Có đủ customer/provider/admin, không chỉ một homepage đổi chữ.
 - Admin tách đúng các trang quản lý; xem danh sách -> xem chi tiết/chỉnh riêng.
 - Có thông báo, hội thoại hỗ trợ, ghi chú nội bộ và soạn thông báo theo nhóm.

@@ -21,9 +21,21 @@ import type {
   AuditLogEntry,
   OperatorStatistics,
   CaseResolutionInput,
+  WorkingHours,
+  WorkingDay,
 } from '@/src/types/rescue';
 
 export const rescueApi = {
+  workingHours: (teamId: string) => apiRequest<WorkingHours>(`/api/operator/teams/${teamId}/working-hours`),
+  providerWorkingHours: () => apiRequest<WorkingHours>('/api/provider/working-hours'),
+  saveWorkingHours: (
+    teamId: string,
+    input: { paused: boolean; expectedVersion: number; days: WorkingDay[] },
+  ) =>
+    apiRequest<WorkingHours>(`/api/operator/teams/${teamId}/working-hours`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    }),
   resolveCase: (id: string, input: CaseResolutionInput) =>
     apiRequest<RequestDetails>(`/api/operator/requests/${id}/resolution`, {
       method: 'POST',

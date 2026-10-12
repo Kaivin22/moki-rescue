@@ -122,6 +122,152 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     }
 
     @Test
+    void receivingCalendarUsesVietnamTimeAndHalfOpenOvernightWeekBoundaries() {
+        UUID shop = createTeam();
+        jdbc.update("DELETE FROM public.team_working_hours WHERE team_id = ?", shop);
+        jdbc.update("INSERT INTO public.team_working_hours VALUES (?, 1, 420, 1260), (?, 7, 1320, 360)", shop, shop);
+        assertThat(receivingUntil(shop, "2026-10-12T00:00:00Z")).isEqualTo(java.time.Instant.parse("2026-10-12T14:00:00Z"));
+        assertThat(receivingUntil(shop, "2026-10-12T14:00:00Z")).isNull();
+        assertThat(receivingUntil(shop, "2026-10-11T14:59:59Z")).isNull();
+        assertThat(receivingUntil(shop, "2026-10-11T15:00:00Z")).isEqualTo(java.time.Instant.parse("2026-10-11T23:00:00Z"));
+        assertThat(receivingUntil(shop, "2026-10-11T22:59:59Z")).isEqualTo(java.time.Instant.parse("2026-10-11T23:00:00Z"));
+        assertThat(receivingUntil(shop, "2026-10-11T23:00:00Z")).isNull();
+        jdbc.update("UPDATE public.rescue_teams SET receiving_paused = TRUE WHERE id = ?", shop);
+        assertThat(receivingUntil(shop, "2026-10-12T00:00:00Z")).isNull();
+    }
+
+    private java.time.Instant receivingUntil(UUID shop, String instant) {
+        var result = runtimeJdbc.queryForObject("SELECT public.api_team_receiving_until(?, CAST(? AS TIMESTAMPTZ))",
+                java.sql.Timestamp.class, shop, instant);
+        return result == null ? null : result.toInstant();
+    }
+
+    @Test
+    void missingHoursFailClosedAndExpiredReadinessNeverCarriesIntoTomorrow() {
+        UUID shop = createTeam();
+        addCapability(shop);
+        var provider = createProvider(shop, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, false);
+        jdbc.update("DELETE FROM public.team_working_hours WHERE team_id = ?", shop);
+        assertThat(providers.status(provider.actor()).hoursConfigured()).isFalse();
+        assertApiCode("WORKING_HOURS_CLOSED", () -> providers.setAvailability(provider.actor(), new AvailabilityRequest(true, null, null, null)));
+        jdbc.update("INSERT INTO public.team_working_hours SELECT ?, day, 0, 1440 FROM generate_series(1, 7) AS days(day)", shop);
+        providers.setAvailability(provider.actor(), new AvailabilityRequest(true, null, null, null));
+        assertThat(runtimeJdbc.queryForObject("SELECT public.api_provider_receiving_until(?, NOW() + INTERVAL '2 days')", java.sql.Timestamp.class, provider.actor().id())).isNull();
+        // Simulate a stopped cleanup job: physical TRUE persists, deadline has elapsed.
+        jdbc.update("UPDATE public.provider_members SET availability_until = NOW() - INTERVAL '1 second' WHERE user_id = ?", provider.actor().id());
+        assertThat(providers.status(provider.actor()).available()).isFalse();
+        UUID request = insertRequest(createActor("customer"), "searching", null);
+        matchingDispatch.match(request);
+        verifyNoInteractions(routing);
+        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, request)).isEqualTo("no_provider");
+        matchingDispatch.expireOffers();
+        assertThat(jdbc.queryForObject("SELECT is_available FROM public.provider_members WHERE user_id = ?", Boolean.class, provider.actor().id())).isFalse();
+        assertThat(providers.setAvailability(provider.actor(), new AvailabilityRequest(true, null, null, null)).available()).isTrue();
+    }
+
+    @Test
+    void pausingShopWithdrawsPendingOfferAndMovesToAnotherShop() {
+        UUID firstShop = createTeam();
+        UUID secondShop = createTeam();
+        addCapability(firstShop);
+        addCapability(secondShop);
+        var first = createProvider(firstShop, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        var second = createProvider(secondShop, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        stubSuccessfulRoutes();
+        UUID request = insertRequest(createActor("customer"), "searching", null);
+        matchingDispatch.match(request);
+        var selected = pendingOfferProvider(request).equals(first.actor().id()) ? first : second;
+        var other = selected.equals(first) ? second : first;
+        UUID oldOffer = jdbc.queryForObject("SELECT id FROM public.dispatch_offers WHERE request_id = ?", UUID.class, request);
+        var hours = new WorkingHoursService(runtimeJdbc, runtimeTransactions, new AuditService(runtimeJdbc));
+        var admin = createActor("admin");
+        var before = hours.forAdmin(admin, selected.teamId());
+        var paused = hours.save(admin, selected.teamId(), new WorkingHoursService.Update(true, before.version(), before.days()));
+        assertThat(paused.paused()).isTrue();
+        assertThat(providers.status(selected.actor()).available()).isFalse();
+        assertThat(runtimeJdbc.queryForObject("SELECT public.api_offer_is_receivable(?, statement_timestamp())", Boolean.class, oldOffer)).isFalse();
+        assertApiCode("OFFER_NOT_AVAILABLE", () -> providers.accept(selected.actor(), oldOffer, requestVersion(request)));
+        matchingDispatch.expireOffers();
+        assertThat(pendingOfferProvider(request)).isEqualTo(other.actor().id());
+        assertThat(jdbc.queryForObject("SELECT status FROM public.dispatch_offers WHERE id = ?", String.class, oldOffer)).isEqualTo("withdrawn");
+        assertApiCode("WORKING_HOURS_CHANGED", () -> hours.save(admin, selected.teamId(), new WorkingHoursService.Update(false, before.version(), before.days())));
+        hours.save(admin, selected.teamId(), new WorkingHoursService.Update(false, paused.version(), paused.days()));
+        assertThat(providers.status(selected.actor()).available()).isFalse();
+    }
+
+    @Test
+    void acceptedCaseContinuesAfterShopPauses() {
+        UUID shop = createTeam();
+        addCapability(shop);
+        var provider = createProvider(shop, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        stubSuccessfulRoutes();
+        UUID request = insertRequest(createActor("customer"), "searching", null);
+        matchingDispatch.match(request);
+        UUID offer = jdbc.queryForObject("SELECT id FROM public.dispatch_offers WHERE request_id = ?", UUID.class, request);
+        providers.accept(provider.actor(), offer, requestVersion(request));
+        var hours = new WorkingHoursService(runtimeJdbc, runtimeTransactions, new AuditService(runtimeJdbc));
+        var admin = createActor("admin");
+        var before = hours.forAdmin(admin, shop);
+        hours.save(admin, shop, new WorkingHoursService.Update(true, before.version(), before.days()));
+        matchingDispatch.expireOffers();
+        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, request)).isEqualTo("assigned");
+        lifecycleService().act(provider.actor(), request, new StateActionRequest("start_trip", null, null, null, requestVersion(request)));
+        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, request)).isEqualTo("en_route");
+    }
+
+    @Test
+    void oldOfferCannotReviveWhenProviderTurnsReadinessBackOn() {
+        UUID shop = createTeam();
+        addCapability(shop);
+        var provider = createProvider(shop, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        stubSuccessfulRoutes();
+        UUID request = insertRequest(createActor("customer"), "searching", null);
+        matchingDispatch.match(request);
+        UUID offer = jdbc.queryForObject("SELECT id FROM public.dispatch_offers WHERE request_id = ?", UUID.class, request);
+        providers.setAvailability(provider.actor(), new AvailabilityRequest(false, null, null, null));
+        providers.setAvailability(provider.actor(), new AvailabilityRequest(true, null, null, null));
+        assertThat(runtimeJdbc.queryForObject("SELECT public.api_offer_is_receivable(?, statement_timestamp())", Boolean.class, offer)).isFalse();
+        assertApiCode("WORKING_HOURS_CLOSED", () -> providers.accept(provider.actor(), offer, requestVersion(request)));
+    }
+
+    @Test
+    void dispatchTriesNextRankedShopIfFirstClosesWhileOsrmResponds() {
+        UUID firstShop = createTeam();
+        UUID secondShop = createTeam();
+        addCapability(firstShop);
+        addCapability(secondShop);
+        var first = createProvider(firstShop, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        var second = createProvider(secondShop, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        UUID firstInQuery = jdbc.queryForObject("SELECT user_id FROM public.provider_members ORDER BY user_id LIMIT 1", UUID.class);
+        var closing = firstInQuery.equals(first.actor().id()) ? first : second;
+        var other = closing.equals(first) ? second : first;
+        jdbc.update("UPDATE public.service_types SET matching_eta_weight = 1, matching_experience_weight = 0, matching_waiting_weight = 0, matching_recent_cases_weight = 0 WHERE code = 'flat_tire'");
+        when(routing.routesToDestination(anyList(), any())).thenAnswer(invocation -> {
+            // Clock/shop state changes after filtering, before publishing the invitation.
+            jdbc.update("UPDATE public.rescue_teams SET receiving_paused = TRUE WHERE id = ?", closing.teamId());
+            return List.of(Optional.of(new RoadRoute(1000, 300, List.of())),
+                    Optional.of(new RoadRoute(1200, 360, List.of())));
+        });
+        UUID request = insertRequest(createActor("customer"), "searching", null);
+        matchingDispatch.match(request);
+        assertThat(pendingOfferProvider(request)).isEqualTo(other.actor().id());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.provider_dispatch_stats WHERE provider_id = ?", Integer.class, closing.actor().id())).isZero();
+        verify(routing, times(1)).routesToDestination(anyList(), any());
+    }
+
+    @Test
+    void invitationDeadlineCannotExceedReadinessDeadline() {
+        UUID shop = createTeam();
+        addCapability(shop);
+        var provider = createProvider(shop, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        jdbc.update("UPDATE public.provider_members SET availability_until = LEAST(availability_until, NOW() + INTERVAL '20 seconds') WHERE user_id = ?", provider.actor().id());
+        stubSuccessfulRoutes();
+        UUID request = insertRequest(createActor("customer"), "searching", null);
+        matchingDispatch.match(request);
+        assertThat(jdbc.queryForObject("SELECT offer.expires_at <= pm.availability_until FROM public.dispatch_offers offer JOIN public.provider_members pm ON pm.user_id = offer.provider_id WHERE offer.request_id = ?", Boolean.class, request)).isTrue();
+    }
+
+    @Test
     void availabilityCanTurnOffWithoutSendingCoordinates() {
         UUID teamId = createTeam();
         ProviderFixture fixture = createProvider(teamId, PICKUP_LATITUDE, PICKUP_LONGITUDE, 10, false);
@@ -961,6 +1107,57 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         });
     }
 
+    @Test
+    @Timeout(30)
+    void concurrentRequestsDoNotInviteTheSameProviderTwice() throws Exception {
+        assertConcurrentDispatchReservations(1);
+    }
+
+    @Test
+    @Timeout(30)
+    void concurrentRequestsTryNextRankedProviderWhenFirstIsReserved() throws Exception {
+        assertConcurrentDispatchReservations(2);
+    }
+
+    private void assertConcurrentDispatchReservations(int providerCount) throws Exception {
+        UUID team = createTeam();
+        addCapability(team);
+        for (int index = 0; index < providerCount; index++) {
+            createProvider(team, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        }
+        UUID first = insertRequest(createActor("customer"), "searching", null);
+        UUID second = insertRequest(createActor("customer"), "searching", null);
+        CountDownLatch bothSelectedCandidates = new CountDownLatch(2);
+        when(routing.routesToDestination(anyList(), any())).thenAnswer(invocation -> {
+            List<?> origins = invocation.getArgument(0);
+            assertThat(origins).hasSize(providerCount);
+            bothSelectedCandidates.countDown();
+            if (!bothSelectedCandidates.await(10, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Both requests must select candidates before either writes an offer");
+            }
+            return origins.stream().map(ignored -> Optional.of(new RoadRoute(1_000, 300, List.of()))).toList();
+        });
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> firstMatch = executor.submit(() -> matchingDispatch.match(first));
+            Future<?> secondMatch = executor.submit(() -> matchingDispatch.match(second));
+            firstMatch.get(15, TimeUnit.SECONDS);
+            secondMatch.get(15, TimeUnit.SECONDS);
+        } finally {
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.dispatch_offers WHERE status = 'pending'",
+                Integer.class)).isEqualTo(providerCount);
+        assertThat(jdbc.queryForObject("SELECT COUNT(DISTINCT provider_id) FROM public.dispatch_offers WHERE status = 'pending'",
+                Integer.class)).isEqualTo(providerCount);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.rescue_requests WHERE status = 'offered'",
+                Integer.class)).isEqualTo(providerCount);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.rescue_requests WHERE status = 'no_provider'",
+                Integer.class)).isEqualTo(2 - providerCount);
+        verify(routing, times(2)).routesToDestination(anyList(), any());
+    }
+
     private Acceptance acceptAfterSignal(
             Actor actor,
             UUID offerId,
@@ -1007,6 +1204,8 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
                 """, teamId, "Integration Team " + sequence,
                 "INT-" + teamId.toString().substring(0, 8).toUpperCase(),
                 latitude, longitude);
+        // Explicit test-only schedule: fixtures remain time-of-day independent.
+        jdbc.update("INSERT INTO public.team_working_hours(team_id, day_of_week, opens_minute, closes_minute) SELECT ?, day, 0, 1440 FROM generate_series(1, 7) AS days(day)", teamId);
         return teamId;
     }
 

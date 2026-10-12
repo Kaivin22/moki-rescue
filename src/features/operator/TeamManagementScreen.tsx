@@ -20,6 +20,7 @@ import { useCopy, useI18n } from '@/src/i18n';
 import { useAuthStore } from '@/src/stores/authStore';
 import type { AccountLookup } from '@/src/types/rescue';
 import { ShopLocationEditor } from './ShopLocationEditor';
+import { WorkingHoursEditor } from './WorkingHoursEditor';
 
 const COPY = {
   vi: {
@@ -194,6 +195,7 @@ export type ManagementSection =
   | 'add-provider'
   | 'providers'
   | 'verification'
+  | 'working-hours'
   | 'admins';
 
 export function TeamRouteScreen({ section }: { section: ManagementSection }) {
@@ -383,6 +385,7 @@ export function TeamManagementScreen({
     'add-provider': c.addSection,
     providers: c.roster,
     verification: english ? 'Partner verification' : 'Xác minh đội',
+    'working-hours': english ? 'Rescue receiving hours' : 'Lịch nhận cứu hộ',
     admins: c.adminSection,
   };
   const parent = () => {
@@ -436,6 +439,7 @@ export function TeamManagementScreen({
               : 'Chưa có đội. Chọn Tạo đội đối tác để bắt đầu.'}
           </Text>
         ) : null}
+        {ready && section === 'working-hours' ? <WorkingHoursEditor teamId={selectedTeam} /> : null}
         {ready && section === 'team' ? (
           <>
             <Text style={styles.section}>{selectedTeamData?.name}</Text>
@@ -443,6 +447,13 @@ export function TeamManagementScreen({
             {selectedTeamData ? (
               <ShopLocationEditor key={selectedTeamData.id} team={selectedTeamData} />
             ) : null}
+            <NavigationCard
+              title={titles['working-hours']}
+              icon="time-outline"
+              onPress={() =>
+                router.push({ pathname: '/operator/team/[id]/working-hours', params: { id: selectedTeam } })
+              }
+            />
             <NavigationCard
               title={c.roster}
               icon="people-outline"

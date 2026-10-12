@@ -1,6 +1,6 @@
 // SQL sources for the bundled installer and optional read-only diagnostics.
 // Never connects to a database. Keep checks here, not in the generated SQL.
-const verificationSql = String.raw`-- Kiểm tra trạng thái ĐẾN V13; không dùng để xác minh schema legacy chỉ ở B1.
+const verificationSql = String.raw`-- Kiểm tra trạng thái ĐẾN V14; không dùng để xác minh schema legacy chỉ ở B1.
 -- Chỉ đọc metadata và một số bất biến dữ liệu; không thay thế test RLS bằng JWT.
 
 DO $$
@@ -16,7 +16,7 @@ BEGIN
     'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
     'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
     'provider_dispatch_stats', 'dispatch_recovery_jobs', 'push_outbox',
-    'user_notifications', 'support_tickets', 'support_messages', 'announcements'
+    'user_notifications', 'support_tickets', 'support_messages', 'announcements', 'team_working_hours'
   ] LOOP
     IF to_regclass('public.' || table_name) IS NULL THEN
       missing_tables := array_append(missing_tables, table_name);
@@ -39,6 +39,10 @@ BEGIN
     ('rescue_teams', 'partner_reference'),
     ('rescue_teams', 'verified_by'),
     ('rescue_teams', 'verified_at'),
+    ('rescue_teams', 'receiving_paused'),
+    ('rescue_teams', 'working_hours_version'),
+    ('provider_members', 'availability_until'),
+    ('dispatch_offers', 'availability_started_at'),
     ('team_verification_checks', 'checked_by'),
     ('team_verification_checks', 'checked_at'),
     ('provider_members', 'contact_phone_e164'),
@@ -173,7 +177,7 @@ BEGIN
       'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
       'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
       'provider_dispatch_stats', 'dispatch_recovery_jobs', 'push_outbox',
-      'user_notifications', 'support_tickets', 'support_messages', 'announcements'
+      'user_notifications', 'support_tickets', 'support_messages', 'announcements', 'team_working_hours'
     )
     AND NOT c.relrowsecurity;
 
@@ -688,7 +692,41 @@ BEGIN
   END IF;
 END;
 $gasoline_scope_check$;
-SELECT 'V13 schema/security checks passed; JWT and end-to-end tests still required' AS result;
+DO $$
+DECLARE function_name TEXT; trigger_name TEXT; role_name TEXT;
+BEGIN
+  FOREACH function_name IN ARRAY ARRAY[
+    'public.api_team_receiving_until(uuid,timestamp with time zone)',
+    'public.api_provider_receiving_until(uuid,timestamp with time zone)',
+    'public.api_offer_is_receivable(uuid,timestamp with time zone)'
+  ] LOOP
+    IF to_regprocedure(function_name) IS NULL
+      OR NOT has_function_privilege('motorescue_api', function_name, 'EXECUTE') THEN
+      RAISE EXCEPTION 'V14_WORKING_HOURS_FUNCTION_MISSING: %', function_name;
+    END IF;
+  END LOOP;
+  FOREACH trigger_name IN ARRAY ARRAY['provider_availability_hours', 'dispatch_offer_hours'] LOOP
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgname = trigger_name
+      AND t.tgrelid IN ('public.provider_members'::regclass, 'public.dispatch_offers'::regclass)
+      AND NOT t.tgisinternal AND t.tgenabled IN ('O', 'A')) THEN
+      RAISE EXCEPTION 'V14_WORKING_HOURS_TRIGGER_MISSING: %', trigger_name;
+    END IF;
+  END LOOP;
+  FOREACH role_name IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+    IF has_table_privilege(role_name, 'public.team_working_hours', 'SELECT,INSERT,UPDATE,DELETE') THEN
+      RAISE EXCEPTION 'WORKING_HOURS_CLIENT_ACCESS';
+    END IF;
+  END LOOP;
+  IF NOT has_table_privilege('motorescue_api', 'public.team_working_hours', 'SELECT')
+    OR NOT has_table_privilege('motorescue_api', 'public.team_working_hours', 'INSERT')
+    OR NOT has_table_privilege('motorescue_api', 'public.team_working_hours', 'UPDATE')
+    OR NOT has_table_privilege('motorescue_api', 'public.team_working_hours', 'DELETE') THEN
+    RAISE EXCEPTION 'WORKING_HOURS_RUNTIME_GRANT_MISSING';
+  END IF;
+END;
+$$;
+
+SELECT 'V14 schema/security checks passed; JWT and end-to-end tests still required' AS result;
 `;
 
 const preflightSql = String.raw`-- TÙY CHỌN khi chưa rõ trạng thái database (chỉ đọc, KHÔNG tạo schema).

@@ -55,8 +55,8 @@ class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
         MigrateResult remainingMigrations = flyway.migrate();
 
         assertTrue(remainingMigrations.success);
-        assertEquals(9, remainingMigrations.migrationsExecuted); // V5 through V13
-        assertEquals(MigrationVersion.fromVersion("13"), flyway.info().current().getVersion());
+        assertEquals(10, remainingMigrations.migrationsExecuted); // V5 through V14
+        assertEquals(MigrationVersion.fromVersion("14"), flyway.info().current().getVersion());
         assertTrue(flyway.validateWithResult().validationSuccessful);
         assertEquals(0, flyway.migrate().migrationsExecuted);
 
@@ -74,11 +74,11 @@ class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
             try (Statement verification = connection.createStatement()) {
                 verification.execute(verificationSql);
             }
-            assertEquals(30, queryForInt(connection,
+            assertEquals(31, queryForInt(connection,
                     "SELECT COUNT(*) FROM information_schema.tables "
                             + "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
                             + "AND table_name <> 'flyway_schema_history'"));
-            assertEquals(30, queryForInt(connection,
+            assertEquals(31, queryForInt(connection,
                     "SELECT COUNT(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
                             + "WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity"));
             assertEquals(6, queryForInt(connection, "SELECT COUNT(*) FROM public.service_types"));

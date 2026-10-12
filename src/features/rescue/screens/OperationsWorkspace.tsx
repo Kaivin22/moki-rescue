@@ -20,6 +20,7 @@ import { isStaffRole } from '@/src/features/auth/roles';
 import { useCopy, useI18n } from '@/src/i18n';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { canChangeAvailability } from '@/src/features/rescue/availabilityPolicy';
+import { ProviderWorkingHours } from '@/src/features/rescue/components/ProviderWorkingHours';
 
 const COPY = {
   vi: {
@@ -115,6 +116,7 @@ export function OperationsWorkspace() {
   const provider = useQuery({
     queryKey: rescueKeys.providerStatus,
     queryFn: rescueApi.providerStatus,
+    refetchInterval: RescueTiming.providerOffersRefetchMs,
     enabled: isProvider,
   });
   const personalStatistics = useQuery({
@@ -340,6 +342,7 @@ export function OperationsWorkspace() {
                 thumbColor={Colors.white}
               />
             </View>
+            {provider.data ? <ProviderWorkingHours status={provider.data} /> : null}
             {provider.data &&
             (!provider.data.shopInServiceArea || provider.data.teamStatus !== 'verified') ? (
               <Text style={styles.notice}>

@@ -1,7 +1,7 @@
 # Các file SQL cũ đã được hợp nhất
 
 Không còn SQL cần chạy trong thư mục này. Cài mới đọc [README chính](../README.md):
-`01_init_database.sql` đã gồm schema đến V13 và toàn bộ kiểm tra RLS.
+`01_init_database.sql` đã gồm schema đến V14 và toàn bộ kiểm tra RLS.
 
 | Trước đây                                | Hiện tại                                                                  |
 | ---------------------------------------- | ------------------------------------------------------------------------- |
@@ -13,7 +13,7 @@ Không còn SQL cần chạy trong thư mục này. Cài mới đọc [README ch
 
 Các lệnh generator tạo file trong `.tmp/`, không kết nối database.
 Có `flyway_schema_history` thì dùng Flyway, không dùng upgrade thủ công.
-Migration B1–V13 vẫn giữ ở backend, không squash checksum đã triển khai.
+Migration B1–V14 vẫn giữ ở backend, không squash checksum đã triển khai.
 Bản README lịch sử nhiều hướng dẫn trái phiên bản đã bỏ khỏi luồng sử dụng.
 Bản sao trước hợp nhất của workspace này nằm trong `.tmp/sql-before-consolidation-*.zip`
 (không phải backup database, không đưa lên Git).

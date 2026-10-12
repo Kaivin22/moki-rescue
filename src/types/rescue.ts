@@ -265,6 +265,24 @@ export interface ProviderStatus {
   shopLongitude: number | null;
   shopInServiceArea: boolean;
   shopAddress: string | null;
+  hoursConfigured: boolean;
+  receivingPaused: boolean;
+  receivingUntil: string | null;
+  availabilityUntil: string | null;
+}
+
+export interface WorkingDay {
+  dayOfWeek: number;
+  opensMinute: number;
+  closesMinute: number;
+}
+
+export interface WorkingHours {
+  timezone: 'Asia/Ho_Chi_Minh';
+  paused: boolean;
+  version: number;
+  receivingUntil: string | null;
+  days: WorkingDay[];
 }
 
 export interface TeamSummary {

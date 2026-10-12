@@ -111,7 +111,7 @@ public class PushNotificationService {
                   AND (? <> 'NEW_OFFER' OR EXISTS (
                     SELECT 1 FROM public.dispatch_offers offer
                     WHERE offer.request_id = ? AND offer.provider_id = device.user_id
-                      AND offer.status = 'pending' AND offer.expires_at > NOW()))
+                      AND public.api_offer_is_receivable(offer.id, statement_timestamp())))
                 """, rs -> rs.next() ? new Recipient(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3)) : null,
                 pending.deviceId(), pending.kind().name(), pending.requestId());
         if (recipient == null) return DeliveryResult.FAILED;

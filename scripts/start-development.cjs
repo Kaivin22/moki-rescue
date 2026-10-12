@@ -86,7 +86,7 @@ async function main() {
       throw new Error('API URL port and backend PORT differ. Fix .env before starting.');
     if (await healthy(apiUrl, '/api/health'))
       throw new Error(
-        'Backend is running but its database is not ready. Check backend logs; do not start a duplicate process.',
+        'Backend is running but its database is not ready. Check schema/grants through V14 (docs/WORKING-HOURS.md) and backend logs; do not reset data or start a duplicate process.',
       );
     for (const name of [
       'SPRING_DATASOURCE_URL',

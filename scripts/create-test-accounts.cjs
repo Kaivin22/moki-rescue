@@ -133,6 +133,8 @@ function checked(result, operation) {
     error.setupNotStarted = [
       'READ_PROFILES',
       'READ_SHOP_ADDRESS',
+      'READ_WORKING_HOURS',
+      'READ_WORKING_HOURS_VERSION',
       'READ_SERVICES',
       'READ_CHECKLIST',
     ].includes(operation);
@@ -179,6 +181,11 @@ async function setup(env, args) {
     throw error;
   }
   checked(addressCheck, 'READ_SHOP_ADDRESS');
+  checked(await admin.from('team_working_hours').select('team_id').limit(1), 'READ_WORKING_HOURS');
+  checked(
+    await admin.from('rescue_teams').select('working_hours_version').limit(1),
+    'READ_WORKING_HOURS_VERSION',
+  );
   const services = checked(
     await admin.from('service_types').select('code').eq('is_active', true),
     'READ_SERVICES',
@@ -279,7 +286,7 @@ async function setup(env, args) {
     let team = checked(
       await admin
         .from('rescue_teams')
-        .select('id,name,status,verified_by')
+        .select('id,name,status,verified_by,working_hours_version')
         .eq('partner_reference', fixtureTeam.reference)
         .maybeSingle(),
       'READ_TEST_TEAM',
@@ -306,9 +313,24 @@ async function setup(env, args) {
             base_address: fixtureTeam.address,
             service_radius_km: 15,
           })
-          .select('id,name,status,verified_by')
+          .select('id,name,status,verified_by,working_hours_version')
           .single(),
         'CREATE_TEST_TEAM',
+      );
+    }
+    // Explicit 24/7 TEST schedule only. Never restore hours an admin edited or cleared.
+    if (team.working_hours_version === 0) {
+      checked(
+        await admin.from('team_working_hours').upsert(
+          Array.from({ length: 7 }, (_, index) => ({
+            team_id: team.id,
+            day_of_week: index + 1,
+            opens_minute: 0,
+            closes_minute: 1440,
+          })),
+          { onConflict: 'team_id,day_of_week', ignoreDuplicates: true },
+        ),
+        'CREATE_TEST_WORKING_HOURS',
       );
     }
     for (const account of ACCOUNTS.filter(

@@ -1,14 +1,18 @@
 # Danh mục giao diện Moki Rescue cho Figma
 
-> Cập nhật điều hướng ngày 07/10/2026. Số màn hình được đếm trực tiếp từ `app/`, không tính `_layout.tsx`, ảnh chụp, popup hay biến thể trạng thái. Các bảng frame Figma A–D bên dưới là đề xuất thiết kế lịch sử ngày 24/09, không phải số màn hình hiện tại hoặc bằng chứng đã dựng trên Figma/Stitch.
+> Cập nhật điều hướng ngày 12/10/2026. Số màn hình được đếm trực tiếp từ `app/`, không tính `_layout.tsx`, ảnh chụp, popup hay biến thể trạng thái. Các bảng frame Figma A–D bên dưới là đề xuất thiết kế lịch sử ngày 24/09, không phải số màn hình hiện tại hoặc bằng chứng đã dựng trên Figma/Stitch.
 
 ## Kết luận số lượng
 
-- **58 màn hình điều hướng thực tế** (đếm theo route): gồm màn đăng nhập kiểm thử chỉ mở ở môi trường cho phép; không đồng nghĩa 58 thiết kế độc lập.
+- **59 màn hình điều hướng thực tế** (đếm theo route): gồm màn đăng nhập kiểm thử chỉ mở ở môi trường cho phép; không đồng nghĩa 59 thiết kế độc lập.
 - **2 route chỉ khởi động/chuyển hướng**: `app/index.tsx` và `/support/incidents/[id]` (tìm cuộc trao đổi gắn với khiếu nại).
-- **60 màn hình ở cấp mã nguồn** nếu tính cả hai route chuyển hướng, không tính `_layout.tsx`.
+- **61 màn hình ở cấp mã nguồn** nếu tính cả hai route chuyển hướng, không tính `_layout.tsx`.
 - `/support` và `/operator/support` dùng chung giao diện danh sách, dữ liệu và quyền khác nhau theo vai trò; không tính là hai thiết kế độc lập.
 - 83 frame là số đề xuất Figma của bản cũ, chưa kiểm kê lại sau lần tách này; không dùng để báo cáo số interface đã có.
+
+## Bổ sung ngày 12/10/2026
+
+`/operator/team/[id]/working-hours`: admin chỉnh lịch nhận cứu hộ theo tuần, ca qua đêm và tạm ngừng; không nhúng biểu mẫu vào trang tổng quan đội. Cứu hộ viên đọc lịch và trạng thái trong trang nhận ca. Chi tiết tại [WORKING-HOURS.md](WORKING-HOURS.md).
 
 ## Các màn hình tách thêm ngày 07/10/2026 — 12 route
 

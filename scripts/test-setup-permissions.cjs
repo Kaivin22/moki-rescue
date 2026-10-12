@@ -13,10 +13,10 @@ $setup_role_guard$;
 GRANT USAGE ON SCHEMA public, extensions TO service_role;
 GRANT SELECT ON public.profiles, public.service_types, public.team_verification_requirements,
   public.rescue_teams, public.provider_members, public.team_capabilities,
-  public.team_verification_checks TO service_role;
+  public.team_verification_checks, public.team_working_hours TO service_role;
 GRANT UPDATE (role) ON public.profiles TO service_role;
 GRANT INSERT ON public.rescue_teams, public.provider_members, public.team_capabilities,
-  public.team_verification_checks TO service_role;
+  public.team_verification_checks, public.team_working_hours TO service_role;
 GRANT UPDATE (status, verified_by, verified_at) ON public.rescue_teams TO service_role;
 -- END TEST SETUP PERMISSIONS
 `;
@@ -31,13 +31,13 @@ BEGIN
     RAISE EXCEPTION 'TEST_SETUP_SCHEMA_USAGE_MISSING';
   END IF;
   FOREACH target_table IN ARRAY ARRAY['profiles', 'service_types', 'team_verification_requirements',
-    'rescue_teams', 'provider_members', 'team_capabilities', 'team_verification_checks'] LOOP
+    'rescue_teams', 'provider_members', 'team_capabilities', 'team_verification_checks', 'team_working_hours'] LOOP
     IF NOT has_table_privilege('service_role', 'public.' || target_table, 'SELECT') THEN
       RAISE EXCEPTION 'TEST_SETUP_SELECT_MISSING: %', target_table;
     END IF;
   END LOOP;
   FOREACH target_table IN ARRAY ARRAY['rescue_teams', 'provider_members',
-    'team_capabilities', 'team_verification_checks'] LOOP
+    'team_capabilities', 'team_verification_checks', 'team_working_hours'] LOOP
     IF NOT has_table_privilege('service_role', 'public.' || target_table, 'INSERT') THEN
       RAISE EXCEPTION 'TEST_SETUP_INSERT_MISSING: %', target_table;
     END IF;

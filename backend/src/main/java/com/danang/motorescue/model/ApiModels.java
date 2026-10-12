@@ -249,7 +249,8 @@ public final class ApiModels {
             int qualityWarningCount,
             boolean suspensionReviewRecommended,
             String qualityNotice,
-            String teamStatus, Double shopLatitude, Double shopLongitude, boolean shopInServiceArea, String shopAddress) {}
+            String teamStatus, Double shopLatitude, Double shopLongitude, boolean shopInServiceArea, String shopAddress,
+            boolean hoursConfigured, boolean receivingPaused, Instant receivingUntil, Instant availabilityUntil) {}
 
     public record ProviderStatisticsResponse(long completedCases, long activeCases, long cancelledCases, RatingSummary rating) {}
 

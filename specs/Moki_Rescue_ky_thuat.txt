@@ -104,6 +104,12 @@ Database: Supabase PostgreSQL + PostGIS, Supabase Auth, Row-Level Security (RLS)
 API nghiệp vụ: HTTPS/JSON + Bearer JWT tới Spring Boot; backend gọi database/OSRM.
 Trợ lý: backend gọi Gemini khi phù hợp phạm vi; secret không nằm trong frontend.
 
+Bổ sung 12/10/2026 — giờ nhận cứu hộ:
+- Admin lưu lịch của cửa hàng tại /operator/team/[id]/working-hours, một khung giờ/ngày bắt đầu ca, giờ Việt Nam, hỗ trợ ca qua đêm và cả ngày.
+- Lọc trong giờ + cứu hộ viên tự bật sẵn sàng + không bận. Chưa khai báo lịch hoặc tạm ngừng thì không nhận mới; không tự bật ngày hôm sau.
+- Hết khung giờ tắt phiên sẵn sàng; lời mời bị giới hạn tới giờ đóng, ca đã nhận vẫn tiếp tục. Lưu lịch tắt sẵn sàng, không hủy ca đang làm.
+- API /api/operator/teams/{id}/working-hours (admin GET/PUT), /api/provider/working-hours (đọc lịch đội mình). Migration V14 và SQL 01 cài mới đã chứa schema; xem docs/WORKING-HOURS.md. Chưa mặc định coi thay đổi đã triển khai lên Supabase.
+
 4. BẢN ĐỒ, ETA VÀ GOOGLE MAPS
 
 Thuật ngữ:
@@ -341,14 +347,14 @@ kết nối service-role/database password. Prototype dùng dữ liệu mô ph�
 
 11. KIỂM KÊ GIAO DIỆN VÀ QUY TẮC BÀN GIAO
 
-app/ hiện có 60 file màn hình TSX, bỏ _layout:
-- 58 màn điều hướng (gồm trang đăng nhập kiểm thử có điều kiện).
+app/ hiện có 61 file màn hình TSX, bỏ _layout:
+- 59 màn điều hướng (gồm trang đăng nhập kiểm thử có điều kiện).
 - 2 route bootstrap/chuyển hướng: app/index.tsx và app/support/incidents/[id].tsx.
-Không gọi 58 route là 58 thiết kế độc lập:
+Không gọi 59 route là 59 thiết kế độc lập:
 - Home có 3 giao diện thực sự khác nhau theo role.
 - /support và /operator/support dùng chung list component, khác phạm vi.
 - Một route ca chứa nhiều trạng thái và quyền, không cần tạo route mới cho mỗi trạng thái.
-Danh mục R01–R58 và biến thể cần thiết nằm trong file UI đi kèm. Bỏ mốc 70/83 frame cũ.
+Danh mục R01–R59 và biến thể cần thiết nằm trong file UI đi kèm. Bỏ mốc 70/83 frame cũ.
 
 Điều hướng thực tế:
 - Customer: Trang chủ | Cứu hộ | Hoạt động | Tài khoản.
