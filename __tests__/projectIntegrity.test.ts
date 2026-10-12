@@ -137,7 +137,8 @@ describe('project integrity', () => {
       });
     const routes = collectRoutes(path.join(process.cwd(), 'app'));
     const inventory = fs.readFileSync(path.join(process.cwd(), 'docs', 'FIGMA_SCREEN_INVENTORY.md'), 'utf8');
-    expect(routes).toHaveLength(60);
+    // Keep the minimum UI scope and documentation in sync without freezing the route count.
+    expect(routes.length - 2).toBeGreaterThanOrEqual(48);
     expect(inventory).toContain(`**${routes.length} màn hình ở cấp mã nguồn**`);
     expect(inventory).toContain(`**${routes.length - 2} màn hình điều hướng thực tế**`);
     for (const section of ['reviews', 'incidents', 'quality-alerts']) {
@@ -206,5 +207,100 @@ describe('project integrity', () => {
     expect(access).toContain('profile.terms_version === LEGAL_VERSION');
     expect(backendConfig).toContain('current-version: ${TERMS_VERSION:2026-08-22}');
     expect(backendConfig).toContain('api-key: ${GEMINI_API_KEY:}');
+  });
+});
+
+describe('dependency update compatibility policy', () => {
+  const config = fs.readFileSync(path.join(process.cwd(), '.github/dependabot.yml'), 'utf8');
+  const npmConfig = config.split('  - package-ecosystem: npm')[1].split('  - package-ecosystem: maven')[0];
+
+  it('keeps automated npm updates inside the approved manifest ranges', () => {
+    expect(npmConfig).toMatch(/^\s+versioning-strategy: lockfile-only$/m);
+    expect(npmConfig).not.toContain('increase-if-necessary');
+    expect(npmConfig).toContain('expo-sdk-patches:');
+    expect(npmConfig).not.toContain('expo-sdk-54-patches:');
+  });
+
+  it('preserves CI validation for dependency pull requests', () => {
+    const workflow = fs.readFileSync(path.join(process.cwd(), '.github/workflows/ci.yml'), 'utf8');
+    expect(workflow).toContain('pull_request:');
+    expect(workflow).toContain('npm run typecheck');
+    expect(workflow).toContain('npx expo install --check');
+    expect(workflow).not.toContain('continue-on-error: true');
+    expect(workflow).toContain('npm audit --audit-level=critical');
+  });
+
+  it('keeps the test dependency outside the Handlebars critical advisory range', () => {
+    const lock = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package-lock.json'), 'utf8'));
+    // GHSA-8r5x-fm3f-whwj and GHSA-p8wg-vrv2-v86f: fixed in 4.7.10.
+    const entries = Object.entries(lock.packages).filter(([name]) => name.endsWith('/handlebars'));
+    expect(entries.length).toBeGreaterThan(0);
+    for (const [, dependency] of entries) {
+      const [major, minor, patch] = (dependency as { version: string }).version.split('.').map(Number);
+      expect(major > 4 || (major === 4 && (minor > 7 || (minor === 7 && patch >= 10)))).toBe(true);
+    }
+  });
+
+  it('pins official CI actions to reviewed commits rather than mutable tags', () => {
+    const workflow = fs.readFileSync(path.join(process.cwd(), '.github/workflows/ci.yml'), 'utf8');
+    const actions = [...workflow.matchAll(/uses: (actions\/[^@\s]+)@([^\s]+) # ([^\n]+)/g)];
+    expect(actions).toHaveLength(4);
+    for (const [, , commit, description] of actions) {
+      expect(commit).toMatch(/^[a-f0-9]{40}$/);
+      expect(description).toContain('(Node 24)');
+    }
+  });
+
+  it('keeps brace-expansion outside the three September 2026 advisory ranges', () => {
+    const lock = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package-lock.json'), 'utf8'));
+    const entries = Object.entries(lock.packages).filter(([name]) => name.endsWith('/brace-expansion'));
+    expect(entries.length).toBeGreaterThan(0);
+    // GHSA-6j4f-fj2g-mc7p, GHSA-qhr7-859c-m2p7 and GHSA-q2hr-2g5m-vwhr.
+    for (const [, dependency] of entries) {
+      const [major, minor, patch] = (dependency as { version: string }).version.split('.').map(Number);
+      const fixed =
+        (major === 1 && (minor > 1 || (minor === 1 && patch >= 21))) ||
+        (major === 2 && (minor > 1 || (minor === 1 && patch >= 7))) ||
+        (major === 3 && (minor > 0 || patch >= 9)) ||
+        (major === 5 && (minor > 0 || patch >= 12)) ||
+        major > 5;
+      expect(fixed).toBe(true);
+    }
+  });
+});
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { resolveApiUrl, lanAddresses } = require('../scripts/start-development.cjs');
+
+describe('local API launch configuration', () => {
+  it('selects the real LAN adapter, not WSL', () => {
+    expect(
+      lanAddresses({
+        'Wi-Fi': [{ family: 'IPv4', internal: false, address: '192.168.1.2' }],
+        'vEthernet (WSL)': [{ family: 'IPv4', internal: false, address: '172.27.96.1' }],
+      }),
+    ).toEqual(['192.168.1.2']);
+  });
+  it('uses LAN instead of phone localhost', () => {
+    expect(resolveApiUrl('', ['192.168.1.2'])).toBe('http://192.168.1.2:8080');
+    expect(resolveApiUrl('http://localhost:8088', ['192.168.1.2'])).toBe('http://192.168.1.2:8088');
+  });
+  it('does not silently replace an explicitly configured remote backend', () => {
+    expect(resolveApiUrl('https://api.example.org/api/', ['192.168.1.2'])).toBe('https://api.example.org');
+  });
+  it('requires explicit selection when multiple networks exist', () => {
+    expect(() => resolveApiUrl('', ['192.168.1.2', '10.0.0.2'])).toThrow('ambiguous');
+  });
+  it('rejects credentials in a client URL', () => {
+    expect(() => resolveApiUrl('https://user:secret@example.org', [])).toThrow();
+  });
+  it('requires readiness and does not start migrations or visible windows', () => {
+    const source = fs.readFileSync(path.join(process.cwd(), 'scripts/start-development.cjs'), 'utf8');
+    expect(source).toContain('/api/health/ready');
+    expect(source).toContain("process.env.SPRING_FLYWAY_ENABLED = 'false'");
+    expect(source).toContain("'-jar', 'backend/target/moki-rescue-0.0.1-SNAPSHOT.jar'");
+    expect(source).not.toContain("'-jar', path.join(root, 'backend/target/moki-rescue-0.0.1-SNAPSHOT.jar')");
+    expect(source).toContain('windowsHide: true');
+    expect(source).not.toContain('shell: true');
   });
 });

@@ -134,7 +134,7 @@ describe('operational SQL safety contracts (static, not database execution)', ()
       ['2', '02_seed_demo_teams.sql'],
     ]);
     expect(section).toContain('Nếu database/project mới hoàn toàn thì bỏ qua bước reset');
-    expect(section).toContain('Không chạy lại các file B1–V13 riêng lẻ');
+    expect(section).toContain('Không chạy lại các file B1–V14 riêng lẻ');
     expect(section).toContain('Không cần chạy `optional/03_bootstrap_operator.sql`');
     expect(section).toContain('không xóa file đó khi reset schema');
   });
@@ -177,7 +177,7 @@ describe('operational SQL safety contracts (static, not database execution)', ()
           (match) => match[1],
         ),
       );
-    expect(tables).toHaveLength(30);
+    expect(tables).toHaveLength(31);
     const existence = verify.slice(0, verify.indexOf('MISSING_TABLES'));
     const rls = verify.slice(verify.indexOf('DECLARE\n  unprotected'), verify.indexOf('RLS_DISABLED_ON'));
     for (const name of tables) {

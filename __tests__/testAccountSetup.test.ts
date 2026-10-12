@@ -13,7 +13,14 @@ const args = ['--environment=staging', '--confirm-test-project'];
 
 describe('test account setup guards (no live Supabase writes)', () => {
   it('explains preflight permission failures without exposing raw server errors or claiming partial writes', () => {
-    for (const operation of ['READ_PROFILES', 'READ_SHOP_ADDRESS', 'READ_SERVICES', 'READ_CHECKLIST']) {
+    for (const operation of [
+      'READ_PROFILES',
+      'READ_SHOP_ADDRESS',
+      'READ_WORKING_HOURS',
+      'READ_WORKING_HOURS_VERSION',
+      'READ_SERVICES',
+      'READ_CHECKLIST',
+    ]) {
       try {
         setup.checked({ error: { code: '42501', message: 'sensitive-server-detail' } }, operation);
         throw new Error('Expected permission failure');

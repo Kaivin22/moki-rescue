@@ -1,0 +1,202 @@
+import { canCustomerCancel, isLiveStatus, STATUS_LABELS } from '../src/features/rescue/status';
+import { caseProgress, needsCompletionDecision } from '../src/features/rescue/services/caseProgress';
+import { getRescuePermissions } from '../src/features/rescue/hooks/useRescuePermissions';
+import {
+  customerCancellationReasons,
+  requiresAssistedCancellation,
+  rescueMapRegion,
+} from '../src/features/rescue/services/rescueDetailsPolicy';
+import type { IncidentReport, RequestDetails, RescueStatus } from '../src/types/rescue';
+
+describe('rescue status policy', () => {
+  it('has a user-facing label for all important confirmation states', () => {
+    expect(STATUS_LABELS.awaiting_arrival_confirmation).toContain('xác nhận');
+    expect(STATUS_LABELS.awaiting_completion).toContain('xác nhận');
+  });
+
+  it('does not let customer cancel after work begins', () => {
+    expect(canCustomerCancel('en_route')).toBe(true);
+    expect(canCustomerCancel('no_provider')).toBe(true);
+    expect(canCustomerCancel('needs_dispatch')).toBe(true);
+    expect(canCustomerCancel('arrived')).toBe(false);
+    expect(canCustomerCancel('repairing')).toBe(false);
+    expect(canCustomerCancel('completed')).toBe(false);
+  });
+
+  it('treats terminal and no-provider states as non-live', () => {
+    expect(isLiveStatus('assigned')).toBe(true);
+    expect(isLiveStatus('completed')).toBe(false);
+    expect(isLiveStatus('cancelled')).toBe(false);
+    expect(isLiveStatus('no_provider')).toBe(false);
+  });
+});
+
+const request = (
+  status: RescueStatus,
+): Pick<RequestDetails, 'status' | 'version' | 'operatorResolution' | 'attentionCodes'> => ({
+  status,
+  version: 8,
+  attentionCodes: [],
+  operatorResolution: null,
+});
+
+describe('job lifecycle guidance', () => {
+  it('tells the provider to request completion, not declare the job completed', () => {
+    expect(caseProgress(request('repairing'), 'provider', 'vi')).toContain('gửi yêu cầu hoàn tất');
+    expect(caseProgress(request('transporting'), 'provider', 'vi')).toContain('giao xe đúng điểm');
+  });
+
+  it('distinguishes provider waiting from customer action', () => {
+    expect(caseProgress(request('awaiting_completion'), 'customer', 'vi')).toContain(
+      'xác nhận hoàn tất hoặc báo chưa xong',
+    );
+    expect(caseProgress(request('awaiting_completion'), 'provider', 'vi')).toContain('không cần gửi lại');
+  });
+
+  it('does not turn a timeout into completion', () => {
+    const pending = {
+      ...request('awaiting_completion'),
+      attentionCodes: ['completion_confirmation_overdue'],
+    };
+    expect(caseProgress(pending, 'customer', 'vi')).toContain('không tự hoàn thành');
+    expect(caseProgress(pending, 'admin', 'vi')).toContain('admin cần liên hệ xác minh');
+  });
+
+  it('keeps unverified jobs visibly open without exposing staff evidence', () => {
+    const pending = {
+      ...request('awaiting_completion'),
+      operatorResolution: {
+        decision: 'unverified' as const,
+        note: 'private evidence',
+        requestVersion: 8,
+        createdAt: '2026-09-29T00:00:00Z',
+      },
+    };
+    expect(caseProgress(pending, 'provider', 'vi')).toContain('Ca vẫn mở');
+    expect(caseProgress(pending, 'customer', 'vi')).not.toContain('private evidence');
+    expect(caseProgress({ ...pending, version: 9 }, 'customer', 'vi')).not.toContain('Admin chưa xác minh');
+  });
+
+  it('explains availability after both completed and cancelled jobs', () => {
+    for (const status of ['completed', 'cancelled'] as const) {
+      expect(caseProgress(request(status), 'provider', 'vi')).toContain('Bật hoạt động trở lại');
+      expect(caseProgress(request(status), 'customer', 'vi')).not.toContain('Bật hoạt động');
+    }
+    expect(caseProgress(request('cancelled'), 'admin', 'vi')).toContain('không được tính là ca hoàn thành');
+  });
+
+  it('labels admin verified completion explicitly', () => {
+    expect(
+      caseProgress(
+        {
+          ...request('completed'),
+          operatorResolution: {
+            decision: 'verified_completed',
+            note: null,
+            requestVersion: 8,
+            createdAt: '',
+          },
+        },
+        'customer',
+        'vi',
+      ),
+    ).toContain('do admin xác minh');
+  });
+
+  it('does not allow closing completion alerts while a job remains active', () => {
+    expect(needsCompletionDecision('completion_confirmation_overdue', 'awaiting_completion')).toBe(true);
+    expect(needsCompletionDecision('completion_dispute', 'repairing')).toBe(true);
+    expect(needsCompletionDecision('completion_dispute', 'cancelled')).toBe(false);
+    expect(needsCompletionDecision('customer_incident_reported', 'completed')).toBe(false);
+  });
+
+  it('supports English for all job statuses', () => {
+    const statuses: RescueStatus[] = [
+      'searching',
+      'offered',
+      'assigned',
+      'en_route',
+      'awaiting_arrival_confirmation',
+      'arrived',
+      'diagnosing',
+      'awaiting_quote',
+      'quote_approved',
+      'repairing',
+      'transporting',
+      'awaiting_completion',
+      'needs_dispatch',
+      'no_provider',
+      'completed',
+      'cancelled',
+    ];
+    for (const status of statuses)
+      expect(caseProgress(request(status), 'admin', 'en').length).toBeGreaterThan(10);
+  });
+});
+
+describe('rescue details policy', () => {
+  it('keeps cancellation choices specific to the request stage', () => {
+    expect(customerCancellationReasons('awaiting_arrival_confirmation')).toEqual(['provider_not_present']);
+    expect(customerCancellationReasons('searching')).toContain('duplicate_request');
+    expect(customerCancellationReasons('en_route')).toContain('provider_not_present');
+    expect(requiresAssistedCancellation('diagnosing')).toBe(true);
+    expect(requiresAssistedCancellation('en_route')).toBe(false);
+  });
+
+  it('keeps the reference map on the original pickup even during transport', () => {
+    const request = {
+      activeWorkType: 'transport' as const,
+      status: 'transporting' as const,
+      pickupLatitude: 16.05,
+      pickupLongitude: 108.2,
+      destinationLatitude: 16.1,
+      destinationLongitude: 108.25,
+    };
+    expect(rescueMapRegion(request, null)).toMatchObject({ latitude: 16.05, longitude: 108.2 });
+    const region = rescueMapRegion(request, {
+      latitude: 16.08,
+      longitude: 108.23,
+      accuracyM: 10,
+      recordedAt: '2026-08-30T00:00:00.000Z',
+    });
+    expect(region?.latitude).toBeCloseTo(16.065);
+    expect(region?.longitude).toBeCloseTo(108.215);
+  });
+
+  it('keeps role-specific controls scoped to the current participant', () => {
+    const request = permissionRequest('assigned');
+    expect(getRescuePermissions('provider', 'provider-1', request).isAssignedProvider).toBe(true);
+    expect(getRescuePermissions('provider', 'provider-2', request).showProviderActions).toBe(false);
+    expect(getRescuePermissions('customer', 'customer-1', request).showCustomerActions).toBe(true);
+    expect(getRescuePermissions('admin', 'admin-1', request).isStaff).toBe(true);
+  });
+
+  it('shows incidents and retry controls only to eligible roles', () => {
+    const customerRequest = permissionRequest('assigned');
+    expect(getRescuePermissions('customer', 'customer-1', customerRequest).showIncident).toBe(true);
+    const staffRequest = permissionRequest('needs_dispatch', [incident]);
+    const staff = getRescuePermissions('admin', 'admin-1', staffRequest);
+    expect(staff.showIncident).toBe(true);
+    expect(staff.showStaffRetry).toBe(true);
+    expect(getRescuePermissions('provider', 'provider-1', staffRequest).showIncident).toBe(false);
+  });
+});
+
+function permissionRequest(status: RescueStatus, incidentReports: IncidentReport[] = []) {
+  return {
+    assignedProviderId: 'provider-1',
+    attentionCodes: [],
+    incidentReports,
+    status,
+  };
+}
+
+const incident: IncidentReport = {
+  id: 'incident-1',
+  category: 'safety',
+  description: 'Safety report',
+  status: 'open',
+  createdAt: '2026-08-30T00:00:00.000Z',
+  resolutionNote: null,
+  resolvedAt: null,
+};

@@ -1,4 +1,41 @@
+import { normalizeVietnamesePhone } from '../src/features/auth/phone';
+import { createUuid } from '../src/utils/uuid';
+import { ONBOARDING_STORAGE_KEY } from '../src/features/onboarding/onboardingStorage';
 import { accountVerification } from '@/src/features/auth/accountVerification';
+
+describe('normalizeVietnamesePhone', () => {
+  it('normalizes local Vietnamese phone numbers', () => {
+    expect(normalizeVietnamesePhone('0901 234 567')).toBe('+84901234567');
+  });
+
+  it('keeps valid E.164 numbers and rejects malformed input', () => {
+    expect(normalizeVietnamesePhone('+84901234567')).toBe('+84901234567');
+    expect(normalizeVietnamesePhone('12345')).toBeNull();
+    expect(normalizeVietnamesePhone('+841234')).toBeNull();
+  });
+});
+
+jest.mock('expo-crypto', () => {
+  let sequence = 0;
+  return {
+    randomUUID: () => `00000000-0000-4000-8000-${String(++sequence).padStart(12, '0')}`,
+  };
+});
+
+describe('createUuid', () => {
+  it('returns RFC 4122 shaped unique idempotency keys', () => {
+    const first = createUuid();
+    const second = createUuid();
+    expect(first).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    expect(second).not.toBe(first);
+  });
+});
+
+describe('onboarding storage', () => {
+  it('uses a domain-specific versioned key', () => {
+    expect(ONBOARDING_STORAGE_KEY).toBe('motorescue:onboarding:completed:v1');
+  });
+});
 
 describe('account security identity display', () => {
   it('shows a confirmed test email as verified without claiming phone verification', () => {
