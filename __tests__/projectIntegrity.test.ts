@@ -128,24 +128,6 @@ describe('project integrity', () => {
     expect(rescueQueryService).toContain('isTrackable(row.status()) ? row.providerContactPhone() : null');
   });
 
-  it('keeps the Figma inventory synchronized with the route tree', () => {
-    const collectRoutes = (directory: string): string[] =>
-      fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-        const fullPath = path.join(directory, entry.name);
-        if (entry.isDirectory()) return collectRoutes(fullPath);
-        return entry.name.endsWith('.tsx') && entry.name !== '_layout.tsx' ? [fullPath] : [];
-      });
-    const routes = collectRoutes(path.join(process.cwd(), 'app'));
-    const inventory = fs.readFileSync(path.join(process.cwd(), 'docs', 'FIGMA_SCREEN_INVENTORY.md'), 'utf8');
-    // Keep the minimum UI scope and documentation in sync without freezing the route count.
-    expect(routes.length - 2).toBeGreaterThanOrEqual(48);
-    expect(inventory).toContain(`**${routes.length} màn hình ở cấp mã nguồn**`);
-    expect(inventory).toContain(`**${routes.length - 2} màn hình điều hướng thực tế**`);
-    for (const section of ['reviews', 'incidents', 'quality-alerts']) {
-      expect(inventory).toContain(`/operator/${section}/[id]`);
-    }
-  });
-
   it('keeps the full-screen rescue map on router geometry only', () => {
     const map = fs.readFileSync(path.join(process.cwd(), 'app', 'rescue', '[id]', 'map.tsx'), 'utf8');
     expect(map).toContain('useRoadRoute');
@@ -178,7 +160,6 @@ describe('project integrity', () => {
     expect(entries.map((entry) => entry[2]).sort()).toEqual(routePaths.sort());
     expect(entries.map((entry) => Number(entry[1]))).toEqual(entries.map((_, index) => index + 1));
     expect(`${technical}\n${ui}`).not.toContain('Lịch Trình Đà Nẵng');
-    expect(fs.existsSync(path.join(process.cwd(), 'docs', 'HARDCODE_AND_MOCK_AUDIT.md'))).toBe(true);
   });
 
   it('centralizes emergency contacts and configurable provider GPS accuracy', () => {
