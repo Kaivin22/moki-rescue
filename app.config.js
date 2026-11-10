@@ -114,6 +114,10 @@ export default {
     plugins: [
       'expo-router',
       'expo-font',
+      [
+        'expo-splash-screen',
+        { backgroundColor: brand.canvas, image: './assets/branding/moki-rescue-logo.png' },
+      ],
       'expo-secure-store',
       [
         'expo-location',
