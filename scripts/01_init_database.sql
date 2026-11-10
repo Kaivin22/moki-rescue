@@ -1,9 +1,9 @@
 -- FILE TỰ SINH: node scripts/build-init-sql.cjs; không sửa riêng.
--- CÀI MỚI + KIỂM TRA schema/quyền/RLS đến V14 trong CÙNG transaction.
+-- CÀI MỚI + KIỂM TRA schema/quyền/RLS đến V19 trong CÙNG transaction.
 -- Dán TOÀN BỘ file vào Supabase SQL Editor và Run MỘT LẦN trên public trống.
 -- Kiểm tra thất bại thì transaction không commit; không bỏ qua guard để ép chạy.
 -- Không cần chạy migration backend hoặc file verify riêng.
--- Đã gồm mọi sửa lỗi đến V14 và quyền tạo tài khoản test; không chạy SQL vá lẻ.
+-- Đã gồm mọi sửa lỗi đến V19 và quyền tạo tài khoản test; không chạy SQL vá lẻ.
 -- Không seed demo/reset/Auth settings/mật khẩu; tùy chọn 02_seed_demo_teams.sql sau đó.
 -- Database đang có dữ liệu: KHÔNG chạy lại init; đọc scripts/README.md.
 -- SHA256 tính trên SQL được nhúng, UTF-8 chuẩn hóa CRLF thành LF.
@@ -2139,6 +2139,330 @@ END;
 $$;
 -- END SOURCE: V14__shop_working_hours.sql
 
+-- BEGIN SOURCE: V15__partner_enrollment.sql
+-- SHA256: d61f8075f4aad87286a412c243fbe788961ebb7509ce933759b1ae97dab22181
+-- Representative authority is separate from the global customer/provider/admin role.
+CREATE TABLE public.shop_applications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  applicant_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  name TEXT NOT NULL CHECK (char_length(name) BETWEEN 2 AND 120),
+  address TEXT NOT NULL CHECK (char_length(address) BETWEEN 5 AND 300),
+  contact_phone TEXT NOT NULL CHECK (contact_phone ~ '^\+84[0-9]{9}$'),
+  latitude DOUBLE PRECISION NOT NULL CHECK (latitude BETWEEN -90 AND 90),
+  longitude DOUBLE PRECISION NOT NULL CHECK (longitude BETWEEN -180 AND 180),
+  service_codes TEXT[] NOT NULL CHECK (cardinality(service_codes) BETWEEN 1 AND 10),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  team_id UUID REFERENCES public.rescue_teams(id),
+  review_note TEXT,
+  reviewed_by UUID REFERENCES public.profiles(id),
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK ((status = 'approved') = (team_id IS NOT NULL))
+);
+CREATE UNIQUE INDEX shop_applications_live_user ON public.shop_applications(applicant_id)
+  WHERE status IN ('pending','approved');
+CREATE TABLE public.team_representatives (
+  team_id UUID PRIMARY KEY REFERENCES public.rescue_teams(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL UNIQUE REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  approved_by UUID NOT NULL REFERENCES public.profiles(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE public.team_invitations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES public.rescue_teams(id) ON DELETE CASCADE,
+  invited_by UUID NOT NULL REFERENCES public.profiles(id),
+  invitee_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  contact_phone TEXT NOT NULL CHECK (contact_phone ~ '^\+84[0-9]{9}$'),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','declined','revoked','expired')),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  answered_at TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX team_invitations_one_pending ON public.team_invitations(team_id, invitee_id) WHERE status = 'pending';
+CREATE INDEX team_invitations_inbox ON public.team_invitations(invitee_id, created_at DESC);
+ALTER TABLE public.user_notifications DROP CONSTRAINT user_notifications_target_type_check;
+ALTER TABLE public.user_notifications ADD CONSTRAINT user_notifications_target_type_check
+  CHECK (target_type IN ('rescue','support','announcement','shop_application','team_invitation','shop'));
+ALTER TABLE public.shop_applications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.team_representatives ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.team_invitations ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.shop_applications, public.team_representatives, public.team_invitations FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.shop_applications, public.team_representatives, public.team_invitations TO motorescue_api;
+
+-- Accept the same exact international number with or without the stored leading +.
+-- Do not search substrings or return a customer directory.
+CREATE OR REPLACE FUNCTION public.api_lookup_account_by_phone(search_phone TEXT)
+RETURNS TABLE(user_id UUID, display_name TEXT, role TEXT)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  IF search_phone IS NULL OR search_phone !~ '^\+[1-9][0-9]{7,14}$' THEN
+    RAISE EXCEPTION 'INVALID_ACCOUNT_PHONE' USING ERRCODE = '22023';
+  END IF;
+  IF (SELECT COUNT(*) FROM auth.users u JOIN public.profiles p ON p.id = u.id
+      WHERE ltrim(u.phone, '+') = ltrim(search_phone, '+') AND p.is_active) > 1 THEN
+    RAISE EXCEPTION 'ACCOUNT_PHONE_NOT_UNIQUE' USING ERRCODE = '23505';
+  END IF;
+  RETURN QUERY SELECT p.id, p.display_name, p.role
+    FROM auth.users u JOIN public.profiles p ON p.id = u.id
+    WHERE ltrim(u.phone, '+') = ltrim(search_phone, '+') AND p.is_active;
+END $$;
+-- END SOURCE: V15__partner_enrollment.sql
+
+-- BEGIN SOURCE: V16__simplify_rescue_flow.sql
+-- SHA256: f489336b1d5bb6ed637d0200eba22f01568f7c8b6b8bc835587ec55167f5ff8c
+-- Initial estimate is attached to an assignment, not a payment or final invoice.
+ALTER TABLE public.rescue_requests ADD COLUMN base_price_vnd BIGINT
+  CHECK (base_price_vnd BETWEEN 0 AND 100000000);
+CREATE INDEX rescue_customer_cancelled_provider_idx
+  ON public.rescue_requests(customer_id, assigned_provider_id, cancelled_at DESC)
+  WHERE status = 'cancelled' AND cancelled_by = customer_id;
+
+CREATE FUNCTION public.api_customer_provider_cooldown(customer UUID, provider UUID, at_time TIMESTAMPTZ)
+RETURNS BOOLEAN LANGUAGE sql STABLE SET search_path = '' AS $$
+  SELECT EXISTS (SELECT 1 FROM public.rescue_requests previous
+    WHERE previous.customer_id = customer AND previous.assigned_provider_id = provider
+      AND previous.status = 'cancelled' AND previous.cancelled_by = customer
+      AND previous.cancelled_at > at_time - INTERVAL '15 minutes');
+$$;
+REVOKE ALL ON FUNCTION public.api_customer_provider_cooldown(UUID, UUID, TIMESTAMPTZ) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.api_customer_provider_cooldown(UUID, UUID, TIMESTAMPTZ) TO motorescue_api;
+
+-- Revalidate at display/accept time as well as before OSRM ranking.
+CREATE OR REPLACE FUNCTION public.api_offer_is_receivable(target_offer UUID, at_time TIMESTAMPTZ)
+RETURNS BOOLEAN LANGUAGE sql STABLE SET search_path = '' AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.dispatch_offers offer
+    JOIN public.provider_members pm ON pm.user_id = offer.provider_id AND pm.team_id = offer.team_id
+    JOIN public.rescue_requests rr ON rr.id = offer.request_id
+    WHERE offer.id = target_offer AND offer.status = 'pending' AND offer.expires_at > at_time
+      AND offer.availability_started_at = pm.available_since
+      AND public.api_provider_receiving_until(pm.user_id, at_time) IS NOT NULL
+      AND NOT public.api_customer_provider_cooldown(rr.customer_id, pm.user_id, at_time)
+  );
+$$;
+
+CREATE FUNCTION public.clear_assignment_base_price() RETURNS TRIGGER
+LANGUAGE plpgsql SET search_path = '' AS $$
+BEGIN
+  IF NEW.assigned_provider_id IS DISTINCT FROM OLD.assigned_provider_id THEN
+    NEW.base_price_vnd := NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER rescue_clear_assignment_base_price BEFORE UPDATE OF assigned_provider_id
+ON public.rescue_requests FOR EACH ROW EXECUTE FUNCTION public.clear_assignment_base_price();
+REVOKE ALL ON FUNCTION public.clear_assignment_base_price() FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.enforce_request_state_machine()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+  allowed BOOLEAN := FALSE;
+BEGIN
+  IF NEW.status = OLD.status THEN
+    RETURN NEW;
+  END IF;
+
+  allowed := CASE OLD.status
+    WHEN 'searching' THEN NEW.status IN ('offered', 'no_provider', 'cancelled')
+    WHEN 'offered' THEN NEW.status IN ('assigned', 'searching', 'no_provider', 'cancelled')
+    WHEN 'assigned' THEN NEW.status IN ('en_route', 'searching', 'needs_dispatch', 'cancelled')
+    WHEN 'en_route' THEN NEW.status IN ('awaiting_arrival_confirmation', 'searching', 'needs_dispatch', 'cancelled')
+    WHEN 'awaiting_arrival_confirmation' THEN NEW.status IN ('diagnosing', 'arrived', 'en_route', 'searching', 'needs_dispatch', 'cancelled')
+    WHEN 'arrived' THEN NEW.status IN ('diagnosing', 'needs_dispatch', 'cancelled')
+    WHEN 'diagnosing' THEN NEW.status IN ('awaiting_quote', 'repairing', 'transporting', 'needs_dispatch', 'cancelled')
+    WHEN 'awaiting_quote' THEN NEW.status IN ('repairing', 'transporting', 'diagnosing', 'quote_approved', 'needs_dispatch', 'cancelled')
+    WHEN 'quote_approved' THEN NEW.status IN ('repairing', 'transporting', 'needs_dispatch', 'cancelled')
+    WHEN 'repairing' THEN NEW.status IN ('awaiting_completion', 'needs_dispatch', 'cancelled')
+    WHEN 'transporting' THEN NEW.status IN ('awaiting_completion', 'needs_dispatch', 'cancelled')
+    WHEN 'awaiting_completion' THEN
+      NEW.status = 'completed'
+      OR (OLD.work_type = 'repair' AND NEW.status = 'repairing')
+      OR (OLD.work_type = 'transport' AND NEW.status = 'transporting')
+      OR NEW.status = 'needs_dispatch'
+      OR NEW.status = 'cancelled'
+    WHEN 'no_provider' THEN NEW.status IN ('searching', 'cancelled')
+    WHEN 'needs_dispatch' THEN NEW.status IN ('searching', 'cancelled')
+    ELSE FALSE
+  END;
+
+  IF NOT allowed THEN
+    RAISE EXCEPTION 'INVALID_REQUEST_TRANSITION_%_TO_%', OLD.status, NEW.status
+      USING ERRCODE = '23514';
+  END IF;
+
+  NEW.version := OLD.version + 1;
+  IF NEW.status = 'offered' THEN NEW.offered_at := COALESCE(NEW.offered_at, NOW()); END IF;
+  IF NEW.status = 'assigned' THEN NEW.accepted_at := COALESCE(NEW.accepted_at, NOW()); END IF;
+  IF NEW.status = 'arrived' OR (OLD.status = 'awaiting_arrival_confirmation' AND NEW.status = 'diagnosing') THEN NEW.arrived_at := COALESCE(NEW.arrived_at, NOW()); END IF;
+  IF NEW.status = 'completed' THEN NEW.completed_at := COALESCE(NEW.completed_at, NOW()); END IF;
+  IF NEW.status = 'cancelled' THEN NEW.cancelled_at := COALESCE(NEW.cancelled_at, NOW()); END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- END SOURCE: V16__simplify_rescue_flow.sql
+
+-- BEGIN SOURCE: V17__streamline_case_experience.sql
+-- SHA256: da193a5d34c8c7a1ce776de787f177236bbaed17cfbe24c927fac4b66063b19f
+-- Provider records arrival and completion; customer quote consent remains required.
+CREATE OR REPLACE FUNCTION public.enforce_request_state_machine()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+  allowed BOOLEAN := FALSE;
+BEGIN
+  IF NEW.status = OLD.status THEN
+    RETURN NEW;
+  END IF;
+
+  allowed := CASE OLD.status
+    WHEN 'searching' THEN NEW.status IN ('offered', 'no_provider', 'cancelled')
+    WHEN 'offered' THEN NEW.status IN ('assigned', 'searching', 'no_provider', 'cancelled')
+    WHEN 'assigned' THEN NEW.status IN ('en_route', 'searching', 'needs_dispatch', 'cancelled')
+    WHEN 'en_route' THEN NEW.status IN ('diagnosing', 'awaiting_arrival_confirmation', 'searching', 'needs_dispatch', 'cancelled')
+    WHEN 'awaiting_arrival_confirmation' THEN NEW.status IN ('diagnosing', 'arrived', 'en_route', 'searching', 'needs_dispatch', 'cancelled')
+    WHEN 'arrived' THEN NEW.status IN ('diagnosing', 'needs_dispatch', 'cancelled')
+    WHEN 'diagnosing' THEN NEW.status IN ('completed', 'en_route', 'awaiting_quote', 'repairing', 'transporting', 'needs_dispatch', 'cancelled')
+    WHEN 'awaiting_quote' THEN NEW.status IN ('repairing', 'transporting', 'diagnosing', 'quote_approved', 'needs_dispatch', 'cancelled')
+    WHEN 'quote_approved' THEN NEW.status IN ('repairing', 'transporting', 'needs_dispatch', 'cancelled')
+    WHEN 'repairing' THEN NEW.status IN ('completed', 'awaiting_completion', 'needs_dispatch', 'cancelled')
+    WHEN 'transporting' THEN NEW.status IN ('completed', 'awaiting_completion', 'needs_dispatch', 'cancelled')
+    WHEN 'awaiting_completion' THEN
+      NEW.status = 'completed'
+      OR (OLD.work_type = 'repair' AND NEW.status = 'repairing')
+      OR (OLD.work_type = 'transport' AND NEW.status = 'transporting')
+      OR NEW.status = 'needs_dispatch'
+      OR NEW.status = 'cancelled'
+    WHEN 'no_provider' THEN NEW.status IN ('searching', 'cancelled')
+    WHEN 'needs_dispatch' THEN NEW.status IN ('searching', 'cancelled')
+    ELSE FALSE
+  END;
+
+  IF NOT allowed THEN
+    RAISE EXCEPTION 'INVALID_REQUEST_TRANSITION_%_TO_%', OLD.status, NEW.status
+      USING ERRCODE = '23514';
+  END IF;
+
+  NEW.version := OLD.version + 1;
+  IF NEW.status = 'offered' THEN NEW.offered_at := COALESCE(NEW.offered_at, NOW()); END IF;
+  IF NEW.status = 'assigned' THEN NEW.accepted_at := COALESCE(NEW.accepted_at, NOW()); END IF;
+  IF NEW.status = 'arrived' OR (OLD.status IN ('en_route', 'awaiting_arrival_confirmation') AND NEW.status = 'diagnosing') THEN NEW.arrived_at := COALESCE(NEW.arrived_at, NOW()); END IF;
+  IF NEW.status = 'completed' THEN NEW.completed_at := COALESCE(NEW.completed_at, NOW()); END IF;
+  IF NEW.status = 'cancelled' THEN NEW.cancelled_at := COALESCE(NEW.cancelled_at, NOW()); END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+-- Remove display-only test prefixes; preserve accounts, roles and fixture identifiers.
+UPDATE public.profiles SET display_name = COALESCE(NULLIF(btrim(replace(display_name, '[TEST]', '')), ''), 'Người dùng') WHERE display_name LIKE '%[TEST]%';
+UPDATE public.provider_members SET display_name=btrim(replace(display_name, '[TEST]', '')),
+ rescue_vehicle_label=replace(rescue_vehicle_label, '[TEST] ', '') WHERE display_name LIKE '%[TEST]%' OR rescue_vehicle_label LIKE '%[TEST]%';
+UPDATE public.rescue_teams SET name=btrim(replace(name, '[TEST]', '')), base_address=replace(base_address, '[TEST] ', '') WHERE name LIKE '%[TEST]%' OR base_address LIKE '%[TEST]%';
+UPDATE auth.users SET raw_user_meta_data=jsonb_set(raw_user_meta_data, '{display_name}', to_jsonb(btrim(replace(raw_user_meta_data->>'display_name', '[TEST]', '')))) WHERE raw_user_meta_data->>'display_name' LIKE '%[TEST]%';
+UPDATE public.team_verification_checks SET note=replace(note,'[TEST] ','') WHERE note LIKE '%[TEST]%';
+UPDATE public.user_notifications SET title=replace(title,'[TEST] ',''), body=replace(body,'[TEST] ','')
+WHERE title LIKE '%[TEST]%' OR body LIKE '%[TEST]%';
+
+-- A support ticket linked to an incident belongs to that rescue case.
+CREATE FUNCTION public.notification_rescue_id(target_kind TEXT, target UUID) RETURNS UUID
+LANGUAGE sql STABLE SET search_path='' AS $$
+ SELECT CASE WHEN target_kind='rescue' THEN target WHEN target_kind='support' THEN
+   (SELECT i.request_id FROM public.support_tickets t JOIN public.incident_reports i ON i.id=t.incident_id WHERE t.id=target)
+ ELSE NULL END;
+$$;
+REVOKE ALL ON FUNCTION public.notification_rescue_id(TEXT, UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.notification_rescue_id(TEXT, UUID) TO motorescue_api;
+
+-- Keep the newest entry, preserving unread status if any merged entry was unread.
+WITH grouped AS (
+ SELECT n.id, row_number() OVER (PARTITION BY n.user_id, public.notification_rescue_id(n.target_type,n.target_id) ORDER BY n.created_at DESC,n.id DESC) AS rn,
+ bool_or(n.read_at IS NULL) OVER (PARTITION BY n.user_id, public.notification_rescue_id(n.target_type,n.target_id)) AS unread
+ FROM public.user_notifications n JOIN public.profiles p ON p.id=n.user_id AND p.role='admin'
+ WHERE public.notification_rescue_id(n.target_type,n.target_id) IS NOT NULL
+)
+UPDATE public.user_notifications n SET read_at=NULL FROM grouped g WHERE n.id=g.id AND g.rn=1 AND g.unread;
+WITH duplicates AS (
+ SELECT n.id, row_number() OVER (PARTITION BY n.user_id, public.notification_rescue_id(n.target_type,n.target_id) ORDER BY n.created_at DESC,n.id DESC) AS rn
+ FROM public.user_notifications n JOIN public.profiles p ON p.id=n.user_id AND p.role='admin'
+ WHERE public.notification_rescue_id(n.target_type,n.target_id) IS NOT NULL
+)
+DELETE FROM public.user_notifications n USING duplicates d WHERE n.id=d.id AND d.rn>1;
+UPDATE public.user_notifications n SET event_key='admin-rescue:' || public.notification_rescue_id(n.target_type,n.target_id),
+ target_id=public.notification_rescue_id(n.target_type,n.target_id), target_type='rescue'
+FROM public.profiles p WHERE p.id=n.user_id AND p.role='admin' AND public.notification_rescue_id(n.target_type,n.target_id) IS NOT NULL;
+
+CREATE FUNCTION public.group_admin_rescue_notification() RETURNS TRIGGER
+LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE rescue_id UUID;
+BEGIN
+ IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id=NEW.user_id AND role='admin') THEN RETURN NEW; END IF;
+ rescue_id := public.notification_rescue_id(NEW.target_type, NEW.target_id);
+ IF rescue_id IS NULL THEN RETURN NEW; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended('admin-rescue:' || NEW.user_id || ':' || rescue_id,0));
+ NEW.event_key := 'admin-rescue:' || rescue_id;
+ IF EXISTS (SELECT 1 FROM public.user_notifications WHERE user_id=NEW.user_id AND event_key=NEW.event_key) THEN RETURN NULL; END IF;
+ NEW.target_type := 'rescue'; NEW.target_id := rescue_id;
+ NEW.title := CASE WHEN (SELECT locale FROM public.profiles WHERE id=NEW.user_id)='en' THEN 'Rescue case needs attention' ELSE 'Ca cứu hộ cần hỗ trợ' END;
+ RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.group_admin_rescue_notification() FROM PUBLIC, anon, authenticated;
+CREATE TRIGGER group_admin_rescue_notification BEFORE INSERT ON public.user_notifications
+FOR EACH ROW EXECUTE FUNCTION public.group_admin_rescue_notification();
+-- END SOURCE: V17__streamline_case_experience.sql
+
+-- BEGIN SOURCE: V18__customer_case_contact.sql
+-- SHA256: 1d02da137b75569913c24552340f11c138eced3df9341a0c255adf272a0f6bb7
+-- Share a customer's login phone only with the assigned provider or an operator
+-- during an active assignment. Runtime still has no general auth.users access.
+CREATE FUNCTION public.api_customer_case_phone(request_id UUID, viewer_id UUID)
+RETURNS TEXT
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $$
+  SELECT CASE WHEN ltrim(account.phone, '+') ~ '^[1-9][0-9]{7,14}$'
+              THEN '+' || ltrim(account.phone, '+') ELSE NULL END
+  FROM public.rescue_requests request
+  JOIN public.profiles viewer ON viewer.id = viewer_id AND viewer.is_active
+  JOIN auth.users account ON account.id = request.customer_id
+  WHERE request.id = request_id
+    AND request.assigned_provider_id IS NOT NULL
+    AND request.status IN ('assigned', 'en_route', 'awaiting_arrival_confirmation',
+      'arrived', 'diagnosing', 'awaiting_quote', 'quote_approved', 'repairing',
+      'transporting', 'awaiting_completion')
+    AND (viewer.role = 'admin' OR
+      (viewer.role = 'provider' AND viewer.id = request.assigned_provider_id));
+$$;
+REVOKE ALL ON FUNCTION public.api_customer_case_phone(UUID, UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.api_customer_case_phone(UUID, UUID) TO motorescue_api;
+-- END SOURCE: V18__customer_case_contact.sql
+
+-- BEGIN SOURCE: V19__personal_history_and_admin_edits.sql
+-- SHA256: 72193241380f0bd1a11841c53259bb3b40aaee08fa59b4ad0c7ccefc6f898f2f
+ALTER TABLE public.user_notifications ADD COLUMN deleted_at TIMESTAMPTZ;
+GRANT INSERT ON public.service_types TO motorescue_api;
+CREATE INDEX user_notifications_visible_idx ON public.user_notifications(user_id, created_at DESC, id DESC)
+  WHERE deleted_at IS NULL;
+ALTER TABLE public.announcements ADD COLUMN withdrawn_at TIMESTAMPTZ,
+  ADD COLUMN version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0);
+
+CREATE TABLE public.hidden_request_history (
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  request_id UUID NOT NULL REFERENCES public.rescue_requests(id) ON DELETE CASCADE,
+  hidden_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, request_id)
+);
+ALTER TABLE public.hidden_request_history ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.hidden_request_history FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT ON public.hidden_request_history TO motorescue_api;
+-- END SOURCE: V19__personal_history_and_admin_edits.sql
+
 -- BEGIN TEST SETUP PERMISSIONS
 -- Explicit grants survive a reset of public and do not rely on Supabase defaults.
 -- Never grant these privileges to anon/authenticated or expose the server key in the app.
@@ -2193,7 +2517,7 @@ END;
 $setup_permissions_check$;
 
 -- BEGIN SCHEMA VERIFICATION
--- Kiểm tra trạng thái ĐẾN V14; không dùng để xác minh schema legacy chỉ ở B1.
+-- Kiểm tra trạng thái ĐẾN V19; không dùng để xác minh schema legacy chỉ ở B1.
 -- Chỉ đọc metadata và một số bất biến dữ liệu; không thay thế test RLS bằng JWT.
 
 DO $$
@@ -2209,7 +2533,8 @@ BEGIN
     'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
     'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
     'provider_dispatch_stats', 'dispatch_recovery_jobs', 'push_outbox',
-    'user_notifications', 'support_tickets', 'support_messages', 'announcements', 'team_working_hours'
+    'user_notifications', 'support_tickets', 'support_messages', 'announcements', 'team_working_hours',
+    'shop_applications', 'team_representatives', 'team_invitations', 'hidden_request_history'
   ] LOOP
     IF to_regclass('public.' || table_name) IS NULL THEN
       missing_tables := array_append(missing_tables, table_name);
@@ -2370,7 +2695,8 @@ BEGIN
       'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
       'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
       'provider_dispatch_stats', 'dispatch_recovery_jobs', 'push_outbox',
-      'user_notifications', 'support_tickets', 'support_messages', 'announcements', 'team_working_hours'
+      'user_notifications', 'support_tickets', 'support_messages', 'announcements', 'team_working_hours',
+      'shop_applications', 'team_representatives', 'team_invitations', 'hidden_request_history'
     )
     AND NOT c.relrowsecurity;
 
@@ -2711,7 +3037,7 @@ BEGIN
     RAISE EXCEPTION 'AUTH_USERS_WITHOUT_PROFILE: %', missing_profile_count;
   END IF;
 
-  IF (SELECT COUNT(*) FROM public.service_types) <> 6 THEN
+  IF (SELECT COUNT(*) FROM public.service_types WHERE code IN ('flat_tire','dead_battery','electric_battery','out_of_fuel','minor_repair','motorbike_transport')) <> 6 THEN
     RAISE EXCEPTION 'UNEXPECTED_SERVICE_CATALOG_SIZE';
   END IF;
   IF (SELECT COUNT(*) FROM public.team_verification_requirements WHERE is_active AND is_required) <> 6 THEN
@@ -2919,10 +3245,76 @@ BEGIN
 END;
 $$;
 
-SELECT 'V14 schema/security checks passed; JWT and end-to-end tests still required' AS result;
+DO $$
+DECLARE table_name TEXT; role_name TEXT;
+BEGIN
+  FOREACH table_name IN ARRAY ARRAY['shop_applications','team_representatives','team_invitations'] LOOP
+    FOREACH role_name IN ARRAY ARRAY['anon','authenticated'] LOOP
+      IF has_table_privilege(role_name, 'public.' || table_name, 'SELECT,INSERT,UPDATE,DELETE') THEN
+        RAISE EXCEPTION 'PARTNER_TABLE_EXPOSED: % %', table_name, role_name;
+      END IF;
+    END LOOP;
+    IF NOT has_table_privilege('motorescue_api', 'public.' || table_name, 'SELECT')
+      OR NOT has_table_privilege('motorescue_api', 'public.' || table_name, 'INSERT')
+      OR NOT has_table_privilege('motorescue_api', 'public.' || table_name, 'UPDATE') THEN
+      RAISE EXCEPTION 'PARTNER_RUNTIME_GRANT_MISSING: %', table_name;
+    END IF;
+  END LOOP;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+      AND table_name = 'rescue_requests' AND column_name = 'base_price_vnd') THEN
+    RAISE EXCEPTION 'BASE_PRICE_COLUMN_MISSING';
+  END IF;
+  IF to_regprocedure('public.api_customer_provider_cooldown(uuid,uuid,timestamp with time zone)') IS NULL THEN
+    RAISE EXCEPTION 'CUSTOMER_PROVIDER_COOLDOWN_MISSING';
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='group_admin_rescue_notification' AND NOT tgisinternal) THEN
+    RAISE EXCEPTION 'ADMIN_CASE_NOTIFICATION_GROUPING_MISSING';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.user_notifications n JOIN public.profiles p ON p.id=n.user_id
+    WHERE p.role='admin' AND n.target_type='rescue' GROUP BY n.user_id,n.target_id HAVING COUNT(*)>1) THEN
+    RAISE EXCEPTION 'DUPLICATE_ADMIN_CASE_NOTIFICATIONS';
+  END IF;
+END $$;
+DO $customer_contact_contract$
+BEGIN
+  IF to_regprocedure('public.api_customer_case_phone(uuid,uuid)') IS NULL THEN
+    RAISE EXCEPTION 'V18_CUSTOMER_CONTACT_MISSING';
+  END IF;
+  IF NOT has_function_privilege('motorescue_api', 'public.api_customer_case_phone(uuid,uuid)', 'EXECUTE')
+    OR has_function_privilege('anon', 'public.api_customer_case_phone(uuid,uuid)', 'EXECUTE')
+    OR has_function_privilege('authenticated', 'public.api_customer_case_phone(uuid,uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'V18_CUSTOMER_CONTACT_GRANTS_INVALID';
+  END IF;
+END;
+$customer_contact_contract$;
+DO $personal_history_contract$
+BEGIN
+  IF to_regclass('public.hidden_request_history') IS NULL THEN RAISE EXCEPTION 'V19_HISTORY_MISSING'; END IF;
+  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid='public.hidden_request_history'::regclass)
+    OR has_table_privilege('anon','public.hidden_request_history','SELECT')
+    OR has_table_privilege('authenticated','public.hidden_request_history','SELECT')
+    OR has_table_privilege('authenticated','public.hidden_request_history','INSERT')
+    OR NOT has_table_privilege('motorescue_api','public.hidden_request_history','SELECT')
+    OR NOT has_table_privilege('motorescue_api','public.hidden_request_history','INSERT')
+    OR NOT has_table_privilege('motorescue_api','public.service_types','INSERT') THEN
+    RAISE EXCEPTION 'V19_HISTORY_GRANTS_INVALID';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='user_notifications' AND column_name='deleted_at')
+    OR NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='announcements' AND column_name='withdrawn_at')
+    OR NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='announcements' AND column_name='version') THEN
+    RAISE EXCEPTION 'V19_NOTIFICATION_COLUMNS_MISSING';
+  END IF;
+END;
+$personal_history_contract$;
+SELECT 'V19 schema/security checks passed; JWT and end-to-end tests still required' AS result;
 
 -- END SCHEMA VERIFICATION
 
 COMMIT;
 
-SELECT 'Database initialized through V14; schema/security checks passed. Optional: 02_seed_demo_teams.sql' AS result;
+SELECT 'Database initialized through V19; schema/security checks passed. Optional: 02_seed_demo_teams.sql' AS result;

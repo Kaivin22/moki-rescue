@@ -122,6 +122,34 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     }
 
     @Test
+    void cancelledProviderIsExcludedOnlyForThatCustomerForFifteenMinutes() {
+        Actor customer = createActor("customer");
+        Actor otherCustomer = createActor("customer");
+        UUID team = createTeam();
+        addCapability(team);
+        var provider = createProvider(team, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        UUID oldRequest = insertRequest(customer, "assigned", provider);
+        jdbc.update("UPDATE public.rescue_requests SET status = 'cancelled', cancelled_by = ? WHERE id = ?",
+                customer.id(), oldRequest);
+        assertThat(runtimeJdbc.queryForObject("SELECT public.api_customer_provider_cooldown(?, ?, NOW())",
+                Boolean.class, customer.id(), provider.actor().id())).isTrue();
+        assertThat(runtimeJdbc.queryForObject("SELECT public.api_customer_provider_cooldown(?, ?, NOW())",
+                Boolean.class, otherCustomer.id(), provider.actor().id())).isFalse();
+        UUID newRequest = insertRequest(customer, "searching", null);
+        stubSuccessfulRoutes();
+        matchingDispatch.match(newRequest);
+        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?",
+                String.class, newRequest)).isEqualTo("no_provider");
+        jdbc.update("UPDATE public.rescue_requests SET cancelled_at = NOW() - INTERVAL '15 minutes' WHERE id = ?", oldRequest);
+        assertThat(runtimeJdbc.queryForObject("SELECT public.api_customer_provider_cooldown(?, ?, NOW())",
+                Boolean.class, customer.id(), provider.actor().id())).isFalse();
+        matchingDispatch.retry(newRequest);
+        matchingDispatch.match(newRequest);
+        assertThat(jdbc.queryForObject("SELECT provider_id FROM public.dispatch_offers WHERE request_id = ?",
+                UUID.class, newRequest)).isEqualTo(provider.actor().id());
+    }
+
+    @Test
     void receivingCalendarUsesVietnamTimeAndHalfOpenOvernightWeekBoundaries() {
         UUID shop = createTeam();
         jdbc.update("DELETE FROM public.team_working_hours WHERE team_id = ?", shop);
@@ -211,7 +239,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         hours.save(admin, shop, new WorkingHoursService.Update(true, before.version(), before.days()));
         matchingDispatch.expireOffers();
         assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, request)).isEqualTo("assigned");
-        lifecycleService().act(provider.actor(), request, new StateActionRequest("start_trip", null, null, null, requestVersion(request)));
+        lifecycleService().act(provider.actor(), request, new StateActionRequest("start_trip", null, null, null, requestVersion(request), 50000L));
         assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, request)).isEqualTo("en_route");
     }
 
@@ -391,7 +419,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
                 new StateActionRequest("request_completion", null, null, null, 1)));
 
         lifecycle.act(provider.actor(), requestId,
-                new StateActionRequest("start_trip", null, null, null, 1));
+                new StateActionRequest("start_trip", null, null, null, 1, 50000L));
 
         Map<String, Object> state = jdbc.queryForMap(
                 "SELECT status, version FROM public.rescue_requests WHERE id = ?", requestId);
@@ -479,7 +507,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     }
 
     @Test
-    void matchingCountsCompletedCasesOfTheRequestedServiceAsExperience() {
+    void completedCasesAndLegacyExperienceSettingsCannotOutrankAFasterProvider() {
         double nearLatitude = PICKUP_LATITUDE + 0.001;
         UUID teamId = createTeam(nearLatitude, PICKUP_LONGITUDE + 0.001);
         addCapability(teamId);
@@ -520,8 +548,8 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         List<UUID> offeredProviders = jdbc.query(
                 "SELECT provider_id FROM public.dispatch_offers WHERE request_id = ?",
                 (rs, rowNum) -> rs.getObject(1, UUID.class), requestId);
-        assertThat(offeredProviders).containsExactly(experienced.actor().id());
-        assertThat(offeredProviders).doesNotContain(nearNewcomer.actor().id());
+        assertThat(offeredProviders).containsExactly(nearNewcomer.actor().id());
+        assertThat(offeredProviders).doesNotContain(experienced.actor().id());
     }
 
     @Test
@@ -537,8 +565,8 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
                 UPDATE public.service_types
                 SET matching_eta_window_seconds = 300,
                     matching_eta_weight = 0,
-                    matching_experience_weight = 1,
-                    matching_waiting_weight = 0,
+                    matching_experience_weight = 0,
+                    matching_waiting_weight = 1,
                     matching_recent_cases_weight = 0,
                     matching_experience_reference_cases = 1,
                     matching_starvation_skip_threshold = 2
@@ -547,6 +575,13 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         stubSuccessfulRoutes();
 
         for (int round = 0; round < 2; round++) {
+            // Make this provider the ordinary score winner; starvation must still break the streak.
+            jdbc.update("UPDATE public.provider_members SET available_since = NOW() - INTERVAL '2 hours' WHERE user_id = ?", experienced.actor().id());
+            jdbc.update("""
+                    INSERT INTO public.provider_dispatch_stats(provider_id, service_code, last_offered_at)
+                    VALUES (?, 'flat_tire', NOW() - INTERVAL '2 hours')
+                    ON CONFLICT (provider_id, service_code) DO UPDATE SET last_offered_at = EXCLUDED.last_offered_at
+                    """, experienced.actor().id());
             UUID requestId = insertRequest(createActor("customer"), "searching", null);
             matchingDispatch.match(requestId);
             assertThat(pendingOfferProvider(requestId)).isEqualTo(experienced.actor().id());

@@ -36,6 +36,11 @@ public class HealthController {
                       AND to_regclass('public.announcements') IS NOT NULL
                       AND to_regclass('public.team_working_hours') IS NOT NULL
                       AND NOT EXISTS (
+                        SELECT 1 FROM (VALUES ('shop_applications'), ('team_representatives'), ('team_invitations')) t(name)
+                        CROSS JOIN (VALUES ('SELECT'), ('INSERT'), ('UPDATE')) p(privilege)
+                        WHERE NOT COALESCE(has_table_privilege(current_user, to_regclass('public.' || t.name), p.privilege), FALSE)
+                      )
+                      AND NOT EXISTS (
                         SELECT 1 FROM (VALUES
                           ('rescue_teams', 'receiving_paused'),
                           ('rescue_teams', 'working_hours_version'),

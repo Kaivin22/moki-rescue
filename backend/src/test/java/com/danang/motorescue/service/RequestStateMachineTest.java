@@ -10,9 +10,9 @@ class RequestStateMachineTest {
     private final RequestStateMachine machine = new RequestStateMachine();
 
     @Test
-    void providerCannotCompleteWithoutCustomerConfirmation() {
+    void providerCompletesWorkWithoutAnExtraCustomerConfirmation() {
         assertThat(machine.next("provider", "repairing", "request_completion"))
-                .isEqualTo("awaiting_completion");
+                .isEqualTo("completed");
         assertThatThrownBy(() -> machine.next("provider", "awaiting_completion", "confirm_completion"))
                 .isInstanceOf(ApiException.class);
     }
@@ -20,7 +20,7 @@ class RequestStateMachineTest {
     @Test
     void customerControlsArrivalAndCompletionConfirmation() {
         assertThat(machine.next("customer", "awaiting_arrival_confirmation", "confirm_arrival"))
-                .isEqualTo("arrived");
+                .isEqualTo("diagnosing");
         assertThat(machine.next("customer", "awaiting_completion", "confirm_completion"))
                 .isEqualTo("completed");
     }

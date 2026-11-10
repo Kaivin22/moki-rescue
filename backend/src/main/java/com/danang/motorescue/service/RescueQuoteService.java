@@ -87,7 +87,9 @@ public class RescueQuoteService {
             boolean approved = "approve".equals(input.decision());
             jdbc.update("UPDATE public.quotes SET status = ?, decided_at = NOW() WHERE id = ? AND status = 'pending'",
                     approved ? "approved" : "rejected", quoteId);
-            String next = approved ? "quote_approved" : "diagnosing";
+            String next = approved
+                    ? ("transport".equals(quoteDecision.workType()) ? "transporting" : "repairing")
+                    : "diagnosing";
             int updated = jdbc.update("""
                     UPDATE public.rescue_requests SET status = ?, work_type = ?
                     WHERE id = ? AND status = 'awaiting_quote' AND version = ?

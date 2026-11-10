@@ -4,6 +4,7 @@ import com.danang.motorescue.model.ApiModels.ProfileResponse;
 import com.danang.motorescue.model.ApiModels.PushDeviceDeleteRequest;
 import com.danang.motorescue.model.ApiModels.PushDeviceRequest;
 import com.danang.motorescue.model.ApiModels.ServiceTypeResponse;
+import com.danang.motorescue.model.ApiModels.PartnerShopResponse;
 import com.danang.motorescue.service.ActorService;
 import com.danang.motorescue.service.CatalogService;
 import com.danang.motorescue.service.AccountService;
@@ -43,6 +44,12 @@ public class AccountController {
     List<ServiceTypeResponse> serviceTypes(@AuthenticationPrincipal Jwt jwt) {
         ActorService.Actor actor = actors.require(jwt);
         return catalog.activeServices(actor.locale());
+    }
+
+    @GetMapping("/catalog/partner-shops")
+    List<PartnerShopResponse> partnerShops(@AuthenticationPrincipal Jwt jwt) {
+        actors.require(jwt);
+        return catalog.partnerShops();
     }
 
     @PostMapping("/me/deletion-request")

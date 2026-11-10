@@ -19,7 +19,8 @@ public class InboxService {
             rs.getTimestamp("read_at") == null ? null : rs.getTimestamp("read_at").toInstant(), rs.getTimestamp("created_at").toInstant());
     private static final RowMapper<Announcement> ANNOUNCEMENT = (rs, row) -> new Announcement(
             rs.getObject("id", UUID.class), rs.getString("audience"), rs.getString("title"), rs.getString("body"),
-            rs.getInt("recipient_count"), rs.getTimestamp("created_at").toInstant());
+            rs.getInt("recipient_count"), rs.getTimestamp("created_at").toInstant(),
+            rs.getTimestamp("withdrawn_at") == null ? null : rs.getTimestamp("withdrawn_at").toInstant(), rs.getInt("version"));
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transactions;
     private final AuditService audit;
@@ -27,19 +28,55 @@ public class InboxService {
         this.jdbc = jdbc; this.transactions = transactions; this.audit = audit;
     }
     public Page<Notification> list(Actor actor, boolean unread, Instant before, UUID beforeId, int limit) {
-        return page(jdbc, "SELECT t.* FROM public.user_notifications t WHERE t.user_id = ? AND (NOT ? OR t.read_at IS NULL)",
+        return page(jdbc, "SELECT t.* FROM public.user_notifications t WHERE t.user_id = ? AND t.deleted_at IS NULL AND (NOT ? OR t.read_at IS NULL)",
                 List.of(actor.id(), unread), before, beforeId, limit, NOTIFICATION, Notification::createdAt, Notification::id);
     }
     public Count unread(Actor actor) {
-        return new Count(jdbc.queryForObject("SELECT COUNT(*) FROM public.user_notifications WHERE user_id = ? AND read_at IS NULL", Long.class, actor.id()));
+        return new Count(jdbc.queryForObject("SELECT COUNT(*) FROM public.user_notifications WHERE user_id = ? AND deleted_at IS NULL AND read_at IS NULL", Long.class, actor.id()));
     }
     public Notification detail(Actor actor, UUID id) {
-        var rows = jdbc.query("SELECT * FROM public.user_notifications WHERE id = ? AND user_id = ?", NOTIFICATION, id, actor.id());
+        var rows = jdbc.query("SELECT * FROM public.user_notifications WHERE id = ? AND user_id = ? AND deleted_at IS NULL", NOTIFICATION, id, actor.id());
         if (rows.isEmpty()) throw missing();
         return rows.get(0);
     }
     public void read(Actor actor, UUID id) {
-        if (jdbc.update("UPDATE public.user_notifications SET read_at = COALESCE(read_at, NOW()) WHERE id = ? AND user_id = ?", id, actor.id()) == 0) throw missing();
+        if (jdbc.update("UPDATE public.user_notifications SET read_at = COALESCE(read_at, NOW()) WHERE id = ? AND user_id = ? AND deleted_at IS NULL", id, actor.id()) == 0) throw missing();
+    }
+    public void delete(Actor actor, UUID id) {
+        // Keep event keys so retries do not recreate a deleted notification.
+        int changed = jdbc.update("UPDATE public.user_notifications SET deleted_at=COALESCE(deleted_at,NOW()) WHERE user_id=? AND (?::uuid IS NULL OR id=?)",
+                actor.id(), id, id);
+        if (id != null && changed == 0) throw missing();
+    }
+    public void edit(Actor actor, UUID id, EditAnnouncement input) {
+        requireAdmin(actor);
+        String title=clean(input.title(),5,160), body=clean(input.body(),10,4000);
+        transactions.executeWithoutResult(tx -> {
+            lockActor(jdbc,actor);
+            var old=jdbc.query("SELECT * FROM public.announcements WHERE id=? FOR UPDATE",ANNOUNCEMENT,id);
+            if(old.isEmpty()) throw missing();
+            var previous=old.get(0);
+            if(previous.withdrawnAt()!=null || previous.version()!=input.version()) throw conflict();
+            jdbc.update("""
+                INSERT INTO public.audit_logs(actor_id,action,entity_type,entity_id,metadata)
+                VALUES (?,'announcement.edited','announcement',?,jsonb_build_object('oldTitle',?::text,'oldBody',?::text,'version',?::int))
+                """,actor.id(),id.toString(),previous.title(),previous.body(),previous.version());
+            jdbc.update("UPDATE public.announcements SET title=?,body=?,version=version+1 WHERE id=?",title,body,id);
+            jdbc.update("UPDATE public.user_notifications SET title=?,body=?,read_at=NULL WHERE target_type='announcement' AND target_id=? AND deleted_at IS NULL",title,body,id);
+        });
+    }
+    public void withdraw(Actor actor, UUID id, int version) {
+        requireAdmin(actor);
+        transactions.executeWithoutResult(tx -> {
+            lockActor(jdbc,actor);
+            var old=jdbc.query("SELECT * FROM public.announcements WHERE id=? FOR UPDATE",ANNOUNCEMENT,id);
+            if(old.isEmpty()) throw missing();
+            if(old.get(0).withdrawnAt()!=null) return;
+            if(old.get(0).version()!=version) throw conflict();
+            jdbc.update("UPDATE public.announcements SET withdrawn_at=NOW(),version=version+1 WHERE id=?",id);
+            jdbc.update("UPDATE public.user_notifications SET deleted_at=COALESCE(deleted_at,NOW()) WHERE target_type='announcement' AND target_id=?",id);
+            audit.record(actor.id(),"announcement.withdrawn","announcement",id);
+        });
     }
     public Page<Announcement> announcements(Actor actor, Instant before, UUID beforeId, int limit) {
         requireAdmin(actor);

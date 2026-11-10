@@ -41,12 +41,14 @@ public class OperatorService {
             String verifiedByName,
             java.time.Instant verifiedAt,
             int activeProviderCount,
+            boolean hasRepresentative,
             int capabilityCount,
             int completedRequiredCount,
             int requiredCount, boolean shopInServiceArea) {
         boolean ready() {
             return shopInServiceArea && PartnerVerificationPolicy.isReady(
-                    activeProviderCount, capabilityCount, completedRequiredCount, requiredCount);
+                    hasRepresentative ? Math.max(1, activeProviderCount) : activeProviderCount,
+                    capabilityCount, completedRequiredCount, requiredCount);
         }
     }
 
@@ -356,6 +358,7 @@ public class OperatorService {
                 readiness.verifiedByName(),
                 readiness.verifiedAt(),
                 readiness.activeProviderCount(),
+                readiness.hasRepresentative(),
                 readiness.capabilityCount(),
                 readiness.completedRequiredCount(),
                 readiness.requiredCount(),
@@ -445,7 +448,7 @@ public class OperatorService {
                 }
                 if (!verificationReadiness(teamId).ready()) {
                     throw new ApiException(HttpStatus.CONFLICT, "TEAM_VERIFICATION_INCOMPLETE",
-                            "Hãy hoàn tất checklist, năng lực và ít nhất 1 cứu hộ viên trước khi xác minh đội.");
+                            "Hãy hoàn tất checklist, năng lực và có đại diện hoặc cứu hộ viên đã duyệt trước khi xác minh đội.");
                 }
             }
             int updated;
@@ -511,7 +514,7 @@ public class OperatorService {
             }
             Integer capabilityCount = jdbc.queryForObject("""
                     SELECT COUNT(*) FROM public.service_types
-                    WHERE is_active AND code = ANY (string_to_array(?, ','))
+                    WHERE code <> 'electric_battery' AND code = ANY (string_to_array(?, ','))
                     """, Integer.class, String.join(",", uniqueCodes));
             if (capabilityCount == null || capabilityCount != uniqueCodes.size()) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CAPABILITIES",
@@ -770,6 +773,9 @@ public class OperatorService {
         if (!SERVICE_ICONS.contains(input.iconName())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_SERVICE_ICON", "Icon dịch vụ không được hỗ trợ.");
         }
+        if (input.requiresDestination() && !input.requiresQuote()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_SERVICE_OPTIONS", "Dịch vụ vận chuyển cần báo giá.");
+        }
         int changed = transactions.execute(status -> {
             int updated = jdbc.update("""
                     UPDATE public.service_types
@@ -792,6 +798,8 @@ public class OperatorService {
                         SELECT team.name, team.status, team.partner_reference,
                                public.api_is_in_service_area(team.base_latitude, team.base_longitude) AS shop_in_area,
                                verifier.display_name AS verified_by_name, team.verified_at,
+                               EXISTS (SELECT 1 FROM public.team_representatives r JOIN public.profiles p
+                                 ON p.id = r.user_id WHERE r.team_id = team.id AND p.is_active) AS has_representative,
                                (SELECT COUNT(*) FROM public.provider_members member
                                 WHERE member.team_id = team.id AND member.status = 'active') AS active_provider_count,
                                (SELECT COUNT(*) FROM public.team_capabilities capability
@@ -819,6 +827,7 @@ public class OperatorService {
                             rs.getString("verified_by_name"),
                             verifiedAt == null ? null : verifiedAt.toInstant(),
                             rs.getInt("active_provider_count"),
+                            rs.getBoolean("has_representative"),
                             rs.getInt("capability_count"),
                             rs.getInt("completed_required_count"),
                             rs.getInt("required_count"), rs.getBoolean("shop_in_area"));

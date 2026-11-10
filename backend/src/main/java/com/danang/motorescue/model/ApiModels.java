@@ -18,6 +18,9 @@ public final class ApiModels {
 
     public record ProfileResponse(UUID id, String displayName, String role, String locale) {}
 
+    // Customer map data only. Never reuse the operator's team/provider response here.
+    public record PartnerShopResponse(UUID id, String name, String address, double latitude, double longitude) {}
+
     public record ServiceTypeResponse(
             String code,
             String label,
@@ -164,7 +167,9 @@ public final class ApiModels {
             List<FeedbackSummary> feedback,
             List<IncidentReportSummary> incidentReports,
             List<StatusEvent> events,
-            CaseResolutionSummary operatorResolution) {}
+            CaseResolutionSummary operatorResolution,
+            Long basePriceVnd,
+            String customerContactPhone) {}
 
     public record CaseResolutionSummary(String decision, String note, int requestVersion, Instant createdAt) {}
 
@@ -205,14 +210,20 @@ public final class ApiModels {
             int roadDistanceM,
             int etaSeconds,
             int requestVersion,
-            Instant expiresAt) {}
+            Instant expiresAt,
+            String issueDescription) {}
 
     public record StateActionRequest(
             @NotBlank @Pattern(regexp = "^[a-z_]{3,40}$") String action,
             @Pattern(regexp = "repair|transport") String workType,
             @Pattern(regexp = "^[a-z_]{3,40}$") String reasonCode,
             @Size(max = 300) String note,
-            @Min(1) Integer expectedVersion) {}
+            @Min(1) Integer expectedVersion,
+            @Min(0) @Max(100_000_000) Long basePriceVnd) {
+        public StateActionRequest(String action, String workType, String reasonCode, String note, Integer expectedVersion) {
+            this(action, workType, reasonCode, note, expectedVersion, null);
+        }
+    }
 
     public record QuoteRequest(
             @NotBlank @Size(max = 500) String description,
@@ -338,6 +349,7 @@ public final class ApiModels {
             String verifiedByName,
             Instant verifiedAt,
             int activeProviderCount,
+            boolean hasRepresentative,
             int capabilityCount,
             int completedRequiredCount,
             int requiredCount,
@@ -362,7 +374,7 @@ public final class ApiModels {
             @NotBlank @Size(min = 5, max = 300) String address) {}
 
     public record TeamCapabilitiesRequest(
-            @NotNull @Size(min = 1, max = 6)
+            @NotNull @Size(min = 1, max = 50)
             List<@Pattern(regexp = "^[a-z][a-z0-9_]{2,39}$") String> capabilityCodes) {}
 
     public record AddProviderRequest(

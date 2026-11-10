@@ -46,7 +46,11 @@ public class PushNotificationService {
     }
 
     public void notifyStaff(NotificationKind kind, String detail, UUID requestId) {
-        enqueue(null, true, kind, detail, requestId);
+        // Normal case progress belongs to its participants, never the admin inbox.
+        if (kind != NotificationKind.SUPPORT_REQUESTED) return;
+        // V17 groups the admin inbox by case. A stable push key also prevents
+        // repeated device alerts after the admin has read the inbox item.
+        enqueue(null, true, kind, "case_support", requestId);
     }
 
     int maxDeliveryAttempts() {
@@ -80,7 +84,7 @@ public class PushNotificationService {
         }
         jdbc.update("""
                 INSERT INTO public.push_outbox(device_id, request_id, request_version, kind, detail, expires_at)
-                SELECT device.id, rr.id, rr.version, ?, ?,
+                SELECT device.id, rr.id, CASE WHEN ? THEN 0 ELSE rr.version END, ?, ?,
                        CASE WHEN ? = 'NEW_OFFER' THEN COALESCE((
                          SELECT offer.expires_at FROM public.dispatch_offers offer
                          WHERE offer.request_id = rr.id AND offer.provider_id = device.user_id
@@ -92,7 +96,7 @@ public class PushNotificationService {
                 WHERE device.is_active AND profile.is_active
                   AND ((? AND profile.role = 'admin') OR device.user_id = ?)
                 ON CONFLICT (device_id, request_id, request_version, kind, detail) DO NOTHING
-                """, kind.name(), detail == null ? "" : detail, kind.name(), requestId, staff, userId);
+                """, staff, kind.name(), detail == null ? "" : detail, kind.name(), requestId, staff, userId);
     }
 
     public DeliveryResult deliver(UUID notificationId) {
@@ -220,7 +224,7 @@ public class PushNotificationService {
             case "repairing" -> "The provider started the approved repair.";
             case "transporting" -> "The provider started the approved transport.";
             case "awaiting_completion" -> "The provider requested completion confirmation.";
-            case "completed" -> "The customer confirmed request completion.";
+            case "completed" -> "The rescue case is complete. You can leave a review or report a problem.";
             default -> "Open the app to view the latest update.";
         };
     }
@@ -235,7 +239,7 @@ public class PushNotificationService {
             case "repairing" -> "Cứu hộ viên đã bắt đầu công việc sửa xe được duyệt.";
             case "transporting" -> "Cứu hộ viên đã bắt đầu vận chuyển theo báo giá được duyệt.";
             case "awaiting_completion" -> "Cứu hộ viên yêu cầu xác nhận hoàn tất.";
-            case "completed" -> "Khách đã xác nhận ca cứu hộ hoàn tất.";
+            case "completed" -> "Ca cứu hộ đã hoàn tất. Bạn có thể đánh giá hoặc báo vấn đề.";
             default -> "Mở ứng dụng để xem cập nhật mới.";
         };
     }

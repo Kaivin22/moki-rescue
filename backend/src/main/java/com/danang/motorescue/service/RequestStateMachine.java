@@ -9,15 +9,19 @@ import org.springframework.stereotype.Component;
 public class RequestStateMachine {
     private static final Map<String, Map<String, String>> PROVIDER_ACTIONS = Map.ofEntries(
             Map.entry("assigned", Map.of("start_trip", "en_route")),
-            Map.entry("en_route", Map.of("request_arrival", "awaiting_arrival_confirmation")),
+            Map.entry("en_route", Map.of("request_arrival", "diagnosing")),
+            Map.entry("awaiting_arrival_confirmation", Map.of("request_arrival", "diagnosing")),
             Map.entry("arrived", Map.of("start_diagnosis", "diagnosing")),
-            Map.entry("repairing", Map.of("request_completion", "awaiting_completion")),
-            Map.entry("transporting", Map.of("request_completion", "awaiting_completion"))
+            Map.entry("diagnosing", Map.of("request_completion", "completed")),
+            Map.entry("repairing", Map.of("request_completion", "completed")),
+            Map.entry("transporting", Map.of("request_completion", "completed")),
+            Map.entry("awaiting_completion", Map.of("request_completion", "completed"))
     );
 
     private static final Map<String, Map<String, String>> CUSTOMER_ACTIONS = Map.ofEntries(
+            Map.entry("diagnosing", Map.of("reject_arrival", "en_route")),
             Map.entry("awaiting_arrival_confirmation", Map.of(
-                    "confirm_arrival", "arrived", "reject_arrival", "en_route")),
+                    "confirm_arrival", "diagnosing", "reject_arrival", "en_route")),
             Map.entry("awaiting_completion", Map.of(
                     "confirm_completion", "completed", "reject_repair", "repairing", "reject_transport", "transporting"))
     );

@@ -26,7 +26,7 @@ Tài khoản test cần quyền tạo database, role và extension. Không dùng
 CI cài PostgreSQL/PostGIS trực tiếp trên Ubuntu 24.04 và chạy toàn bộ test. JWT/OSRM/Expo trong integration test vẫn là test double, không thay cho kiểm thử dịch vụ và thiết bị thật. Máy local chưa cài sẵn database thì cần chủ dự án chuẩn bị/phê duyệt trước; không tự cài thêm từ test.
 
 `CleanInstallBundleIntegrationTest` chạy chính `scripts/01_init_database.sql` trên database
-fixture sạch: kiểm 30 bảng, chặn chạy lại và rollback khi kiểm tra cuối thất bại.
+fixture sạch: kiểm 35 bảng, chặn chạy lại và rollback khi kiểm tra cuối thất bại.
 Kiểm thêm reset có xác nhận, giữ Auth users khi cài lại, seed 12 cửa hàng có thể
 chạy lại mà không trùng hoặc ghi đè địa chỉ; tất cả trên database fixture cô lập.
 `DatabaseMigrationIntegrationTest` chạy Flyway rồi chạy cùng khối kiểm tra schema/RLS

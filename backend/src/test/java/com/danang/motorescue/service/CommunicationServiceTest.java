@@ -33,6 +33,8 @@ class CommunicationServiceTest {
         Actor user = actor(role);
         assertThatThrownBy(() -> inbox.publish(user, new Publish(UUID.randomUUID(), "all", "Valid title", "Valid announcement content"))).isInstanceOf(ApiException.class);
         assertThatThrownBy(() -> inbox.preview(user, "all")).isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> inbox.edit(user, UUID.randomUUID(), new EditAnnouncement("Valid title", "Valid announcement content", 1))).isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> inbox.withdraw(user, UUID.randomUUID(), 1)).isInstanceOf(ApiException.class);
         assertThatThrownBy(() -> inbox.announcements(user, null, null, 30)).isInstanceOf(ApiException.class);
         assertThatThrownBy(() -> support.changeStatus(user, UUID.randomUUID(), new ChangeStatus(0L, "resolved", "Resolved note"))).isInstanceOf(ApiException.class);
         assertThatThrownBy(() -> support.reply(user, UUID.randomUUID(), new SendMessage(UUID.randomUUID(), "private", true))).isInstanceOf(ApiException.class);
@@ -52,6 +54,28 @@ class CommunicationServiceTest {
         assertThatThrownBy(() -> inbox.preview(admin, "all' OR true --")).isInstanceOf(ApiException.class);
         assertThatThrownBy(() -> support.list(admin, "bad", null, null, 30)).isInstanceOf(ApiException.class);
         assertThat(jdbc.statements).isEmpty();
+    }
+    @Test void deletingInboxAlwaysScopesOwnerAndPreservesDeduplicationKeys() {
+        UUID id = UUID.randomUUID();
+        inbox.delete(customer, id);
+        assertThat(jdbc.sql).contains("SET deleted_at=COALESCE(deleted_at,NOW())", "WHERE user_id=?").doesNotContain("DELETE FROM", "event_key=");
+        assertThat(jdbc.args).containsExactly(customer.id(), id, id);
+        inbox.delete(customer, null);
+        assertThat(jdbc.args).containsExactly(customer.id(), null, null);
+        assertThat(jdbc.sql).doesNotContain("LIMIT");
+        inbox.list(customer, false, null, null, 30);
+        assertThat(jdbc.sql).contains("t.deleted_at IS NULL");
+    }
+    @Test void editRejectsStaleOrWithdrawnAnnouncementBeforeWriting() {
+        UUID id = UUID.randomUUID();
+        jdbc.announcement = new Announcement(id,"all","Old title","Old announcement content",3,Instant.now(),null,2);
+        assertThatThrownBy(() -> inbox.edit(admin,id,new EditAnnouncement("New title","New announcement content",1)))
+                .isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo("COMMUNICATION_CHANGED"));
+        assertThat(jdbc.writes).isEmpty();
+        jdbc.announcement = new Announcement(id,"all","Old title","Old announcement content",3,Instant.now(),Instant.now(),2);
+        assertThatThrownBy(() -> inbox.edit(admin,id,new EditAnnouncement("New title","New announcement content",2))).isInstanceOf(ApiException.class);
+        inbox.withdraw(admin,id,1);
+        assertThat(jdbc.writes).isEmpty();
     }
     @Test void missingOrForeignTicketStopsBeforeReadingAnyMessages() {
         assertThatThrownBy(() -> support.messages(customer, UUID.randomUUID(), null, null, 30))
@@ -125,11 +149,12 @@ class CommunicationServiceTest {
     private Actor actor(String role) { return new Actor(UUID.randomUUID(), role, role, "vi"); }
     private Ticket ticket(String status, long version) { return new Ticket(UUID.randomUUID(), customer.id(), "Customer", null, "Subject", "Description", status, version, Instant.now(), Instant.now()); }
     private static class RecordingJdbc extends JdbcTemplate {
-        String sql; Object[] args; Ticket ticket; Message message; int count; String statusWritten;
+        String sql; Object[] args; Ticket ticket; Message message; Announcement announcement; int count; String statusWritten;
         final List<String> statements = new ArrayList<>(), writes = new ArrayList<>();
         private void record(String sql, Object[] args) { this.sql = sql; this.args = args; statements.add(sql); }
         @Override @SuppressWarnings("unchecked") public <T> List<T> query(String sql, RowMapper<T> mapper, Object... args) {
             record(sql, args);
+            if (sql.contains("public.announcements") && announcement != null) return (List<T>) List.of(announcement);
             if (sql.contains("public.support_tickets") && ticket != null) return (List<T>) List.of(ticket);
             if (sql.contains("t.author_id = ?") && message != null) return (List<T>) List.of(message);
             return List.of();

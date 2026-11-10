@@ -105,6 +105,13 @@ public class RescueCreationService {
                 resultSet -> null,
                 customerId.toString());
 
+        String currentRole = jdbc.query("SELECT role FROM public.profiles WHERE id = ? AND is_active FOR SHARE",
+                (rs, row) -> rs.getString(1), customerId).stream().findFirst().orElse(null);
+        if (!"customer".equals(currentRole)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "ROLE_REQUIRED",
+                    "Quyền tài khoản đã thay đổi. Hãy tải lại trước khi gửi yêu cầu cứu hộ.");
+        }
+
         Created existing = jdbc.query("""
                 SELECT id, service_code, vehicle_power_type, vehicle_description,
                        pickup_area_label, pickup_note, pickup_latitude, pickup_longitude,

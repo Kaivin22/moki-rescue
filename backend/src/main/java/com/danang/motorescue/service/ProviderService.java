@@ -185,10 +185,8 @@ public class ProviderService {
         return jdbc.query("""
                 SELECT offer.id, offer.request_id, rr.service_code,
                        CASE WHEN ? = 'en' THEN service.label_en ELSE service.label_vi END AS service_label,
-                       CONCAT(CASE WHEN ? = 'en' THEN 'Area near ' ELSE 'Khu vực gần ' END,
-                              ROUND(rr.pickup_latitude::NUMERIC, 2), ', ',
-                              ROUND(rr.pickup_longitude::NUMERIC, 2)) AS pickup_area_label,
-                       rr.vehicle_power_type, offer.road_distance_m,
+                       rr.pickup_area_label,
+                       rr.vehicle_power_type, rr.pickup_note AS issue_description, offer.road_distance_m,
                        offer.eta_seconds, rr.version, offer.expires_at
                 FROM public.dispatch_offers offer
                 JOIN public.rescue_requests rr ON rr.id = offer.request_id
@@ -200,8 +198,8 @@ public class ProviderService {
                 rs.getObject("id", UUID.class), rs.getObject("request_id", UUID.class),
                 rs.getString("service_code"), rs.getString("service_label"), rs.getString("pickup_area_label"),
                 rs.getString("vehicle_power_type"), rs.getInt("road_distance_m"), rs.getInt("eta_seconds"),
-                rs.getInt("version"), rs.getTimestamp("expires_at").toInstant()),
-                actor.locale(), actor.locale(), actor.id());
+                rs.getInt("version"), rs.getTimestamp("expires_at").toInstant(), rs.getString("issue_description")),
+                actor.locale(), actor.id());
     }
 
     public UUID accept(Actor actor, UUID offerId, int expectedRequestVersion) {

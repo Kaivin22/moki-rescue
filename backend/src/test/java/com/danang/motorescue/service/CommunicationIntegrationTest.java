@@ -98,6 +98,33 @@ class CommunicationIntegrationTest extends PostgisIntegrationTestSupport {
         assertThatThrownBy(() -> support.create(provider, new CreateTicket(UUID.randomUUID(), "Too many", "Please investigate this issue")))
                 .isInstanceOfSatisfying(ApiException.class, ex -> assertThat(ex.status().value()).isEqualTo(429));
     }
+    @Test void deletionIsPrivateAndEditDoesNotResurrectDeletedNotifications() {
+        UUID id = UUID.randomUUID();
+        inbox.publish(admin,new Publish(id,"customer","First title","First announcement content"));
+        UUID mine = inbox.list(customer,false,null,null,30).items().get(0).id();
+        assertThatThrownBy(() -> inbox.delete(stranger,mine)).isInstanceOf(ApiException.class);
+        inbox.delete(customer,mine);
+        inbox.delete(customer,mine);
+        inbox.edit(admin,id,new EditAnnouncement("Edited title","Edited announcement content",1));
+        assertThat(inbox.list(customer,false,null,null,30).items()).isEmpty();
+        assertThat(inbox.unread(customer).count()).isZero();
+        assertThatThrownBy(() -> inbox.detail(customer,mine)).isInstanceOf(ApiException.class);
+        assertThat(inbox.list(stranger,false,null,null,30).items()).singleElement().extracting(Notification::title).isEqualTo("Edited title");
+        assertThatThrownBy(() -> inbox.withdraw(admin,id,1)).isInstanceOf(ApiException.class);
+        inbox.withdraw(admin,id,2);
+        inbox.withdraw(admin,id,2);
+        assertThat(inbox.list(stranger,false,null,null,30).items()).isEmpty();
+        assertThat(inbox.announcement(admin,id).withdrawnAt()).isNotNull();
+        assertThatThrownBy(() -> inbox.edit(admin,id,new EditAnnouncement("Again title","Another announcement content",3))).isInstanceOf(ApiException.class);
+    }
+    @Test void deleteAllCoversUnloadedPagesWithoutAffectingOtherUsers() {
+        for(int index=0;index<4;index++) inbox.publish(admin,new Publish(UUID.randomUUID(),"customer","Notice "+index,"Announcement content "+index));
+        assertThat(inbox.list(customer,false,null,null,2).nextBefore()).isNotNull();
+        inbox.delete(customer,null);
+        assertThat(inbox.list(customer,false,null,null,2).items()).isEmpty();
+        assertThat(inbox.unread(customer).count()).isZero();
+        assertThat(inbox.list(stranger,false,null,null,30).items()).hasSize(4);
+    }
     @Test void directClientAccessHasNoPrivilegesAndRuntimeCanUseTables() {
         for (String table : new String[]{"user_notifications", "support_tickets", "support_messages", "announcements"}) {
             assertThat(owner.queryForObject("SELECT has_table_privilege('authenticated', ?, 'SELECT')", Boolean.class, "public." + table)).isFalse();

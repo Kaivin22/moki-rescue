@@ -1,6 +1,6 @@
 // SQL sources for the bundled installer and optional read-only diagnostics.
 // Never connects to a database. Keep checks here, not in the generated SQL.
-const verificationSql = String.raw`-- Kiểm tra trạng thái ĐẾN V14; không dùng để xác minh schema legacy chỉ ở B1.
+const verificationSql = String.raw`-- Kiểm tra trạng thái ĐẾN V19; không dùng để xác minh schema legacy chỉ ở B1.
 -- Chỉ đọc metadata và một số bất biến dữ liệu; không thay thế test RLS bằng JWT.
 
 DO $$
@@ -16,7 +16,8 @@ BEGIN
     'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
     'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
     'provider_dispatch_stats', 'dispatch_recovery_jobs', 'push_outbox',
-    'user_notifications', 'support_tickets', 'support_messages', 'announcements', 'team_working_hours'
+    'user_notifications', 'support_tickets', 'support_messages', 'announcements', 'team_working_hours',
+    'shop_applications', 'team_representatives', 'team_invitations', 'hidden_request_history'
   ] LOOP
     IF to_regclass('public.' || table_name) IS NULL THEN
       missing_tables := array_append(missing_tables, table_name);
@@ -177,7 +178,8 @@ BEGIN
       'reviews', 'incident_reports', 'team_quality_alerts', 'push_devices',
       'push_delivery_receipts', 'audit_logs', 'assistant_usage_events', 'api_rate_limit_windows',
       'provider_dispatch_stats', 'dispatch_recovery_jobs', 'push_outbox',
-      'user_notifications', 'support_tickets', 'support_messages', 'announcements', 'team_working_hours'
+      'user_notifications', 'support_tickets', 'support_messages', 'announcements', 'team_working_hours',
+      'shop_applications', 'team_representatives', 'team_invitations', 'hidden_request_history'
     )
     AND NOT c.relrowsecurity;
 
@@ -518,7 +520,7 @@ BEGIN
     RAISE EXCEPTION 'AUTH_USERS_WITHOUT_PROFILE: %', missing_profile_count;
   END IF;
 
-  IF (SELECT COUNT(*) FROM public.service_types) <> 6 THEN
+  IF (SELECT COUNT(*) FROM public.service_types WHERE code IN ('flat_tire','dead_battery','electric_battery','out_of_fuel','minor_repair','motorbike_transport')) <> 6 THEN
     RAISE EXCEPTION 'UNEXPECTED_SERVICE_CATALOG_SIZE';
   END IF;
   IF (SELECT COUNT(*) FROM public.team_verification_requirements WHERE is_active AND is_required) <> 6 THEN
@@ -726,7 +728,73 @@ BEGIN
 END;
 $$;
 
-SELECT 'V14 schema/security checks passed; JWT and end-to-end tests still required' AS result;
+DO $$
+DECLARE table_name TEXT; role_name TEXT;
+BEGIN
+  FOREACH table_name IN ARRAY ARRAY['shop_applications','team_representatives','team_invitations'] LOOP
+    FOREACH role_name IN ARRAY ARRAY['anon','authenticated'] LOOP
+      IF has_table_privilege(role_name, 'public.' || table_name, 'SELECT,INSERT,UPDATE,DELETE') THEN
+        RAISE EXCEPTION 'PARTNER_TABLE_EXPOSED: % %', table_name, role_name;
+      END IF;
+    END LOOP;
+    IF NOT has_table_privilege('motorescue_api', 'public.' || table_name, 'SELECT')
+      OR NOT has_table_privilege('motorescue_api', 'public.' || table_name, 'INSERT')
+      OR NOT has_table_privilege('motorescue_api', 'public.' || table_name, 'UPDATE') THEN
+      RAISE EXCEPTION 'PARTNER_RUNTIME_GRANT_MISSING: %', table_name;
+    END IF;
+  END LOOP;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+      AND table_name = 'rescue_requests' AND column_name = 'base_price_vnd') THEN
+    RAISE EXCEPTION 'BASE_PRICE_COLUMN_MISSING';
+  END IF;
+  IF to_regprocedure('public.api_customer_provider_cooldown(uuid,uuid,timestamp with time zone)') IS NULL THEN
+    RAISE EXCEPTION 'CUSTOMER_PROVIDER_COOLDOWN_MISSING';
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='group_admin_rescue_notification' AND NOT tgisinternal) THEN
+    RAISE EXCEPTION 'ADMIN_CASE_NOTIFICATION_GROUPING_MISSING';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.user_notifications n JOIN public.profiles p ON p.id=n.user_id
+    WHERE p.role='admin' AND n.target_type='rescue' GROUP BY n.user_id,n.target_id HAVING COUNT(*)>1) THEN
+    RAISE EXCEPTION 'DUPLICATE_ADMIN_CASE_NOTIFICATIONS';
+  END IF;
+END $$;
+DO $customer_contact_contract$
+BEGIN
+  IF to_regprocedure('public.api_customer_case_phone(uuid,uuid)') IS NULL THEN
+    RAISE EXCEPTION 'V18_CUSTOMER_CONTACT_MISSING';
+  END IF;
+  IF NOT has_function_privilege('motorescue_api', 'public.api_customer_case_phone(uuid,uuid)', 'EXECUTE')
+    OR has_function_privilege('anon', 'public.api_customer_case_phone(uuid,uuid)', 'EXECUTE')
+    OR has_function_privilege('authenticated', 'public.api_customer_case_phone(uuid,uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'V18_CUSTOMER_CONTACT_GRANTS_INVALID';
+  END IF;
+END;
+$customer_contact_contract$;
+DO $personal_history_contract$
+BEGIN
+  IF to_regclass('public.hidden_request_history') IS NULL THEN RAISE EXCEPTION 'V19_HISTORY_MISSING'; END IF;
+  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid='public.hidden_request_history'::regclass)
+    OR has_table_privilege('anon','public.hidden_request_history','SELECT')
+    OR has_table_privilege('authenticated','public.hidden_request_history','SELECT')
+    OR has_table_privilege('authenticated','public.hidden_request_history','INSERT')
+    OR NOT has_table_privilege('motorescue_api','public.hidden_request_history','SELECT')
+    OR NOT has_table_privilege('motorescue_api','public.hidden_request_history','INSERT')
+    OR NOT has_table_privilege('motorescue_api','public.service_types','INSERT') THEN
+    RAISE EXCEPTION 'V19_HISTORY_GRANTS_INVALID';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='user_notifications' AND column_name='deleted_at')
+    OR NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='announcements' AND column_name='withdrawn_at')
+    OR NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='announcements' AND column_name='version') THEN
+    RAISE EXCEPTION 'V19_NOTIFICATION_COLUMNS_MISSING';
+  END IF;
+END;
+$personal_history_contract$;
+SELECT 'V19 schema/security checks passed; JWT and end-to-end tests still required' AS result;
 `;
 
 const preflightSql = String.raw`-- TÙY CHỌN khi chưa rõ trạng thái database (chỉ đọc, KHÔNG tạo schema).

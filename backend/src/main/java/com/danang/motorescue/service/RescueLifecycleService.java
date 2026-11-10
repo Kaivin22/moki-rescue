@@ -78,11 +78,20 @@ public class RescueLifecycleService {
     public void act(Actor actor, UUID requestId, StateActionRequest input) {
         if (input.expectedVersion() == null) throw access.stale();
         RescueRequestData current = access.requireParticipant(actor, requestId);
+        if ("start_trip".equals(input.action()) && (input.basePriceVnd() == null
+                || input.basePriceVnd() < 0 || input.basePriceVnd() > 100_000_000)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "BASE_PRICE_REQUIRED",
+                    "Hãy nhập giá cơ bản từ 0 đến 100.000.000 đồng trước khi di chuyển.");
+        }
         boolean feedbackAction = List.of("reject_arrival", "reject_repair", "reject_transport")
                 .contains(input.action());
         if (feedbackAction) validateFeedback(input.action(), input.reasonCode(), input.note());
         String next;
         String nextWorkType = current.workType();
+        if ("request_completion".equals(input.action()) && "diagnosing".equals(current.status())) {
+            if (current.serviceRequiresQuote()) throw access.invalidAction();
+            nextWorkType = "repair";
+        }
         if ("start_work".equals(input.action())) {
             if (!"provider".equals(actor.role())) {
                 throw access.invalidAction();
@@ -118,10 +127,12 @@ public class RescueLifecycleService {
         int changed = transactions.execute(status -> {
             access.setActor(actor.id());
             int updated = jdbc.update("""
-                    UPDATE public.rescue_requests SET status = ?, work_type = ?
+                    UPDATE public.rescue_requests SET status = ?, work_type = ?,
+                        base_price_vnd = CASE WHEN ? = 'start_trip' THEN ? ELSE base_price_vnd END
                     WHERE id = ? AND version = ?
                       AND (customer_id = ? OR assigned_provider_id = ?)
-                    """, next, workTypeToPersist, requestId, input.expectedVersion(), actor.id(), actor.id());
+                    """, next, workTypeToPersist, input.action(), input.basePriceVnd(),
+                    requestId, input.expectedVersion(), actor.id(), actor.id());
             if (updated > 0 && "completed".equals(next) && current.assignedProviderId() != null) {
                 CaseClosureSupport.resolveLifecycleFlags(jdbc, requestId, actor.id());
                 jdbc.update("""
@@ -151,7 +162,8 @@ public class RescueLifecycleService {
                 }
             }
             if (updated > 0) audit.record(actor.id(), "request." + input.action(), "rescue_request", requestId);
-            if (updated > 0) notifications.notifyCounterparty(actor, requestId, NotificationKind.STATUS_CHANGED, next);
+            if (updated > 0 && !List.of("confirm_arrival", "start_diagnosis", "start_work").contains(input.action()))
+                notifications.notifyCounterparty(actor, requestId, NotificationKind.STATUS_CHANGED, next);
             return updated;
         });
         if (changed == 0) throw access.stale();

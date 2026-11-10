@@ -27,6 +27,10 @@ public class CommunicationController {
     }
     @GetMapping("/notifications/unread-count")
     public Count unread(@AuthenticationPrincipal Jwt jwt) { return inbox.unread(actors.require(jwt)); }
+    @DeleteMapping("/notifications") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAll(@AuthenticationPrincipal Jwt jwt) { inbox.delete(actors.require(jwt), null); }
+    @DeleteMapping("/notifications/{id}") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteOne(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) { inbox.delete(actors.require(jwt), id); }
     @GetMapping("/notifications/{id}")
     public Notification notification(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) { return inbox.detail(actors.require(jwt), id); }
     @PostMapping("/notifications/{id}/read") @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -67,4 +71,12 @@ public class CommunicationController {
     public Announcement announcement(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) { return inbox.announcement(actors.requireRole(jwt, "admin"), id); }
     @PostMapping("/operator/announcements") @ResponseStatus(HttpStatus.CREATED)
     public Announcement publish(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody Publish input) { return inbox.publish(actors.requireRole(jwt, "admin"), input); }
+    @PutMapping("/operator/announcements/{id}") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void edit(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody EditAnnouncement input) {
+        inbox.edit(actors.requireRole(jwt,"admin"), id, input);
+    }
+    @PostMapping("/operator/announcements/{id}/withdraw") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void withdraw(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody AnnouncementVersion input) {
+        inbox.withdraw(actors.requireRole(jwt,"admin"), id, input.version());
+    }
 }

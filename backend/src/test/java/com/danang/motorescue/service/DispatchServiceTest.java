@@ -12,30 +12,30 @@ import org.junit.jupiter.api.Test;
 
 class DispatchServiceTest {
     @Test
-    void createsEtaBandBeforeExperienceCanInfluenceOrder() {
-        Candidate nearestNewcomer = candidate("00000000-0000-0000-0000-000000000001", 0, 0, 0, 0);
-        Candidate nearbyExperienced = candidate("00000000-0000-0000-0000-000000000002", 50, 0, 0, 0);
-        Candidate farExperienced = candidate("00000000-0000-0000-0000-000000000003", 50, 0, 0, 0);
+    void createsEtaBandBeforeFairnessCanInfluenceOrder() {
+        Candidate nearest = candidate("00000000-0000-0000-0000-000000000001", 0, 0, 0);
+        Candidate nearbyWaiting = candidate("00000000-0000-0000-0000-000000000002", 0, 7200, 0);
+        Candidate farWaiting = candidate("00000000-0000-0000-0000-000000000003", 0, 7200, 0);
 
         List<Ranked> ranked = DispatchService.rankCandidates(List.of(
-                new Ranked(nearestNewcomer, route(1_000, 300)),
-                new Ranked(nearbyExperienced, route(1_500, 360)),
-                new Ranked(farExperienced, route(3_000, 900))), policy(120, 0.4, 0.6, 0, 0, 3));
+                new Ranked(nearest, route(1_000, 300)),
+                new Ranked(nearbyWaiting, route(1_500, 360)),
+                new Ranked(farWaiting, route(3_000, 900))), policy(120, 0.4, 0.6, 0, 3));
 
         assertThat(ranked).extracting(value -> value.candidate().providerId())
-                .containsExactly(nearbyExperienced.providerId(), nearestNewcomer.providerId());
+                .containsExactly(nearbyWaiting.providerId(), nearest.providerId());
         assertThat(ranked).extracting(value -> value.candidate().providerId())
-                .doesNotContain(farExperienced.providerId());
+                .doesNotContain(farWaiting.providerId());
     }
 
     @Test
     void balancesWaitingTimeAndRecentAssignmentsUsingConfiguredWeights() {
-        Candidate frequentlyOffered = candidate("00000000-0000-0000-0000-000000000001", 20, 8, 60, 0);
-        Candidate waitingLonger = candidate("00000000-0000-0000-0000-000000000002", 5, 0, 7_200, 0);
+        Candidate frequentlyOffered = candidate("00000000-0000-0000-0000-000000000001", 8, 60, 0);
+        Candidate waitingLonger = candidate("00000000-0000-0000-0000-000000000002", 0, 7_200, 0);
 
         List<Ranked> ranked = DispatchService.rankCandidates(List.of(
                 new Ranked(frequentlyOffered, route(1_000, 300)),
-                new Ranked(waitingLonger, route(1_100, 330))), policy(300, 0.2, 0, 0.4, 0.4, 3));
+                new Ranked(waitingLonger, route(1_100, 330))), policy(300, 0.2, 0.4, 0.4, 3));
 
         assertThat(ranked).extracting(value -> value.candidate().providerId())
                 .containsExactly(waitingLonger.providerId(), frequentlyOffered.providerId());
@@ -43,14 +43,14 @@ class DispatchServiceTest {
 
     @Test
     void starvationRuleOverridesScoreOnlyInsideEtaBand() {
-        Candidate normal = candidate("00000000-0000-0000-0000-000000000001", 50, 0, 7_200, 0);
-        Candidate starvedNearby = candidate("00000000-0000-0000-0000-000000000002", 0, 10, 0, 3);
-        Candidate starvedFarAway = candidate("00000000-0000-0000-0000-000000000003", 0, 0, 0, 99);
+        Candidate normal = candidate("00000000-0000-0000-0000-000000000001", 0, 7_200, 0);
+        Candidate starvedNearby = candidate("00000000-0000-0000-0000-000000000002", 10, 0, 3);
+        Candidate starvedFarAway = candidate("00000000-0000-0000-0000-000000000003", 0, 0, 99);
 
         List<Ranked> ranked = DispatchService.rankCandidates(List.of(
                 new Ranked(normal, route(1_000, 300)),
                 new Ranked(starvedNearby, route(1_500, 420)),
-                new Ranked(starvedFarAway, route(3_000, 900))), policy(180, 1, 0, 0, 0, 3));
+                new Ranked(starvedFarAway, route(3_000, 900))), policy(180, 1, 0, 0, 3));
 
         assertThat(ranked).extracting(value -> value.candidate().providerId())
                 .containsExactly(starvedNearby.providerId(), normal.providerId());
@@ -58,16 +58,35 @@ class DispatchServiceTest {
                 .doesNotContain(starvedFarAway.providerId());
     }
 
+    @Test
+    void normalizesOnlyTheThreeRemainingWeights() {
+        MatchingPolicy policy = policy(300, .55, .15, .15, 3);
+        Ranked waiting = new Ranked(candidate("00000000-0000-0000-0000-000000000001", 5, 3600, 0), route(1000, 180));
+        assertThat(DispatchService.rankingCost(waiting, 120, policy))
+                .isCloseTo((.55 * .2 + .15 * .5 + .15 * .5) / .85,
+                        org.assertj.core.data.Offset.offset(1e-12));
+        assertThat(policy(300, 0, 0, 0, 3).etaWeight()).isEqualTo(1);
+        assertThat(DispatchService.rankingCost(waiting, 120, policy(300, 0, 0, 0, 3))).isEqualTo(.2);
+    }
+
+    @Test
+    void identicalMetricsUseStableIdRegardlessOfInputOrder() {
+        Candidate first = candidate("00000000-0000-0000-0000-000000000001", 0, 100, 0);
+        Candidate second = candidate("00000000-0000-0000-0000-000000000002", 0, 100, 0);
+        assertThat(DispatchService.rankCandidates(List.of(new Ranked(second, route(1000, 300)),
+                new Ranked(first, route(1000, 300))), policy(300, .55, .15, .15, 3)))
+                .extracting(r -> r.candidate().providerId()).containsExactly(first.providerId(), second.providerId());
+    }
+
     private static Candidate candidate(
             String providerId,
-            int completedServiceCount,
             int recentAcceptedCount,
             long waitingSeconds,
             int consecutiveSkips) {
         UUID id = UUID.fromString(providerId);
         return new Candidate(
                 id, UUID.randomUUID(), 16.0, 108.0,
-                completedServiceCount, recentAcceptedCount, waitingSeconds, consecutiveSkips);
+                recentAcceptedCount, waitingSeconds, consecutiveSkips);
     }
 
     private static RoadRoute route(int distanceMeters, int durationSeconds) {
@@ -77,17 +96,14 @@ class DispatchServiceTest {
     private static MatchingPolicy policy(
             int etaWindowSeconds,
             double etaWeight,
-            double experienceWeight,
             double waitingWeight,
             double recentCasesWeight,
             int starvationThreshold) {
         return new MatchingPolicy(
                 etaWindowSeconds,
                 etaWeight,
-                experienceWeight,
                 waitingWeight,
                 recentCasesWeight,
-                50,
                 7_200,
                 7,
                 10,

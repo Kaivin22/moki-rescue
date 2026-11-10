@@ -15,7 +15,10 @@ public final class CommunicationModels {
     public record Message(UUID id, UUID authorId, String authorName, String authorRole, String body,
             boolean internal, Instant createdAt) {}
     public record Announcement(UUID id, String audience, String title, String body,
-            int recipientCount, Instant createdAt) {}
+            int recipientCount, Instant createdAt, Instant withdrawnAt, int version) {}
+    public record EditAnnouncement(@NotBlank @Size(min=5,max=160) String title,
+            @NotBlank @Size(min=10,max=4000) String body, @Min(1) int version) {}
+    public record AnnouncementVersion(@Min(1) int version) {}
     public record Count(long count) {}
     public record CreateTicket(@NotNull UUID id, @NotBlank @Size(min = 5, max = 160) String subject,
             @NotBlank @Size(min = 10, max = 4000) String description) {}

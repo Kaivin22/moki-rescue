@@ -8,12 +8,12 @@ không tự cài PostgreSQL/PostGIS, reset database hoặc chuyển app sang má
 
 | Thứ tự | File                     | Công dụng                                                    |
 | ------ | ------------------------ | ------------------------------------------------------------ |
-| 1      | `01_init_database.sql`   | Tạo schema đến V14, cấp quyền, kiểm tra bảo mật trước COMMIT |
+| 1      | `01_init_database.sql`   | Tạo schema đến V19, cấp quyền, kiểm tra bảo mật trước COMMIT |
 | 2      | `02_seed_demo_teams.sql` | Tùy chọn: 12 cửa hàng mô phỏng, không phải 12 tài khoản      |
 
-**Không chạy lại các file B1–V14 riêng lẻ** sau file 01. Migration backend là nguồn
+**Không chạy lại các file B1–V19 riêng lẻ** sau file 01. Migration backend là nguồn
 để sinh bộ cài và giữ lịch sử Flyway, không phải bộ SQL thứ hai phải chạy.
-File 01 gồm 30 bảng, thông báo/hỗ trợ, địa chỉ cửa hàng, phạm vi xe máy xăng,
+File 01 gồm 35 bảng, thông báo/hỗ trợ, lịch sử ẩn theo tài khoản, địa chỉ cửa hàng, phạm vi xe máy xăng,
 quyền tạo tài khoản demo và kiểm tra schema/RLS; không cần file verify riêng.
 
 ## Chạy lại từ đầu trên project test
@@ -27,7 +27,7 @@ quyền tạo tài khoản demo và kiểm tra schema/RLS; không cần file ver
    Chỉ khôi phục được từ backup; không dùng production/project chung.
    Auth users và mật khẩu database được giữ; hồ sơ/quyền app cần thiết lập lại.
 3. Chạy TOÀN BỘ `01_init_database.sql` một lần bằng chủ schema trong SQL Editor.
-   Thành công: `Database initialized through V14; schema/security checks passed...`.
+   Thành công: `Database initialized through V19; schema/security checks passed...`.
 4. Muốn thêm 12 cửa hàng mẫu: đổi `deployment_environment` trong `02_seed_demo_teams.sql`
    thành `staging` trong bản chạy rồi chạy toàn bộ. Có thể bỏ qua nếu chỉ cần 3 cửa hàng
    của bộ tài khoản kiểm thử bên dưới.
@@ -64,7 +64,7 @@ không commit. Script tái sử dụng đúng fixture có đánh dấu, không n
 khác, tự đổi mật khẩu hoặc kích hoạt lại người bị từ chối/đình chỉ.
 Mất file mật khẩu nhưng Auth users còn: khôi phục file hoặc xử lý trong Dashboard.
 
-Script tạo 3 cửa hàng [TEST] đã duyệt, 4 cứu hộ viên active; thành viên mới offline.
+Script tạo 3 cửa hàng đã duyệt, 4 cứu hộ viên active; thành viên mới offline.
 Địa chỉ/tọa độ, trạng thái, năng lực đã chỉnh và mật khẩu cũ không bị ghi đè.
 Ba tài khoản cứu hộ mới dùng cùng mật khẩu đã lưu của cứu hộ viên 1, chỉ trong fixture.
 **Không cần chạy `optional/03_bootstrap_operator.sql`** với bộ tài khoản này.

@@ -69,6 +69,9 @@ public class RescueQueryService {
                 ? "rr.status IN ('completed', 'cancelled')"
                 : "rr.status NOT IN ('completed', 'cancelled')";
         String cursorFilter = before == null ? "TRUE" : "(rr.requested_at, rr.id) < (?, ?)";
+        String personalFilter = history && !"admin".equals(actor.role())
+                ? "NOT EXISTS (SELECT 1 FROM public.hidden_request_history h WHERE h.request_id=rr.id AND h.user_id=?)"
+                : "TRUE";
         int limit = Math.max(1, Math.min(requestedLimit, policy.requestListLimit()));
         String sql = """
                 SELECT rr.id, rr.status, rr.service_code,
@@ -82,10 +85,10 @@ public class RescueQueryService {
                        rr.version, rr.requested_at, rr.updated_at
                 FROM public.rescue_requests rr
                 JOIN public.service_types service ON service.code = rr.service_code
-                WHERE %s AND %s AND %s
+                WHERE %s AND %s AND %s AND %s
                 ORDER BY rr.requested_at DESC, rr.id DESC
                 LIMIT ?
-                """.formatted(visibility, statusFilter, cursorFilter);
+                """.formatted(visibility, statusFilter, cursorFilter, personalFilter);
         List<Object> args = new ArrayList<>();
         args.add(actor.locale());
         if ("customer".equals(actor.role()) || "provider".equals(actor.role())) args.add(actor.id());
@@ -93,6 +96,7 @@ public class RescueQueryService {
             args.add(Timestamp.from(before));
             args.add(beforeId);
         }
+        if (history && !"admin".equals(actor.role())) args.add(actor.id());
         args.add(limit);
         return jdbc.query(sql, (rs, rowNum) -> new RequestCard(
                 rs.getObject("id", UUID.class), rs.getString("status"), rs.getString("service_code"),
@@ -176,6 +180,12 @@ public class RescueQueryService {
         boolean maskClosedProviderLocation = "provider".equals(actor.role()) && !isTrackable(row.status());
         boolean maskOperationalCancellation = "operational".equals(row.cancellationStage()) && !staff;
         String visibleProviderContactPhone = isTrackable(row.status()) ? row.providerContactPhone() : null;
+        String customerContactPhone = null;
+        if (isTrackable(row.status()) && row.assignedProviderId() != null
+                && (staff || ("provider".equals(actor.role()) && actor.id().equals(row.assignedProviderId())))) {
+            customerContactPhone = jdbc.queryForObject(
+                    "SELECT public.api_customer_case_phone(?, ?)", String.class, requestId, actor.id());
+        }
         double visibleLatitude = maskClosedProviderLocation ? roundCoordinate(row.pickupLatitude()) : row.pickupLatitude();
         double visibleLongitude = maskClosedProviderLocation ? roundCoordinate(row.pickupLongitude()) : row.pickupLongitude();
         return new RequestDetails(
@@ -196,7 +206,9 @@ public class RescueQueryService {
                 row.lateCancellation(), staff ? row.providerNearPickupOnCancel() : null,
                 row.version(), row.requestedAt(), row.updatedAt(), providerRating, teamRating,
                 quote, review, location, providerLocationStatus, attentionCodes, feedback, incidents, events,
-                operatorResolution);
+                operatorResolution, jdbc.queryForObject(
+                    "SELECT base_price_vnd FROM public.rescue_requests WHERE id = ?", Long.class, requestId),
+                customerContactPhone);
     }
 
     public RoadRouteResponse roadRoute(Actor actor, UUID requestId) {

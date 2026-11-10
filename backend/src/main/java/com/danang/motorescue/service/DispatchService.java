@@ -31,7 +31,6 @@ public class DispatchService {
             UUID teamId,
             double latitude,
             double longitude,
-            int completedServiceCount,
             int recentAcceptedCount,
             long waitingSeconds,
             int consecutiveSkips) {}
@@ -41,10 +40,8 @@ public class DispatchService {
     record MatchingPolicy(
             int etaWindowSeconds,
             double etaWeight,
-            double experienceWeight,
             double waitingWeight,
             double recentCasesWeight,
-            int experienceReferenceCases,
             int waitingReferenceSeconds,
             int recentWindowDays,
             int recentReferenceCases,
@@ -53,22 +50,18 @@ public class DispatchService {
         MatchingPolicy {
             etaWindowSeconds = Math.max(60, Math.min(etaWindowSeconds, 3_600));
             double safeEtaWeight = safeWeight(etaWeight);
-            double safeExperienceWeight = safeWeight(experienceWeight);
             double safeWaitingWeight = safeWeight(waitingWeight);
             double safeRecentCasesWeight = safeWeight(recentCasesWeight);
-            double totalWeight = safeEtaWeight + safeExperienceWeight + safeWaitingWeight + safeRecentCasesWeight;
+            double totalWeight = safeEtaWeight + safeWaitingWeight + safeRecentCasesWeight;
             if (totalWeight == 0) {
                 etaWeight = 1;
-                experienceWeight = 0;
                 waitingWeight = 0;
                 recentCasesWeight = 0;
             } else {
                 etaWeight = safeEtaWeight / totalWeight;
-                experienceWeight = safeExperienceWeight / totalWeight;
                 waitingWeight = safeWaitingWeight / totalWeight;
                 recentCasesWeight = safeRecentCasesWeight / totalWeight;
             }
-            experienceReferenceCases = Math.max(1, Math.min(experienceReferenceCases, 10_000));
             waitingReferenceSeconds = Math.max(60, Math.min(waitingReferenceSeconds, 604_800));
             recentWindowDays = Math.max(1, Math.min(recentWindowDays, 90));
             recentReferenceCases = Math.max(1, Math.min(recentReferenceCases, 1_000));
@@ -158,8 +151,6 @@ public class DispatchService {
                 .thenComparingInt(value -> value.route().distanceMeters())
                 .thenComparing(Comparator.comparingLong(
                         (Ranked value) -> value.candidate().waitingSeconds()).reversed())
-                .thenComparing(Comparator.comparingInt(
-                        (Ranked value) -> value.candidate().completedServiceCount()).reversed())
                 .thenComparing(value -> value.candidate().providerId()))
                 .toList();
     }
@@ -168,10 +159,6 @@ public class DispatchService {
         double etaCost = Math.min(
                 (double) Math.max(0, candidate.route().durationSeconds() - bestEtaSeconds)
                         / policy.etaWindowSeconds(),
-                1);
-        double experienceCost = 1 - Math.min(
-                (double) Math.max(0, candidate.candidate().completedServiceCount())
-                        / policy.experienceReferenceCases(),
                 1);
         double waitingCost = 1 - Math.min(
                 (double) Math.max(0, candidate.candidate().waitingSeconds())
@@ -182,7 +169,6 @@ public class DispatchService {
                         / policy.recentReferenceCases(),
                 1);
         return policy.etaWeight() * etaCost
-                + policy.experienceWeight() * experienceCost
                 + policy.waitingWeight() * waitingCost
                 + policy.recentCasesWeight() * recentCasesCost;
     }
@@ -300,10 +286,8 @@ public class DispatchService {
                                rr.pickup_latitude, rr.pickup_longitude,
                                service.matching_eta_window_seconds,
                                service.matching_eta_weight,
-                               service.matching_experience_weight,
                                service.matching_waiting_weight,
                                service.matching_recent_cases_weight,
-                               service.matching_experience_reference_cases,
                                service.matching_waiting_reference_seconds,
                                service.matching_recent_window_days,
                                service.matching_recent_reference_cases,
@@ -318,10 +302,8 @@ public class DispatchService {
                         new MatchingPolicy(
                                 rs.getInt("matching_eta_window_seconds"),
                                 rs.getDouble("matching_eta_weight"),
-                                rs.getDouble("matching_experience_weight"),
                                 rs.getDouble("matching_waiting_weight"),
                                 rs.getDouble("matching_recent_cases_weight"),
-                                rs.getInt("matching_experience_reference_cases"),
                                 rs.getInt("matching_waiting_reference_seconds"),
                                 rs.getInt("matching_recent_window_days"),
                                 rs.getInt("matching_recent_reference_cases"),
@@ -333,13 +315,6 @@ public class DispatchService {
     private List<Candidate> eligibleCandidates(RequestPoint request) {
         return jdbc.query("""
                 SELECT pm.user_id, pm.team_id, team.base_latitude, team.base_longitude,
-                       (
-                         SELECT COUNT(*)::INTEGER
-                         FROM public.rescue_requests completed
-                         WHERE completed.assigned_provider_id = pm.user_id
-                           AND completed.service_code = ?
-                           AND completed.status = 'completed'
-                       ) AS completed_service_count,
                        (
                          SELECT COUNT(*)::INTEGER
                          FROM public.dispatch_offers accepted_offer
@@ -367,6 +342,7 @@ public class DispatchService {
                 LEFT JOIN public.provider_dispatch_stats stats
                   ON stats.provider_id = pm.user_id AND stats.service_code = ?
                 WHERE pm.status = 'active'
+                  AND NOT public.api_customer_provider_cooldown(rr.customer_id, pm.user_id, statement_timestamp())
                   AND rr.vehicle_power_type = 'gasoline' AND rr.service_code <> 'electric_battery'
                   AND pm.is_available
                   AND public.api_provider_receiving_until(pm.user_id, statement_timestamp()) IS NOT NULL
@@ -400,11 +376,10 @@ public class DispatchService {
                         rs.getObject("team_id", UUID.class),
                         rs.getDouble("base_latitude"),
                         rs.getDouble("base_longitude"),
-                        rs.getInt("completed_service_count"),
                         rs.getInt("recent_accepted_count"),
                         rs.getLong("waiting_seconds"),
                         rs.getInt("consecutive_skips")),
-                request.serviceCode(), request.serviceCode(), request.policy().recentWindowDays(),
+                request.serviceCode(), request.policy().recentWindowDays(),
                 request.serviceCode(), request.id(), request.serviceCode());
     }
 
@@ -426,6 +401,8 @@ public class DispatchService {
                   AND public.api_provider_receiving_until(pm.user_id, statement_timestamp()) IS NOT NULL
                   AND profile.role = 'provider' AND profile.is_active AND team.status = 'verified'
                   AND team.base_latitude = ? AND team.base_longitude = ?
+                  AND NOT public.api_customer_provider_cooldown(
+                    (SELECT customer_id FROM public.rescue_requests WHERE id = ?), pm.user_id, statement_timestamp())
                   AND public.api_is_in_service_area(team.base_latitude, team.base_longitude)
                   AND EXISTS (SELECT 1 FROM public.team_capabilities cap
                     WHERE cap.team_id = pm.team_id AND cap.service_code = ? AND cap.is_active)
@@ -435,7 +412,7 @@ public class DispatchService {
                 FOR UPDATE OF pm
                 """, (rs, row) -> rs.getObject("user_id", UUID.class),
                 selected.candidate().providerId(), selected.candidate().teamId(),
-                selected.candidate().latitude(), selected.candidate().longitude(), request.serviceCode());
+                selected.candidate().latitude(), selected.candidate().longitude(), request.id(), request.serviceCode());
         if (stillEligible.isEmpty()) return false;
 
         // A separate statement AFTER obtaining the provider lock is intentional:

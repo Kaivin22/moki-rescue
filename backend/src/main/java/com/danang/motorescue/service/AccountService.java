@@ -28,6 +28,12 @@ public class AccountService {
         }
         transactions.executeWithoutResult(status -> {
             jdbc.query("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", rs -> null, actor.id().toString());
+            jdbc.queryForObject("SELECT id FROM public.profiles WHERE id = ? FOR UPDATE", UUID.class, actor.id());
+            if (Boolean.TRUE.equals(jdbc.queryForObject(
+                    "SELECT EXISTS(SELECT 1 FROM public.team_representatives WHERE user_id = ?)", Boolean.class, actor.id()))) {
+                throw new ApiException(HttpStatus.CONFLICT, "REPRESENTATIVE_DELETION_REQUIRES_HANDOVER",
+                        "Người đại diện cần liên hệ admin bàn giao cửa hàng trước khi xóa tài khoản.");
+            }
             Boolean hasActiveWork = jdbc.queryForObject("""
                     SELECT EXISTS(
                       SELECT 1 FROM public.rescue_requests
