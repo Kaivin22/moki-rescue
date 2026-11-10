@@ -1,4 +1,4 @@
-/* Local development only. No installs, migrations, Docker, or firewall changes. */
+/* Local development only. No installs, migrations, or firewall changes. */
 /* global __dirname */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -41,19 +41,26 @@ async function healthy(base, suffix = '/api/health/ready') {
 
 async function main() {
   process.chdir(root);
-  if (fs.existsSync('.env.local')) process.loadEnvFile('.env.local');
   if (fs.existsSync('.env')) process.loadEnvFile('.env');
   if (process.env.APP_ENV === 'production' || process.env.EAS_BUILD_PROFILE === 'production')
     throw new Error('This launcher is for local development only.');
   const args = process.argv.slice(2);
   const backendOnly = args.includes('--backend');
   const frontendOnly = args.includes('--frontend-only');
+  const dockerMode = process.env.DEV_BACKEND_MODE === 'docker' || args.includes('--docker');
+  const dockerConfig = dockerMode
+    ? require('node:util').parseEnv(fs.readFileSync('.env.docker.local', 'utf8'))
+    : {};
   const addresses = lanAddresses(os.networkInterfaces());
-  const port = process.env.PORT || '8080';
+  const port = dockerMode ? dockerConfig.BACKEND_HOST_PORT || '8082' : process.env.PORT || '8080';
   if (!/^\d{1,5}$/.test(port) || +port < 1 || +port > 65535) throw new Error('Invalid PORT.');
   const apiUrl = backendOnly
     ? `http://127.0.0.1:${port}`
-    : resolveApiUrl(process.env.EXPO_PUBLIC_API_URL, addresses, port);
+    : resolveApiUrl(
+        dockerMode ? `http://localhost:${port}` : process.env.EXPO_PUBLIC_API_URL,
+        addresses,
+        port,
+      );
   process.env.EXPO_PUBLIC_API_URL = apiUrl;
   process.env.OSRM_MOTORBIKE_BASE_URL ||= 'http://127.0.0.1:5000';
   process.env.SPRING_FLYWAY_ENABLED = 'false';
@@ -74,8 +81,30 @@ async function main() {
   };
   process.on('SIGINT', () => stop());
   process.on('SIGTERM', () => stop());
+  if (dockerMode && !frontendOnly) {
+    console.log('Starting/reusing Docker backend and OSRM (no rebuild or migration)...');
+    const compose = spawnSync(
+      'docker',
+      ['compose', '--env-file', '.env.docker.local', 'up', '-d', '--no-build', 'osrm', 'backend'],
+      {
+        cwd: root,
+        env: { ...process.env, ...dockerConfig },
+        stdio: 'inherit',
+        windowsHide: true,
+      },
+    );
+    if (compose.error || compose.status !== 0)
+      throw new Error('Docker startup failed. Open Docker Desktop and check docs/DOCKER.md.');
+    const deadline = Date.now() + 90_000;
+    while (!stopping && Date.now() < deadline && !(await healthy(apiUrl)))
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
   const ready = await healthy(apiUrl);
   if (!ready) {
+    if (dockerMode)
+      throw new Error(
+        `Docker API not ready at ${apiUrl}. Check container logs and BACKEND_BIND_ADDRESS; Expo was not started.`,
+      );
     const parsed = new URL(apiUrl);
     const local = ['127.0.0.1', 'localhost', ...addresses].includes(parsed.hostname);
     if (frontendOnly || !local)
@@ -86,7 +115,7 @@ async function main() {
       throw new Error('API URL port and backend PORT differ. Fix .env before starting.');
     if (await healthy(apiUrl, '/api/health'))
       throw new Error(
-        'Backend is running but its database is not ready. Check schema/grants through V14 (docs/WORKING-HOURS.md) and backend logs; do not reset data or start a duplicate process.',
+        'Backend is running but its database is not ready. Check schema/grants through V17 (docs/RESCUE-FLOW.md) and backend logs; do not reset data or start a duplicate process.',
       );
     for (const name of [
       'SPRING_DATASOURCE_URL',
@@ -157,7 +186,9 @@ async function main() {
     if (!backend) console.log('Reusing an already running backend.');
     return;
   }
-  const expoArgs = args.filter((arg) => !['--backend', '--frontend-only'].includes(arg));
+  const expoArgs = args.filter((arg) => !['--backend', '--frontend-only', '--docker'].includes(arg));
+  if (!expoArgs.some((arg) => ['--localhost', '--tunnel', '--host'].includes(arg)) && addresses.length === 1)
+    process.env.REACT_NATIVE_PACKAGER_HOSTNAME = addresses[0];
   expo = spawn(process.execPath, [path.join(root, 'node_modules/expo/bin/cli'), 'start', ...expoArgs], {
     cwd: root,
     env: process.env,
