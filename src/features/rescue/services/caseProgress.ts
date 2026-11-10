@@ -9,10 +9,7 @@ const NEXT: Record<RescueStatus, [string, string]> = {
     'Waiting for a provider to respond to the offer.',
   ],
   assigned: ['Cứu hộ viên cần bấm bắt đầu di chuyển.', 'The provider needs to start the trip.'],
-  en_route: [
-    'Cứu hộ viên đến nơi rồi gửi yêu cầu xác nhận có mặt.',
-    'The provider must arrive, then request arrival confirmation.',
-  ],
+  en_route: ['Cứu hộ viên đang đến.', 'The provider is on the way.'],
   awaiting_arrival_confirmation: [
     'Khách hàng cần xác nhận cứu hộ viên đã đến hoặc báo chưa gặp được.',
     'The customer must confirm arrival or report that the provider has not arrived.',
@@ -30,14 +27,8 @@ const NEXT: Record<RescueStatus, [string, string]> = {
     'Cứu hộ viên cần bấm bắt đầu công việc; vận chuyển cần có điểm giao.',
     'The provider needs to start work; transport requires a destination.',
   ],
-  repairing: [
-    'Cứu hộ viên sửa xong thì gửi yêu cầu hoàn tất. Ca chưa được tính là hoàn thành.',
-    'After repair, the provider requests completion. The job is not completed yet.',
-  ],
-  transporting: [
-    'Sau khi giao xe đúng điểm, cứu hộ viên gửi yêu cầu hoàn tất.',
-    'After delivering the vehicle to the agreed destination, the provider requests completion.',
-  ],
+  repairing: ['Cứu hộ viên đang sửa xe.', 'The provider is repairing the motorcycle.'],
+  transporting: ['Cứu hộ viên đang vận chuyển xe.', 'The provider is transporting the motorcycle.'],
   awaiting_completion: [
     'Khách hàng cần kiểm tra kết quả rồi xác nhận hoàn tất hoặc báo chưa xong. Hết thời gian chờ không tự hoàn thành ca.',
     'The customer must check the result and confirm completion or report unfinished work. A timeout does not complete the job.',

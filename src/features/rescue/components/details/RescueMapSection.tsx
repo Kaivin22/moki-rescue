@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MapView, Marker, Polyline } from '@/src/components/MapWrapper';
 import { Colors } from '@/src/constants/colors';
-import { displayPhone, type RescueMapRegion } from '@/src/features/rescue/services/rescueDetailsPolicy';
+import { type RescueMapRegion } from '@/src/features/rescue/services/rescueDetailsPolicy';
 import type { LocationPoint, RequestDetails, RoadRoute } from '@/src/types/rescue';
 import { useRescueDetailsCopy } from './rescueDetailsCopy';
 import { rescueDetailsStyles as styles } from './rescueDetailsStyles';
@@ -47,11 +47,7 @@ export function RescueMapSection({ request, providerLocation, route, region, ins
           <Marker
             coordinate={providerLocation}
             title={c.departureMarker}
-            description={
-              request.providerContactPhone
-                ? `${c.contact}: ${displayPhone(request.providerContactPhone)}`
-                : (request.providerTeamName ?? undefined)
-            }
+            description={request.providerTeamName ?? undefined}
             pinColor={Colors.primary}
           />
         ) : null}

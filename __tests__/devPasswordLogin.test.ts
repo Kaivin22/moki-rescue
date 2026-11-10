@@ -32,6 +32,11 @@ const input = {
 };
 
 describe('real-session development password sign-in', () => {
+  it('allows explicit staging APK login without enabling production login', () => {
+    expect(canUseDevPasswordLogin(false, 'staging', true)).toBe(true);
+    expect(canUseDevPasswordLogin(false, 'staging', false)).toBe(false);
+    expect(canUseDevPasswordLogin(false, 'production', true)).toBe(false);
+  });
   it.each(['development', 'local', 'staging'])('allows an enabled development build in %s', (environment) => {
     expect(canUseDevPasswordLogin(true, environment, true)).toBe(true);
   });

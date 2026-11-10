@@ -165,6 +165,7 @@ export interface IncidentReport {
 }
 
 export interface RequestDetails {
+  basePriceVnd?: number | null;
   id: string;
   status: RescueStatus;
   serviceCode: string;
@@ -186,6 +187,7 @@ export interface RequestDetails {
   assignedProviderId: string | null;
   providerName: string | null;
   providerContactPhone: string | null;
+  customerContactPhone?: string | null;
   providerTeamName: string | null;
   rescueVehicleLabel: string | null;
   roadDistanceM: number | null;
@@ -233,6 +235,7 @@ export interface RoadRoute {
 }
 
 export interface Offer {
+  issueDescription?: string | null;
   id: string;
   requestId: string;
   serviceCode: string;
@@ -358,6 +361,7 @@ export interface TeamVerification {
   verifiedByName: string | null;
   verifiedAt: string | null;
   activeProviderCount: number;
+  hasRepresentative: boolean;
   capabilityCount: number;
   completedRequiredCount: number;
   requiredCount: number;
@@ -388,4 +392,12 @@ export interface CreateRescueInput {
   hasInjury: boolean;
   hasImmediateHazard: boolean;
   safetyAcknowledged: boolean;
+}
+/** Read-only customer catalog; no phone, provider roster, ratings or dispatch target. */
+export interface PartnerShop {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
 }

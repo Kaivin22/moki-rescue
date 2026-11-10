@@ -103,14 +103,8 @@ export function CustomerRescueActions({ request }: { request: RequestDetails }) 
 
   return (
     <View style={styles.actions}>
-      {request.status === 'awaiting_arrival_confirmation' ? (
+      {request.status === 'diagnosing' || request.status === 'awaiting_arrival_confirmation' ? (
         <>
-          <AppButton
-            title={c.confirmArrival}
-            onPress={() =>
-              void run(actions.action.mutateAsync({ action: 'confirm_arrival', version: request.version }))
-            }
-          />
           <AppButton
             title={c.rejectArrival}
             variant="outline"
@@ -154,25 +148,6 @@ export function CustomerRescueActions({ request }: { request: RequestDetails }) 
                   version: request.version,
                 }),
               )
-            }
-          />
-        </>
-      ) : null}
-      {request.status === 'awaiting_completion' ? (
-        <>
-          <AppButton
-            title={c.confirmCompletion}
-            loading={actions.action.isPending}
-            onPress={() =>
-              void run(actions.action.mutateAsync({ action: 'confirm_completion', version: request.version }))
-            }
-          />
-          <AppButton
-            title={c.incomplete}
-            disabled={actions.action.isPending}
-            variant="outline"
-            onPress={() =>
-              setFeedbackAction(request.activeWorkType === 'transport' ? 'reject_transport' : 'reject_repair')
             }
           />
         </>

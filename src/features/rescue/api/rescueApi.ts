@@ -1,5 +1,6 @@
 import { apiRequest } from './client';
 import type {
+  PartnerShop,
   CreateRescueInput,
   Offer,
   ProviderStatus,
@@ -26,6 +27,7 @@ import type {
 } from '@/src/types/rescue';
 
 export const rescueApi = {
+  partnerShops: () => apiRequest<PartnerShop[]>('/api/catalog/partner-shops'),
   workingHours: (teamId: string) => apiRequest<WorkingHours>(`/api/operator/teams/${teamId}/working-hours`),
   providerWorkingHours: () => apiRequest<WorkingHours>('/api/provider/working-hours'),
   saveWorkingHours: (
@@ -90,10 +92,11 @@ export const rescueApi = {
     workType?: 'repair' | 'transport',
     reasonCode?: string,
     note?: string,
+    basePriceVnd?: number,
   ) =>
     apiRequest<RequestDetails>(`/api/requests/${id}/actions`, {
       method: 'POST',
-      body: JSON.stringify({ action, expectedVersion, workType, reasonCode, note }),
+      body: JSON.stringify({ action, expectedVersion, workType, reasonCode, note, basePriceVnd }),
     }),
   updateDestination: (
     id: string,
@@ -267,6 +270,8 @@ export const rescueApi = {
   setAdminRole: (userId: string, role: 'admin' | 'customer') =>
     apiRequest<void>('/api/operator/admin-role', { method: 'PUT', body: JSON.stringify({ userId, role }) }),
   adminServiceTypes: () => apiRequest<AdminServiceType[]>('/api/operator/service-types'),
+  createServiceType: ({ code, ...input }: AdminServiceType) =>
+    apiRequest<void>(`/api/operator/service-types/${code}`, { method: 'POST', body: JSON.stringify(input) }),
   updateServiceType: ({ code, ...input }: AdminServiceType) =>
     apiRequest<void>(`/api/operator/service-types/${code}`, {
       method: 'PUT',

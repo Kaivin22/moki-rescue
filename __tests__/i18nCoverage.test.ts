@@ -39,9 +39,11 @@ describe('Vietnamese and English coverage', () => {
     expect(config).toContain("en: './locales/en.json'");
     for (const language of ['vi', 'en']) {
       const locale = JSON.parse(fs.readFileSync(path.join(root, 'locales', `${language}.json`), 'utf8'));
-      expect(locale.CFBundleDisplayName).toBe('Moki Rescue');
-      expect(locale.NSLocationWhenInUseUsageDescription).toBeTruthy();
-      expect(locale.NSLocationAlwaysAndWhenInUseUsageDescription).toBeTruthy();
+      expect(locale.ios.CFBundleDisplayName).toBe('Moki Rescue');
+      expect(locale.ios.NSLocationWhenInUseUsageDescription).toBeTruthy();
+      expect(locale.ios.NSLocationAlwaysAndWhenInUseUsageDescription).toBeTruthy();
+      // Top-level keys are shared by Expo with Android; iOS-only keys break Android lint.
+      expect(Object.keys(locale).sort()).toEqual(['android', 'ios']);
       expect(locale.android.app_name).toBe('Moki Rescue');
     }
   });

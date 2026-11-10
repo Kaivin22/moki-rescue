@@ -7,9 +7,11 @@ import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { RequestSummaryCard } from '@/src/features/rescue/components/RequestSummaryCard';
 import { useRequestHistory, useRequests } from '@/src/features/rescue/hooks/useRescueQueries';
 import { AppButton } from '@/src/components/atoms/AppButton';
+import { ConfirmAction } from '@/src/components/atoms/ConfirmAction';
+import { useQueryClient } from '@tanstack/react-query';
+import { apiRequest, ApiClientError } from '@/src/features/rescue/api/client';
 import { useCopy, useI18n } from '@/src/i18n';
 import { useAuthStore } from '@/src/stores/authStore';
-import { ApiClientError } from '@/src/features/rescue/api/client';
 
 const COPY = {
   vi: {
@@ -35,6 +37,13 @@ const COPY = {
 } as const;
 
 export default function ActivityScreen() {
+  const client = useQueryClient();
+  const removeHistory = async (id?: string) => {
+    await apiRequest<void>(id ? `/api/requests/history/${id}` : '/api/requests/history', {
+      method: 'DELETE',
+    });
+    await client.invalidateQueries({ queryKey: ['rescue'] });
+  };
   const insets = useSafeAreaInsets();
   const [history, setHistory] = useState(false);
   const activeRequests = useRequests(false);
@@ -115,12 +124,32 @@ export default function ActivityScreen() {
             {error instanceof ApiClientError ? error.message : c.error}
           </Text>
         ) : null}
-        {data.map((request) => (
-          <RequestSummaryCard
-            key={request.id}
-            request={request}
-            onPress={() => router.push(`/rescue/${request.id}`)}
+        {history && role !== 'admin' && (
+          <ConfirmAction
+            title={english ? 'Delete all history' : 'Xóa tất cả lịch sử'}
+            message={
+              english
+                ? 'Remove all closed cases from your history? Case records are retained for support.'
+                : 'Ẩn tất cả ca đã kết thúc khỏi lịch sử của bạn? Hồ sơ ca vẫn được giữ để hỗ trợ và đối soát.'
+            }
+            onConfirm={() => removeHistory()}
           />
+        )}
+        {data.map((request) => (
+          <View key={request.id}>
+            <RequestSummaryCard request={request} onPress={() => router.push(`/rescue/${request.id}`)} />
+            {history && role !== 'admin' && (
+              <ConfirmAction
+                title={english ? 'Delete from history' : 'Xóa khỏi lịch sử'}
+                message={
+                  english
+                    ? 'Remove this case from your history only?'
+                    : 'Ẩn ca này khỏi lịch sử của riêng bạn?'
+                }
+                onConfirm={() => removeHistory(request.id)}
+              />
+            )}
+          </View>
         ))}
         {!isLoading && !isError && data.length === 0 ? (
           <View style={styles.empty}>

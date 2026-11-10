@@ -99,7 +99,7 @@ const COPY = {
       'Chạm bản đồ hoặc kéo ghim để chọn tọa độ. Nhập tên địa chỉ bên dưới chỉ là ghi chú, không di chuyển ghim. Kiểm tra đúng vị trí trước khi gửi.',
     nearby: 'Điểm nhận biết gần bạn',
     nearbyPlaceholder: 'Tên đường, cửa hàng hoặc cổng gần nhất',
-    note: 'Ghi chú cho cứu hộ viên',
+    note: 'Tình trạng xe / sự cố đang gặp',
     notePlaceholder: 'Vị trí đỗ xe, dấu hiệu sự cố…',
     safe: 'Tôi đã đưa bản thân và xe ra khỏi làn xe chạy hoặc vị trí nguy hiểm.',
     next: 'Tiếp theo',
@@ -158,7 +158,7 @@ const COPY = {
       'Tap the map or drag a pin to select coordinates. Typing an address below only changes its label, not the pin. Check the location before sending.',
     nearby: 'Nearby landmark',
     nearbyPlaceholder: 'Nearest street, shop, or gate',
-    note: 'Note for the rescue provider',
+    note: 'Vehicle problem / symptoms',
     notePlaceholder: 'Parking position, visible symptoms…',
     safe: 'I moved myself and the motorcycle out of the traffic lane or dangerous position.',
     next: 'Continue',
@@ -514,31 +514,10 @@ function CustomerRequestForm() {
                       </View>
                     ) : null}
                     {location.status === 'error' ? <Text style={styles.error}>{c.locationError}</Text> : null}
-                    {location.coordinate ? (
-                      <Text style={styles.coordinate}>
-                        {location.coordinate.source !== 'gps' || location.coordinate.accuracy == null
-                          ? c.manualPin
-                          : `${c.gpsAccuracy} ${Math.round(location.coordinate.accuracy)} m`}
-                      </Text>
-                    ) : null}
                   </>
-                ) : null}
-                <Text style={styles.mapHint}>{c.mapHint}</Text>
-                {(mapTarget === 'destination' ? destination.coordinate : location.coordinate) ? (
-                  <Text selectable style={styles.coordinate}>
-                    {mapTarget === 'destination' ? c.destinationMarker : c.markerTitle}:{' '}
-                    {(mapTarget === 'destination'
-                      ? destination.coordinate
-                      : location.coordinate)!.latitude.toFixed(6)}
-                    ,{' '}
-                    {(mapTarget === 'destination'
-                      ? destination.coordinate
-                      : location.coordinate)!.longitude.toFixed(6)}
-                  </Text>
                 ) : null}
                 {mapTarget === 'destination' && needsDestination ? (
                   <>
-                    <Text style={styles.mapHint}>{c.destinationHint}</Text>
                     <AppInput
                       label={c.destinationNearby}
                       value={destination.label}

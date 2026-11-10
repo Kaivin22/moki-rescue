@@ -39,6 +39,10 @@ export default function ServicesScreen() {
   const catalog = useQuery({ queryKey: rescueKeys.adminServices, queryFn: rescueApi.adminServiceTypes });
   return (
     <OperatorPage title={c.title}>
+      <AppButton
+        title={english ? 'Add service' : 'Thêm dịch vụ'}
+        onPress={() => router.push({ pathname: '/operator/service/[code]', params: { code: 'new' } })}
+      />
       <Text style={styles.text}>{c.hint}</Text>
       {catalog.isLoading ? <Text style={styles.text}>{c.loading}</Text> : null}
       {catalog.isError ? (

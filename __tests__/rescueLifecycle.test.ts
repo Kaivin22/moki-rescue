@@ -41,9 +41,9 @@ const request = (
 });
 
 describe('job lifecycle guidance', () => {
-  it('tells the provider to request completion, not declare the job completed', () => {
-    expect(caseProgress(request('repairing'), 'provider', 'vi')).toContain('gửi yêu cầu hoàn tất');
-    expect(caseProgress(request('transporting'), 'provider', 'vi')).toContain('giao xe đúng điểm');
+  it('shows concise work progress without asking for another confirmation', () => {
+    expect(caseProgress(request('repairing'), 'provider', 'vi')).toContain('đang sửa xe');
+    expect(caseProgress(request('transporting'), 'provider', 'vi')).toContain('đang vận chuyển xe');
   });
 
   it('distinguishes provider waiting from customer action', () => {

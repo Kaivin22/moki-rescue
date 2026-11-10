@@ -22,15 +22,15 @@ const COPY = {
       ],
       [
         'Yêu cầu cứu hộ',
-        'Bạn phải gửi vị trí và mô tả trung thực, chỉ tạo một ca đang hoạt động và ở vị trí an toàn. Hệ thống có thể không tìm được đội do vùng phục vụ, năng lực, kết nối hoặc tình trạng đội. ETA tính theo tuyến xe máy khi router khả dụng nhưng không phải cam kết thời gian đến. Số liên hệ công việc chỉ được dùng để phối hợp ca đó.',
+        'Bạn phải gửi vị trí và mô tả trung thực, chỉ tạo một ca đang hoạt động và ở vị trí an toàn. Hệ thống có thể không tìm được đội do vùng phục vụ, năng lực, kết nối hoặc tình trạng đội. Thời gian đến tính theo tuyến xe máy khi có dữ liệu định tuyến nhưng không phải cam kết thời gian đến. Số liên hệ công việc chỉ được dùng để phối hợp ca đó.',
       ],
       [
         'Báo giá và thanh toán',
         'Dịch vụ phát sinh phải có báo giá trong ứng dụng và khách chấp thuận trước khi làm. Ứng dụng không giữ ví hoặc xử lý dòng tiền; việc thanh toán bằng tiền mặt hay kênh ngoài hệ thống là giữa khách và đơn vị cứu hộ.',
       ],
       [
-        'Xác nhận hai phía',
-        'Cứu hộ viên gửi yêu cầu xác nhận khi đến và khi hoàn tất; khách chỉ xác nhận khi sự kiện thực sự xảy ra. Quản trị viên vận hành có thể can thiệp khi mất mạng hoặc có tranh chấp, và thao tác quan trọng được ghi audit.',
+        'Quá trình xử lý',
+        'Cứu hộ viên cập nhật đã gặp khách và hoàn tất công việc. Khách duyệt báo giá phát sinh, có thể đánh giá hoặc báo vấn đề để quản trị viên xử lý.',
       ],
       [
         'Đánh giá',
@@ -61,15 +61,15 @@ const COPY = {
       ],
       [
         'Rescue requests',
-        'You must provide an honest location and description, keep only one active request, and stay in a safe place. A team may be unavailable because of coverage, capability, connectivity, or capacity. ETA uses motorcycle road routes when routing is available but is not an arrival guarantee. A provider work number may only be used to coordinate that request.',
+        'You must provide an honest location and description, keep only one active request, and stay in a safe place. A team may be unavailable because of coverage, capability, connectivity, or capacity. Estimated arrival time uses motorcycle road routes when routing is available but is not an arrival guarantee. A provider work number may only be used to coordinate that request.',
       ],
       [
         'Quotes and payment',
         'Additional work must be quoted in the app and approved before it starts. The app does not hold a wallet or process money; cash or off-platform payment is between the customer and rescue operator.',
       ],
       [
-        'Two-sided confirmation',
-        'The provider requests confirmation on arrival and completion; the customer confirms only when the event actually occurs. Operations administrators may intervene during connectivity problems or disputes, and important actions are audited.',
+        'Service progress',
+        'The provider records arrival and completion. Customers approve revised quotes and can leave a review or report a problem. Administrators handle disputes; important actions are recorded.',
       ],
       [
         'Reviews',

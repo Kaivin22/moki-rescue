@@ -4,11 +4,12 @@ import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
+import { ConfirmAction } from '@/src/components/atoms/ConfirmAction';
 import { AppInput } from '@/src/components/atoms/AppInput';
 import { NavigationCard } from '@/src/components/atoms/NavigationCard';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useI18n } from '@/src/i18n';
-import { communicationApi as api, nextCursor, type Audience, type Cursor } from './api';
+import { communicationApi as api, nextCursor, type Audience, type Cursor, type Announcement } from './api';
 import { CommunicationPage, QueryState, More, dateText, s, errorText, audienceLabel } from './shared';
 
 export function AnnouncementListScreen() {
@@ -32,7 +33,7 @@ export function AnnouncementListScreen() {
         <NavigationCard
           key={item.id}
           icon="megaphone-outline"
-          title={item.title}
+          title={`${item.withdrawnAt ? (en ? '[Withdrawn] ' : '[Đã thu hồi] ') : ''}${item.title}`}
           description={`${audienceLabel(item.audience, en)} · ${item.recipientCount} ${en ? 'inboxes' : 'hộp thông báo'}\n${dateText(item.createdAt, en)}`}
           onPress={() => router.push(`/operator/announcements/${item.id}` as Href)}
         />
@@ -42,6 +43,7 @@ export function AnnouncementListScreen() {
   );
 }
 export function AnnouncementDetailScreen() {
+  const client = useQueryClient();
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const en = useI18n((state) => state.language === 'en');
   const userId = useAuthStore((state) => state.user?.id);
@@ -70,9 +72,92 @@ export function AnnouncementDetailScreen() {
               ? `Saved to ${item.recipientCount} inboxes. This is not a read count or a device push receipt.`
               : `Đã lưu vào ${item.recipientCount} hộp thông báo. Đây không phải số người đã đọc hoặc số điện thoại đã nhận push.`}
           </Text>
+          {item.withdrawnAt ? (
+            <Text style={s.body}>
+              {en
+                ? 'This announcement has been withdrawn from recipients’ inboxes.'
+                : 'Thông báo đã được thu hồi khỏi hộp thông báo của người nhận.'}
+            </Text>
+          ) : (
+            <>
+              <AnnouncementEditor key={`${item.id}:${item.version}`} item={item} />
+              <ConfirmAction
+                title={en ? 'Withdraw announcement' : 'Thu hồi thông báo'}
+                message={
+                  en
+                    ? 'Remove this announcement from all recipients’ inboxes? The administration record is retained.'
+                    : 'Thu hồi thông báo khỏi toàn bộ người nhận? Hồ sơ gửi vẫn được giữ cho quản trị.'
+                }
+                onConfirm={async () => {
+                  await api.withdrawAnnouncement(item.id, item.version);
+                  await client.invalidateQueries({ queryKey: ['communication'] });
+                }}
+              />
+            </>
+          )}
         </>
       )}
     </CommunicationPage>
+  );
+}
+function AnnouncementEditor({ item }: { item: Announcement }) {
+  const en = useI18n((s) => s.language === 'en');
+  const client = useQueryClient();
+  const [editing, setEditing] = useState(false),
+    [title, setTitle] = useState(item.title),
+    [body, setBody] = useState(item.body);
+  const save = useMutation({
+    mutationFn: () =>
+      api.editAnnouncement(item.id, { title: title.trim(), body: body.trim(), version: item.version }),
+    onSuccess: async () => {
+      setEditing(false);
+      await client.invalidateQueries({ queryKey: ['communication'] });
+    },
+  });
+  return (
+    <View style={s.card}>
+      <AppButton
+        title={en ? 'Edit content' : 'Sửa nội dung'}
+        variant="outline"
+        disabled={save.isPending}
+        onPress={() => setEditing(!editing)}
+      />
+      {editing && (
+        <>
+          <Text style={s.body}>
+            {en
+              ? 'Updates apply to the same recipients. Notifications they deleted stay deleted.'
+              : 'Cập nhật cho cùng nhóm người nhận. Thông báo họ đã xóa sẽ không xuất hiện lại.'}
+          </Text>
+          <AppInput
+            label={en ? 'Title' : 'Tiêu đề'}
+            value={title}
+            onChangeText={setTitle}
+            maxLength={160}
+            editable={!save.isPending}
+          />
+          <AppInput
+            label={en ? 'Content' : 'Nội dung'}
+            value={body}
+            onChangeText={setBody}
+            maxLength={4000}
+            multiline
+            editable={!save.isPending}
+          />
+          <AppButton
+            title={en ? 'Save changes' : 'Lưu thay đổi'}
+            loading={save.isPending}
+            disabled={title.trim().length < 5 || body.trim().length < 10}
+            onPress={() => save.mutate()}
+          />
+          {save.isError && (
+            <Text accessibilityRole="alert" style={s.error}>
+              {errorText(save.error, en)}
+            </Text>
+          )}
+        </>
+      )}
+    </View>
   );
 }
 export function NewAnnouncementScreen() {
@@ -140,8 +225,8 @@ export function NewAnnouncementScreen() {
           )}
           <Text style={s.body}>
             {en
-              ? 'The final count can change if accounts change before publication. A sent announcement cannot be edited here.'
-              : 'Số thực tế có thể thay đổi nếu tài khoản thay đổi trước lúc gửi. Không chỉnh sửa thông báo sau khi gửi tại đây.'}
+              ? 'The final count can change before publication. You can edit or withdraw the announcement from its details page.'
+              : 'Số thực tế có thể thay đổi trước lúc gửi. Bạn có thể sửa hoặc thu hồi trong trang chi tiết thông báo.'}
           </Text>
           {mutation.isError && (
             <Text accessibilityRole="alert" style={s.error}>

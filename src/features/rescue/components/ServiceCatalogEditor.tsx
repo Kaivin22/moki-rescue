@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
@@ -9,7 +10,7 @@ import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { ApiClientError } from '@/src/features/rescue/api/client';
 import { rescueApi } from '@/src/features/rescue/api/rescueApi';
 import { rescueKeys } from '@/src/features/rescue/hooks/useRescueQueries';
-import { useCopy } from '@/src/i18n';
+import { useCopy, useI18n } from '@/src/i18n';
 import type { AdminServiceType } from '@/src/types/rescue';
 
 const SERVICE_ICONS = [
@@ -69,14 +70,31 @@ const COPY = {
 } as const;
 
 export function ServiceCatalogEditor({ serviceCode }: { serviceCode: string }) {
+  const creating = serviceCode === 'new';
+  const en = useI18n((s) => s.language === 'en');
   const c = useCopy(COPY);
   const queryClient = useQueryClient();
   const catalog = useQuery({ queryKey: rescueKeys.adminServices, queryFn: rescueApi.adminServiceTypes });
-  const [draft, setDraft] = useState<AdminServiceType | null>(null);
+  const [draft, setDraft] = useState<AdminServiceType | null>(
+    creating
+      ? {
+          code: '',
+          labelVi: '',
+          descriptionVi: '',
+          labelEn: '',
+          descriptionEn: '',
+          iconName: 'construct-outline',
+          requiresQuote: false,
+          requiresDestination: false,
+          sortOrder: 100,
+          active: false,
+        }
+      : null,
+  );
   const [message, setMessage] = useState<string | null>(null);
 
   const [catalogSource, setCatalogSource] = useState<typeof catalog.data>();
-  if (catalog.data && catalog.data !== catalogSource) {
+  if (!creating && catalog.data && catalog.data !== catalogSource) {
     setCatalogSource(catalog.data);
     setDraft((current) => {
       const stillExists = current && catalog.data.some((service) => service.code === current.code);
@@ -86,13 +104,14 @@ export function ServiceCatalogEditor({ serviceCode }: { serviceCode: string }) {
   }
 
   const update = useMutation({
-    mutationFn: rescueApi.updateServiceType,
-    onSuccess: async () => {
+    mutationFn: creating ? rescueApi.createServiceType : rescueApi.updateServiceType,
+    onSuccess: async (_, saved) => {
       setMessage(c.saved);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: rescueKeys.adminServices }),
         queryClient.invalidateQueries({ queryKey: rescueKeys.services }),
       ]);
+      if (creating) router.replace({ pathname: '/operator/service/[code]', params: { code: saved.code } });
     },
   });
 
@@ -103,6 +122,8 @@ export function ServiceCatalogEditor({ serviceCode }: { serviceCode: string }) {
   const save = async () => {
     if (
       !draft ||
+      (creating && (!/^[a-z][a-z0-9_]{2,39}$/.test(draft.code) || draft.code === 'new')) ||
+      (draft.requiresDestination && !draft.requiresQuote) ||
       draft.labelVi.trim().length < 2 ||
       draft.descriptionVi.trim().length < 2 ||
       draft.labelEn.trim().length < 2 ||
@@ -131,8 +152,15 @@ export function ServiceCatalogEditor({ serviceCode }: { serviceCode: string }) {
 
   return (
     <View style={styles.sectionWrap}>
-      <Text style={styles.title}>{draft?.labelVi ?? c.title}</Text>
-      <Text style={styles.hint}>{c.hint}</Text>
+      <Text style={styles.title}>{draft?.labelVi || c.title}</Text>
+      {!creating && <Text style={styles.hint}>{c.hint}</Text>}
+      {creating && (
+        <Text style={styles.hint}>
+          {en
+            ? 'New services start disabled. Assign shop capabilities before enabling requests.'
+            : 'Dịch vụ mới được tạo ở trạng thái tắt. Gán năng lực cho cửa hàng rồi bật tiếp nhận yêu cầu.'}
+        </Text>
+      )}
       {catalog.isLoading ? <Text style={styles.hint}>{c.loading}</Text> : null}
       {catalog.isError ? (
         <View style={styles.errorBlock}>
@@ -143,6 +171,16 @@ export function ServiceCatalogEditor({ serviceCode }: { serviceCode: string }) {
       {catalog.isSuccess && !draft ? <Text style={styles.hint}>{c.empty}</Text> : null}
       {draft ? (
         <View style={styles.card}>
+          {creating && (
+            <AppInput
+              label={en ? 'Service code' : 'Mã dịch vụ (chữ thường, số, dấu gạch dưới)'}
+              value={draft.code}
+              maxLength={40}
+              autoCapitalize="none"
+              autoCorrect={false}
+              onChangeText={(code) => patchDraft({ code })}
+            />
+          )}
           <AppInput
             label={c.labelVi}
             value={draft.labelVi}
@@ -201,11 +239,13 @@ export function ServiceCatalogEditor({ serviceCode }: { serviceCode: string }) {
             value={draft.requiresDestination}
             onChange={(value) => patchDraft({ requiresDestination: value })}
           />
-          <ToggleRow
-            label={c.active}
-            value={draft.active}
-            onChange={(value) => patchDraft({ active: value })}
-          />
+          {!creating && (
+            <ToggleRow
+              label={c.active}
+              value={draft.active}
+              onChange={(value) => patchDraft({ active: value })}
+            />
+          )}
           <AppButton title={c.save} onPress={() => void save()} loading={update.isPending} />
           {message ? (
             <Text accessibilityRole="alert" style={message === c.saved ? styles.success : styles.error}>

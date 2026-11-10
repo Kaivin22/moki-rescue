@@ -9,7 +9,7 @@ import {
   Text,
   useWindowDimensions,
   View,
-  ViewToken,
+  type ListViewToken,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
@@ -76,7 +76,7 @@ export default function OnboardingScreen() {
   const { language, setLanguage } = useI18n();
   const reduceMotion = useReduceMotion();
   const [viewabilityConfig] = useState(() => ({ itemVisiblePercentThreshold: 60 }));
-  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ListViewToken[] }) => {
     if (typeof viewableItems[0]?.index === 'number') setIndex(viewableItems[0].index);
   }, []);
 

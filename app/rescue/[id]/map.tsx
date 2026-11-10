@@ -103,12 +103,6 @@ export default function RescueMapScreen() {
   const reduceMotion = useReduceMotion();
   const profile = useAuthStore((state) => state.profile);
   const [navigationError, setNavigationError] = useState(false);
-  const transportLeg = Boolean(
-    request?.activeWorkType === 'transport' &&
-    (request.status === 'transporting' || request.status === 'awaiting_completion') &&
-    request.destinationLatitude != null &&
-    request.destinationLongitude != null,
-  );
   const pickupLatitude = request?.pickupLatitude;
   const pickupLongitude = request?.pickupLongitude;
   const routeTarget = useMemo(
@@ -296,7 +290,6 @@ export default function RescueMapScreen() {
             </View>
             <View style={styles.flex}>
               <Text style={styles.providerName}>{request.providerName}</Text>
-              <Text style={styles.caption}>{request.providerTeamName ?? c.verifiedTeam}</Text>
               <RatingBadge rating={request.providerRating} label={c.provider} compact />
               {providerLocation ? (
                 <Text style={styles.updated}>
@@ -322,9 +315,6 @@ export default function RescueMapScreen() {
         {canNavigate ? (
           <View style={styles.navigation}>
             <NavigationTarget request={request} />
-            <Text style={styles.caption}>
-              {transportLeg ? c.destinationNavigationHint : c.navigationHint}
-            </Text>
             {navigationError ? (
               <Text accessibilityRole="alert" style={styles.navigationError}>
                 {c.navigationError}

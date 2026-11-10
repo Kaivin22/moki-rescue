@@ -61,7 +61,7 @@ describe('test account setup guards (no live Supabase writes)', () => {
     expect(() => setup.assertFixtureUser({ app_metadata: { test_fixture: setup.FIXTURE } })).not.toThrow();
   });
 
-  it('provisions the three real roles and keeps client presets in sync without passwords', () => {
+  it('provisions real roles without embedding demo credentials in the login form', () => {
     expect(setup.ACCOUNTS.map((account: { role: string }) => account.role)).toEqual([
       'customer',
       'provider',
@@ -74,7 +74,11 @@ describe('test account setup guards (no live Supabase writes)', () => {
       path.join(process.cwd(), 'src/features/auth/DevPasswordLoginPanel.tsx'),
       'utf8',
     );
-    for (const account of setup.ACCOUNTS) expect(panel).toContain(account.email);
+    const readme = fs.readFileSync(path.join(process.cwd(), 'README.md'), 'utf8');
+    for (const account of setup.ACCOUNTS) {
+      expect(panel).not.toContain(account.email);
+      expect(readme).toContain(account.email);
+    }
     expect(panel).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
     expect(panel).not.toContain('auth.admin');
     const script = fs.readFileSync(path.join(process.cwd(), 'scripts/create-test-accounts.cjs'), 'utf8');

@@ -5,6 +5,7 @@ import { isLiveStatus } from '@/src/features/rescue/status';
 import { NavigationTarget } from '../NavigationTarget';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
+import { useI18n } from '@/src/i18n';
 import { ApiClientError } from '@/src/features/rescue/api/client';
 import { useRequestMutation } from '@/src/features/rescue/hooks/useRescueQueries';
 import type { RequestDetails } from '@/src/types/rescue';
@@ -14,6 +15,8 @@ import { rescueDetailsStyles as styles } from './rescueDetailsStyles';
 export function ProviderRescueActions({ request }: { request: RequestDetails }) {
   const actions = useRequestMutation(request.id);
   const c = useRescueDetailsCopy();
+  const english = useI18n((state) => state.language === 'en');
+  const [basePrice, setBasePrice] = useState('');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [workType, setWorkType] = useState<'repair' | 'transport'>('repair');
@@ -21,7 +24,27 @@ export function ProviderRescueActions({ request }: { request: RequestDetails }) 
   const runAction = async (action: string, nextWork?: 'repair' | 'transport') => {
     setMessage(null);
     try {
-      await actions.action.mutateAsync({ action, version: request.version, workType: nextWork });
+      const initialPrice = action === 'start_trip' ? Number(basePrice) : undefined;
+      if (
+        action === 'start_trip' &&
+        (!basePrice.trim() ||
+          !Number.isSafeInteger(initialPrice) ||
+          initialPrice! < 0 ||
+          initialPrice! > 100_000_000)
+      ) {
+        setMessage(
+          english
+            ? 'Enter a base price from 0 to 100,000,000 VND.'
+            : 'Nhập giá cơ bản từ 0 đến 100.000.000 đồng.',
+        );
+        return;
+      }
+      await actions.action.mutateAsync({
+        action,
+        version: request.version,
+        workType: nextWork,
+        basePriceVnd: initialPrice,
+      });
     } catch (error) {
       setMessage(error instanceof ApiClientError ? error.message : c.stateError);
     }
@@ -60,9 +83,27 @@ export function ProviderRescueActions({ request }: { request: RequestDetails }) 
         />
       )}
       {request.status === 'assigned' ? (
-        <AppButton title={c.startTrip} onPress={() => void runAction('start_trip')} />
+        <View style={styles.quoteForm}>
+          <AppInput
+            label={english ? 'Base price (VND)' : 'Giá cơ bản (đồng)'}
+            value={basePrice}
+            keyboardType="number-pad"
+            maxLength={9}
+            onChangeText={(value) => setBasePrice(value.replace(/\D/g, ''))}
+          />
+          <Text style={styles.infoLabel}>
+            {english
+              ? 'Initial estimate; any revised total needs customer approval.'
+              : 'Giá ban đầu; tổng tiền thay đổi cần khách đồng ý.'}
+          </Text>
+          <AppButton
+            title={c.startTrip}
+            loading={actions.action.isPending}
+            onPress={() => void runAction('start_trip')}
+          />
+        </View>
       ) : null}
-      {request.status === 'en_route' ? (
+      {request.status === 'en_route' || request.status === 'awaiting_arrival_confirmation' ? (
         <AppButton title={c.requestArrival} onPress={() => void runAction('request_arrival')} />
       ) : null}
       {request.status === 'arrived' ? (
@@ -103,7 +144,11 @@ export function ProviderRescueActions({ request }: { request: RequestDetails }) 
       ) : null}
       {request.status === 'diagnosing' && !request.serviceRequiresQuote ? (
         <>
-          <AppButton title={c.startRepair} onPress={() => void runAction('start_work', 'repair')} />
+          <AppButton
+            title={c.requestCompletion}
+            loading={actions.action.isPending}
+            onPress={() => void runAction('request_completion')}
+          />
           <AppButton
             title={c.switchTransport}
             variant="outline"
@@ -117,7 +162,9 @@ export function ProviderRescueActions({ request }: { request: RequestDetails }) 
           onPress={() => void runAction('start_work', request.activeWorkType!)}
         />
       ) : null}
-      {request.status === 'repairing' || request.status === 'transporting' ? (
+      {request.status === 'repairing' ||
+      request.status === 'transporting' ||
+      request.status === 'awaiting_completion' ? (
         <AppButton
           title={c.requestCompletion}
           loading={actions.action.isPending}

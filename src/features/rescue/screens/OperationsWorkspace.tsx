@@ -20,7 +20,6 @@ import { isStaffRole } from '@/src/features/auth/roles';
 import { useCopy, useI18n } from '@/src/i18n';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { canChangeAvailability } from '@/src/features/rescue/availabilityPolicy';
-import { ProviderWorkingHours } from '@/src/features/rescue/components/ProviderWorkingHours';
 
 const COPY = {
   vi: {
@@ -255,13 +254,6 @@ export function OperationsWorkspace() {
               ? 'Dispatch queue'
               : 'Hàng đợi điều phối'}
         </Text>
-        {isProvider ? (
-          <Text style={styles.subtitle}>
-            {english
-              ? 'Go available, review offers and handle your assigned cases.'
-              : 'Bật sẵn sàng, nhận đề nghị và xử lý các ca được giao cho bạn.'}
-          </Text>
-        ) : null}
         {message ? (
           <Text accessibilityRole="alert" style={styles.error}>
             {message}
@@ -283,11 +275,6 @@ export function OperationsWorkspace() {
           <>
             <View style={styles.offer}>
               <Text style={styles.cardTitle}>{english ? 'My statistics' : 'Thống kê của tôi'}</Text>
-              <Text style={styles.muted}>
-                {english
-                  ? 'All-time cases assigned to your account, not the shop total or colleagues’ cases.'
-                  : 'Các ca được giao cho tài khoản của bạn từ trước đến nay, không phải tổng của cửa hàng hoặc của đồng nghiệp.'}
-              </Text>
               {personalStatistics.isPending ? (
                 <Text style={styles.muted}>{english ? 'Loading statistics…' : 'Đang tải thống kê…'}</Text>
               ) : null}
@@ -342,22 +329,12 @@ export function OperationsWorkspace() {
                 thumbColor={Colors.white}
               />
             </View>
-            {provider.data ? <ProviderWorkingHours status={provider.data} /> : null}
             {provider.data &&
             (!provider.data.shopInServiceArea || provider.data.teamStatus !== 'verified') ? (
               <Text style={styles.notice}>
                 {english
                   ? 'Your shop must be verified and have coordinates inside the service area. Contact an administrator.'
                   : 'Cửa hàng cần được xác minh và có tọa độ trong vùng phục vụ. Liên hệ admin để cập nhật.'}
-              </Text>
-            ) : null}
-            {provider.data ? (
-              <Text style={styles.notice}>
-                {english ? 'Shop address' : 'Địa chỉ cửa hàng'}:{' '}
-                {provider.data.shopAddress ||
-                  (english
-                    ? 'Not entered yet. Ask an administrator to update it.'
-                    : 'Chưa nhập địa chỉ. Liên hệ admin để cập nhật.')}
               </Text>
             ) : null}
             {!provider.data?.available && requests.data?.length ? (
@@ -389,22 +366,7 @@ export function OperationsWorkspace() {
                 </View>
               </View>
             ) : null}
-            <Text style={styles.notice}>{c.notice}</Text>
-            {provider.data?.available ? (
-              <Text style={styles.notice}>
-                {english ? 'Ready to depart from the shop.' : 'Đang sẵn sàng xuất phát từ cửa hàng.'}
-              </Text>
-            ) : (
-              <Text style={styles.notice}>
-                {!provider.isSuccess
-                  ? english
-                    ? 'Connect to the server to confirm your availability.'
-                    : 'Cần kết nối máy chủ để xác định trạng thái nhận ca.'
-                  : english
-                    ? 'You are unavailable. Enable the switch when ready to depart from the shop.'
-                    : 'Bạn chưa sẵn sàng nhận ca. Bật công tắc khi có thể xuất phát từ cửa hàng.'}
-              </Text>
-            )}
+
             <Text style={styles.section}>{c.offers}</Text>
             {(provider.data?.available ? (offers.data ?? []) : []).map((offer) => (
               <View key={offer.id} style={styles.offer}>
@@ -415,6 +377,9 @@ export function OperationsWorkspace() {
                   </Text>
                 </View>
                 <Text style={styles.muted}>{offer.pickupAreaLabel}</Text>
+                {offer.issueDescription ? (
+                  <Text style={styles.cardTitle}>{offer.issueDescription}</Text>
+                ) : null}
                 <Text style={styles.distance}>
                   {(offer.roadDistanceM / 1000).toFixed(1)} {c.byRoad}
                 </Text>

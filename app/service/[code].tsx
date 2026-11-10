@@ -20,8 +20,8 @@ const COPY = {
     quote: 'Cần duyệt báo giá',
     noQuote: 'Không cần báo giá trước',
     quoteBody:
-      'Giá chỉ được lập sau khi cứu hộ viên đến, kiểm tra xe và mô tả công việc. Bạn có quyền từ chối.',
-    noQuoteBody: 'Ca vẫn phải qua các bước xác nhận có mặt và hoàn tất để hạn chế gian lận.',
+      'Bạn xem giá cơ bản khi cứu hộ viên khởi hành. Báo giá sửa chữa được gửi sau khi kiểm tra xe; bạn có quyền từ chối.',
+    noQuoteBody: 'Bạn xem giá cơ bản, theo dõi ca và báo vấn đề nếu cần.',
     process: 'Quy trình xử lý',
     safety:
       'Có người bị thương, cháy, rò nhiên liệu hoặc nguy cơ tai nạn tiếp diễn thì gọi lực lượng khẩn cấp trước, không tạo ca kỹ thuật.',
@@ -30,17 +30,17 @@ const COPY = {
     quoteSteps: [
       'Xác nhận an toàn và vị trí nhận cứu hộ',
       'Hệ thống tìm đội có đúng năng lực theo tuyến đường bộ',
-      'Bạn xác nhận cứu hộ viên đã có mặt',
+      'Xem giá cơ bản và chờ cứu hộ viên đến',
       'Cứu hộ viên kiểm tra xe và gửi báo giá',
       'Bạn duyệt báo giá trước khi sửa hoặc chở xe',
-      'Hai bên xác nhận hoàn tất',
+      'Cứu hộ viên hoàn tất ca; bạn có thể đánh giá hoặc báo vấn đề',
     ],
     directSteps: [
       'Xác nhận an toàn và vị trí nhận cứu hộ',
       'Hệ thống tìm đội có đúng năng lực theo tuyến đường bộ',
-      'Bạn xác nhận cứu hộ viên đã có mặt',
+      'Xem giá cơ bản và chờ cứu hộ viên đến',
       'Cứu hộ viên xử lý đúng loại sự cố',
-      'Hai bên xác nhận hoàn tất',
+      'Cứu hộ viên hoàn tất ca; bạn có thể đánh giá hoặc báo vấn đề',
     ],
   },
   en: {
@@ -52,8 +52,8 @@ const COPY = {
     quote: 'Quote approval required',
     noQuote: 'No advance quote required',
     quoteBody:
-      'A quote is created only after the rescue provider arrives, inspects the motorcycle, and describes the work. You may reject it.',
-    noQuoteBody: 'Arrival and completion must still be confirmed by both sides to reduce fraud.',
+      'View the base price when the provider departs. A repair quote follows inspection; you may reject it.',
+    noQuoteBody: 'View the base price, follow progress, and report a problem if needed.',
     process: 'Service process',
     safety:
       'If anyone is injured, there is fire, leaking fuel, or continuing crash risk, contact emergency services first and do not create a technical rescue request.',
@@ -62,17 +62,17 @@ const COPY = {
     quoteSteps: [
       'Confirm safety and the rescue location',
       'Find a team with the right verified capability using road travel',
-      'Confirm the rescue provider is physically present',
+      'View the base price and wait for the provider',
       'The provider inspects the motorcycle and submits a quote',
       'Approve the quote before repair or transport begins',
-      'Both sides confirm completion',
+      'The provider completes the case; you may review or report a problem',
     ],
     directSteps: [
       'Confirm safety and the rescue location',
       'Find a team with the right verified capability using road travel',
-      'Confirm the rescue provider is physically present',
+      'View the base price and wait for the provider',
       'The provider handles the selected issue',
-      'Both sides confirm completion',
+      'The provider completes the case; you may review or report a problem',
     ],
   },
 } as const;

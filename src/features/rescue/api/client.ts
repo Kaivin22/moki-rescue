@@ -27,6 +27,12 @@ export class ApiClientError extends Error {
 }
 
 const ENGLISH_API_ERRORS: Record<string, string> = {
+  FORBIDDEN: 'You do not have permission to perform this action.',
+  PARTNER_CONFLICT: 'This shop or membership changed. Refresh before trying again.',
+  PARTNER_NOT_FOUND: 'This shop application or invitation was not found.',
+  REPRESENTATIVE_DELETION_REQUIRES_HANDOVER: 'Transfer shop representation before deleting this account.',
+  SHOP_REPRESENTATIVE_REQUIRED: 'Only the shop representative can perform this action.',
+  BASE_PRICE_REQUIRED: 'Enter a base price from 0 to 100,000,000 VND before starting the trip.',
   WORKING_HOURS_CLOSED:
     'The shop is closed, paused, has no schedule, or this invitation belongs to an ended readiness session. Accepted cases can continue.',
   WORKING_HOURS_CHANGED: 'The schedule was edited elsewhere. Reload it before saving.',
@@ -76,6 +82,11 @@ const ENGLISH_API_ERRORS: Record<string, string> = {
   VEHICLE_OUTSIDE_SCOPE:
     'Only gasoline motorcycles are currently supported. Electric and unidentified vehicle types are outside the service scope.',
   SERVICE_NOT_FOUND: 'The rescue service was not found.',
+  SERVICE_EXISTS: 'This service code already exists.',
+  INVALID_SERVICE_OPTIONS: 'Transport services require a quote. Check the service options.',
+  CLOSED_CASE_NOT_FOUND: 'No closed case belonging to your account was found.',
+  PERSONAL_HISTORY_ONLY: 'You can only remove cases from your personal history.',
+  RECORD_NOT_FOUND: 'The record was not found.',
   INVALID_SERVICE_CODE: 'The rescue service code is invalid.',
   INVALID_SERVICE_ICON: 'The rescue service icon is not supported by this app version.',
   REQUEST_NOT_FOUND: 'The rescue request was not found.',

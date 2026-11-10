@@ -15,6 +15,7 @@ import { OperationsWorkspace } from '@/src/features/rescue/screens/OperationsWor
 import { AdminDashboard } from '@/src/features/operator/AdminDashboard';
 import { ApiClientError } from '@/src/features/rescue/api/client';
 import { NotificationEntry } from '@/src/features/communications/InboxScreens';
+import { NavigationCard } from '@/src/components/atoms/NavigationCard';
 
 const COPY = {
   vi: {
@@ -36,6 +37,8 @@ const COPY = {
     services: 'Dịch vụ đang vận hành',
     loadServicesError: 'Không tải được danh mục dịch vụ.',
     serviceHint: 'Phạm vi và quy trình',
+    partners: 'Cửa hàng hợp tác',
+    partnersHint: 'Xem vị trí và địa chỉ các cửa hàng trên bản đồ.',
   },
   en: {
     you: 'there',
@@ -58,6 +61,8 @@ const COPY = {
     services: 'Available services',
     loadServicesError: 'Could not load the service catalog.',
     serviceHint: 'Coverage and process',
+    partners: 'Partner shops',
+    partnersHint: 'Explore shop locations and addresses on the map.',
   },
 } as const;
 
@@ -97,9 +102,6 @@ function CustomerHomeScreen() {
             />
           </View>
         </View>
-        <Text style={styles.heroBody}>
-          {role === 'customer' ? c.customerBody : role === 'provider' ? c.providerBody : c.staffBody}
-        </Text>
       </SafeAreaView>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -125,6 +127,13 @@ function CustomerHomeScreen() {
           </View>
           <Ionicons name="call" size={21} color={Colors.error} />
         </Pressable>
+
+        <NavigationCard
+          title={c.partners}
+          description={c.partnersHint}
+          icon="map-outline"
+          onPress={() => router.push('/partner-shops')}
+        />
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{c.active}</Text>

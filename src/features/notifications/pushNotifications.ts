@@ -3,6 +3,7 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Crypto from 'expo-crypto';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance, IosAuthorizationStatus } from 'expo-notifications';
 import { Platform } from 'react-native';
 import { apiRequest } from '@/src/features/rescue/api/client';
 import { Colors } from '@/src/constants/colors';
@@ -25,9 +26,9 @@ function hasPushPermission(permission: Notifications.NotificationPermissionsStat
   if (Platform.OS !== 'ios') return permission.status === 'granted';
   const iosStatus = permission.ios?.status;
   return (
-    iosStatus === Notifications.IosAuthorizationStatus.AUTHORIZED ||
-    iosStatus === Notifications.IosAuthorizationStatus.PROVISIONAL ||
-    iosStatus === Notifications.IosAuthorizationStatus.EPHEMERAL
+    iosStatus === IosAuthorizationStatus.AUTHORIZED ||
+    iosStatus === IosAuthorizationStatus.PROVISIONAL ||
+    iosStatus === IosAuthorizationStatus.EPHEMERAL
   );
 }
 
@@ -60,7 +61,7 @@ export async function registerPushNotifications(
     const english = useI18n.getState().language === 'en';
     await Notifications.setNotificationChannelAsync('rescue-updates', {
       name: english ? 'Rescue request updates' : 'Cập nhật ca cứu hộ',
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 150, 250],
       lightColor: Colors.accent,
     });

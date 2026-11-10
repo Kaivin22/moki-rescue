@@ -9,7 +9,18 @@ export default function EditServiceScreen() {
   if (typeof code !== 'string' || !/^[a-z][a-z0-9_]{0,63}$/.test(code))
     return <Redirect href="/operator/services" />;
   return (
-    <OperatorPage title={english ? 'Edit service' : 'Chỉnh sửa dịch vụ'} fallback="/operator/services">
+    <OperatorPage
+      title={
+        code === 'new'
+          ? english
+            ? 'Add service'
+            : 'Thêm dịch vụ'
+          : english
+            ? 'Edit service'
+            : 'Chỉnh sửa dịch vụ'
+      }
+      fallback="/operator/services"
+    >
       <ServiceCatalogEditor key={code} serviceCode={code} />
     </OperatorPage>
   );

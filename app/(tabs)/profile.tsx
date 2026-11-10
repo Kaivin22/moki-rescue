@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/src/constants/colors';
@@ -152,6 +152,16 @@ export default function ProfileScreen() {
         <Text style={styles.section}>{c.account}</Text>
         <View style={styles.card}>
           <MenuRow
+            icon="storefront-outline"
+            title={language === 'en' ? 'Shop partnership' : 'Hợp tác cửa hàng'}
+            subtitle={
+              language === 'en'
+                ? 'Applications, representation and invitations'
+                : 'Đăng ký, đại diện và lời mời tham gia'
+            }
+            onPress={() => router.push('/partnership' as Href)}
+          />
+          <MenuRow
             icon="person-outline"
             title={c.edit}
             subtitle={c.editSub}
@@ -173,6 +183,11 @@ export default function ProfileScreen() {
 
         <Text style={styles.section}>{c.support}</Text>
         <NotificationEntry />
+        <MenuRow
+          icon="star-outline"
+          title={language === 'en' ? 'Customer reviews' : 'Đánh giá từ khách hàng'}
+          onPress={() => router.push('/reviews')}
+        />
         <View style={styles.card}>
           <MenuRow
             icon="help-buoy-outline"

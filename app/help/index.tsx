@@ -24,13 +24,12 @@ const COPY = {
     issue: 'Khi ca gặp vấn đề',
     noProvider: 'Không thấy cứu hộ viên',
     noProviderBody:
-      'Không xác nhận “đã đến”. Dùng nút “Chưa thấy cứu hộ viên” trong chi tiết ca để hệ thống ghi nhận đúng trạng thái.',
+      'Dùng nút báo chưa gặp cứu hộ viên trong chi tiết ca. Nếu ca đã hoàn tất sai thực tế, hãy báo vấn đề.',
     noRoute: 'Tuyến đường không hiển thị',
     noRouteBody:
       'Ứng dụng không vẽ đường chim bay. Thông báo “chưa có tuyến” nghĩa là dịch vụ định tuyến chưa trả được đường giao thông hợp lệ.',
     quote: 'Báo giá không phù hợp',
-    quoteBody:
-      'Từ chối báo giá ngay trong ca. Không xác nhận hoàn tất khi công việc chưa được thực hiện đúng.',
+    quoteBody: 'Bạn có thể từ chối báo giá trong ca hoặc báo vấn đề nếu công việc chưa được thực hiện đúng.',
     contact: 'Liên hệ',
     call: 'Gọi điều phối Moki Rescue',
     hotline: 'Hotline điều phối',
@@ -54,13 +53,13 @@ const COPY = {
     issue: 'When a request has a problem',
     noProvider: 'Cannot see the rescue provider',
     noProviderBody:
-      'Do not confirm arrival. Use “Provider not here” in request details so the system records the correct state.',
+      'Report that the provider has not arrived in request details. If the case was incorrectly completed, report a problem.',
     noRoute: 'Route is not displayed',
     noRouteBody:
       'The app never draws a straight-line route. “Route unavailable” means the routing service did not return a valid road route.',
     quote: 'The quote is not acceptable',
     quoteBody:
-      'Reject the quote in the request. Do not confirm completion until the agreed work is actually complete.',
+      'Reject the quote in the request, or report a problem if the work was not performed correctly.',
     contact: 'Contact',
     call: 'Call Moki Rescue dispatch',
     hotline: 'Dispatch hotline',

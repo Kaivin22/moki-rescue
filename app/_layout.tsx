@@ -120,6 +120,8 @@ function GlobalAssistant() {
     pathname === '/onboarding' ||
     pathname === '/login' ||
     pathname === '/request' ||
+    pathname === '/partner-shops' ||
+    pathname.startsWith('/partnership') ||
     /^\/rescue\/[^/]+(?:\/map)?$/.test(pathname);
   const aboveTabs = ['/', '/request', '/activity', '/operations', '/profile'].includes(pathname);
   return <AssistantBubble hidden={hidden} aboveTabs={aboveTabs} />;
@@ -143,6 +145,8 @@ function AppNavigator() {
         <Stack.Screen name="rescue/[id]" />
         <Stack.Screen name="rescue/[id]/map" />
         <Stack.Screen name="service" />
+        <Stack.Screen name="partner-shops" />
+        <Stack.Screen name="partnership" />
         <Stack.Screen name="help" />
         <Stack.Screen name="operator" />
         <Stack.Screen name="profile" />

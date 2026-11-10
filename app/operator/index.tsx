@@ -41,6 +41,12 @@ export default function ManagementScreen() {
   return (
     <OperatorPage title={c.title} fallback="/(tabs)/operations">
       <NavigationCard
+        title={en ? 'Shop partnership applications' : 'Duyệt đăng ký cửa hàng'}
+        description={en ? 'Verify shops and their representatives.' : 'Xác minh cửa hàng và quyền đại diện.'}
+        icon="storefront-outline"
+        onPress={() => router.push('/partnership/applications' as Href)}
+      />
+      <NavigationCard
         title={en ? 'Support conversations' : 'Phiếu hỗ trợ và trao đổi'}
         icon="chatbubbles-outline"
         onPress={() => router.push('/operator/support' as Href)}

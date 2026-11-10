@@ -3,11 +3,9 @@ import { router } from 'expo-router';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { Colors } from '@/src/constants/colors';
-import { RatingBadge } from '@/src/features/rescue/components/RatingBadge';
 import { displayPhone, template } from '@/src/features/rescue/services/rescueDetailsPolicy';
 import { statusColor, statusLabel } from '@/src/features/rescue/status';
 import { useI18n } from '@/src/i18n';
-import { caseProgress } from '@/src/features/rescue/services/caseProgress';
 import type { ProfileRole } from '@/src/types/profile';
 import type { RequestDetails } from '@/src/types/rescue';
 import { useRescueDetailsCopy } from './rescueDetailsCopy';
@@ -55,10 +53,20 @@ export function RescueOverview({
       </View>
 
       <View style={styles.infoCard}>
-        <Text style={styles.section}>{language === 'en' ? 'Next step' : 'Bước tiếp theo'}</Text>
-        <Text style={styles.infoLabel}>{caseProgress(request, role, language)}</Text>
-      </View>
-      <View style={styles.infoCard}>
+        {request.basePriceVnd != null ? (
+          <Info
+            icon="cash-outline"
+            label={language === 'en' ? 'Base price (initial estimate)' : 'Giá cơ bản (ban đầu)'}
+            value={`${request.basePriceVnd.toLocaleString(language === 'en' ? 'en-US' : 'vi-VN')} đ`}
+          />
+        ) : null}
+        {request.pickupNote ? (
+          <Info
+            icon="construct-outline"
+            label={language === 'en' ? 'Reported issue' : 'Tình trạng khách báo'}
+            value={request.pickupNote}
+          />
+        ) : null}
         <Info icon="location-outline" label={c.landmark} value={request.pickupAreaLabel} />
         {request.destinationAreaLabel ? (
           <Info icon="flag-outline" label={c.destination} value={request.destinationAreaLabel} />
@@ -66,16 +74,11 @@ export function RescueOverview({
         {request.providerName ? (
           <Info icon="person-outline" label={c.provider} value={request.providerName} />
         ) : null}
-        {request.assignedProviderId ? (
-          <RatingBadge rating={request.providerRating} label={c.provider} />
+        {role !== 'provider' && request.providerContactPhone ? (
+          <CaseContactCard phone={request.providerContactPhone} customer={false} />
         ) : null}
-        {request.providerContactPhone ? <ProviderContactCard phone={request.providerContactPhone} /> : null}
-        {request.providerTeamName ? (
-          <Info icon="people-outline" label={c.team} value={request.providerTeamName} />
-        ) : null}
-        {request.providerTeamName ? <RatingBadge rating={request.teamRating} label={c.team} /> : null}
-        {request.rescueVehicleLabel ? (
-          <Info icon="bicycle-outline" label={c.vehicle} value={request.rescueVehicleLabel} />
+        {role !== 'customer' && request.customerContactPhone ? (
+          <CaseContactCard phone={request.customerContactPhone} customer />
         ) : null}
         {request.etaMinutes != null ? (
           <Info
@@ -105,9 +108,6 @@ export function RescueOverview({
         <View style={styles.warning}>
           <Text style={styles.warningText}>{c.routingWarning}</Text>
         </View>
-      ) : null}
-      {request.assignedProviderId && request.providerLocation ? (
-        <Text style={styles.infoLabel}>{c.assignmentRouteNote}</Text>
       ) : null}
       {request.status === 'needs_dispatch' ? (
         <View style={styles.noProviderCard}>
@@ -170,7 +170,7 @@ function Info({
   );
 }
 
-function ProviderContactCard({ phone }: { phone: string }) {
+function CaseContactCard({ phone, customer }: { phone: string; customer: boolean }) {
   const visiblePhone = displayPhone(phone);
   const c = useRescueDetailsCopy();
   return (
@@ -178,13 +178,13 @@ function ProviderContactCard({ phone }: { phone: string }) {
       style={styles.infoRow}
       onPress={() => void Linking.openURL(`tel:${phone}`)}
       accessibilityRole="button"
-      accessibilityLabel={`${c.callProvider} ${visiblePhone}`}
+      accessibilityLabel={`${customer ? c.callCustomer : c.callProvider} ${visiblePhone}`}
     >
       <Ionicons name="call-outline" size={20} color={Colors.primary} />
       <View style={styles.flex}>
-        <Text style={styles.infoLabel}>{c.contactLabel}</Text>
+        <Text style={styles.infoLabel}>{customer ? c.customerContactLabel : c.contactLabel}</Text>
         <Text style={styles.infoValue}>{visiblePhone}</Text>
-        <Text style={styles.contactPrivacy}>{c.contactPrivacy}</Text>
+        <Text style={styles.contactPrivacy}>{customer ? c.customerContactPrivacy : c.contactPrivacy}</Text>
       </View>
       <View style={styles.callChip}>
         <Text style={styles.callChipText}>{c.call}</Text>

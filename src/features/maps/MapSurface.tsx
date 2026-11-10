@@ -6,7 +6,9 @@ import { createNativeTileLoader, MAP_USER_AGENT } from './nativeTileLoader';
 
 export const MapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
   ({ html, tileUrl, onMessage, onError }, ref) => {
-    const web = useRef<WebView>(null);
+    // WebView 14 defaults its extra-props generic to undefined, which makes
+    // the props intersection `never` under strict null checks.
+    const web = useRef<WebView<object>>(null);
     const tiles = useRef<ReturnType<typeof createNativeTileLoader> | null>(null);
     useEffect(() => {
       const loader = createNativeTileLoader(tileUrl, (result) => {
@@ -27,7 +29,7 @@ export const MapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
       [],
     );
     return (
-      <WebView
+      <WebView<object>
         ref={web}
         style={{ flex: 1 }}
         source={{ html, baseUrl: MAP_DOCUMENT_BASE_URL }}

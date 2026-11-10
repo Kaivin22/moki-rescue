@@ -2,7 +2,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { LEGAL_VERSION } from '@/src/features/legal/constants';
 
 export function canUseDevPasswordLogin(isDev: boolean, environment: unknown, enabled: unknown) {
-  return isDev && enabled === true && ['development', 'local', 'staging'].includes(String(environment));
+  // Internal staging APKs embed JS and therefore have __DEV__ === false.
+  // Production must remain excluded even if the feature flag is accidentally enabled.
+  return (
+    enabled === true &&
+    (environment === 'staging' || (isDev && ['development', 'local'].includes(String(environment))))
+  );
 }
 
 export type DevLoginErrorCode =

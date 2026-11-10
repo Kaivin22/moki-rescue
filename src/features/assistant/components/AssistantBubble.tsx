@@ -195,7 +195,7 @@ export function AssistantBubble({
                   <View style={[styles.message, styles.assistantMessage]}>
                     <Text style={styles.typing}>{t('assistant.typing')}</Text>
                   </View>
-                ) : null
+                ) : undefined
               }
             />
 

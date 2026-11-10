@@ -21,6 +21,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import type { AccountLookup } from '@/src/types/rescue';
 import { ShopLocationEditor } from './ShopLocationEditor';
 import { WorkingHoursEditor } from './WorkingHoursEditor';
+import { ShopDetailsEditor, ProviderDetailsEditor } from './BasicDetailsEditor';
 
 const COPY = {
   vi: {
@@ -60,9 +61,9 @@ const COPY = {
     invalidAccountPhone: 'Nhập đúng số điện thoại đăng nhập để tìm tài khoản.',
     header: 'Đội và phân quyền',
     notice:
-      'Đây là mạng lưới đối tác khép kín. Người dùng thường tự đăng ký OTP; chỉ admin cấp quyền cứu hộ sau khi hợp tác và xác minh ngoại tuyến.',
+      'Admin xác minh cửa hàng và người đại diện. Người đại diện mời nhân sự; người nhận đồng ý mới được cấp quyền cứu hộ. Admin vẫn có thể cấp quyền và xử lý ngoại lệ tại đây.',
     testAccountNote:
-      'Tài khoản mẫu dùng email được thiết lập bằng script, không tìm bằng ô số điện thoại bên dưới. Nếu đã được cấp quyền và đội đã xác minh thì không cần duyệt lại; chọn đội [TEST] để xem cứu hộ viên.',
+      'Tài khoản mẫu dùng email được thiết lập bằng script, không tìm bằng ô số điện thoại bên dưới. Nếu đã được cấp quyền và đội đã xác minh thì không cần duyệt lại; chọn đội để xem cứu hộ viên.',
     createSection: 'Tạo đội đối tác',
     teamName: 'Tên đội',
     partnerReference: 'Mã hồ sơ đối tác nội bộ',
@@ -105,7 +106,7 @@ const COPY = {
   },
   en: {
     testAccountNote:
-      'Email test accounts are provisioned by the setup script, not the phone lookup below. An assigned account in a verified team needs no further approval; select the [TEST] team to view its provider.',
+      'Email test accounts are provisioned by the setup script, not the phone lookup below. An assigned account in a verified team needs no further approval; select the team to view its provider.',
     roster: 'Provider roster',
     noProviders: 'This team has no providers.',
     providerActive: 'Active',
@@ -143,7 +144,7 @@ const COPY = {
     invalidAccountPhone: 'Enter the valid login phone number used by the account.',
     header: 'Teams and access',
     notice:
-      'This is a closed partner network. Customers self-register with OTP; only an admin grants provider access after offline partnership and verification.',
+      'Admins verify shops and representatives. Representatives invite staff; provider access starts after acceptance. Admins can still enroll providers and handle exceptions here.',
     createSection: 'Create partner team',
     teamName: 'Team name',
     partnerReference: 'Internal partner file code',
@@ -224,8 +225,8 @@ export function TeamManagementScreen({
     enabled: section !== 'admins' && section !== 'create',
   });
   const services = useQuery({
-    queryKey: rescueKeys.services,
-    queryFn: rescueApi.serviceTypes,
+    queryKey: rescueKeys.adminServices,
+    queryFn: rescueApi.adminServiceTypes,
     enabled: section === 'capabilities',
   });
   const [teamName, setTeamName] = useState('');
@@ -443,6 +444,7 @@ export function TeamManagementScreen({
         {ready && section === 'team' ? (
           <>
             <Text style={styles.section}>{selectedTeamData?.name}</Text>
+            <ShopDetailsEditor teamId={selectedTeam} />
             <Text style={styles.muted}>{selectedTeamData ? c[selectedTeamData.status] : ''}</Text>
             {selectedTeamData ? (
               <ShopLocationEditor key={selectedTeamData.id} team={selectedTeamData} />
@@ -706,7 +708,7 @@ export function TeamManagementScreen({
                     <Pressable
                       key={service.code}
                       accessibilityRole="checkbox"
-                      accessibilityLabel={service.label}
+                      accessibilityLabel={english ? service.labelEn : service.labelVi}
                       accessibilityState={{ checked: active }}
                       onPress={() =>
                         setCapabilities(
@@ -722,7 +724,10 @@ export function TeamManagementScreen({
                         size={18}
                         color={Colors.primary}
                       />
-                      <Text style={styles.chipText}>{service.label}</Text>
+                      <Text style={styles.chipText}>
+                        {english ? service.labelEn : service.labelVi}
+                        {service.active ? '' : english ? ' (disabled)' : ' (đang tắt)'}
+                      </Text>
                     </Pressable>
                   );
                 })}
@@ -805,6 +810,7 @@ export function TeamManagementScreen({
                   <View key={provider.userId} style={styles.reviewRow}>
                     <Text style={styles.teamName}>{provider.displayName}</Text>
                     <Text style={styles.muted}>{provider.contactPhone}</Text>
+                    <ProviderDetailsEditor teamId={selectedTeam} provider={provider} />
                     {provider.rescueVehicleLabel ? (
                       <Text style={styles.muted}>{provider.rescueVehicleLabel}</Text>
                     ) : null}

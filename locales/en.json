@@ -1,8 +1,10 @@
 {
-  "CFBundleDisplayName": "Moki Rescue",
-  "NSLocationWhenInUseUsageDescription": "Moki Rescue uses location when customers choose a pickup point. Dispatch uses shop coordinates; Google Maps uses your current location when you open navigation.",
-  "NSLocationAlwaysAndWhenInUseUsageDescription": "Moki Rescue does not use background location. Dispatch uses shop coordinates.",
-  "NSLocationAlwaysUsageDescription": "Moki Rescue does not use background location.",
+  "ios": {
+    "CFBundleDisplayName": "Moki Rescue",
+    "NSLocationWhenInUseUsageDescription": "Moki Rescue uses location when customers choose a pickup point. Dispatch uses shop coordinates; Google Maps uses your current location when you open navigation.",
+    "NSLocationAlwaysAndWhenInUseUsageDescription": "Moki Rescue does not use background location. Dispatch uses shop coordinates.",
+    "NSLocationAlwaysUsageDescription": "Moki Rescue does not use background location."
+  },
   "android": {
     "app_name": "Moki Rescue"
   }

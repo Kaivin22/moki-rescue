@@ -3,6 +3,7 @@ import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
+import { ConfirmAction } from '@/src/components/atoms/ConfirmAction';
 import { NavigationCard } from '@/src/components/atoms/NavigationCard';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useI18n } from '@/src/i18n';
@@ -40,6 +41,7 @@ export function NotificationEntry() {
 }
 
 export function InboxScreen() {
+  const client = useQueryClient();
   const en = useI18n((state) => state.language === 'en');
   const userId = useAuthStore((state) => state.user?.id);
   const [unread, setUnread] = useState(false);
@@ -53,6 +55,10 @@ export function InboxScreen() {
     refetchInterval: live ? 15000 : false,
   });
   const items = query.data?.pages.flatMap((page) => page.items) ?? [];
+  const remove = async (id?: string) => {
+    await api.deleteNotification(id);
+    await client.invalidateQueries({ queryKey: ['communication', userId] });
+  };
   return (
     <CommunicationPage title={en ? 'Notifications' : 'Thông báo'}>
       <Text style={s.body}>
@@ -72,23 +78,40 @@ export function InboxScreen() {
         ))}
       </View>
       <QueryState query={query} empty={!items.length} />
+      <ConfirmAction
+        title={en ? 'Delete all notifications' : 'Xóa tất cả thông báo'}
+        message={
+          en
+            ? 'Delete your entire inbox, including notifications on other pages?'
+            : 'Xóa toàn bộ thông báo của bạn, kể cả những trang chưa tải?'
+        }
+        onConfirm={() => remove()}
+      />
       {items.map((item) => (
-        <Pressable
-          key={item.id}
-          accessibilityRole="button"
-          accessibilityLabel={`${item.readAt ? '' : en ? 'Unread. ' : 'Chưa đọc. '}${item.title}`}
-          style={[s.card, !item.readAt && s.unread]}
-          onPress={() => router.push(`/notifications/${item.id}` as Href)}
-        >
-          <Text style={s.title}>
-            {!item.readAt ? '● ' : ''}
-            {item.title}
-          </Text>
-          <Text style={s.body} numberOfLines={2}>
-            {item.body}
-          </Text>
-          <Text style={s.body}>{dateText(item.createdAt, en)}</Text>
-        </Pressable>
+        <View key={item.id}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${item.readAt ? '' : en ? 'Unread. ' : 'Chưa đọc. '}${item.title}`}
+            style={[s.card, !item.readAt && s.unread]}
+            onPress={() => router.push(`/notifications/${item.id}` as Href)}
+          >
+            <Text style={s.title}>
+              {!item.readAt ? '● ' : ''}
+              {item.title}
+            </Text>
+            <Text style={s.body} numberOfLines={2}>
+              {item.body}
+            </Text>
+            <Text style={s.body}>{dateText(item.createdAt, en)}</Text>
+          </Pressable>
+          <ConfirmAction
+            title={en ? 'Delete notification' : 'Xóa thông báo'}
+            message={
+              en ? `Delete “${item.title}” from your inbox?` : `Xóa “${item.title}” khỏi thông báo của bạn?`
+            }
+            onConfirm={() => remove(item.id)}
+          />
+        </View>
       ))}
       <More query={query} />
     </CommunicationPage>
@@ -149,9 +172,15 @@ function NotificationDetail({ id }: { id: string }) {
               title={en ? 'Open related content' : 'Mở nội dung liên quan'}
               onPress={() =>
                 router.push(
-                  (item.targetType === 'support'
-                    ? `/support/${item.targetId}`
-                    : `/rescue/${item.targetId}`) as Href,
+                  (item.targetType === 'shop_application'
+                    ? `/partnership/application/${item.targetId}`
+                    : item.targetType === 'team_invitation'
+                      ? '/partnership/invitations'
+                      : item.targetType === 'shop'
+                        ? '/partnership'
+                        : item.targetType === 'support'
+                          ? `/support/${item.targetId}`
+                          : `/rescue/${item.targetId}`) as Href,
                 )
               }
             />

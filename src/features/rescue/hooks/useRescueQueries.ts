@@ -6,6 +6,7 @@ import type { CancelRescueInput, CaseResolutionInput, CreateRescueInput } from '
 export const rescueKeys = {
   all: ['rescue'] as const,
   services: ['rescue', 'services'] as const,
+  partnerShops: ['rescue', 'partner-shops'] as const,
   requests: (history: boolean) => ['rescue', 'requests', history] as const,
   requestHistory: ['rescue', 'request-history'] as const,
   request: (id: string) => ['rescue', 'request', id] as const,
@@ -27,6 +28,15 @@ export function useServiceTypes() {
     // Also hide the retired service from a stale catalog during a backend rollout.
     select: (services) => services.filter((service) => service.code !== 'electric_battery'),
     staleTime: RescueTiming.serviceCatalogStaleMs,
+  });
+}
+
+export function usePartnerShops() {
+  return useQuery({
+    queryKey: rescueKeys.partnerShops,
+    queryFn: rescueApi.partnerShops,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 }
 
@@ -117,7 +127,17 @@ export function useRequestMutation(id: string) {
         workType?: 'repair' | 'transport';
         reasonCode?: string;
         note?: string;
-      }) => rescueApi.action(id, input.action, input.version, input.workType, input.reasonCode, input.note),
+        basePriceVnd?: number;
+      }) =>
+        rescueApi.action(
+          id,
+          input.action,
+          input.version,
+          input.workType,
+          input.reasonCode,
+          input.note,
+          input.basePriceVnd,
+        ),
       onSuccess: update,
     }),
     cancel: useMutation({

@@ -41,20 +41,18 @@ describe('focused login and operator screens', () => {
     expect(workspace).not.toContain('getCurrentPositionAsync');
     expect(workspace).not.toContain('requestForegroundPermissionsAsync');
   });
-  it('keeps login as a method chooser, with separate guarded forms', () => {
+  it('uses a normal credential form with a separate SMS route and environment guard', () => {
     const login = read('app/(auth)/login.tsx');
     expect(login).toContain('/(auth)/sms-login');
-    expect(login).toContain('/(auth)/test-login');
-    expect(login).not.toContain('<AppInput');
-    expect(login).not.toContain('<DevPasswordLoginPanel');
+    expect(login).not.toContain('/(auth)/test-login');
+    expect(login).toContain('<DevPasswordLoginPanel');
+    expect(login).toContain('canUseDevPasswordLogin(');
     const sms = read('app/(auth)/sms-login.tsx');
     expect(sms).toContain('signInWithOtp');
     expect(sms).toContain('verifyOtp');
     expect(sms).not.toContain('DevPasswordLoginPanel');
     const testLogin = read('app/(auth)/test-login.tsx');
-    expect(testLogin).toContain('canUseDevPasswordLogin(');
-    expect(testLogin).toContain('if (!enabled) return <Redirect');
-    expect(testLogin).toContain('<DevPasswordLoginPanel');
+    expect(testLogin).toContain('<Redirect href="/(auth)/login"');
   });
 
   it('exposes management destinations without embedding their forms in the menu', () => {

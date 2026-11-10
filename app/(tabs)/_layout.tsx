@@ -43,10 +43,10 @@ export default function TabLayout() {
                   ? 'Overview'
                   : 'Tổng quan'
                 : t('nav.home'),
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ focused, size }) => (
             <Ionicons
               name={role === 'provider' ? 'radio' : role === 'admin' ? 'grid' : 'home'}
-              color={color}
+              color={focused ? Colors.primary : Colors.textMuted}
               size={size}
             />
           ),
@@ -57,7 +57,9 @@ export default function TabLayout() {
         options={{
           href: isCustomer ? undefined : null,
           title: t('nav.request'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="shield" color={color} size={size} />,
+          tabBarIcon: ({ focused, size }) => (
+            <Ionicons name="shield" color={focused ? Colors.primary : Colors.textMuted} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -73,7 +75,9 @@ export default function TabLayout() {
                   ? 'All cases'
                   : 'Toàn bộ ca'
                 : t('nav.activity'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="time" color={color} size={size} />,
+          tabBarIcon: ({ focused, size }) => (
+            <Ionicons name="time" color={focused ? Colors.primary : Colors.textMuted} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -81,14 +85,18 @@ export default function TabLayout() {
         options={{
           href: role === 'admin' ? undefined : null,
           title: english ? 'Dispatch' : 'Điều phối',
-          tabBarIcon: ({ color, size }) => <Ionicons name="radio" color={color} size={size} />,
+          tabBarIcon: ({ focused, size }) => (
+            <Ionicons name="radio" color={focused ? Colors.primary : Colors.textMuted} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: t('nav.profile'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="person" color={color} size={size} />,
+          tabBarIcon: ({ focused, size }) => (
+            <Ionicons name="person" color={focused ? Colors.primary : Colors.textMuted} size={size} />
+          ),
         }}
       />
     </Tabs>

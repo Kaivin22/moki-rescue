@@ -5,12 +5,12 @@ describe('project integrity', () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
   const config = fs.readFileSync(path.join(process.cwd(), 'app.config.js'), 'utf8');
 
-  it('keeps the approved SDK 57, React and React Native versions aligned', () => {
-    expect(packageJson.dependencies.expo).toMatch(/^~57\.0\.\d+$/);
-    expect(packageJson.dependencies['react-native']).toMatch(/^0\.86\.\d+$/);
-    expect(packageJson.dependencies.react).toBe('19.2.3');
+  it('keeps the approved SDK 58, React and React Native versions aligned', () => {
+    expect(packageJson.dependencies.expo).toMatch(/^~58\.0\.\d+$/);
+    expect(packageJson.dependencies['react-native']).toMatch(/^0\.88\.\d+$/);
+    expect(packageJson.dependencies.react).toBe('19.3.0');
     expect(packageJson.dependencies['react-dom']).toBe(packageJson.dependencies.react);
-    expect(packageJson.dependencies['expo-router']).toMatch(/^~57\.0\.\d+$/);
+    expect(packageJson.dependencies['expo-router']).toMatch(/^~58\.0\.\d+$/);
     expect(packageJson.devDependencies.typescript).toMatch(/^~6\.0\.\d+$/);
     const lock = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package-lock.json'), 'utf8'));
     expect(lock.packages[''].dependencies).toEqual(packageJson.dependencies);
@@ -22,7 +22,7 @@ describe('project integrity', () => {
 
   it('shares the lockfile peer-resolution policy with clean installs and CI', () => {
     const npmrc = fs.readFileSync(path.join(process.cwd(), '.npmrc'), 'utf8');
-    expect(npmrc).toMatch(/^legacy-peer-deps=true\s*$/m);
+    expect(npmrc).toMatch(/^legacy-peer-deps=false\s*$/m);
   });
 
   it('declares TypeScript 6 ambient types and resolves aliases without deprecated baseUrl', () => {

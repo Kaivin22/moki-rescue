@@ -41,11 +41,6 @@ export function AdminDashboard() {
       >
         <Text style={styles.title}>{english ? 'Operations overview' : 'Tổng quan vận hành'}</Text>
         <NotificationEntry />
-        <Text style={styles.subtitle}>
-          {english
-            ? 'Monitor the network and handle exceptions. This account does not receive rescue offers.'
-            : 'Theo dõi mạng lưới và xử lý ca ngoại lệ. Tài khoản này không trực tiếp nhận ca cứu hộ.'}
-        </Text>
         {error ? (
           <View style={styles.errorPanel}>
             <Text style={styles.error} accessibilityRole="alert">
@@ -70,11 +65,6 @@ export function AdminDashboard() {
             </View>
           ))}
         </View>
-        <Text style={styles.caption}>
-          {english
-            ? 'Live totals from the database. Charts cover the last 7 calendar days.'
-            : 'Tổng hợp trực tiếp từ cơ sở dữ liệu. Biểu đồ tính trong 7 ngày gần nhất.'}
-        </Text>
         {statistics.data ? (
           <AdminCharts data={statistics.data} english={english} />
         ) : (

@@ -14,7 +14,7 @@ export interface InboxItem {
   kind: string;
   title: string;
   body: string;
-  targetType: 'rescue' | 'support' | 'announcement';
+  targetType: 'rescue' | 'support' | 'announcement' | 'shop_application' | 'team_invitation' | 'shop';
   targetId: string;
   readAt: string | null;
   createdAt: string;
@@ -48,6 +48,8 @@ export interface Announcement {
   title: string;
   body: string;
   recipientCount: number;
+  withdrawnAt: string | null;
+  version: number;
   createdAt: string;
 }
 export function nextCursor<T>(page: Page<T>): Cursor | undefined {
@@ -61,6 +63,12 @@ function params(cursor?: Cursor, extra: Record<string, string> = {}) {
 const post = <T>(path: string, body?: unknown) =>
   apiRequest<T>(path, { method: 'POST', ...(body ? { body: JSON.stringify(body) } : {}) });
 export const communicationApi = {
+  deleteNotification: (id?: string) =>
+    apiRequest<void>(id ? `/api/notifications/${id}` : '/api/notifications', { method: 'DELETE' }),
+  editAnnouncement: (id: string, input: { title: string; body: string; version: number }) =>
+    apiRequest<void>(`/api/operator/announcements/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
+  withdrawAnnouncement: (id: string, version: number) =>
+    post<void>(`/api/operator/announcements/${id}/withdraw`, { version }),
   inbox: (unread: boolean, cursor?: Cursor) =>
     apiRequest<Page<InboxItem>>(`/api/notifications?${params(cursor, { unread: String(unread) })}`),
   notification: (id: string) => apiRequest<InboxItem>(`/api/notifications/${id}`),
