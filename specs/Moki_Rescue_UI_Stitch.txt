@@ -1,3 +1,5 @@
+CẬP NHẬT 09/11/2026: Danh mục có 67 route điều hướng. Luồng mới: nhận ca → nhập giá cơ bản và di chuyển → đã gặp khách → hoàn tất ca. Khách chỉ duyệt báo giá khi dịch vụ yêu cầu; không xác nhận có mặt/hoàn tất. Khách vẫn báo chưa gặp, báo vấn đề và đánh giá tự nguyện. Trang nhận ca bỏ khung lịch, địa chỉ cửa hàng, chưa sẵn sàng; dùng địa chỉ và “Thời gian đến”, không hiển thị tọa độ. Mỗi ca có tối đa một thông báo trong hộp thư của mỗi admin. Các mô tả lịch sử trái với cập nhật này không còn áp dụng.
+
 ĐỀ BÀI THIẾT KẾ UI/UX CHO CLAUDE DESIGN — MOKI RESCUE
 Đối chiếu mã nguồn ngày 09/10/2026
 Tên file giữ lại để không mất liên kết cũ; nội dung này không còn là prompt Stitch.
@@ -513,6 +515,30 @@ ca qua đêm, chọn cả tuần 00:00–24:00 và tạm ngừng nhận ca. Có 
 kiểm tra chồng lấn, lỗi version thay đổi và tải lại. Cảnh báo lưu lịch tắt sẵn sàng,
 không hủy ca đã nhận; cứu hộ viên tự bật lại trong giờ, phiên cả ngày hết lúc 00:00.
 Cứu hộ viên đọc lịch/trạng thái trong trang Nhận ca; không thêm role quản lý đội.
+
+R60 | /partner-shops | Khách hàng
+Bản đồ cửa hàng hợp tác; xem địa chỉ, không chọn người nhận ca.
+
+R61 | /partnership | Khách hàng / cứu hộ viên
+Tổng quan hồ sơ hợp tác và cửa hàng đang tham gia.
+
+R62 | /partnership/apply | Khách hàng
+Gửi hồ sơ cửa hàng để admin xét duyệt.
+
+R63 | /partnership/applications | Người gửi hồ sơ
+Danh sách hồ sơ cửa hàng đã gửi.
+
+R64 | /partnership/application/[id] | Người gửi hồ sơ
+Xem chi tiết và trạng thái hồ sơ cửa hàng.
+
+R65 | /partnership/invitations | Người nhận lời mời
+Chấp nhận hoặc từ chối lời mời tham gia cửa hàng.
+
+R66 | /partnership/shop/[id] | Thành viên / đại diện cửa hàng
+Xem cửa hàng; đại diện quản lý lời mời và thành viên theo quyền.
+
+R67 | /reviews | Ba vai trò
+Đánh giá từ khách hàng; cứu hộ viên xem đánh giá của mình, khách xem đánh giá liên quan, admin xem toàn bộ.
 
 E. BIẾN THỂ TRẠNG THÁI CẦN THỂ HIỆN
 

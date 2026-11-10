@@ -63,7 +63,7 @@ Mobile là client không tin cậy. Các thay đổi nghiệp vụ đi qua Sprin
 
 Yêu cầu Node `^22.13.0 || >=24.3.0` (CI dùng Node `24.14.x`), npm và JDK 21.
 
-Repository có `.npmrc` đặt `legacy-peer-deps=true`, khớp với cấu hình đã tạo `package-lock.json`. Giữ file này khi chạy `npm ci` trên máy mới hoặc CI để npm không tự bổ sung các peer dependency khác với bộ thư viện đã khóa. Theo [tài liệu npm ci](https://docs.npmjs.com/cli/v11/commands/npm-ci/), cấu hình ảnh hưởng cây phụ thuộc phải thống nhất giữa lúc tạo lockfile và lúc cài. Đây không phải bảo đảm tương thích native; vẫn phải chạy kiểm tra phiên bản Expo, export bundle và kiểm thử thiết bị. Khi thay đổi chính sách này, cần rà soát lại peer dependency và lockfile, không tự nâng thư viện native.
+Repository đặt `legacy-peer-deps=false`: bộ thư viện SDK 58 được giải với kiểm tra peer dependency bật. Dùng `npm ci` để cài đúng `package-lock.json` trên máy mới và CI. Không dùng `--force` hoặc `--legacy-peer-deps` để che lỗi tương thích; vẫn cần kiểm tra Expo, export bundle và kiểm thử thiết bị.
 
 ```powershell
 npm ci
@@ -72,6 +72,8 @@ npm start
 ```
 
 Điền cấu hình thật theo [hướng dẫn triển khai](./docs/DEPLOYMENT.md). Trên điện thoại thật, `EXPO_PUBLIC_API_URL` phải là HTTPS hoặc IP LAN truy cập được; `localhost` là chính điện thoại. Không chép đè `.env` nếu đã có thông tin thật.
+
+Chạy thường ngày chỉ chỉnh `.env` (app và backend); `.env.example` là mẫu không chứa bí mật. Không cần `.env.local` hay file env riêng trong backend. Docker dùng `.env.docker.local` và mẫu `.env.docker.example` vì có cấu hình kết nối riêng. Chỉ khi cần sao lưu mới tạo cấu hình tùy chọn theo [hướng dẫn sao lưu](./docs/DISASTER-RECOVERY.md).
 
 `npm start` / `npm run dev` hiện kiểm tra `/api/health/ready` trước khi mở Expo. Nếu backend local chưa chạy, launcher build bằng Maven cache đã có rồi chạy backend; không tự tải thư viện, không chạy migration/reset và không dùng Docker. Log nằm trong `.tmp/local-development/backend.log` trên ổ chứa dự án. Nếu backend đã chạy thì dùng lại; Ctrl+C chỉ dừng các tiến trình do chính launcher mở.
 
@@ -92,21 +94,37 @@ npm run dev:backend # nạp .env cho backend
 
 Database mới/schema trống chỉ cần chạy `scripts/01_init_database.sql`: dựng schema B1–V13 và kiểm tra RLS/quyền trước khi commit. Tùy chọn chạy `scripts/02_seed_demo_teams.sql` để thêm 12 cửa hàng mô phỏng, không seed ca hay review giả. Xem [thứ tự SQL và tài khoản demo](./scripts/README.md). Database đã có dữ liệu không chạy lại init; migration Flyway gốc vẫn được giữ và không trộn hai cách quản lý trên cùng database.
 
-## Expo SDK 57
+## Expo SDK 58
 
-Dự án nâng từ SDK 54 lên SDK 57 theo phê duyệt của chủ dự án, dùng React Native `0.86.3` và React `19.2.3`. Giữ cả `package.json` và `package-lock.json` đồng bộ; không chỉ đổi số `sdkVersion` trong app config. Các bản nâng SDK tiếp theo vẫn cần được chủ dự án phê duyệt.
+Dự án nâng từ SDK 57 lên SDK 58 theo phê duyệt của chủ dự án, dùng React Native `0.88.1` và React `19.3.0`. Giữ cả `package.json` và `package-lock.json` đồng bộ; không chỉ đổi số `sdkVersion` trong app config. Các bản nâng SDK tiếp theo vẫn cần được chủ dự án phê duyệt.
 
-Sau khi cập nhật mã nguồn, dừng Metro cũ, chạy `npm ci` rồi `npm start -- --clear --go --lan`. Máy tính và iPhone cần truy cập được nhau qua mạng LAN; quét QR bằng Camera trên iPhone để mở Expo Go. Không dùng `--localhost` cho điện thoại thật vì loopback trên điện thoại không trỏ đến máy tính. SDK 57 yêu cầu iOS 16.4 trở lên.
+Sau khi cập nhật mã nguồn, dừng Metro cũ, chạy `npm ci` rồi `npm run dev -- -c`. Máy tính và iPhone cần truy cập được nhau qua mạng LAN; quét QR bằng Camera trên iPhone để mở Expo Go. Không dùng `--localhost` cho điện thoại thật vì loopback trên điện thoại không trỏ đến máy tính.
 
-Expo Go trên thiết bị **phải hỗ trợ SDK 57**; số phiên bản ứng dụng Expo Go không phải số SDK. Theo [hướng dẫn xử lý lệch phiên bản của Expo](https://docs.expo.dev/troubleshooting/expo-go-version-mismatch/), tại thời điểm rà soát 21/09/2026, bản App Store được tài liệu ghi nhận vẫn ở SDK 54. Vì vậy, nâng source lên 57 không tự nâng khả năng của bản Expo Go đã cài: cần kiểm tra thông báo SDK trên chính thiết bị. Nếu bản đó không hỗ trợ 57, cần Expo Go 57 qua kênh iOS được Expo hỗ trợ hoặc development build; không thể ép tương thích bằng cách sửa manifest.
+Expo Go trên thiết bị **phải hỗ trợ SDK 58**; số phiên bản ứng dụng Expo Go không phải số SDK. Xem [hướng dẫn nâng Expo SDK](https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/). Không tự nâng SDK mỗi lần khởi động: các thư viện native phải được đồng bộ và kiểm thử cùng nhau.
 
 Expo Go chỉ dùng cho các luồng tương thích với môi trường này. App không đăng ký remote push trong Expo Go; kiểm thử push cần development/preview build. Cơ chế hiện tại không dùng GPS nền để nhận ca. Type-check, unit test và export bundle không thay thế kiểm thử đăng nhập OTP, bản đồ, quyền GPS và điều hướng trên iPhone thật.
 
 ## Kiểm tra
 
 Để thử đủ ba vai trò mà không nhận SMS/email, dùng [thiết lập tài khoản kiểm thử](./scripts/README.md).
-Mục đăng nhập email/mật khẩu chỉ hiện trong bản phát triển; phiên Supabase và quyền trong database
-vẫn là thật. Chỉ có code/script không có nghĩa tài khoản đã được tạo trên cloud: phải hoàn tất bước setup.
+Form đăng nhập nhập email/mật khẩu trực tiếp, không có nút chọn tài khoản hoặc vai trò. Form này được bật trong bản phát triển và APK staging; phiên Supabase và quyền trong database vẫn là thật. Chỉ có code/script không có nghĩa tài khoản đã được tạo trên cloud: phải hoàn tất bước setup.
+
+### Tài khoản demo hiện có
+
+**Email và mật khẩu đầy đủ trên máy này:** [mở README tài khoản demo](./.tmp/README.md). File chứa mật khẩu nằm trong `.tmp`, được Git bỏ qua; bảng dưới đây có thể lưu trong README của repository.
+
+| Vai trò | Email |
+| --- | --- |
+| Khách hàng | `customer.rescue@example.com` |
+| Cứu hộ 1 — Hải Châu | `provider.rescue@example.com` |
+| Cứu hộ 2 — Hải Châu | `provider2.rescue@example.com` |
+| Cứu hộ 3 — Mỹ An | `provider3.rescue@example.com` |
+| Cứu hộ 4 — Hòa Xuân | `provider4.rescue@example.com` |
+| Quản trị viên | `admin.rescue@example.com` |
+
+Đây là tài khoản mô phỏng, không dùng số điện thoại demo để gọi thật. Bản clone mới không có README mật khẩu local; cần tạo tài khoản cho đúng dự án Supabase trước khi đăng nhập.
+
+Rà soát chức năng quản trị và quyền sửa/xóa đánh giá: [biên bản ngày 10/11/2026](./docs/ADMIN-CRUD-AUDIT-2026-11-10.md).
 
 ```powershell
 npm run check

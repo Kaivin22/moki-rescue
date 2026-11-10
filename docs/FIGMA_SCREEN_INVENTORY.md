@@ -4,11 +4,24 @@
 
 ## Kết luận số lượng
 
-- **59 màn hình điều hướng thực tế** (đếm theo route): gồm màn đăng nhập kiểm thử chỉ mở ở môi trường cho phép; không đồng nghĩa 59 thiết kế độc lập.
+- **67 màn hình điều hướng thực tế** (đếm theo route): gồm màn đăng nhập kiểm thử chỉ mở ở môi trường cho phép; không đồng nghĩa 67 thiết kế độc lập.
 - **2 route chỉ khởi động/chuyển hướng**: `app/index.tsx` và `/support/incidents/[id]` (tìm cuộc trao đổi gắn với khiếu nại).
-- **61 màn hình ở cấp mã nguồn** nếu tính cả hai route chuyển hướng, không tính `_layout.tsx`.
+- **69 màn hình ở cấp mã nguồn** nếu tính cả hai route chuyển hướng, không tính `_layout.tsx`.
 - `/support` và `/operator/support` dùng chung giao diện danh sách, dữ liệu và quyền khác nhau theo vai trò; không tính là hai thiết kế độc lập.
 - 83 frame là số đề xuất Figma của bản cũ, chưa kiểm kê lại sau lần tách này; không dùng để báo cáo số interface đã có.
+
+## Bổ sung ngày 09/11/2026
+
+ - `/partner-shops`: Bản đồ cửa hàng hợp tác; xem địa chỉ, không chọn người nhận ca.
+ - `/partnership`: Tổng quan hồ sơ hợp tác và cửa hàng đang tham gia.
+ - `/partnership/apply`: Gửi hồ sơ cửa hàng để admin xét duyệt.
+ - `/partnership/applications`: Danh sách hồ sơ cửa hàng đã gửi.
+ - `/partnership/application/[id]`: Xem chi tiết và trạng thái hồ sơ cửa hàng.
+ - `/partnership/invitations`: Chấp nhận hoặc từ chối lời mời tham gia cửa hàng.
+ - `/partnership/shop/[id]`: Xem cửa hàng; đại diện quản lý lời mời và thành viên theo quyền.
+ - `/reviews`: Đánh giá từ khách hàng; cứu hộ viên xem đánh giá của mình, khách xem đánh giá liên quan, admin xem toàn bộ.
+
+Trang nhận ca đã bỏ khung lịch, địa chỉ cửa hàng và mô tả chưa sẵn sàng; admin vẫn quản lý lịch tại trang riêng.
 
 ## Bổ sung ngày 12/10/2026
 

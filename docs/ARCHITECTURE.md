@@ -60,24 +60,27 @@ Route có thể import feature; feature không import từ `app/`. Component dù
 
 ### Điểm xếp hạng có thể cấu hình
 
-Khái niệm “gần” dùng ETA tuyến đường xe máy, không dùng khoảng cách đường chim bay. Trước khi chấm điểm, hệ thống chỉ giữ ứng viên có ETA không chênh quá `matching_eta_window_seconds` so với ETA tốt nhất. Vì vậy người rất xa không thể vượt lên chỉ nhờ kinh nghiệm hoặc điểm công bằng.
+Khái niệm “gần” dùng ETA tuyến đường xe máy, không dùng khoảng cách đường chim bay. Trước khi chấm điểm, hệ thống chỉ giữ ứng viên có ETA không chênh quá `matching_eta_window_seconds` so với ETA tốt nhất. Người ngoài nhóm này không vượt lên nhờ điểm công bằng.
 
-“Kinh nghiệm” là số ca `completed` của chính cứu hộ viên với cùng `service_code`; ca khác loại, ca hủy và điểm sao không được tính. “Thời gian chờ” tính từ lúc bắt đầu sẵn sàng hoặc lần gần nhất được gửi đề nghị. “Số ca gần đây” đếm đề nghị đã nhận trong cửa sổ ngày cấu hình.
+Số ca hoàn thành và điểm sao không tham gia chấm điểm hoặc phá hòa. “Thời gian chờ” tính từ lúc bắt đầu sẵn sàng hoặc lần gần nhất được gửi đề nghị, lấy mốc muộn hơn. “Số ca gần đây” đếm đề nghị đã nhận cùng dịch vụ trong cửa sổ ngày cấu hình.
 
-Bốn tiêu chí được chuẩn hóa về `[0, 1]` và chi phí thấp hơn được ưu tiên:
+Ba tiêu chí được chuẩn hóa về `[0, 1]` và chi phí thấp hơn được ưu tiên:
 
 ```text
 cost = w_eta * min((eta_seconds - best_eta_seconds) / eta_window_seconds, 1)
-     + w_experience * (1 - min(completed_service_cases / experience_reference_cases, 1))
      + w_waiting * (1 - min(waiting_seconds / waiting_reference_seconds, 1))
      + w_recent * min(recent_accepted_cases / recent_reference_cases, 1)
 ```
 
-Các trọng số được chuẩn hóa để tổng bằng 1; nếu cấu hình không hợp lệ, hệ thống an toàn quay về chỉ ưu tiên ETA. Cấu hình nằm trên từng dòng `service_types`, gồm ngưỡng ETA, trọng số, các mốc chuẩn hóa, cửa sổ ca gần đây, ngưỡng chống bỏ đói và TTL đề nghị.
+Ba trọng số còn lại được chuẩn hóa để tổng bằng 1; mặc định `(0.55 * E + 0.15 * W + 0.15 * R) / 0.85`. Khi cả ba trọng số sau kiểm tra đều bằng 0, hệ thống quay về chỉ ưu tiên ETA. Cấu hình nằm trên từng dòng `service_types`. Hai cột lịch sử `matching_experience_weight` và `matching_experience_reference_cases` được giữ để tương thích migration/database hiện có, nhưng backend không đọc chúng. Không cần chạy SQL mới hoặc reset dữ liệu để áp dụng thay đổi này.
 
 `provider_dispatch_stats` lưu số lượt liên tiếp một provider vừa đủ điều kiện, vừa nằm trong nhóm ETA nhưng chưa được mời. Khi đạt ngưỡng chống bỏ đói, người đó được đưa lên trước ở lần phù hợp tiếp theo. Bộ đếm đặt lại ngay khi đã gửi đề nghị; từ chối hoặc không phản hồi không được tính là bị hệ thống bỏ qua. Quy tắc này không vượt qua lọc năng lực, trạng thái hoặc ngưỡng ETA.
 
 PostGIS chỉ lọc phạm vi phục vụ, không quyết định người nhanh nhất. Khi OSRM lỗi, backend không fallback Haversine và UI không vẽ Polyline thẳng.
+
+### Bản đồ cửa hàng hợp tác
+
+Trang chủ khách hàng mở `/partner-shops`. `GET /api/catalog/partner-shops` yêu cầu tài khoản hoạt động đã chấp nhận điều khoản, chỉ trả `id`, `name`, `address`, `latitude`, `longitude`. Chỉ cửa hàng `verified` có địa chỉ và tọa độ hợp lệ trong vùng phục vụ được liệt kê; cửa hàng vẫn xuất hiện khi đóng cửa hoặc không có người sẵn sàng. Không trả hotline, số điện thoại thành viên, đánh giá, hồ sơ nội bộ hay danh sách nhân viên. Bấm ghim chỉ mở tên/địa chỉ; không truyền team/provider vào yêu cầu cứu hộ. Bản đồ này dùng OSM để giới thiệu mạng lưới, không gọi OSRM để xếp hạng hoặc gợi ý khách chọn cửa hàng.
 
 ## State machine
 
@@ -118,13 +121,15 @@ Danh sách lịch sử ca và audit dùng cursor `(timestamp, id)` thay vì tả
 
 RLS dùng quan hệ khách hàng/cứu hộ viên được phân công/admin. Client không có grant INSERT/UPDATE/DELETE trên bảng nghiệp vụ; ngoại lệ duy nhất là các cột hồ sơ tự phục vụ đã allowlist. Privileged SQL function bị revoke khỏi `anon` và `authenticated`. Hàm tra tài khoản theo đúng số đăng nhập chỉ trả UUID/tên/vai trò và chỉ backend được gọi sau khi kiểm tra quyền admin. Spring đăng nhập bằng role `motorescue_api` có grant theo bảng nhưng không có DDL/superuser; không dùng `postgres` lúc runtime.
 
-## Vòng đời đối tác khép kín
+## Vòng đời đối tác và người đại diện
 
 1. Người dùng tự xác thực OTP; trigger luôn tạo `customer`, kể cả metadata do client gửi có nội dung khác.
-2. Đơn vị vận hành xác minh quan hệ đối tác bên ngoài app. Admin tạo đội với mã hồ sơ nội bộ và hotline đã kiểm tra; không tải tài liệu pháp lý hay giấy tờ cá nhân.
-3. Từng cứu hộ viên tự đăng nhập OTP một lần. Admin tra cứu chính xác số đăng nhập qua backend, rồi gắn tài khoản cá nhân vào đội; không có mật khẩu do admin cấp hoặc tài khoản đội dùng chung.
-4. Admin khai báo capability và hoàn tất checklist lấy từ `team_verification_requirements`. `team_verification_checks` chỉ lưu kết quả, ghi chú tối thiểu, người và thời điểm kiểm tra.
-5. Backend chỉ cho chuyển đội sang `verified` khi đủ mọi requirement bắt buộc đang hoạt động, có capability và có provider active. Dấu `verified_by/verified_at` cùng audit log cho biết ai chịu trách nhiệm kích hoạt.
+2. Khách gửi hồ sơ cửa hàng trong ứng dụng. Admin đối chiếu cửa hàng, quyền đại diện và từng mục checklist bên ngoài app rồi duyệt/từ chối. Không tải giấy tờ cá nhân. Người gửi đầu tiên không mặc nhiên là chủ cửa hàng.
+3. Duyệt tạo cửa hàng và liên kết `team_representatives`, không tự cấp quyền nhận ca cho đại diện. Người đại diện mời nhân sự theo đúng số đăng nhập; người nhận đồng ý mới trở thành provider active, mặc định offline. Không có tài khoản đội dùng chung. Admin vẫn giữ luồng cấp quyền thủ công để xử lý ngoại lệ.
+4. Admin quản lý capability, địa chỉ và giờ hoạt động; `team_verification_checks` lưu kết quả, ghi chú tối thiểu, người và thời điểm kiểm tra. Lời mời có hạn 7 ngày, có thể thu hồi; gỡ thành viên không xóa lịch sử và bị chặn khi đang có ca/lời mời nhận ca mở.
+5. Đội được `verified` khi đủ checklist, capability, tọa độ trong vùng và có đại diện đã duyệt hoặc provider active. Dấu `verified_by/verified_at` cùng audit log ghi người chịu trách nhiệm. Được xác minh không đồng nghĩa có nhân sự sẵn sàng hoặc đã cấu hình giờ nhận ca.
+
+Chi tiết giao diện, API và nâng cấp V15: [PARTNER-ENROLLMENT.md](PARTNER-ENROLLMENT.md).
 
 Admin theo dõi ca, xử lý ngoại lệ và quản lý hồ sơ xác minh đội. Cứu hộ viên của đội `pending`/`suspended` không thể bật sẵn sàng và không lọt vào matching.
 

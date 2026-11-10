@@ -69,7 +69,7 @@ Không bao gồm:
    tương thích với nguồn. Chưa xác nhận được các phiên bản thực tế trên máy này.
 4. Chủ máy tạo thư mục riêng ngoài repository, ví dụ `E:\MotoRescueBackups` và
    `E:\Private`. Không để backup thật trong `.tmp`, Git hoặc thư mục đồng bộ công khai.
-5. Sao chép `.env.backup.example` thành `.env.backup.local`, điền đường dẫn/cấu hình thật.
+5. Chỉ khi cần sao lưu: tạo `.env.backup.local` từ mẫu bên dưới, điền đường dẫn/cấu hình thật.
    Không sửa `.env` chạy app. Lấy kết nối trực tiếp hoặc **session pooler** được nhà
    cung cấp hỗ trợ, không dùng transaction pooler để dump. Chọn đúng project nguồn.
 6. Tạo password file riêng, không nhập mật khẩu vào command line hoặc commit. Định dạng
@@ -95,6 +95,35 @@ Archive có hash mật khẩu, token/phiên Auth và dữ liệu cá nhân. **Kh
 file dump/pgpass lên Git, chat hoặc gửi kèm báo cáo cho giảng viên.** Bảo vệ bằng ACL
 và mã hóa ổ đĩa/thiết bị lưu trữ; custom dump là nén/định dạng lưu, không phải mã hóa.
 Các đuôi dump/backup/pgpass được ignore là lớp phòng tránh, không phải bảo mật tuyệt đối.
+
+## Mẫu cấu hình sao lưu tùy chọn
+
+Không cần tạo file này để chạy app.
+
+```dotenv
+# Save as .env.backup.local only when using backup tools; never commit credentials.
+# Tools/server are NOT installed by the script. Read docs/DISASTER-RECOVERY.md first.
+BACKUP_PG_BIN='E:\Tools\PostgreSQL\bin'
+BACKUP_ROOT='E:\MotoRescueBackups'
+BACKUP_PG_HOST=db.YOUR_PROJECT_REF.supabase.co
+BACKUP_PG_PORT=5432
+BACKUP_PG_DATABASE=postgres
+BACKUP_PG_USER=postgres
+BACKUP_PG_PASSFILE='E:\Private\motorescue-source.pgpass'
+BACKUP_PG_SSLMODE=verify-full
+# Certificate downloaded from your database provider; uncomment if needed.
+# BACKUP_PG_SSLROOTCERT='E:\Private\supabase-root.crt'
+
+# Dedicated, empty, native local PostgreSQL server with compatible PostGIS.
+# Do NOT point this at the Supabase connection or an existing application cluster.
+RESTORE_PG_HOST=127.0.0.1
+RESTORE_PG_PORT=5433
+RESTORE_PG_DATABASE=postgres
+RESTORE_PG_USER=postgres
+RESTORE_PG_PASSFILE='E:\Private\motorescue-drill.pgpass'
+RESTORE_PG_SSLMODE=disable
+RESTORE_PG_ISOLATED=true
+```
 
 ## Thứ tự chạy tại thư mục dự án
 

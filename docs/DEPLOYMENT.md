@@ -14,7 +14,7 @@ Sao chép `.env.example` thành `.env`. Client chỉ nhận Supabase URL + publi
 
 `APP_ENV=production` làm Expo config fail-fast nếu thiếu Supabase, API, hotline, EAS project ID hoặc tâm bản đồ ban đầu. Tâm bản đồ chỉ là viewport public; polygon `service_zones` trong database mới là nguồn quyết định có nhận ca hay không. Không dùng `localhost` cho API URL trên điện thoại thật.
 
-Chính sách ghép ca được lưu theo từng dòng `service_types`: ngưỡng chênh lệch ETA, trọng số ETA/kinh nghiệm/thời gian chờ/số ca gần đây, các mốc chuẩn hóa, ngưỡng chống bỏ đói và TTL đề nghị. Chỉ hiệu chỉnh trên staging bằng migration hoặc SQL đã review; không sửa trực tiếp production mà không ghi lại giá trị trước/sau. “Kinh nghiệm” chỉ đếm ca hoàn thành của cứu hộ viên với đúng loại dịch vụ.
+Chính sách ghép ca được lưu theo từng dòng `service_types`: ngưỡng chênh lệch ETA, ba trọng số ETA/thời gian chờ/số ca nhận gần đây, các mốc chuẩn hóa, ngưỡng chống bỏ đói và TTL đề nghị. Số ca hoàn thành không còn ảnh hưởng điểm hoặc phá hòa. Backend chuẩn hóa ba trọng số còn lại; hai cột cấu hình `matching_experience_*` cũ không được sử dụng, nên không cần reset hoặc chạy SQL vá khi cập nhật backend. Chỉ hiệu chỉnh các tham số còn hiệu lực trên staging bằng migration hoặc SQL đã review; không sửa production mà không ghi lại giá trị trước/sau.
 
 ## 3. Supabase
 
@@ -53,7 +53,7 @@ cd backend
 
 Để chạy bản JAR, dùng `.\mvnw.cmd package` sau khi chuẩn bị môi trường integration test riêng, rồi `java -jar target/moki-rescue-0.0.1-SNAPSHOT.jar`. Không bỏ kiểm thử khi phát hành. Tham khảo [kiểm thử PostgreSQL/PostGIS trực tiếp](../backend/TESTING.md).
 
-Spring Boot không tự đọc `.env`/`.env.runtime`; đây chỉ là file tham khảo biến. Nạp cấu hình bằng môi trường tiến trình, IDE hoặc secret store, không đưa mật khẩu vào command line/JAR. Runtime dùng `motorescue_api`, migration owner tách riêng. Điện thoại dùng IP LAN/HTTPS API, không dùng localhost; OSRM có thể chạy độc lập và backend gọi qua `OSRM_MOTORBIKE_BASE_URL`.
+Spring Boot không tự đọc `.env`. Mẫu biến backend nằm trong phần Backend-only của `.env.example`; launcher `npm run dev:backend` nạp `.env` khi chạy local. Nạp cấu hình bằng môi trường tiến trình, IDE hoặc secret store, không đưa mật khẩu vào command line/JAR. Runtime dùng `motorescue_api`, migration owner tách riêng. Điện thoại dùng IP LAN/HTTPS API, không dùng localhost; OSRM có thể chạy độc lập và backend gọi qua `OSRM_MOTORBIKE_BASE_URL`.
 
 Healthcheck dùng `GET /api/health/ready`. Production cần HTTPS reverse proxy, tài khoản hệ điều hành ít quyền, giám sát và rollback JAR. CI chỉ kiểm chứng mã nguồn, không tự triển khai môi trường thật.
 
