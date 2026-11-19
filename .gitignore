@@ -2,6 +2,7 @@
 
 # ─── Agent / AI assistant skill files ────────────────────────────────────────
 /AGENTS.md
+/.agents/
 /CLAUDE.md
 /plan.md
 claude.json
