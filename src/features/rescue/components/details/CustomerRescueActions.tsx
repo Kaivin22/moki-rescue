@@ -1,8 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import Constants from 'expo-constants';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { DispatchSupportEntry } from '@/src/features/support/DispatchSupport';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
 import { Colors } from '@/src/constants/colors';
@@ -22,9 +22,8 @@ import type { CancellationReasonCode, RequestDetails } from '@/src/types/rescue'
 import { useRescueDetailsCopy } from './rescueDetailsCopy';
 import { rescueDetailsStyles as styles } from './rescueDetailsStyles';
 
-const SUPPORT_HOTLINE = String(Constants.expoConfig?.extra?.supportHotline ?? '').replace(/[^+\d]/g, '');
-
 export function CustomerRescueActions({ request }: { request: RequestDetails }) {
+  const router = useRouter();
   const actions = useRequestMutation(request.id);
   const support = useSupportAction(request.id);
   const c = useRescueDetailsCopy();
@@ -278,13 +277,7 @@ export function CustomerRescueActions({ request }: { request: RequestDetails }) 
             disabled={supportRequested}
             onPress={() => void requestDispatchSupport()}
           />
-          {SUPPORT_HOTLINE ? (
-            <AppButton
-              title={`${c.callDispatch} ${SUPPORT_HOTLINE}`}
-              variant="outline"
-              onPress={() => void Linking.openURL(`tel:${SUPPORT_HOTLINE}`)}
-            />
-          ) : null}
+          <DispatchSupportEntry />
         </View>
       ) : null}
       {!cancelOpen && message ? <Text style={styles.error}>{message}</Text> : null}

@@ -27,6 +27,7 @@ import {
   saveRegistrationConsent,
 } from './accountAuth';
 import { LEGAL_VERSION } from '@/src/features/legal/constants';
+import { DispatchSupportEntry } from '@/src/features/support/DispatchSupport';
 
 export { authColors };
 export function AuthShell({
@@ -382,6 +383,7 @@ export function AccountScreen({ mode }: { mode: 'login' | 'register' | 'forgot' 
         </Text>
       )}
       {mode !== 'forgot' && <AuthGoogle disabled={busy} />}
+      {mode === 'login' && <DispatchSupportEntry variant="ghost" />}
       {mode === 'register' && (
         <View style={styles.legal}>
           <Link href="/legal/terms" style={styles.link}>

@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
+import { DispatchSupportEntry } from '@/src/features/support/DispatchSupport';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { RequestSummaryCard } from '@/src/features/rescue/components/RequestSummaryCard';
@@ -132,6 +133,7 @@ function CustomerHomeScreen() {
           <Ionicons name="call" size={21} color={Colors.error} />
         </Pressable>
 
+        <DispatchSupportEntry />
         <NavigationCard
           title={c.partners}
           description={c.partnersHint}

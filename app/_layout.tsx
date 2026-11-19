@@ -14,6 +14,7 @@ import { supabase } from '@/src/services/supabase';
 import { useAuthStore } from '@/src/stores/authStore';
 import { startPushNotificationSync } from '@/src/features/notifications/pushNotifications';
 import { AppErrorBoundary } from '@/src/components/AppErrorBoundary';
+import { DispatchSupportEntry, DispatchSupportProvider } from '@/src/features/support/DispatchSupport';
 import { hasCurrentConsent } from '@/src/features/auth/access';
 import { useI18n } from '@/src/i18n';
 import {
@@ -98,8 +99,9 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
 
   if (!isHydrated) {
     return (
-      <View style={styles.boot}>
+      <View style={[styles.boot, styles.authBoot]}>
         <ActivityIndicator size="large" color={Colors.accent} />
+        <DispatchSupportEntry connection variant="ghost" />
       </View>
     );
   }
@@ -165,11 +167,13 @@ export default function RootLayout() {
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <ReduceMotionProvider>
           <QueryClientProvider client={queryClient}>
-            <AuthBootstrap>
-              <AppErrorBoundary>
-                <AppNavigator />
-              </AppErrorBoundary>
-            </AuthBootstrap>
+            <DispatchSupportProvider>
+              <AuthBootstrap>
+                <AppErrorBoundary>
+                  <AppNavigator />
+                </AppErrorBoundary>
+              </AuthBootstrap>
+            </DispatchSupportProvider>
           </QueryClientProvider>
         </ReduceMotionProvider>
       </SafeAreaProvider>
@@ -180,4 +184,5 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   boot: { flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' },
+  authBoot: { gap: 16, paddingHorizontal: 24 },
 });

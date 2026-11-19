@@ -95,6 +95,8 @@ export function useRoadRoute(
 export function useCreateRequest() {
   const client = useQueryClient();
   return useMutation({
+    // Report an offline submission now so it cannot resume after the customer calls dispatch.
+    networkMode: 'always',
     mutationFn: ({ input, idempotencyKey }: { input: CreateRescueInput; idempotencyKey: string }) =>
       rescueApi.create(input, idempotencyKey),
     onSuccess: (request) => {

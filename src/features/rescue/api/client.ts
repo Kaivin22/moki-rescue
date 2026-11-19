@@ -26,6 +26,13 @@ export class ApiClientError extends Error {
   }
 }
 
+export function isRescueConnectionError(error: unknown): boolean {
+  return (
+    error instanceof ApiClientError &&
+    ['NETWORK_ERROR', 'REQUEST_TIMEOUT', 'AUTH_UNAVAILABLE', 'SERVICE_UNAVAILABLE'].includes(error.code)
+  );
+}
+
 const ENGLISH_API_ERRORS: Record<string, string> = {
   FORBIDDEN: 'You do not have permission to perform this action.',
   PARTNER_CONFLICT: 'This shop or membership changed. Refresh before trying again.',

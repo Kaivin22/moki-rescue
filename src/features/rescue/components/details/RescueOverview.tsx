@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
+import { DispatchSupportEntry } from '@/src/features/support/DispatchSupport';
 import { Colors } from '@/src/constants/colors';
 import { displayPhone, template } from '@/src/features/rescue/services/rescueDetailsPolicy';
 import { statusColor, statusLabel } from '@/src/features/rescue/status';
@@ -15,7 +16,6 @@ interface Props {
   request: RequestDetails;
   role: ProfileRole;
   showAttention: boolean;
-  supportHotline: string;
   retryingDispatch: boolean;
   requestingSupport: boolean;
   onRetryDispatch: () => void;
@@ -27,7 +27,6 @@ export function RescueOverview({
   request,
   role,
   showAttention,
-  supportHotline,
   retryingDispatch,
   requestingSupport,
   onRetryDispatch,
@@ -142,13 +141,7 @@ export function RescueOverview({
             loading={requestingSupport}
             onPress={onRequestSupport}
           />
-          {supportHotline ? (
-            <AppButton
-              title={`${c.callDispatch} ${supportHotline}}`}
-              variant="outline"
-              onPress={() => void Linking.openURL(`tel:${supportHotline}`)}
-            />
-          ) : null}
+          <DispatchSupportEntry />
         </View>
       ) : null}
     </>

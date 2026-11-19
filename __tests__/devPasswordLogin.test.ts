@@ -129,7 +129,7 @@ describe('real-session development password sign-in', () => {
       EXPO_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
       EXPO_PUBLIC_SUPABASE_ANON_KEY: 'unit-test-only',
       EXPO_PUBLIC_API_URL: 'https://api.example.com',
-      EXPO_PUBLIC_SUPPORT_HOTLINE: '19000000',
+      EXPO_PUBLIC_SUPPORT_HOTLINE: '1999000000',
       EXPO_PUBLIC_SERVICE_CENTER_LATITUDE: '16.0544',
       EXPO_PUBLIC_SERVICE_CENTER_LONGITUDE: '108.2022',
       EXPO_PUBLIC_EAS_PROJECT_ID: '00000000-0000-4000-8000-000000000000',

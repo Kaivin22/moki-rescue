@@ -20,7 +20,8 @@ import { MapView, Marker } from '@/src/components/MapWrapper';
 import { MapDetailsSheet } from '@/src/features/maps/MapDetailsSheet';
 import { Colors } from '@/src/constants/colors';
 import { Fonts, Radius, Spacing, Typography } from '@/src/constants/spacing';
-import { ApiClientError } from '@/src/features/rescue/api/client';
+import { ApiClientError, isRescueConnectionError } from '@/src/features/rescue/api/client';
+import { DispatchSupportEntry } from '@/src/features/support/DispatchSupport';
 import { rescueApi } from '@/src/features/rescue/api/rescueApi';
 import { useCreateRequest, useServiceTypes } from '@/src/features/rescue/hooks/useRescueQueries';
 import { useCurrentLocation } from '@/src/features/location/hooks/useCurrentLocation';
@@ -320,12 +321,13 @@ function CustomerRequestForm() {
             <Text style={styles.title}>{c.issueTitle}</Text>
             <Text style={styles.subtitle}>{c.issueBody}</Text>
             <Text style={styles.subtitle}>{c.scope}</Text>
-            {services.isError ? (
+            {services.isError || services.fetchStatus === 'paused' ? (
               <View style={styles.errorCard}>
                 <Text style={styles.error}>
                   {services.error instanceof ApiClientError ? services.error.message : c.loadServicesError}
                 </Text>
                 <AppButton title={c.retry} variant="outline" onPress={() => void services.refetch()} />
+                <DispatchSupportEntry connection />
               </View>
             ) : null}
             <View style={styles.serviceList} accessibilityRole="radiogroup">
@@ -576,6 +578,9 @@ function CustomerRequestForm() {
                     variant="outline"
                     onPress={() => router.push('/(tabs)/activity')}
                   />
+                ) : null}
+                {error && (isRescueConnectionError(create.error) || outcomeUnknown) ? (
+                  <DispatchSupportEntry connection />
                 ) : null}
               </ScrollView>
             </MapDetailsSheet>

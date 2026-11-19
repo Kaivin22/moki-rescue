@@ -24,7 +24,8 @@ try {
 } catch {
   throw new Error('EXPO_PUBLIC_MAP_TILE_URL must be an HTTPS XYZ tile URL without credentials.');
 }
-const supportHotline = process.env.EXPO_PUBLIC_SUPPORT_HOTLINE || '';
+const supportHotline = (process.env.EXPO_PUBLIC_SUPPORT_HOTLINE || '').trim();
+const supportHours = (process.env.EXPO_PUBLIC_SUPPORT_HOURS || '').trim();
 const serviceCenterLatitude = process.env.EXPO_PUBLIC_SERVICE_CENTER_LATITUDE || '';
 const serviceCenterLongitude = process.env.EXPO_PUBLIC_SERVICE_CENTER_LONGITUDE || '';
 const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID || '';
@@ -64,8 +65,8 @@ if (isProductionBuild) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(easProjectId)) {
     throw new Error('EXPO_PUBLIC_EAS_PROJECT_ID must be a valid UUID.');
   }
-  if (!/^\+?[0-9]{6,15}$/.test(supportHotline)) {
-    throw new Error('EXPO_PUBLIC_SUPPORT_HOTLINE must contain 6-15 digits, with an optional leading +.');
+  if (!/^\+?[0-9]{6,15}$/.test(supportHotline) || supportHotline === '19000000') {
+    throw new Error('EXPO_PUBLIC_SUPPORT_HOTLINE must be a real dispatch number (6-15 digits; optional +).');
   }
   const centerLatitude = Number(serviceCenterLatitude);
   const centerLongitude = Number(serviceCenterLongitude);
@@ -147,6 +148,7 @@ export default {
       mapTileUrl,
       mapTileAttribution,
       supportHotline,
+      supportHours,
       serviceCenterLatitude,
       serviceCenterLongitude,
       appEnvironment: process.env.APP_ENV || 'development',

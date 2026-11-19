@@ -1,4 +1,3 @@
-import Constants from 'expo-constants';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter, useLocalSearchParams, type Href } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -24,7 +23,8 @@ import {
   JourneyTimeline,
   journeyStyles,
 } from '@/src/features/rescue/components/details/RescueJourney';
-import { ApiClientError } from '@/src/features/rescue/api/client';
+import { ApiClientError, isRescueConnectionError } from '@/src/features/rescue/api/client';
+import { DispatchSupportEntry } from '@/src/features/support/DispatchSupport';
 import {
   CancellationSummary,
   OperationalCancellationPanel,
@@ -42,8 +42,6 @@ import { useRequest, useRoadRoute } from '@/src/features/rescue/hooks/useRescueQ
 import { rescueMapRegion } from '@/src/features/rescue/services/rescueDetailsPolicy';
 import { isLiveStatus } from '@/src/features/rescue/status';
 import { useAuthStore } from '@/src/stores/authStore';
-
-const SUPPORT_HOTLINE = String(Constants.expoConfig?.extra?.supportHotline ?? '').replace(/[^+\d]/g, '');
 
 export default function RescueDetailsScreen() {
   const router = useRouter();
@@ -98,6 +96,10 @@ export default function RescueDetailsScreen() {
     return (
       <View style={styles.center}>
         <Text style={styles.error}>{c.loadError}</Text>
+        {role === 'customer' &&
+          (requestQuery.fetchStatus === 'paused' || isRescueConnectionError(requestQuery.error)) && (
+            <DispatchSupportEntry connection />
+          )}
         <AppButton
           title={c.back}
           variant="outline"
@@ -196,7 +198,6 @@ export default function RescueDetailsScreen() {
           request={request}
           role={role}
           showAttention={permissions.showAttention}
-          supportHotline={SUPPORT_HOTLINE}
           retryingDispatch={dispatchRetry.isPending}
           requestingSupport={support.isPending}
           onRetryDispatch={() => void retryDispatch()}

@@ -1,14 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import Constants from 'expo-constants';
-import { router, type Href } from 'expo-router';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter, type Href } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { DispatchSupportEntry } from '@/src/features/support/DispatchSupport';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/src/components/atoms/ScreenHeader';
 import { Colors } from '@/src/constants/colors';
 import { Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { useCopy, useI18n } from '@/src/i18n';
 
-const SUPPORT_HOTLINE = String(Constants.expoConfig?.extra?.supportHotline ?? '').replace(/[^+\d]/g, '');
 const COPY = {
   vi: {
     header: 'Trợ giúp',
@@ -31,9 +30,6 @@ const COPY = {
     quote: 'Báo giá không phù hợp',
     quoteBody: 'Bạn có thể từ chối báo giá trong ca hoặc báo vấn đề nếu công việc chưa được thực hiện đúng.',
     contact: 'Liên hệ',
-    call: 'Gọi điều phối Moki Rescue',
-    hotline: 'Hotline điều phối',
-    unconfigured: 'Chưa được cấu hình cho môi trường này',
     terms: 'Điều khoản sử dụng',
     termsSub: 'Trách nhiệm của khách và đội cứu hộ',
     privacy: 'Chính sách quyền riêng tư',
@@ -61,9 +57,6 @@ const COPY = {
     quoteBody:
       'Reject the quote in the request, or report a problem if the work was not performed correctly.',
     contact: 'Contact',
-    call: 'Call Moki Rescue dispatch',
-    hotline: 'Dispatch hotline',
-    unconfigured: 'Not configured for this environment',
     terms: 'Terms of use',
     termsSub: 'Customer and rescue team responsibilities',
     privacy: 'Privacy policy',
@@ -102,6 +95,7 @@ function HelpRow({
 }
 
 export default function HelpCenterScreen() {
+  const router = useRouter();
   const c = useCopy(COPY);
   const en = useI18n((state) => state.language === 'en');
   return (
@@ -160,24 +154,7 @@ export default function HelpCenterScreen() {
 
         <Text style={styles.section}>{c.contact}</Text>
         <View style={styles.card}>
-          {SUPPORT_HOTLINE ? (
-            <HelpRow
-              icon="call-outline"
-              title={c.call}
-              subtitle={SUPPORT_HOTLINE}
-              onPress={() => void Linking.openURL(`tel:${SUPPORT_HOTLINE}`)}
-            />
-          ) : (
-            <View style={styles.row}>
-              <View style={styles.icon}>
-                <Ionicons name="call-outline" size={22} color={Colors.textMuted} />
-              </View>
-              <View style={styles.flex}>
-                <Text style={styles.rowTitle}>{c.hotline}</Text>
-                <Text style={styles.rowSubtitle}>{c.unconfigured}</Text>
-              </View>
-            </View>
-          )}
+          <DispatchSupportEntry />
           <HelpRow
             icon="document-text-outline"
             title={c.terms}

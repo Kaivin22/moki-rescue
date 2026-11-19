@@ -139,7 +139,7 @@ Không hứa theo dõi GPS trực tiếp; lời giới thiệu bám cơ chế tu
 R02 | /(auth)/login | Mọi người
 Nguồn: app/(auth)/login.tsx.
 Nhập email và mật khẩu, có hiện/ẩn mật khẩu. Đăng nhập Google cần cấu hình OAuth.
-Có lối sang đăng ký và quên mật khẩu.
+Có lối sang đăng ký, quên mật khẩu và Gọi hỗ trợ ngay cả khi chưa có phiên.
 
 R03 | /(auth)/sms-login | Mọi người
 Nguồn: app/(auth)/sms-login.tsx.
