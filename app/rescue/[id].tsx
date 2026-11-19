@@ -1,13 +1,29 @@
 import Constants from 'expo-constants';
-import { router, useLocalSearchParams, type Href } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter, useLocalSearchParams, type Href } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { NavigationCard } from '@/src/components/atoms/NavigationCard';
 import { useI18n } from '@/src/i18n';
 import { Colors } from '@/src/constants/colors';
-import { Spacing } from '@/src/constants/spacing';
+import { Spacing, Typography } from '@/src/constants/spacing';
+import {
+  RescueJourney,
+  JourneyTimeline,
+  journeyStyles,
+} from '@/src/features/rescue/components/details/RescueJourney';
 import { ApiClientError } from '@/src/features/rescue/api/client';
 import {
   CancellationSummary,
@@ -30,6 +46,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 const SUPPORT_HOTLINE = String(Constants.expoConfig?.extra?.supportHotline ?? '').replace(/[^+\d]/g, '');
 
 export default function RescueDetailsScreen() {
+  const router = useRouter();
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const profile = useAuthStore((state) => state.profile);
@@ -91,20 +108,85 @@ export default function RescueDetailsScreen() {
     );
   }
 
-  return (
-    <View style={styles.screen}>
-      <RescueMapSection
-        request={request}
-        providerLocation={providerLocation}
-        route={route.data}
-        region={region}
-        insetTop={insets.top}
-      />
+  const closed = ['completed', 'cancelled', 'no_provider'].includes(request.status);
+  const contact = !closed
+    ? role === 'customer'
+      ? request.providerContactPhone
+      : role === 'provider'
+        ? request.customerContactPhone
+        : null
+    : null;
+  const footerTitle = permissions.showReview
+    ? request.review
+      ? c.editReview
+      : c.review
+    : contact
+      ? role === 'provider'
+        ? en
+          ? 'Call customer'
+          : 'Gọi khách hàng'
+        : en
+          ? 'Call rescue provider'
+          : 'Gọi cứu hộ viên'
+      : closed
+        ? en
+          ? 'Return home'
+          : 'Về trang chủ'
+        : null;
+  const footerAction = () => {
+    if (permissions.showReview) router.push(`/rescue/${id}/review`);
+    else if (contact)
+      void Linking.openURL(`tel:${contact}`).catch(() =>
+        setScreenMessage(en ? 'Could not open the phone app.' : 'Không thể mở ứng dụng gọi điện.'),
+      );
+    else router.replace('/(tabs)');
+  };
+  const priorityActions =
+    permissions.showProviderActions ||
+    (permissions.showCustomerActions && request.status === 'awaiting_quote');
+  const caseActions =
+    (permissions.showCustomerActions && !['completed', 'cancelled'].includes(request.status)) ||
+    (permissions.showProviderActions && !closed) ? (
+      <View style={journeyStyles.card}>
+        <Text style={journeyStyles.section}>{en ? 'Case actions' : 'Xử lý ca'}</Text>
+        {permissions.showCustomerActions && request.status === 'awaiting_quote' && request.currentQuote ? (
+          <>
+            <Text style={journeyStyles.body}>{request.currentQuote.description}</Text>
+            <Text style={journeyStyles.metricValue}>
+              {request.currentQuote.amountVnd.toLocaleString(en ? 'en-US' : 'vi-VN')} đ
+            </Text>
+          </>
+        ) : null}
+        {permissions.showCustomerActions ? <CustomerRescueActions request={request} /> : null}
+        {permissions.showProviderActions ? <ProviderRescueActions request={request} compact /> : null}
+      </View>
+    ) : null;
 
+  return (
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={[trackingStyles.header, { paddingTop: insets.top + 8 }]}>
+        <Pressable
+          style={trackingStyles.back}
+          accessibilityRole="button"
+          accessibilityLabel={c.back}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/activity'))}
+        >
+          <Ionicons name="chevron-back" size={23} color={Colors.textPrimary} />
+        </Pressable>
+        <Text accessibilityRole="header" style={trackingStyles.headerTitle}>
+          {en ? 'Rescue progress' : 'Theo dõi cứu hộ'}
+        </Text>
+        <View style={trackingStyles.backSpace} />
+      </View>
       <ScrollView
-        style={styles.sheet}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.xl }]}
+        contentContainerStyle={[
+          trackingStyles.content,
+          { paddingBottom: footerTitle ? 24 : insets.bottom + Spacing.xl },
+        ]}
+        keyboardShouldPersistTaps="handled"
       >
+        <RescueJourney request={request} role={role} />
+        {priorityActions ? caseActions : null}
         {screenMessage ? (
           <Text accessibilityRole="alert" style={styles.error}>
             {screenMessage}
@@ -119,6 +201,7 @@ export default function RescueDetailsScreen() {
           requestingSupport={support.isPending}
           onRetryDispatch={() => void retryDispatch()}
           onRequestSupport={() => void requestDispatchSupport()}
+          compact
         />
         {request.currentQuote ? (
           <NavigationCard
@@ -129,7 +212,7 @@ export default function RescueDetailsScreen() {
           />
         ) : null}
         {request.status === 'cancelled' ? <CancellationSummary request={request} role={role} /> : null}
-        {permissions.showReview ? (
+        {permissions.showReview && !footerTitle ? (
           <NavigationCard
             title={request.review ? c.editReview : c.review}
             description={en ? 'Optional — you may skip this.' : 'Không bắt buộc — bạn có thể bỏ qua.'}
@@ -144,8 +227,30 @@ export default function RescueDetailsScreen() {
             onPress={() => router.push(`/rescue/${id}/incidents` as Href)}
           />
         ) : null}
-        {permissions.showCustomerActions ? <CustomerRescueActions request={request} /> : null}
-        {permissions.showProviderActions ? <ProviderRescueActions request={request} /> : null}
+        <JourneyTimeline request={request} onOpen={() => router.push(`/rescue/${id}/timeline` as Href)} />
+        {!priorityActions ? caseActions : null}
+        <View style={journeyStyles.card}>
+          <View style={journeyStyles.metaRow}>
+            <Text style={journeyStyles.section}>{en ? 'Meeting point' : 'Điểm cứu hộ'}</Text>
+            <Pressable
+              style={journeyStyles.more}
+              accessibilityRole="button"
+              accessibilityLabel={en ? 'Full map' : 'Mở bản đồ'}
+              onPress={() => router.push(`/rescue/${id}/map`)}
+            >
+              <Text style={journeyStyles.moreText}>{en ? 'Full map' : 'Mở bản đồ'}</Text>
+            </Pressable>
+          </View>
+          <Text style={journeyStyles.body}>{request.pickupAreaLabel}</Text>
+          <RescueMapSection
+            request={request}
+            providerLocation={providerLocation}
+            route={route.data}
+            region={region}
+            insetTop={0}
+            embedded
+          />
+        </View>
         {permissions.isAssignedProvider ? (
           <OperationalCancellationPanel
             request={request}
@@ -161,12 +266,46 @@ export default function RescueDetailsScreen() {
         {permissions.showStaffRetry ? (
           <AppButton title={c.retry} loading={dispatchRetry.isPending} onPress={() => void retryDispatch()} />
         ) : null}
-        <NavigationCard
-          title={en ? 'Case timeline' : 'Lịch sử xử lý ca'}
-          icon="time-outline"
-          onPress={() => router.push(`/rescue/${id}/timeline` as Href)}
-        />
       </ScrollView>
-    </View>
+      {footerTitle && (
+        <View style={[trackingStyles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <AppButton title={footerTitle} onPress={footerAction} />
+          {permissions.showReview && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={en ? 'Skip for now' : 'Để sau'}
+              style={trackingStyles.skip}
+              onPress={() => router.replace('/(tabs)/activity')}
+            >
+              <Text style={journeyStyles.moreText}>{en ? 'Skip for now' : 'Để sau'}</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+    </KeyboardAvoidingView>
   );
 }
+
+const trackingStyles = StyleSheet.create({
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingBottom: 12 },
+  back: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.cardBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backSpace: { width: 44 },
+  headerTitle: { ...Typography.h3, color: Colors.textPrimary, flex: 1, textAlign: 'center' },
+  content: { paddingHorizontal: 16, paddingTop: 8, gap: 16 },
+  footer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    backgroundColor: Colors.cardBg,
+    gap: 4,
+  },
+  skip: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+});

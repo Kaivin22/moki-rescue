@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { NotificationEntry } from '@/src/features/communications/InboxScreens';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -105,6 +105,7 @@ const COPY = {
 } as const;
 
 export function OperationsWorkspace() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const role = useAuthStore((state) => state.profile?.role);
   const providerId = useAuthStore((state) => state.profile?.id);
@@ -234,7 +235,7 @@ export function OperationsWorkspace() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: 90 + insets.bottom }]}
+        contentContainerStyle={[styles.content, { paddingBottom: Spacing.xl + insets.bottom }]}
         refreshControl={
           <RefreshControl
             refreshing={
@@ -244,16 +245,18 @@ export function OperationsWorkspace() {
           />
         }
       >
-        <NotificationEntry />
-        <Text style={styles.title}>
-          {isProvider
-            ? english
-              ? 'My rescue shift'
-              : 'Trạm nhận ca của tôi'
-            : english
-              ? 'Dispatch queue'
-              : 'Hàng đợi điều phối'}
-        </Text>
+        <View style={styles.pageHeading}>
+          <Text style={styles.title}>
+            {isProvider
+              ? english
+                ? 'My rescue shift'
+                : 'Trạm nhận ca của tôi'
+              : english
+                ? 'Dispatch queue'
+                : 'Hàng đợi điều phối'}
+          </Text>
+          <NotificationEntry compact />
+        </View>
         {message ? (
           <Text accessibilityRole="alert" style={styles.error}>
             {message}
@@ -273,38 +276,6 @@ export function OperationsWorkspace() {
         ) : null}
         {isProvider ? (
           <>
-            <View style={styles.offer}>
-              <Text style={styles.cardTitle}>{english ? 'My statistics' : 'Thống kê của tôi'}</Text>
-              {personalStatistics.isPending ? (
-                <Text style={styles.muted}>{english ? 'Loading statistics…' : 'Đang tải thống kê…'}</Text>
-              ) : null}
-              {personalStatistics.isError ? (
-                <Text accessibilityRole="alert" style={styles.error}>
-                  {english
-                    ? 'Could not load personal statistics. Pull down to retry.'
-                    : 'Không tải được thống kê cá nhân. Kéo xuống để thử lại.'}
-                </Text>
-              ) : null}
-              {personalStatistics.data ? (
-                <>
-                  <Text style={styles.muted}>
-                    {english ? 'Completed' : 'Đã hoàn thành'}: {personalStatistics.data.completedCases}
-                  </Text>
-                  <Text style={styles.muted}>
-                    {english ? 'In progress' : 'Đang xử lý'}: {personalStatistics.data.activeCases}
-                  </Text>
-                  <Text style={styles.muted}>
-                    {english ? 'Cancelled while assigned' : 'Đã hủy khi được giao'}:{' '}
-                    {personalStatistics.data.cancelledCases}
-                  </Text>
-                  <RatingBadge
-                    rating={personalStatistics.data.rating}
-                    label={english ? 'My ratings' : 'Đánh giá của tôi'}
-                    compact
-                  />
-                </>
-              ) : null}
-            </View>
             <View style={styles.availabilityCard}>
               <View style={styles.flex}>
                 <Text style={styles.cardTitle}>{c.available}</Text>
@@ -371,11 +342,13 @@ export function OperationsWorkspace() {
             {(provider.data?.available ? (offers.data ?? []) : []).map((offer) => (
               <View key={offer.id} style={styles.offer}>
                 <View style={styles.offerTop}>
-                  <Text style={styles.cardTitle}>{offer.serviceLabel}</Text>
+                  <Text style={styles.offerBadge}>{english ? 'New request' : 'Ca cứu hộ mới'}</Text>
                   <Text style={styles.eta}>
+                    {english ? 'Arrival: ' : 'Thời gian đến: '}
                     {Math.max(1, Math.ceil(offer.etaSeconds / 60))} {c.minutes}
                   </Text>
                 </View>
+                <Text style={styles.offerTitle}>{offer.serviceLabel}</Text>
                 <Text style={styles.muted}>{offer.pickupAreaLabel}</Text>
                 {offer.issueDescription ? (
                   <Text style={styles.cardTitle}>{offer.issueDescription}</Text>
@@ -520,6 +493,40 @@ export function OperationsWorkspace() {
             ) : null}
           </View>
         ))}
+        {isProvider && (
+          <View style={styles.offer}>
+            <Text style={styles.cardTitle}>{english ? 'My statistics' : 'Thống kê của tôi'}</Text>
+            {personalStatistics.isPending ? (
+              <Text style={styles.muted}>{english ? 'Loading statistics…' : 'Đang tải thống kê…'}</Text>
+            ) : null}
+            {personalStatistics.isError ? (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {english
+                  ? 'Could not load personal statistics. Pull down to retry.'
+                  : 'Không tải được thống kê cá nhân. Kéo xuống để thử lại.'}
+              </Text>
+            ) : null}
+            {personalStatistics.data ? (
+              <>
+                <Text style={styles.muted}>
+                  {english ? 'Completed' : 'Đã hoàn thành'}: {personalStatistics.data.completedCases}
+                </Text>
+                <Text style={styles.muted}>
+                  {english ? 'In progress' : 'Đang xử lý'}: {personalStatistics.data.activeCases}
+                </Text>
+                <Text style={styles.muted}>
+                  {english ? 'Cancelled while assigned' : 'Đã hủy khi được giao'}:{' '}
+                  {personalStatistics.data.cancelledCases}
+                </Text>
+                <RatingBadge
+                  rating={personalStatistics.data.rating}
+                  label={english ? 'My ratings' : 'Đánh giá của tôi'}
+                  compact
+                />
+              </>
+            ) : null}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -527,8 +534,9 @@ export function OperationsWorkspace() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  content: { padding: Spacing.lg, gap: Spacing.md },
-  title: { ...Typography.h1, color: Colors.textPrimary },
+  content: { padding: Spacing.md, gap: Spacing.md, width: '100%', maxWidth: 720, alignSelf: 'center' },
+  title: { ...Typography.h1, color: Colors.textPrimary, flex: 1, minWidth: 0 },
+  pageHeading: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   subtitle: { ...Typography.body, color: Colors.textSecondary },
   section: { ...Typography.h3, color: Colors.textPrimary, marginTop: Spacing.sm },
   availabilityCard: {
@@ -557,15 +565,23 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
   },
   offer: {
-    padding: Spacing.md,
-    gap: Spacing.sm,
+    padding: 20,
+    gap: 12,
     backgroundColor: Colors.cardBg,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.accentDark,
+    borderRadius: Radius.xl,
+    borderCurve: 'continuous',
   },
-  offerTop: { flexDirection: 'row', justifyContent: 'space-between' },
-  eta: { ...Typography.bodyBold, color: Colors.success },
+  offerBadge: {
+    ...Typography.caption,
+    color: Colors.primary,
+    backgroundColor: Colors.sky,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: Radius.full,
+  },
+  offerTitle: { ...Typography.h2, color: Colors.textPrimary },
+  offerTop: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, justifyContent: 'space-between' },
+  eta: { ...Typography.caption, color: Colors.textSecondary },
   distance: { ...Typography.caption, color: Colors.primary },
   acceptButton: {
     flex: 1,

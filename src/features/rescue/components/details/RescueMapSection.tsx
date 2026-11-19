@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MapView, Marker, Polyline } from '@/src/components/MapWrapper';
 import { Colors } from '@/src/constants/colors';
@@ -14,16 +14,31 @@ interface Props {
   route: RoadRoute | undefined;
   region: RescueMapRegion | undefined;
   insetTop: number;
+  embedded?: boolean;
 }
 
-export function RescueMapSection({ request, providerLocation, route, region, insetTop }: Props) {
+export function RescueMapSection({
+  request,
+  providerLocation,
+  route,
+  region,
+  insetTop,
+  embedded = false,
+}: Props) {
+  const router = useRouter();
   const c = useRescueDetailsCopy();
   return (
-    <View style={styles.mapWrap}>
+    <View
+      style={
+        embedded
+          ? { height: 220, borderRadius: 20, overflow: 'hidden', backgroundColor: Colors.surface }
+          : styles.mapWrap
+      }
+    >
       <MapView
         style={StyleSheet.absoluteFill}
         region={region}
-        mapPadding={{ top: insetTop + 58, right: 16, bottom: 28, left: 16 }}
+        mapPadding={{ top: embedded ? 16 : insetTop + 58, right: 16, bottom: 28, left: 16 }}
         toolbarEnabled={false}
         showsMyLocationButton={false}
       >
@@ -55,17 +70,19 @@ export function RescueMapSection({ request, providerLocation, route, region, ins
           <Polyline coordinates={route.coordinates} strokeColor={Colors.primary} strokeWidth={5} />
         ) : null}
       </MapView>
-      <View pointerEvents="none" style={[styles.statusScrim, { height: insetTop }]} />
-      <Pressable
-        onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/activity'))}
-        style={[styles.back, { top: insetTop + 8 }]}
-        hitSlop={10}
-        accessibilityRole="button"
-        accessibilityLabel={c.back}
-      >
-        <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
-      </Pressable>
-      <View style={[styles.mapBadge, { top: insetTop + 10 }]}>
+      {!embedded && <View pointerEvents="none" style={[styles.statusScrim, { height: insetTop }]} />}
+      {!embedded && (
+        <Pressable
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/activity'))}
+          style={[styles.back, { top: insetTop + 8 }]}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={c.back}
+        >
+          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+        </Pressable>
+      )}
+      <View style={[styles.mapBadge, { top: embedded ? 8 : insetTop + 10 }]}>
         <View style={[styles.liveDot, { backgroundColor: route ? Colors.success : Colors.warning }]} />
         <Text style={styles.mapBadgeText}>{route ? c.roadRoute : c.noRoute}</Text>
       </View>

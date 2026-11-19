@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { Colors } from '@/src/constants/colors';
@@ -20,6 +20,7 @@ interface Props {
   requestingSupport: boolean;
   onRetryDispatch: () => void;
   onRequestSupport: () => void;
+  compact?: boolean;
 }
 
 export function RescueOverview({
@@ -31,29 +32,33 @@ export function RescueOverview({
   requestingSupport,
   onRetryDispatch,
   onRequestSupport,
+  compact = false,
 }: Props) {
+  const router = useRouter();
   const c = useRescueDetailsCopy();
   const language = useI18n((state) => state.language);
   return (
     <>
-      <View style={styles.statusRow}>
-        <View style={[styles.statusIcon, { backgroundColor: `${statusColor(request.status)}18` }]}>
-          <Ionicons
-            name={request.serviceIcon as keyof typeof Ionicons.glyphMap}
-            size={25}
-            color={statusColor(request.status)}
-          />
+      {!compact && (
+        <View style={styles.statusRow}>
+          <View style={[styles.statusIcon, { backgroundColor: `${statusColor(request.status)}18` }]}>
+            <Ionicons
+              name={request.serviceIcon as keyof typeof Ionicons.glyphMap}
+              size={25}
+              color={statusColor(request.status)}
+            />
+          </View>
+          <View style={styles.flex}>
+            <Text style={styles.service}>{request.serviceLabel}</Text>
+            <Text style={[styles.status, { color: statusColor(request.status) }]}>
+              {statusLabel(request.status, language)}
+            </Text>
+          </View>
         </View>
-        <View style={styles.flex}>
-          <Text style={styles.service}>{request.serviceLabel}</Text>
-          <Text style={[styles.status, { color: statusColor(request.status) }]}>
-            {statusLabel(request.status, language)}
-          </Text>
-        </View>
-      </View>
+      )}
 
-      <View style={styles.infoCard}>
-        {request.basePriceVnd != null ? (
+      <View style={[styles.infoCard, compact && { borderRadius: 24, borderWidth: 0, padding: 20 }]}>
+        {!compact && request.basePriceVnd != null ? (
           <Info
             icon="cash-outline"
             label={language === 'en' ? 'Base price (initial estimate)' : 'Giá cơ bản (ban đầu)'}
@@ -71,23 +76,23 @@ export function RescueOverview({
         {request.destinationAreaLabel ? (
           <Info icon="flag-outline" label={c.destination} value={request.destinationAreaLabel} />
         ) : null}
-        {request.providerName ? (
+        {request.providerName && role !== 'provider' ? (
           <Info icon="person-outline" label={c.provider} value={request.providerName} />
         ) : null}
         {role !== 'provider' && request.providerContactPhone ? (
-          <CaseContactCard phone={request.providerContactPhone} customer={false} />
+          <CaseContactCard phone={request.providerContactPhone} customer={false} compact={compact} />
         ) : null}
         {role !== 'customer' && request.customerContactPhone ? (
-          <CaseContactCard phone={request.customerContactPhone} customer />
+          <CaseContactCard phone={request.customerContactPhone} customer compact={compact} />
         ) : null}
-        {request.etaMinutes != null ? (
+        {!compact && request.etaMinutes != null ? (
           <Info
             icon="time-outline"
             label={c.initialEta}
             value={template(c.aboutMinutes, { value: request.etaMinutes })}
           />
         ) : null}
-        {request.roadDistanceM != null ? (
+        {!compact && request.roadDistanceM != null ? (
           <Info
             icon="navigate-outline"
             label={c.road}
@@ -96,7 +101,7 @@ export function RescueOverview({
         ) : null}
       </View>
 
-      {request.assignedProviderId ? (
+      {!compact && request.assignedProviderId ? (
         <AppButton
           title={c.fullscreen}
           variant="outline"
@@ -139,7 +144,7 @@ export function RescueOverview({
           />
           {supportHotline ? (
             <AppButton
-              title={`${c.callDispatch} ${supportHotline}`}
+              title={`${c.callDispatch} ${supportHotline}}`}
               variant="outline"
               onPress={() => void Linking.openURL(`tel:${supportHotline}`)}
             />
@@ -170,7 +175,15 @@ function Info({
   );
 }
 
-function CaseContactCard({ phone, customer }: { phone: string; customer: boolean }) {
+function CaseContactCard({
+  phone,
+  customer,
+  compact = false,
+}: {
+  phone: string;
+  customer: boolean;
+  compact?: boolean;
+}) {
   const visiblePhone = displayPhone(phone);
   const c = useRescueDetailsCopy();
   return (
@@ -184,7 +197,9 @@ function CaseContactCard({ phone, customer }: { phone: string; customer: boolean
       <View style={styles.flex}>
         <Text style={styles.infoLabel}>{customer ? c.customerContactLabel : c.contactLabel}</Text>
         <Text style={styles.infoValue}>{visiblePhone}</Text>
-        <Text style={styles.contactPrivacy}>{customer ? c.customerContactPrivacy : c.contactPrivacy}</Text>
+        {!compact && (
+          <Text style={styles.contactPrivacy}>{customer ? c.customerContactPrivacy : c.contactPrivacy}</Text>
+        )}
       </View>
       <View style={styles.callChip}>
         <Text style={styles.callChipText}>{c.call}</Text>

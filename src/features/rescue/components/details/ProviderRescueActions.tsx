@@ -12,7 +12,13 @@ import type { RequestDetails } from '@/src/types/rescue';
 import { useRescueDetailsCopy } from './rescueDetailsCopy';
 import { rescueDetailsStyles as styles } from './rescueDetailsStyles';
 
-export function ProviderRescueActions({ request }: { request: RequestDetails }) {
+export function ProviderRescueActions({
+  request,
+  compact = false,
+}: {
+  request: RequestDetails;
+  compact?: boolean;
+}) {
   const actions = useRequestMutation(request.id);
   const c = useRescueDetailsCopy();
   const english = useI18n((state) => state.language === 'en');
@@ -65,7 +71,7 @@ export function ProviderRescueActions({ request }: { request: RequestDetails }) 
   };
   return (
     <View style={styles.actions}>
-      {isLiveStatus(request.status) && <NavigationTarget request={request} />}
+      {isLiveStatus(request.status) && !compact && <NavigationTarget request={request} />}
       {isLiveStatus(request.status) && (
         <AppButton
           title={c.navigate}
