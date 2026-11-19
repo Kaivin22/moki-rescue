@@ -186,7 +186,7 @@ export function AppButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel || title}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
-      style={[fullWidth && !participatesInFlexRow && styles.fullWidth, wrapperStyle]}
+      style={[styles.wrapper, fullWidth && !participatesInFlexRow && styles.fullWidth, wrapperStyle]}
     >
       <Animated.View
         style={[
@@ -213,12 +213,15 @@ export function AppButton({
 }
 
 const styles = StyleSheet.create({
+  wrapper: { minWidth: 0, maxWidth: '100%', flexShrink: 1 },
   button: {
     minHeight: 52,
     borderRadius: Radius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    borderCurve: 'continuous',
     flexDirection: 'row',
   },
   fullWidth: {
@@ -226,6 +229,8 @@ const styles = StyleSheet.create({
   },
   text: {
     textAlign: 'center',
+    flexShrink: 1,
+    minWidth: 0,
   },
   spinnerLayer: {
     ...StyleSheet.absoluteFill,

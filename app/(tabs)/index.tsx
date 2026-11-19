@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
-import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { Colors } from '@/src/constants/colors';
@@ -24,7 +24,7 @@ const COPY = {
     providerBody: 'Chỉ bật sẵn sàng khi có thể nhận ca và giữ vị trí chính xác trong lúc đang phục vụ.',
     staffBody: 'Theo dõi ca chưa có đội, độ trễ nhận ca và tình trạng mạng lưới đối tác.',
     greeting: 'Chào',
-    request: 'Yêu cầu cứu hộ xe máy xăng',
+    request: 'Gọi cứu hộ',
     operations: 'Mở màn hình vận hành',
     emergencyTitle: 'Có người bị thương hoặc nguy hiểm?',
     emergencyBody: 'Moki Rescue không thay thế cấp cứu. Nhấn để gọi',
@@ -48,7 +48,7 @@ const COPY = {
       'Only go available when you can accept a request, and keep your location accurate while working.',
     staffBody: 'Monitor unmatched requests, acceptance delays, and partner network health.',
     greeting: 'Hello',
-    request: 'Request gasoline motorcycle rescue',
+    request: 'Request rescue',
     operations: 'Open operations',
     emergencyTitle: 'Is anyone injured or in danger?',
     emergencyBody: 'Moki Rescue is not an emergency service. Tap to call',
@@ -74,6 +74,7 @@ export default function HomeScreen() {
 }
 
 function CustomerHomeScreen() {
+  const router = useRouter();
   const profile = useAuthStore((state) => state.profile);
   const role = profile?.role ?? 'customer';
   const requests = useRequests(false);
@@ -92,26 +93,29 @@ function CustomerHomeScreen() {
               {c.greeting} {profile?.display_name ?? c.you}
             </Text>
           </View>
-          <View style={styles.shield}>
-            <Image
-              source={require('../../assets/branding/moki-rescue-logo.png')}
-              style={styles.brandLogo}
-              resizeMode="contain"
-              accessible
-              accessibilityLabel="Moki Rescue"
-            />
-          </View>
+          <NotificationEntry compact />
         </View>
       </SafeAreaView>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <NotificationEntry />
-        {role === 'customer' ? (
-          <AppButton title={c.request} onPress={() => router.push('/(tabs)/request')} />
-        ) : (
-          <AppButton title={c.operations} onPress={() => router.push('/(tabs)/operations')} />
-        )}
-
+        <View style={styles.rescueIntro}>
+          <View style={styles.introIcon}>
+            <Ionicons name="shield-checkmark-outline" size={28} color={Colors.primary} />
+          </View>
+          <Text style={styles.sectionTitle}>
+            {language === 'en' ? 'Get back on the road' : 'An tâm trên mọi hành trình'}
+          </Text>
+          <Text style={styles.muted}>
+            {language === 'en'
+              ? 'Tell us what happened. We’ll find an available rescue provider.'
+              : 'Chọn sự cố bạn gặp. Chúng tôi tìm cứu hộ viên phù hợp.'}
+          </Text>
+          {role === 'customer' ? (
+            <AppButton title={c.request} onPress={() => router.push('/(tabs)/request')} />
+          ) : (
+            <AppButton title={c.operations} onPress={() => router.push('/(tabs)/operations')} />
+          )}
+        </View>
         <Pressable
           style={styles.emergency}
           onPress={() => void Linking.openURL(emergencyCallUri(MEDICAL_EMERGENCY_NUMBER))}
@@ -209,10 +213,7 @@ function CustomerHomeScreen() {
                     size={24}
                     color={Colors.primary}
                   />
-                  <Text style={styles.serviceLabel} numberOfLines={2}>
-                    {service.label}
-                  </Text>
-                  <Text style={styles.serviceHint}>{c.serviceHint}</Text>
+                  <Text style={styles.serviceLabel}>{service.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -225,7 +226,7 @@ function CustomerHomeScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, minWidth: 0, backgroundColor: Colors.background },
-  hero: { alignSelf: 'stretch', minWidth: 0, backgroundColor: Colors.brandBlue, paddingBottom: Spacing.xl },
+  hero: { alignSelf: 'stretch', minWidth: 0, backgroundColor: Colors.background, paddingBottom: Spacing.md },
   heroContent: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
@@ -233,6 +234,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.md,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
   },
   heroText: { flex: 1, minWidth: 0 },
   eyebrow: { ...Typography.label, color: Colors.textPrimary },
@@ -253,7 +257,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     marginTop: Spacing.md,
   },
-  content: { padding: Spacing.lg, paddingBottom: 110, gap: Spacing.md },
+  content: {
+    padding: Spacing.md,
+    paddingBottom: Spacing.xl,
+    gap: Spacing.md,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+  },
+  rescueIntro: {
+    padding: Spacing.lg,
+    gap: Spacing.md,
+    backgroundColor: Colors.sky,
+    borderRadius: Radius.xl,
+    borderCurve: 'continuous',
+  },
+  introIcon: {
+    alignSelf: 'flex-start',
+    padding: 12,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+  },
   emergency: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -289,7 +313,9 @@ const styles = StyleSheet.create({
   emptyText: { ...Typography.body, color: Colors.textSecondary, flex: 1 },
   services: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   service: {
-    width: '48%',
+    flexBasis: 144,
+    flexGrow: 1,
+    minWidth: 0,
     minHeight: 90,
     padding: Spacing.md,
     gap: Spacing.sm,

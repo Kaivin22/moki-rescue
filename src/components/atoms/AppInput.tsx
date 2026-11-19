@@ -26,7 +26,7 @@ export function AppInput({ label, error, leftIcon, isPassword, style, ...props }
 
         <TextInput
           {...props}
-          style={[styles.input, Typography.body]}
+          style={[styles.input, Typography.body, props.multiline && styles.multiline]}
           accessibilityLabel={props.accessibilityLabel ?? label}
           accessibilityHint={error ?? props.accessibilityHint}
           aria-invalid={Boolean(error)}
@@ -74,6 +74,7 @@ export function AppInput({ label, error, leftIcon, isPassword, style, ...props }
 const styles = StyleSheet.create({
   container: {
     marginBottom: Spacing.md,
+    minWidth: 0,
     width: '100%',
   },
   label: {
@@ -83,7 +84,8 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.cardBg,
+    borderCurve: 'continuous',
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.borderStrong,
@@ -92,11 +94,11 @@ const styles = StyleSheet.create({
   },
   inputFocused: {
     borderColor: Colors.focus,
-    borderWidth: 2,
+    borderWidth: 1,
   },
   inputError: {
     borderColor: Colors.error,
-    borderWidth: 2,
+    borderWidth: 1,
   },
   leftIcon: {
     marginRight: Spacing.sm,
@@ -104,8 +106,11 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     color: Colors.textPrimary,
-    height: '100%',
+    minWidth: 0,
+    minHeight: 52,
+    paddingVertical: 12,
   },
+  multiline: { minHeight: 112, textAlignVertical: 'top' },
   eyeIcon: {
     width: 44,
     height: 44,

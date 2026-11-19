@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -44,6 +44,7 @@ const COPY = {
 } as const;
 
 export default function DeleteAccountScreen() {
+  const router = useRouter();
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
   const signOut = useAuthStore((state) => state.signOut);

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router, useLocalSearchParams, type Href } from 'expo-router';
+import { useRouter, useLocalSearchParams, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
@@ -92,6 +92,7 @@ function statusLabel(value: string, en: boolean) {
 }
 
 export function PartnerHomeScreen() {
+  const router = useRouter();
   const en = useI18n((state) => state.language === 'en');
   const role = useAuthStore((state) => state.profile?.role);
   const shops = usePartnerQuery('shops', api.shops);
@@ -144,6 +145,7 @@ export function PartnerHomeScreen() {
 }
 
 export function ShopApplyScreen() {
+  const router = useRouter();
   const en = useI18n((state) => state.language === 'en');
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -247,6 +249,7 @@ export function ShopApplyScreen() {
 }
 
 export function ShopApplicationsScreen() {
+  const router = useRouter();
   const en = useI18n((state) => state.language === 'en');
   const applications = usePartnerQuery('applications', api.applications);
   return (
@@ -270,6 +273,7 @@ export function ShopApplicationScreen() {
   return <ApplicationDetail key={id} id={id} />;
 }
 function ApplicationDetail({ id }: { id: string }) {
+  const router = useRouter();
   const en = useI18n((state) => state.language === 'en');
   const admin = useAuthStore((state) => state.profile?.role === 'admin');
   const applications = usePartnerQuery('applications', api.applications);
@@ -401,6 +405,7 @@ export function ShopMembersScreen() {
   return <ShopMembers key={id} id={id} />;
 }
 function ShopMembers({ id }: { id: string }) {
+  const router = useRouter();
   const en = useI18n((state) => state.language === 'en');
   const shops = usePartnerQuery('shops', api.shops);
   const shop = shops.data?.find((s) => s.id === id);

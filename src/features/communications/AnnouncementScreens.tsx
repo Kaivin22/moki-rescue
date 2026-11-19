@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
-import { router, useLocalSearchParams, type Href } from 'expo-router';
+import { useRouter, useLocalSearchParams, type Href } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
@@ -13,6 +13,7 @@ import { communicationApi as api, nextCursor, type Audience, type Cursor, type A
 import { CommunicationPage, QueryState, More, dateText, s, errorText, audienceLabel } from './shared';
 
 export function AnnouncementListScreen() {
+  const router = useRouter();
   const en = useI18n((state) => state.language === 'en');
   const userId = useAuthStore((state) => state.user?.id);
   const query = useInfiniteQuery({
@@ -161,6 +162,7 @@ function AnnouncementEditor({ item }: { item: Announcement }) {
   );
 }
 export function NewAnnouncementScreen() {
+  const router = useRouter();
   const en = useI18n((state) => state.language === 'en');
   const userId = useAuthStore((state) => state.user?.id);
   const client = useQueryClient();

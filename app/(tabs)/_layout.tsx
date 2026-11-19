@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Redirect, Tabs } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/src/constants/colors';
 import { Spacing, Typography } from '@/src/constants/spacing';
@@ -10,6 +10,7 @@ import { useHasAppAccess } from '@/src/features/auth/access';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const role = useAuthStore((state) => state.profile?.role ?? 'customer');
   const user = useAuthStore((state) => state.user);
   const hasAccess = useHasAppAccess();
@@ -25,7 +26,11 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
-        tabBarStyle: [styles.bar, { height: 60 + insets.bottom, paddingBottom: insets.bottom }],
+        tabBarStyle: [
+          styles.bar,
+          { height: Math.max(64, 44 + 20 * fontScale) + insets.bottom, paddingBottom: insets.bottom },
+        ],
+        tabBarHideOnKeyboard: true,
         tabBarLabelStyle: styles.label,
         tabBarIconStyle: styles.icon,
       }}

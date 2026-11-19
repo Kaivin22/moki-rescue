@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
@@ -51,6 +51,7 @@ export function OperationalCancellationPanel({
   reasonCode,
   providerWithdrawal = false,
 }: OperationalCancellationPanelProps) {
+  const router = useRouter();
   const actions = useRequestMutation(request.id);
   const c = useRescueDetailsCopy();
   const [open, setOpen] = useState(false);

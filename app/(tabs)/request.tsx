@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { Redirect, useRouter, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -175,6 +175,7 @@ export default function CreateRequestScreen() {
 }
 
 function CustomerRequestForm() {
+  const router = useRouter();
   const params = useLocalSearchParams<{ service?: string }>();
   const services = useServiceTypes();
   const create = useCreateRequest();
@@ -681,7 +682,14 @@ function SafetyQuestion({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   flex: { flex: 1 },
-  content: { padding: Spacing.lg, paddingBottom: Spacing.xxl, gap: Spacing.md },
+  content: {
+    padding: Spacing.md,
+    paddingBottom: Spacing.xl,
+    gap: Spacing.md,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+  },
   title: { ...Typography.h1, color: Colors.textPrimary },
   subtitle: { ...Typography.body, color: Colors.textSecondary },
   label: { ...Typography.h3, color: Colors.textPrimary, marginTop: Spacing.sm },
@@ -707,7 +715,7 @@ const styles = StyleSheet.create({
   progressDotActive: { backgroundColor: Colors.accent, borderColor: Colors.accentDark },
   progressNumber: { ...Typography.caption, color: Colors.textMuted },
   progressNumberActive: { color: Colors.textOnAccent },
-  progressLabel: { ...Typography.caption, color: Colors.textMuted },
+  progressLabel: { ...Typography.caption, color: Colors.textMuted, textAlign: 'center' },
   progressLabelActive: { color: Colors.textPrimary, fontFamily: Fonts.bodySemi },
   serviceList: { gap: Spacing.sm },
   service: {

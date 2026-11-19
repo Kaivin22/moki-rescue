@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
@@ -13,6 +13,7 @@ import { AdminCharts } from './AdminCharts';
 import { NotificationEntry } from '@/src/features/communications/InboxScreens';
 
 export function AdminDashboard() {
+  const router = useRouter();
   const english = useI18n((state) => state.language === 'en');
   const statistics = useQuery({
     queryKey: ['rescue', 'operator-statistics'],
@@ -39,8 +40,10 @@ export function AdminDashboard() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={statistics.isRefetching} onRefresh={refresh} />}
       >
-        <Text style={styles.title}>{english ? 'Operations overview' : 'Tổng quan vận hành'}</Text>
-        <NotificationEntry />
+        <View style={styles.heading}>
+          <Text style={styles.title}>{english ? 'Operations overview' : 'Tổng quan vận hành'}</Text>
+          <NotificationEntry compact />
+        </View>
         {error ? (
           <View style={styles.errorPanel}>
             <Text style={styles.error} accessibilityRole="alert">
@@ -65,13 +68,6 @@ export function AdminDashboard() {
             </View>
           ))}
         </View>
-        {statistics.data ? (
-          <AdminCharts data={statistics.data} english={english} />
-        ) : (
-          <Text style={styles.caption}>
-            {english ? 'Charts are awaiting data.' : 'Biểu đồ đang chờ dữ liệu.'}
-          </Text>
-        )}
         <NavigationCard
           title={english ? 'Dispatch queue' : 'Hàng đợi điều phối'}
           description={
@@ -103,14 +99,29 @@ export function AdminDashboard() {
           icon="document-text-outline"
           onPress={() => router.push('/operator/audit')}
         />
+        {statistics.data ? (
+          <AdminCharts data={statistics.data} english={english} />
+        ) : (
+          <Text style={styles.caption}>
+            {english ? 'Charts are awaiting data.' : 'Biểu đồ đang chờ dữ liệu.'}
+          </Text>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  content: { padding: Spacing.lg, paddingBottom: 120, gap: Spacing.md },
-  title: { ...Typography.h1, color: Colors.textPrimary },
+  content: {
+    padding: Spacing.md,
+    paddingBottom: Spacing.xl,
+    gap: Spacing.md,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+  },
+  title: { ...Typography.h1, color: Colors.textPrimary, flex: 1, minWidth: 0 },
+  heading: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   subtitle: { ...Typography.body, color: Colors.textSecondary },
   caption: { ...Typography.caption, color: Colors.textMuted },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },

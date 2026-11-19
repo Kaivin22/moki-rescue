@@ -1,4 +1,4 @@
-import { router, type Href } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/src/components/atoms/ScreenHeader';
@@ -14,6 +14,7 @@ export function OperatorPage({
   children: React.ReactNode;
   fallback?: Href;
 }) {
+  const router = useRouter();
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScreenHeader
@@ -36,7 +37,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 720,
     alignSelf: 'center',
-    padding: Spacing.lg,
+    padding: Spacing.md,
     paddingBottom: Spacing.xxl,
     gap: Spacing.md,
   },

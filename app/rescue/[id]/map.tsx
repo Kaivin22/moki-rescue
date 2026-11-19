@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -84,6 +84,7 @@ function displayPhone(phone: string) {
 }
 
 export default function RescueMapScreen() {
+  const router = useRouter();
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const requestQuery = useRequest(id);

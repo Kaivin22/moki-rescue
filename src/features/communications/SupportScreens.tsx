@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
-import { Redirect, router, useLocalSearchParams, type Href } from 'expo-router';
+import { Redirect, useRouter, useLocalSearchParams, type Href } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Switch, Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
@@ -28,6 +28,7 @@ function submissionId(ref: { current: { key: string; id: string } | null }, payl
   return ref.current.id;
 }
 export function SupportListScreen() {
+  const router = useRouter();
   const en = useI18n((state) => state.language === 'en');
   const profile = useAuthStore((state) => state.profile);
   const admin = profile?.role === 'admin';
@@ -93,6 +94,7 @@ export function SupportListScreen() {
 }
 
 export function NewSupportScreen() {
+  const router = useRouter();
   const en = useI18n((state) => state.language === 'en');
   const admin = useAuthStore((state) => state.profile?.role === 'admin');
   const client = useQueryClient();
@@ -151,6 +153,7 @@ export function NewSupportScreen() {
 }
 
 export function IncidentConversationLink({ incidentId }: { incidentId: string }) {
+  const router = useRouter();
   const en = useI18n((state) => state.language === 'en');
   return (
     <AppButton
@@ -182,6 +185,7 @@ export function SupportDetailScreen() {
   return <SupportDetail key={id} id={id} />;
 }
 function SupportDetail({ id }: { id: string }) {
+  const router = useRouter();
   const en = useI18n((state) => state.language === 'en');
   const profile = useAuthStore((state) => state.profile);
   const admin = profile?.role === 'admin';

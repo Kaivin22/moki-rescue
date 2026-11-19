@@ -15,7 +15,12 @@ export function NavigationCard({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.card} onPress={onPress} accessibilityRole="button" accessibilityLabel={title}>
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+    >
       <Ionicons name={icon} size={24} color={Colors.primary} />
       <View style={styles.copy}>
         <Text style={styles.title}>{title}</Text>
@@ -28,17 +33,20 @@ export function NavigationCard({
 
 const styles = StyleSheet.create({
   card: {
-    minHeight: 76,
+    minHeight: 64,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    padding: Spacing.lg,
+    padding: Spacing.md,
+    borderCurve: 'continuous',
     borderRadius: Radius.lg,
     backgroundColor: Colors.cardBg,
     borderWidth: 1,
     borderColor: Colors.border,
   },
   copy: { flex: 1, minWidth: 0, gap: Spacing.xs },
+  pressed: { backgroundColor: Colors.surface },
   title: { ...Typography.bodyBold, color: Colors.textPrimary },
   description: { ...Typography.caption, color: Colors.textSecondary },
 });

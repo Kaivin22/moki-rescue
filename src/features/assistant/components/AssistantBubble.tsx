@@ -31,9 +31,11 @@ const MAX_SESSION_MESSAGES = 20;
 export function AssistantBubble({
   hidden = false,
   aboveTabs = false,
+  inline = false,
 }: {
   hidden?: boolean;
   aboveTabs?: boolean;
+  inline?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const userId = useAuthStore((state) => state.user?.id ?? null);
@@ -111,12 +113,13 @@ export function AssistantBubble({
         accessibilityLabel={t('assistant.open')}
         onPress={() => setVisible(true)}
         style={({ pressed }) => [
-          styles.bubble,
-          { bottom: insets.bottom + (aboveTabs ? 76 : Spacing.lg) },
+          inline ? styles.inlineTrigger : styles.bubble,
+          !inline && { bottom: insets.bottom + (aboveTabs ? 76 : Spacing.lg) },
           pressed && styles.pressed,
         ]}
       >
         <Ionicons name="chatbubble-ellipses" size={27} color={Colors.textOnAccent} />
+        {inline && <Text style={styles.inlineLabel}>{t('assistant.title')}</Text>}
       </Pressable>
 
       <Modal
@@ -259,6 +262,16 @@ export function AssistantBubble({
 }
 
 const styles = StyleSheet.create({
+  inlineTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    padding: Spacing.md,
+    minHeight: 56,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.accentSoft,
+  },
+  inlineLabel: { ...Typography.bodyBold, color: Colors.textPrimary, flex: 1 },
   bubble: {
     position: 'absolute',
     right: Spacing.lg,

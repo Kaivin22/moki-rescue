@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
@@ -78,6 +78,7 @@ const COPY = {
 } as const;
 
 export default function ServiceDetailsScreen() {
+  const router = useRouter();
   const { code = '' } = useLocalSearchParams<{ code: string }>();
   const profile = useAuthStore((state) => state.profile);
   const services = useServiceTypes();

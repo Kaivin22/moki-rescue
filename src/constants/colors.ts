@@ -6,6 +6,15 @@ export const BrandColors = {
   lime: '#DDF186',
 } as const;
 
+export const AuthColors = {
+  background: '#F8F7FC',
+  ink: '#172126',
+  muted: '#626B70',
+  green: '#16875B',
+  white: '#FFFFFF',
+  divider: '#DDDFE1',
+} as const;
+
 /**
  * Semantic color tokens cho runtime React Native.
  * Màu brand sáng chỉ dùng làm surface/highlight với chữ màu ink. Các biến thể
@@ -25,8 +34,8 @@ export const Colors = {
   white: BrandColors.canvas,
 
   background: BrandColors.canvas,
-  cardBg: '#EFF7FD',
-  surface: '#E5F1FD',
+  cardBg: '#FFFFFF',
+  surface: '#EDF3F7',
   mist: 'rgba(40, 46, 48, 0.22)',
 
   textPrimary: BrandColors.ink,
@@ -34,7 +43,7 @@ export const Colors = {
   textMuted: '#5C686C',
   textOnAccent: BrandColors.ink,
 
-  border: 'rgba(40, 46, 48, 0.22)',
+  border: 'rgba(40, 46, 48, 0.12)',
   borderStrong: '#697477',
   focus: '#2B659B',
   divider: 'rgba(40, 46, 48, 0.18)',
@@ -47,6 +56,7 @@ export const Colors = {
   errorSubtle: '#FDF6F6',
   errorBorder: '#D89197',
   info: '#2B659B',
+  progressComplete: '#28363A',
 
   overlay: 'rgba(40, 46, 48, 0.68)',
   overlayLight: 'rgba(247, 251, 253, 0.94)',

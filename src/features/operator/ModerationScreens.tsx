@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router, useLocalSearchParams, type Href } from 'expo-router';
+import { useRouter, useLocalSearchParams, type Href } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
@@ -43,6 +43,7 @@ const LABELS: Record<string, [string, string]> = {
 const label = (value: string, en: boolean) => LABELS[value]?.[en ? 1 : 0] ?? value;
 
 export function ModerationListScreen({ kind }: { kind: ModerationKind }) {
+  const router = useRouter();
   const en = useI18n((s) => s.language === 'en');
   const [status, setStatus] = useState('all');
   const query = useInfiniteQuery({
@@ -115,6 +116,7 @@ export function ModerationDetailScreen({ kind }: { kind: ModerationKind }) {
 }
 
 function ModerationDetailBody({ kind, id }: { kind: ModerationKind; id: string }) {
+  const router = useRouter();
   const en = useI18n((s) => s.language === 'en');
   const client = useQueryClient();
   const query = useQuery({

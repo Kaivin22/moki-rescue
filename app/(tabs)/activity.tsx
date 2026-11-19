@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,6 +37,7 @@ const COPY = {
 } as const;
 
 export default function ActivityScreen() {
+  const router = useRouter();
   const client = useQueryClient();
   const removeHistory = async (id?: string) => {
     await apiRequest<void>(id ? `/api/requests/history/${id}` : '/api/requests/history', {

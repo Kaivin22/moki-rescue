@@ -1,6 +1,6 @@
 import { useFonts } from 'expo-font';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { router, Stack, usePathname } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -13,7 +13,6 @@ import { ReduceMotionProvider, useReduceMotion } from '@/src/hooks/useReduceMoti
 import { supabase } from '@/src/services/supabase';
 import { useAuthStore } from '@/src/stores/authStore';
 import { startPushNotificationSync } from '@/src/features/notifications/pushNotifications';
-import { AssistantBubble } from '@/src/features/assistant/components/AssistantBubble';
 import { AppErrorBoundary } from '@/src/components/AppErrorBoundary';
 import { hasCurrentConsent } from '@/src/features/auth/access';
 import { useI18n } from '@/src/i18n';
@@ -32,6 +31,7 @@ const queryClient = new QueryClient({
 });
 
 function AuthBootstrap({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const initialize = useAuthStore((state) => state.initialize);
   const syncUser = useAuthStore((state) => state.syncUser);
   const isHydrated = useAuthStore((state) => state.isHydrated);
@@ -94,7 +94,7 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
       .then(openRequest)
       .catch(() => undefined);
     return () => listener.remove();
-  }, []);
+  }, [router]);
 
   if (!isHydrated) {
     return (
@@ -108,23 +108,6 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
 
 function RouteStatusBar() {
   return <StatusBar style="dark" />;
-}
-
-function GlobalAssistant() {
-  const pathname = usePathname();
-  const user = useAuthStore((state) => state.user);
-  const hasConsent = useAuthStore((state) => hasCurrentConsent(state.profile));
-  const hidden =
-    !user ||
-    !hasConsent ||
-    pathname === '/onboarding' ||
-    pathname === '/login' ||
-    pathname === '/request' ||
-    pathname === '/partner-shops' ||
-    pathname.startsWith('/partnership') ||
-    /^\/rescue\/[^/]+(?:\/map)?$/.test(pathname);
-  const aboveTabs = ['/', '/request', '/activity', '/operations', '/profile'].includes(pathname);
-  return <AssistantBubble hidden={hidden} aboveTabs={aboveTabs} />;
 }
 
 function AppNavigator() {
@@ -153,7 +136,6 @@ function AppNavigator() {
         <Stack.Screen name="legal/terms" />
         <Stack.Screen name="legal/privacy" />
       </Stack>
-      <GlobalAssistant />
       <RouteStatusBar />
     </>
   );

@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -50,6 +50,7 @@ const COPY = {
 } as const;
 
 export default function RescueDestinationScreen() {
+  const router = useRouter();
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const requestQuery = useRequest(id);
   const request = requestQuery.data;

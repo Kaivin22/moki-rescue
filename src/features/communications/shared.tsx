@@ -1,4 +1,4 @@
-import { useFocusEffect, router, type Href } from 'expo-router';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -34,6 +34,7 @@ export function CommunicationPage({
   children: React.ReactNode;
   fallback?: Href;
 }) {
+  const router = useRouter();
   return (
     <SafeAreaView style={s.safe} edges={['bottom']}>
       <ScreenHeader
@@ -134,8 +135,8 @@ export const s = StyleSheet.create({
     width: '100%',
     maxWidth: 720,
     alignSelf: 'center',
-    padding: Spacing.lg,
-    paddingBottom: 100,
+    padding: Spacing.md,
+    paddingBottom: Spacing.xl,
     gap: Spacing.md,
   },
   body: { ...Typography.body, color: Colors.textSecondary },

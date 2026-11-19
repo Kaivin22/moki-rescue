@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
@@ -70,6 +70,7 @@ const COPY = {
 } as const;
 
 export function ServiceCatalogEditor({ serviceCode }: { serviceCode: string }) {
+  const router = useRouter();
   const creating = serviceCode === 'new';
   const en = useI18n((s) => s.language === 'en');
   const c = useCopy(COPY);

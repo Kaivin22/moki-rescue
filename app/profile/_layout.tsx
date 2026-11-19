@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Redirect, router, Stack } from 'expo-router';
+import { Redirect, useRouter, Stack } from 'expo-router';
 import { Pressable, StyleSheet } from 'react-native';
 import { Colors } from '@/src/constants/colors';
 import { Fonts } from '@/src/constants/spacing';
@@ -25,6 +25,7 @@ const COPY = {
 } as const;
 
 export default function ProfileLayout() {
+  const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const hasAccess = useHasAppAccess();
   const c = useCopy(COPY);

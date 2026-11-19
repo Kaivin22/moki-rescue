@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/src/constants/colors';
@@ -7,6 +7,7 @@ import { Spacing, Typography } from '@/src/constants/spacing';
 import { useI18n } from '@/src/i18n';
 
 export function ScreenHeader({ title, onBack }: { title: string; onBack?: () => void }) {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const language = useI18n((state) => state.language);
   const goBack = onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/(tabs)')));
@@ -21,7 +22,7 @@ export function ScreenHeader({ title, onBack }: { title: string; onBack?: () => 
       >
         <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
       </Pressable>
-      <Text style={styles.title} numberOfLines={1}>
+      <Text style={styles.title} numberOfLines={2}>
         {title}
       </Text>
       <View style={styles.spacer} />

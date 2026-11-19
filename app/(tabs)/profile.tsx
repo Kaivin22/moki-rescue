@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, type Href } from 'expo-router';
+import { AssistantBubble } from '@/src/features/assistant/components/AssistantBubble';
+import { useRouter, type Href } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/src/constants/colors';
@@ -90,6 +91,7 @@ function MenuRow({
 }
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, profile, signOut } = useAuthStore();
   const c = useCopy(COPY);
@@ -109,6 +111,7 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 90 + insets.bottom }]}>
         <Text style={styles.title}>{c.title}</Text>
+        <AssistantBubble inline />
         <View style={styles.identity}>
           <View style={styles.avatar}>
             <Ionicons name="person" size={34} color={Colors.textPrimary} />

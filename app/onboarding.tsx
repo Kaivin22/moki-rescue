@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import {
   FlatList,
@@ -69,6 +69,7 @@ const COPY = {
 } as const;
 
 export default function OnboardingScreen() {
+  const router = useRouter();
   const list = useRef<FlatList>(null);
   const { width } = useWindowDimensions();
   const [index, setIndex] = useState(0);

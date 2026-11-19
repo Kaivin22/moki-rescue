@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams, type Href } from 'expo-router';
+import { useRouter, useLocalSearchParams, type Href } from 'expo-router';
 import { ActivityIndicator, Text } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { NavigationCard } from '@/src/components/atoms/NavigationCard';
@@ -25,6 +25,7 @@ const TITLES = {
 } as const;
 
 export function RescueSectionScreen({ section }: { section: RescueSection }) {
+  const router = useRouter();
   const { id = '', incidentId = '' } = useLocalSearchParams<{ id: string; incidentId?: string }>();
   const query = useRequest(id);
   const request = query.data;

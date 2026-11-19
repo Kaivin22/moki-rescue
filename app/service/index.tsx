@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton } from '@/src/components/atoms/AppButton';
@@ -43,6 +43,7 @@ const COPY = {
 } as const;
 
 export default function ServiceCatalogScreen() {
+  const router = useRouter();
   const services = useServiceTypes();
   const c = useCopy(COPY);
 

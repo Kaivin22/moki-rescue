@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router, type Href } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
@@ -12,6 +12,7 @@ import { useI18n } from '@/src/i18n';
 import { OperatorPage } from './OperatorPage';
 
 export function ProviderDirectoryScreen() {
+  const router = useRouter();
   const english = useI18n((state) => state.language === 'en');
   const client = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'rejected'>('all');

@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Redirect, router, useLocalSearchParams, type Href } from 'expo-router';
+import { Redirect, useRouter, useLocalSearchParams, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -217,6 +217,7 @@ export function TeamManagementScreen({
   section: ManagementSection;
   teamId?: string;
 }) {
+  const router = useRouter();
   const profile = useAuthStore((state) => state.profile);
   const client = useQueryClient();
   const teams = useQuery({

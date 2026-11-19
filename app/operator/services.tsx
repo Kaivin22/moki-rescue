@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { StyleSheet, Text } from 'react-native';
 import { NavigationCard } from '@/src/components/atoms/NavigationCard';
 import { AppButton } from '@/src/components/atoms/AppButton';
@@ -34,6 +34,7 @@ const COPY = {
   },
 } as const;
 export default function ServicesScreen() {
+  const router = useRouter();
   const c = useCopy(COPY);
   const english = useI18n((state) => state.language === 'en');
   const catalog = useQuery({ queryKey: rescueKeys.adminServices, queryFn: rescueApi.adminServiceTypes });

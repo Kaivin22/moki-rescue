@@ -25,17 +25,15 @@ export function RequestSummaryCard({ request, onPress }: { request: RequestCardD
         />
       </View>
       <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={styles.title} numberOfLines={2}>
           {request.serviceLabel}
         </Text>
-        <Text style={styles.area} numberOfLines={1}>
+        <Text style={styles.area} numberOfLines={2}>
           {request.pickupAreaLabel}
         </Text>
         <View style={styles.statusRow}>
           <View style={[styles.dot, { backgroundColor: statusColor(request.status) }]} />
-          <Text style={styles.status} numberOfLines={1}>
-            {statusLabel(request.status, language)}
-          </Text>
+          <Text style={styles.status}>{statusLabel(request.status, language)}</Text>
         </View>
       </View>
       {request.attentionRequired ? (
@@ -71,7 +69,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: Colors.accentSoft,
   },
-  content: { flex: 1, gap: 2 },
+  content: { flex: 1, minWidth: 0, gap: 4 },
   title: { ...Typography.bodyBold, color: Colors.textPrimary },
   area: { ...Typography.caption, color: Colors.textSecondary },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },

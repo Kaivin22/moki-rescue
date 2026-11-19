@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { type ErrorInfo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -11,7 +11,12 @@ interface State {
   failed: boolean;
 }
 
-export class AppErrorBoundary extends React.Component<{ children: ReactNode }, State> {
+export function AppErrorBoundary({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  return <ErrorBoundaryContent goHome={() => router.replace('/')}>{children}</ErrorBoundaryContent>;
+}
+
+class ErrorBoundaryContent extends React.Component<{ children: ReactNode; goHome: () => void }, State> {
   state: State = { failed: false };
 
   static getDerivedStateFromError(): State {
@@ -24,8 +29,7 @@ export class AppErrorBoundary extends React.Component<{ children: ReactNode }, S
   }
 
   private reset = () => {
-    this.setState({ failed: false });
-    router.replace('/');
+    this.setState({ failed: false }, this.props.goHome);
   };
 
   render() {

@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -76,6 +76,7 @@ const COPY = {
 } as const;
 
 export default function AttentionQueueScreen() {
+  const router = useRouter();
   const c = useCopy(COPY);
   const client = useQueryClient();
   const flags = useQuery({

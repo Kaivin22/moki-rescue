@@ -1,7 +1,9 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router, useLocalSearchParams, type Href } from 'expo-router';
+import { useRouter, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Colors } from '@/src/constants/colors';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { ConfirmAction } from '@/src/components/atoms/ConfirmAction';
 import { NavigationCard } from '@/src/components/atoms/NavigationCard';
@@ -10,7 +12,8 @@ import { useI18n } from '@/src/i18n';
 import { communicationApi as api, nextCursor, type Cursor } from './api';
 import { CommunicationPage, QueryState, More, dateText, s, useLiveScreen, errorText } from './shared';
 
-export function NotificationEntry() {
+export function NotificationEntry({ compact = false }: { compact?: boolean }) {
+  const router = useRouter();
   const en = useI18n((state) => state.language === 'en');
   const userId = useAuthStore((state) => state.user?.id);
   const live = useLiveScreen();
@@ -20,6 +23,36 @@ export function NotificationEntry() {
     enabled: !!userId && live,
     refetchInterval: live ? 15000 : false,
   });
+  if (compact)
+    return (
+      <Pressable
+        onPress={() => router.push('/notifications' as Href)}
+        accessibilityRole="button"
+        accessibilityLabel={
+          en
+            ? `Notifications, ${query.data?.count ?? 0} unread`
+            : `Thông báo, ${query.data?.count ?? 0} chưa đọc`
+        }
+        style={({ pressed }) => ({
+          minWidth: 48,
+          minHeight: 48,
+          padding: 12,
+          borderRadius: 16,
+          flexDirection: 'row',
+          gap: 6,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: pressed ? Colors.surface : Colors.cardBg,
+        })}
+      >
+        <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
+        {!!query.data?.count && (
+          <Text style={{ color: Colors.primary, fontWeight: '600' }}>
+            {query.data.count > 99 ? '99+' : query.data.count}
+          </Text>
+        )}
+      </Pressable>
+    );
   return (
     <NavigationCard
       icon="notifications-outline"
@@ -41,6 +74,7 @@ export function NotificationEntry() {
 }
 
 export function InboxScreen() {
+  const router = useRouter();
   const client = useQueryClient();
   const en = useI18n((state) => state.language === 'en');
   const userId = useAuthStore((state) => state.user?.id);
@@ -123,6 +157,7 @@ export function NotificationDetailScreen() {
   return <NotificationDetail key={id} id={id} />;
 }
 function NotificationDetail({ id }: { id: string }) {
+  const router = useRouter();
   const en = useI18n((state) => state.language === 'en');
   const userId = useAuthStore((state) => state.user?.id);
   const client = useQueryClient();

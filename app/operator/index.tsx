@@ -1,4 +1,4 @@
-import { router, type Href } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { NavigationCard } from '@/src/components/atoms/NavigationCard';
 import { OperatorPage } from '@/src/features/operator/OperatorPage';
 import { useCopy, useI18n } from '@/src/i18n';
@@ -36,6 +36,7 @@ const COPY = {
   },
 } as const;
 export default function ManagementScreen() {
+  const router = useRouter();
   const c = useCopy(COPY);
   const en = useI18n((state) => state.language === 'en');
   return (
