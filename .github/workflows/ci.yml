@@ -86,7 +86,11 @@ jobs:
         run: npm run test:ci
       - name: Validate Expo public configuration
         run: npx expo config --type public
-      - name: Validate Expo package versions
+      # Check the versions bundled with the locked SDK. Expo's online catalog
+      # can recommend a newer SDK patch before it is approved for this project.
+      - name: Validate package versions against the locked Expo SDK
+        env:
+          EXPO_OFFLINE: '1'
         run: npx expo install --check
       - name: Export Android, iOS and web bundles
         run: npx expo export --platform all --output-dir dist
