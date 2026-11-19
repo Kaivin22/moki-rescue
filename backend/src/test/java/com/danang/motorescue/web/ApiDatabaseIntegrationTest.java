@@ -313,7 +313,8 @@ class ApiDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     private String tokenFor(String role, boolean consent) {
         UUID id = UUID.randomUUID();
         var owner = new JdbcTemplate(dataSourceFor(POSTGRES));
-        owner.update("INSERT INTO auth.users(id) VALUES (?)", id);
+        owner.update("INSERT INTO auth.users(id, phone) VALUES (?, ?)", id,
+                String.format("+84%09d", Integer.toUnsignedLong(id.hashCode()) % 1000000000L));
         owner.update("""
                 UPDATE public.profiles SET role = ?, terms_version = CASE WHEN ? THEN '2026-08-22' ELSE NULL END,
                   terms_accepted_at = CASE WHEN ? THEN NOW() ELSE NULL END WHERE id = ?

@@ -841,4 +841,21 @@ function generateVerification() {
   return `BEGIN TRANSACTION READ ONLY;\n\n${verificationSql}\nCOMMIT;\n`;
 }
 
-module.exports = { verificationSql, preflightSql, generateVerification };
+const contactChecks = String.raw`
+DO $$
+BEGIN
+  IF to_regprocedure('public.account_contact_phone(uuid)') IS NULL
+     OR NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'rescue_require_customer_contact' AND NOT tgisinternal) THEN
+    RAISE EXCEPTION 'EMAIL_ACCOUNT_CONTACT_SCHEMA_MISSING';
+  END IF;
+  IF has_function_privilege('authenticated','public.account_contact_phone(uuid)','EXECUTE')
+     OR has_function_privilege('anon','public.account_contact_phone(uuid)','EXECUTE') THEN
+    RAISE EXCEPTION 'ACCOUNT_CONTACT_PHONE_PRIVACY_VIOLATION';
+  END IF;
+END $$;
+`;
+module.exports = {
+  verificationSql: verificationSql + contactChecks,
+  preflightSql,
+  generateVerification: () => generateVerification().replace('COMMIT;', contactChecks + '\nCOMMIT;'),
+};

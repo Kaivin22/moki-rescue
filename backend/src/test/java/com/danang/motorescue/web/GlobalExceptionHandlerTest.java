@@ -45,11 +45,19 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/test/{kind}")
         String fail(@PathVariable String kind) {
             throw switch (kind) {
+                case "phone" -> new DataIntegrityViolationException("CUSTOMER_CONTACT_PHONE_REQUIRED");
                 case "transaction" -> new CannotCreateTransactionException("PRIVATE connection string");
                 case "resource" -> new DataAccessResourceFailureException("PRIVATE credentials");
                 case "transient" -> new TransientDataAccessResourceException("PRIVATE details");
                 default -> new DataIntegrityViolationException("PRIVATE row data");
             };
         }
+    }
+
+    @Test
+    void missingContactPhoneReturnsActionableError() throws Exception {
+        mvc.perform(get("/test/phone"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("CUSTOMER_CONTACT_PHONE_REQUIRED"));
     }
 }

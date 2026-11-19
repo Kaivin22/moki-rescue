@@ -8,10 +8,10 @@ không tự cài PostgreSQL/PostGIS, reset database hoặc chuyển app sang má
 
 | Thứ tự | File                     | Công dụng                                                    |
 | ------ | ------------------------ | ------------------------------------------------------------ |
-| 1      | `01_init_database.sql`   | Tạo schema đến V19, cấp quyền, kiểm tra bảo mật trước COMMIT |
+| 1      | `01_init_database.sql`   | Tạo schema đến V20, cấp quyền, kiểm tra bảo mật trước COMMIT |
 | 2      | `02_seed_demo_teams.sql` | Tùy chọn: 12 cửa hàng mô phỏng, không phải 12 tài khoản      |
 
-**Không chạy lại các file B1–V19 riêng lẻ** sau file 01. Migration backend là nguồn
+**Không chạy lại các file B1–V20 riêng lẻ** sau file 01. Migration backend là nguồn
 để sinh bộ cài và giữ lịch sử Flyway, không phải bộ SQL thứ hai phải chạy.
 File 01 gồm 35 bảng, thông báo/hỗ trợ, lịch sử ẩn theo tài khoản, địa chỉ cửa hàng, phạm vi xe máy xăng,
 quyền tạo tài khoản demo và kiểm tra schema/RLS; không cần file verify riêng.
@@ -27,7 +27,7 @@ quyền tạo tài khoản demo và kiểm tra schema/RLS; không cần file ver
    Chỉ khôi phục được từ backup; không dùng production/project chung.
    Auth users và mật khẩu database được giữ; hồ sơ/quyền app cần thiết lập lại.
 3. Chạy TOÀN BỘ `01_init_database.sql` một lần bằng chủ schema trong SQL Editor.
-   Thành công: `Database initialized through V19; schema/security checks passed...`.
+   Thành công: `Database initialized through V20; schema/security checks passed...`.
 4. Muốn thêm 12 cửa hàng mẫu: đổi `deployment_environment` trong `02_seed_demo_teams.sql`
    thành `staging` trong bản chạy rồi chạy toàn bộ. Có thể bỏ qua nếu chỉ cần 3 cửa hàng
    của bộ tài khoản kiểm thử bên dưới.
@@ -152,3 +152,11 @@ PostgreSQL/PostGIS cô lập theo [backend/TESTING.md](../backend/TESTING.md).
 Unit/static test không chứng minh SQL đã chạy trên Supabase.
 API thông báo/hỗ trợ: [COMMUNICATIONS.md](../docs/COMMUNICATIONS.md).
 Lịch nhận cứu hộ V14, cách cấu hình và kiểm tra: [WORKING-HOURS.md](../docs/WORKING-HOURS.md).
+
+## Email, Google và số liên hệ
+
+Đăng nhập chính dùng email/mật khẩu; số điện thoại chỉ bổ sung sau đăng nhập, không xác minh SMS. V20 đọc số liên hệ từ Auth metadata và giữ tương thích số đăng nhập cũ; chỉ ca được giao mới chia sẻ số đối phương. Với database đang có dữ liệu, chỉ áp dụng V20 sau khi kiểm tra schema hiện tại; KHÔNG chạy lại init/reset. Backend tự migrate chỉ khi database vốn được Flyway quản lý.
+
+Supabase Dashboard → Authentication → Sign In / Providers: bật Email và tắt Confirm email khi demo. Google cần OAuth Client ID/Secret của Web application; callback Google là URL /auth/v1/callback do Supabase cung cấp. Authentication → URL Configuration phải cho phép motorescue://auth-callback và motorescue://reset-password, cùng URL web local thực tế. Expo Go dùng URL exp:// động nên cần thêm đúng URL trả về của máy đang chạy. Không ghi OAuth secret vào app/README/Git.
+
+Nút quên mật khẩu gửi email thật và phụ thuộc cấu hình gửi mail/hạn mức Supabase; tắt Confirm email không tắt chức năng email đặt lại mật khẩu. Mở liên kết trên cùng thiết bị/trình duyệt đã yêu cầu để hoàn tất PKCE.

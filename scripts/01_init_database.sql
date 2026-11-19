@@ -1,9 +1,9 @@
 -- FILE TỰ SINH: node scripts/build-init-sql.cjs; không sửa riêng.
--- CÀI MỚI + KIỂM TRA schema/quyền/RLS đến V19 trong CÙNG transaction.
+-- CÀI MỚI + KIỂM TRA schema/quyền/RLS đến V20 trong CÙNG transaction.
 -- Dán TOÀN BỘ file vào Supabase SQL Editor và Run MỘT LẦN trên public trống.
 -- Kiểm tra thất bại thì transaction không commit; không bỏ qua guard để ép chạy.
 -- Không cần chạy migration backend hoặc file verify riêng.
--- Đã gồm mọi sửa lỗi đến V19 và quyền tạo tài khoản test; không chạy SQL vá lẻ.
+-- Đã gồm mọi sửa lỗi đến V20 và quyền tạo tài khoản test; không chạy SQL vá lẻ.
 -- Không seed demo/reset/Auth settings/mật khẩu; tùy chọn 02_seed_demo_teams.sql sau đó.
 -- Database đang có dữ liệu: KHÔNG chạy lại init; đọc scripts/README.md.
 -- SHA256 tính trên SQL được nhúng, UTF-8 chuẩn hóa CRLF thành LF.
@@ -2463,6 +2463,62 @@ REVOKE ALL ON public.hidden_request_history FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT ON public.hidden_request_history TO motorescue_api;
 -- END SOURCE: V19__personal_history_and_admin_edits.sql
 
+-- BEGIN SOURCE: V20__email_accounts_contact_phone.sql
+-- SHA256: 9c4da2acf5eb4eb8d380e1f5b0d7d5804f6a7b0b1a6cf63ecb58101b982c473d
+-- Contact details are supplied after email/Google sign-in. They are NOT verified
+-- identities and must never grant roles, ownership, or authorize membership.
+-- Keep contact data in private auth metadata, not public provider directories.
+CREATE FUNCTION public.account_contact_phone(account_id UUID)
+RETURNS TEXT LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+  SELECT CASE
+    WHEN u.raw_user_meta_data->>'contact_phone' ~ '^\+84[0-9]{9,10}$'
+      THEN u.raw_user_meta_data->>'contact_phone'
+    WHEN ltrim(u.phone, '+') ~ '^84[0-9]{9,10}$' THEN '+' || ltrim(u.phone, '+')
+    ELSE NULL END
+  FROM auth.users u WHERE u.id = account_id;
+$$;
+REVOKE ALL ON FUNCTION public.account_contact_phone(UUID) FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.api_customer_case_phone(request_id UUID, viewer_id UUID)
+RETURNS TEXT LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+  SELECT public.account_contact_phone(request.customer_id)
+  FROM public.rescue_requests request
+  JOIN public.profiles viewer ON viewer.id = viewer_id AND viewer.is_active
+  WHERE request.id = request_id AND request.assigned_provider_id IS NOT NULL
+    AND request.status IN ('assigned', 'en_route', 'awaiting_arrival_confirmation',
+      'arrived', 'diagnosing', 'awaiting_quote', 'quote_approved', 'repairing',
+      'transporting', 'awaiting_completion')
+    AND (viewer.role = 'admin' OR (viewer.role = 'provider' AND viewer.id = request.assigned_provider_id));
+$$;
+
+CREATE OR REPLACE FUNCTION public.api_lookup_account_by_phone(search_phone TEXT)
+RETURNS TABLE(user_id UUID, display_name TEXT, role TEXT)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  IF search_phone IS NULL OR search_phone !~ '^\+84[0-9]{9,10}$' THEN
+    RAISE EXCEPTION 'INVALID_ACCOUNT_PHONE' USING ERRCODE = '22023';
+  END IF;
+  IF (SELECT COUNT(*) FROM public.profiles p WHERE p.is_active
+      AND public.account_contact_phone(p.id) = search_phone) > 1 THEN
+    RAISE EXCEPTION 'ACCOUNT_PHONE_NOT_UNIQUE' USING ERRCODE = '23505';
+  END IF;
+  RETURN QUERY SELECT p.id, p.display_name, p.role FROM public.profiles p
+    WHERE p.is_active AND public.account_contact_phone(p.id) = search_phone;
+END $$;
+
+CREATE FUNCTION public.require_customer_contact_phone()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  IF public.account_contact_phone(NEW.customer_id) IS NULL THEN
+    RAISE EXCEPTION 'CUSTOMER_CONTACT_PHONE_REQUIRED' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION public.require_customer_contact_phone() FROM PUBLIC, anon, authenticated;
+CREATE TRIGGER rescue_require_customer_contact BEFORE INSERT ON public.rescue_requests
+FOR EACH ROW EXECUTE FUNCTION public.require_customer_contact_phone();
+-- END SOURCE: V20__email_accounts_contact_phone.sql
+
 -- BEGIN TEST SETUP PERMISSIONS
 -- Explicit grants survive a reset of public and do not rely on Supabase defaults.
 -- Never grant these privileges to anon/authenticated or expose the server key in the app.
@@ -3313,8 +3369,20 @@ END;
 $personal_history_contract$;
 SELECT 'V19 schema/security checks passed; JWT and end-to-end tests still required' AS result;
 
+DO $$
+BEGIN
+  IF to_regprocedure('public.account_contact_phone(uuid)') IS NULL
+     OR NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'rescue_require_customer_contact' AND NOT tgisinternal) THEN
+    RAISE EXCEPTION 'EMAIL_ACCOUNT_CONTACT_SCHEMA_MISSING';
+  END IF;
+  IF has_function_privilege('authenticated','public.account_contact_phone(uuid)','EXECUTE')
+     OR has_function_privilege('anon','public.account_contact_phone(uuid)','EXECUTE') THEN
+    RAISE EXCEPTION 'ACCOUNT_CONTACT_PHONE_PRIVACY_VIOLATION';
+  END IF;
+END $$;
+
 -- END SCHEMA VERIFICATION
 
 COMMIT;
 
-SELECT 'Database initialized through V19; schema/security checks passed. Optional: 02_seed_demo_teams.sql' AS result;
+SELECT 'Database initialized through V20; schema/security checks passed. Optional: 02_seed_demo_teams.sql' AS result;

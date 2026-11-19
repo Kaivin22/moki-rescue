@@ -136,7 +136,8 @@ class AccountDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
 
     private Actor actor(String role) {
         UUID id = UUID.randomUUID();
-        owner.update("INSERT INTO auth.users(id) VALUES (?)", id);
+        owner.update("INSERT INTO auth.users(id, phone) VALUES (?, ?)", id,
+                String.format("+84%09d", Integer.toUnsignedLong(id.hashCode()) % 1000000000L));
         owner.update("UPDATE public.profiles SET role = ? WHERE id = ?", role, id);
         return new Actor(id, "Integration", role, "vi");
     }

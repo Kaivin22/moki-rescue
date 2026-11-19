@@ -36,6 +36,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataAccessException.class)
     ResponseEntity<ErrorResponse> database(DataAccessException ex, HttpServletRequest request) {
+        if (ex.getMostSpecificCause().getMessage() != null
+                && ex.getMostSpecificCause().getMessage().contains("CUSTOMER_CONTACT_PHONE_REQUIRED")) {
+            return response(HttpStatus.UNPROCESSABLE_ENTITY, "CUSTOMER_CONTACT_PHONE_REQUIRED",
+                    "Hãy bổ sung số điện thoại liên hệ trước khi gọi cứu hộ.", request);
+        }
         log.error("Database error on {}", request.getRequestURI(), ex);
         return response(HttpStatus.CONFLICT, "DATABASE_CONFLICT", "Dữ liệu đã thay đổi. Vui lòng tải lại.", request);
     }
