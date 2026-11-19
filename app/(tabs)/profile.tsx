@@ -12,6 +12,7 @@ import { stopAllProviderBackgroundTracking } from '@/src/features/rescue/service
 import { roleLabel } from '@/src/features/auth/roles';
 import { useCopy, useI18n } from '@/src/i18n';
 import { NotificationEntry } from '@/src/features/communications/InboxScreens';
+import { contactPhone } from '@/src/features/auth/accountAuth';
 
 const COPY = {
   vi: {
@@ -22,9 +23,9 @@ const COPY = {
     accountId: 'Mã tài khoản',
     account: 'Tài khoản',
     edit: 'Chỉnh sửa hồ sơ',
-    editSub: 'Chỉ lưu tên hiển thị tối thiểu',
+    editSub: 'Tên hiển thị và số điện thoại liên hệ',
     security: 'Bảo mật tài khoản',
-    securitySub: 'OTP và trạng thái phiên đăng nhập',
+    securitySub: 'Email và trạng thái phiên đăng nhập',
     settings: 'Cài đặt',
     settingsSub: 'Ngôn ngữ, vị trí và dữ liệu',
     support: 'Trợ giúp và minh bạch',
@@ -43,9 +44,9 @@ const COPY = {
     accountId: 'Account ID',
     account: 'Account',
     edit: 'Edit profile',
-    editSub: 'Only a minimal display name is stored',
+    editSub: 'Display name and contact phone',
     security: 'Account security',
-    securitySub: 'OTP and current session status',
+    securitySub: 'Email and current session status',
     settings: 'Settings',
     settingsSub: 'Language, location, and data',
     support: 'Help and transparency',
@@ -96,7 +97,8 @@ export default function ProfileScreen() {
   const { user, profile, signOut } = useAuthStore();
   const c = useCopy(COPY);
   const language = useI18n((state) => state.language);
-  const maskedPhone = user?.phone ? `${user.phone.slice(0, 4)}••••${user.phone.slice(-3)}` : c.hidden;
+  const phone = contactPhone(user);
+  const maskedPhone = phone ? `${phone.slice(0, 4)}••••${phone.slice(-3)}` : c.hidden;
   const logout = async () => {
     await Promise.allSettled([unregisterPushNotifications(), stopAllProviderBackgroundTracking()]);
     try {

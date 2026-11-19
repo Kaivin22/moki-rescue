@@ -41,18 +41,15 @@ describe('focused login and operator screens', () => {
     expect(workspace).not.toContain('getCurrentPositionAsync');
     expect(workspace).not.toContain('requestForegroundPermissionsAsync');
   });
-  it('uses a normal credential form with a separate SMS route and environment guard', () => {
+  it('uses email sign-in and redirects legacy SMS and test-login routes to the main form', () => {
     const login = read('app/(auth)/login.tsx');
-    expect(login).toContain('/(auth)/sms-login');
-    expect(login).not.toContain('/(auth)/test-login');
-    expect(login).toContain('<DevPasswordLoginPanel');
-    expect(login).toContain('canUseDevPasswordLogin(');
-    const sms = read('app/(auth)/sms-login.tsx');
-    expect(sms).toContain('signInWithOtp');
-    expect(sms).toContain('verifyOtp');
-    expect(sms).not.toContain('DevPasswordLoginPanel');
-    const testLogin = read('app/(auth)/test-login.tsx');
-    expect(testLogin).toContain('<Redirect href="/(auth)/login"');
+    const form = read('src/features/auth/AccountScreen.tsx');
+    expect(login).toContain('<AccountScreen mode="login"');
+    expect(form).toContain('supabase.auth.signInWithPassword');
+    expect(form).not.toContain('signInWithOtp');
+    for (const route of ['sms-login', 'test-login']) {
+      expect(read(`app/(auth)/${route}.tsx`)).toContain('<Redirect href="/(auth)/login"');
+    }
   });
 
   it('exposes management destinations without embedding their forms in the menu', () => {

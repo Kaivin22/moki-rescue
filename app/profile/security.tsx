@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import { rescueApi } from '@/src/features/rescue/api/rescueApi';
 import { clearStoredPushToken } from '@/src/features/notifications/pushNotifications';
 import { stopAllProviderBackgroundTracking } from '@/src/features/rescue/services/backgroundLocation';
 import { accountVerification } from '@/src/features/auth/accountVerification';
+import { contactPhone } from '@/src/features/auth/accountAuth';
 
 const COPY = {
   vi: {
@@ -20,14 +21,14 @@ const COPY = {
     title: 'Bảo mật tài khoản',
     subtitle: 'Moki Rescue dùng phiên đăng nhập Supabase và không lưu mật khẩu riêng trong ứng dụng.',
     account: 'Trạng thái tài khoản',
-    phone: 'Số điện thoại',
+    phone: 'Số điện thoại liên hệ',
     email: 'Email đăng nhập',
     otp: 'Xác minh số điện thoại',
     emailVerification: 'Xác minh email',
     active: 'Đang hoạt động',
     inactive: 'Đã vô hiệu hóa',
     emailNote:
-      'Tài khoản này đăng nhập bằng email. Không cần xác minh SMS để dùng tài khoản kiểm thử đã được cấp quyền.',
+      'Đăng nhập bằng email hoặc Google. Số điện thoại chỉ dùng liên hệ, không phải phương thức đăng nhập.',
     verified: 'Đã xác minh',
     unverified: 'Chưa xác minh',
     lastSignIn: 'Đăng nhập gần nhất',
@@ -45,7 +46,7 @@ const COPY = {
     signOutAllError:
       'Chưa xác nhận được việc thu hồi tất cả phiên. Các thiết bị khác có thể vẫn đăng nhập. Nếu đã bị đưa về trang đăng nhập, hãy đăng nhập lại để thử lại.',
     cancel: 'Không',
-    note: 'Ứng dụng chỉ hiển thị phiên hiện tại. Việc thay đổi số điện thoại cần quy trình xác minh riêng và không được giả lập trong bản production.',
+    note: 'Bạn có thể cập nhật số liên hệ tại Chỉnh sửa hồ sơ. Số này chưa được xác minh qua SMS.',
   },
   en: {
     noData: 'No data',
@@ -53,14 +54,13 @@ const COPY = {
     title: 'Account security',
     subtitle: 'Moki Rescue uses Supabase sessions and does not store a separate password in the app.',
     account: 'Account status',
-    phone: 'Phone number',
+    phone: 'Contact phone',
     email: 'Sign-in email',
     otp: 'Phone verification',
     emailVerification: 'Email verification',
     active: 'Active',
     inactive: 'Disabled',
-    emailNote:
-      'This account signs in by email. A pre-provisioned test account does not need SMS verification.',
+    emailNote: 'Sign in using email or Google. Your phone is for contact, not sign-in.',
     verified: 'Verified',
     unverified: 'Not verified',
     lastSignIn: 'Last sign-in',
@@ -78,7 +78,7 @@ const COPY = {
     signOutAllError:
       'Revocation of all sessions could not be confirmed. Other devices may still be signed in. If returned to the login page, sign in again to retry.',
     cancel: 'Cancel',
-    note: 'The app only shows the current session. Changing a phone number requires a separate verification process and is not simulated in the production app.',
+    note: 'Update your contact phone in Edit profile. This number has not been verified by SMS.',
   },
 } as const;
 
@@ -118,6 +118,7 @@ function SecurityRow({
 }
 
 export default function AccountSecurityScreen() {
+  const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const profile = useAuthStore((state) => state.profile);
   const verification = accountVerification(user);
@@ -160,6 +161,7 @@ export default function AccountSecurityScreen() {
 
         <Text style={styles.section}>{c.account}</Text>
         <View style={styles.card}>
+          <SecurityRow icon="call-outline" label={c.phone} value={maskPhone(contactPhone(user), c.hidden)} />
           <SecurityRow
             icon={verification.channel === 'email' ? 'mail-outline' : 'phone-portrait-outline'}
             label={verification.channel === 'email' ? c.email : c.phone}

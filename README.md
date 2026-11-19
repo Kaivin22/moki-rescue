@@ -14,8 +14,9 @@ MVP chưa thu tiền trong ứng dụng. Cứu hộ viên gửi báo giá, khác
 
 ## Phạm vi đã triển khai
 
-- Đăng nhập bằng số điện thoại và OTP qua Supabase; tài khoản mới luôn là khách hàng.
-- Đơn vị cứu hộ không có trang tự đăng ký. Sau khi ký hợp tác ngoại tuyến, admin tạo đội với mã hồ sơ nội bộ, cấp quyền cho các tài khoản đã tự đăng nhập OTP và chỉ kích hoạt khi đủ checklist, năng lực và nhân sự.
+- Đăng ký/đăng nhập email và mật khẩu qua Supabase; tài khoản mới luôn là khách hàng. Bổ sung số điện thoại liên hệ trước khi dùng dịch vụ, không đăng nhập bằng SMS.
+- Có nút Google OAuth (cần Client ID/Secret trên Supabase), quên mật khẩu và đặt lại mật khẩu qua email. Khi demo, tắt Confirm email; email đặt lại mật khẩu vẫn cần hệ thống gửi mail hoạt động.
+- Hồ sơ hợp tác cửa hàng được admin xác minh. Người đại diện quản lý lời mời nhân sự; tự đăng ký tài khoản không tự cấp quyền cứu hộ viên.
 - Giao diện theo ba vai trò: khách hàng, cứu hộ viên và quản trị viên vận hành.
 - Phân loại nguy cơ trước khi tạo ca; ca khẩn cấp được chuyển sang trình gọi hệ thống.
 - Khách xác nhận hoặc kéo ghim điểm cứu hộ trên bản đồ trước khi gửi; không chỉ tin vào GPS thô.
@@ -102,12 +103,12 @@ Sau khi cập nhật mã nguồn, dừng Metro cũ, chạy `npm ci` rồi `npm r
 
 Expo Go trên thiết bị **phải hỗ trợ SDK 58**; số phiên bản ứng dụng Expo Go không phải số SDK. Xem [hướng dẫn nâng Expo SDK](https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/). Không tự nâng SDK mỗi lần khởi động: các thư viện native phải được đồng bộ và kiểm thử cùng nhau.
 
-Expo Go chỉ dùng cho các luồng tương thích với môi trường này. App không đăng ký remote push trong Expo Go; kiểm thử push cần development/preview build. Cơ chế hiện tại không dùng GPS nền để nhận ca. Type-check, unit test và export bundle không thay thế kiểm thử đăng nhập OTP, bản đồ, quyền GPS và điều hướng trên iPhone thật.
+Expo Go chỉ dùng cho các luồng tương thích với môi trường này. App không đăng ký remote push trong Expo Go; kiểm thử push cần development/preview build. Cơ chế hiện tại không dùng GPS nền để nhận ca. Type-check, unit test và export bundle không thay thế kiểm thử đăng nhập email/Google, bản đồ, quyền GPS và điều hướng trên iPhone thật.
 
 ## Kiểm tra
 
 Để thử đủ ba vai trò mà không nhận SMS/email, dùng [thiết lập tài khoản kiểm thử](./scripts/README.md).
-Form đăng nhập nhập email/mật khẩu trực tiếp, không có nút chọn tài khoản hoặc vai trò. Form này được bật trong bản phát triển và APK staging; phiên Supabase và quyền trong database vẫn là thật. Chỉ có code/script không có nghĩa tài khoản đã được tạo trên cloud: phải hoàn tất bước setup.
+Form đăng nhập email/mật khẩu là luồng chính, không có nút chọn tài khoản hoặc vai trò. Người dùng có thể tự đăng ký; phiên Supabase và quyền trong database vẫn là thật. Tài khoản demo ba vai trò cần hoàn tất bước setup. Chi tiết OAuth/callback và SQL V20: [scripts/README.md](./scripts/README.md#email-google-và-số-liên-hệ).
 
 ### Tài khoản demo hiện có
 

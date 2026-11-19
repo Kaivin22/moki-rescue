@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,14 +9,18 @@ import { Spacing, Typography } from '@/src/constants/spacing';
 import { supabase } from '@/src/services/supabase';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useCopy } from '@/src/i18n';
+import { contactPhone } from '@/src/features/auth/accountAuth';
+import { normalizeVietnamesePhone } from '@/src/features/auth/phone';
 
 const COPY = {
   vi: {
     invalidTitle: 'Tên chưa hợp lệ',
     invalidBody: 'Tên hiển thị cần từ 2 đến 80 ký tự.',
     saveError: 'Không thể lưu',
-    saveErrorBody: 'Dữ liệu chưa thay đổi. Vui lòng thử lại.',
-    note: 'Để giảm dữ liệu cá nhân, hồ sơ công khai chỉ dùng tên hiển thị. Số điện thoại nằm trong hệ thống xác thực và không hiển thị cho người dùng khác.',
+    saveErrorBody: 'Chưa lưu được đầy đủ thông tin. Hãy kiểm tra rồi thử lại.',
+    note: 'Số liên hệ chỉ được chia sẻ với bên được giao xử lý ca và quản trị viên khi cần hỗ trợ.',
+    phone: 'Số điện thoại liên hệ',
+    phoneError: 'Hãy nhập số điện thoại Việt Nam hợp lệ.',
     label: 'Tên hiển thị',
     save: 'Lưu thay đổi',
   },
@@ -24,35 +28,54 @@ const COPY = {
     invalidTitle: 'Invalid name',
     invalidBody: 'The display name must be between 2 and 80 characters.',
     saveError: 'Could not save',
-    saveErrorBody: 'Your data was not changed. Please try again.',
-    note: 'To minimize personal data, the public profile only uses a display name. Your phone number stays in the authentication system and is not shown to other users.',
+    saveErrorBody: 'Some details could not be saved. Please check and try again.',
+    note: 'Your contact number is shared only with the assigned party and administrators when support is needed.',
+    phone: 'Contact phone',
+    phoneError: 'Enter a valid Vietnamese phone number.',
     label: 'Display name',
     save: 'Save changes',
   },
 } as const;
 
 export default function EditProfileScreen() {
+  const router = useRouter();
   const profile = useAuthStore((state) => state.profile);
   const refreshProfile = useAuthStore((state) => state.refreshProfile);
   const [name, setName] = useState(profile?.display_name ?? '');
+  const [phone, setPhone] = useState(contactPhone(useAuthStore.getState().user) ?? '');
   const [busy, setBusy] = useState(false);
   const c = useCopy(COPY);
 
   const save = async () => {
+    if (busy) return;
     const normalized = name.trim().replace(/\s+/g, ' ');
     if (!profile || normalized.length < 2) return Alert.alert(c.invalidTitle, c.invalidBody);
+    const normalizedPhone = normalizeVietnamesePhone(phone);
+    if (!normalizedPhone) return Alert.alert(c.invalidTitle, c.phoneError);
     setBusy(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ display_name: normalized })
-      .eq('id', profile.id);
-    if (error) Alert.alert(c.saveError, c.saveErrorBody);
-    else {
-      await refreshProfile();
-      if (router.canGoBack()) router.back();
-      else router.replace('/(tabs)/profile');
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ display_name: normalized })
+        .eq('id', profile.id);
+      if (error) Alert.alert(c.saveError, c.saveErrorBody);
+      else {
+        const updated = await supabase.auth.updateUser({ data: { contact_phone: normalizedPhone } });
+        if (updated.error) {
+          Alert.alert(c.saveError, c.saveErrorBody);
+          setBusy(false);
+          return;
+        }
+        await useAuthStore.getState().syncUser(updated.data.user);
+        await refreshProfile();
+        if (router.canGoBack()) router.back();
+        else router.replace('/(tabs)/profile');
+      }
+    } catch {
+      Alert.alert(c.saveError, c.saveErrorBody);
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   return (
@@ -66,6 +89,14 @@ export default function EditProfileScreen() {
             onChangeText={setName}
             maxLength={80}
             autoCapitalize="words"
+          />
+          <AppInput
+            label={c.phone}
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            autoComplete="tel"
+            editable={!busy}
           />
           <AppButton title={c.save} onPress={() => void save()} loading={busy} />
         </ScrollView>

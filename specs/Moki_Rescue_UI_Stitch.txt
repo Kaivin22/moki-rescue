@@ -138,24 +138,16 @@ Không hứa theo dõi GPS trực tiếp; lời giới thiệu bám cơ chế tu
 
 R02 | /(auth)/login | Mọi người
 Nguồn: app/(auth)/login.tsx.
-Trang chọn cách đăng nhập, không chứa form SMS và form mật khẩu cùng lúc.
-Logo, chào mừng, thẻ số điện thoại, thẻ kiểm thử nếu môi trường cho phép, đổi ngôn ngữ.
-Chọn một thẻ -> R03 hoặc R04.
+Nhập email và mật khẩu, có hiện/ẩn mật khẩu. Đăng nhập Google cần cấu hình OAuth.
+Có lối sang đăng ký và quên mật khẩu.
 
 R03 | /(auth)/sms-login | Mọi người
 Nguồn: app/(auth)/sms-login.tsx.
-Biến thể nhập thông tin/số điện thoại/đồng ý điều khoản -> nhập OTP.
-Gửi mã, xác minh, gửi lại khi được phép, sửa số; link R14/R15.
-Có lỗi số không hợp lệ, không gửi được mã, mã sai/hết hạn và giới hạn thử.
-Không dùng dữ liệu nhạy cảm thật, không lộ lỗi SQL/Supabase thô.
+Đường dẫn cũ chuyển về R02. Không có form SMS.
 
-R04 | /(auth)/test-login | Chỉ môi trường cho phép
+R04 | /(auth)/test-login | Đường dẫn tương thích
 Nguồn: app/(auth)/test-login.tsx.
-Email/mật khẩu kiểm thử, đồng ý điều khoản khi cần; loading/lỗi/đăng nhập.
-Ba nút Khách hàng/Cứu hộ viên/Admin chỉ điền email mẫu tương ứng; vẫn cần
-mật khẩu và quyền từ backend, không phải chuyển role hoặc bỏ qua xác thực.
-Không đòi SMS đối với luồng test được cho phép; không in mật khẩu thật lên thiết kế.
-Không thêm nút tự phong admin/provider.
+Chuyển về R02. Nhập email và mật khẩu demo vào luồng đăng nhập chính.
 
 NHÓM 2 — CÁC TAB THEO VAI TRÒ
 
@@ -539,6 +531,21 @@ Xem cửa hàng; đại diện quản lý lời mời và thành viên theo quy�
 
 R67 | /reviews | Ba vai trò
 Đánh giá từ khách hàng; cứu hộ viên xem đánh giá của mình, khách xem đánh giá liên quan, admin xem toàn bộ.
+
+R68 | /(auth)/register | Chưa đăng nhập
+Nhập tên, email, mật khẩu, xác nhận mật khẩu và đồng ý điều khoản. Tài khoản mới có quyền khách hàng.
+
+R69 | /(auth)/forgot-password | Chưa đăng nhập
+Nhập email để nhận liên kết đặt lại mật khẩu. Không xác nhận công khai email nào đã đăng ký.
+
+R70 | /(auth)/complete-profile | Đã xác thực, chưa hoàn tất hồ sơ
+Bổ sung số liên hệ và đồng ý điều khoản nếu còn thiếu. Số này dùng để liên hệ trong ca được giao.
+
+R71 | /auth-callback | Điểm trả về từ đăng nhập Google hoặc email
+Hiển thị trạng thái đang xử lý và chuyển đến bước phù hợp sau xác thực.
+
+R72 | /reset-password | Có phiên đặt lại mật khẩu
+Nhập và xác nhận mật khẩu mới. Có trạng thái liên kết hết hiệu lực và lối gửi lại liên kết.
 
 E. BIẾN THỂ TRẠNG THÁI CẦN THỂ HIỆN
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, router } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '@/src/components/atoms/AppButton';
 import { AppInput } from '@/src/components/atoms/AppInput';
@@ -46,6 +46,7 @@ const COPY = {
 } as const;
 
 export function DevPasswordLoginPanel({ enabled }: { enabled: boolean }) {
+  const router = useRouter();
   const c = useCopy(COPY);
   const language = useI18n((state) => state.language);
   const [email, setEmail] = useState('');
@@ -129,11 +130,15 @@ export function DevPasswordLoginPanel({ enabled }: { enabled: boolean }) {
         </Text>
       </Pressable>
       <View style={styles.roles}>
-        <Link href="/legal/terms" style={styles.link}>
-          {c.terms}
+        <Link href="/legal/terms" asChild>
+          <Pressable style={styles.linkTarget} accessibilityRole="link" accessibilityLabel={c.terms}>
+            <Text style={styles.link}>{c.terms}</Text>
+          </Pressable>
         </Link>
-        <Link href="/legal/privacy" style={styles.link}>
-          {c.privacy}
+        <Link href="/legal/privacy" asChild>
+          <Pressable style={styles.linkTarget} accessibilityRole="link" accessibilityLabel={c.privacy}>
+            <Text style={styles.link}>{c.privacy}</Text>
+          </Pressable>
         </Link>
       </View>
       <AppButton title={c.submit} onPress={() => void signIn()} loading={busy} />
@@ -158,10 +163,17 @@ const styles = StyleSheet.create({
   hint: { ...Typography.caption, color: Colors.textSecondary },
   roles: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   consent: { minHeight: 44, justifyContent: 'center' },
+  linkTarget: {
+    minHeight: 44,
+    flexBasis: 140,
+    flexGrow: 1,
+    maxWidth: '100%',
+    justifyContent: 'center',
+    paddingVertical: Spacing.sm,
+  },
   link: {
     ...Typography.caption,
     color: Colors.primary,
-    paddingVertical: Spacing.md,
     textDecorationLine: 'underline',
   },
   error: { ...Typography.caption, color: Colors.error },
