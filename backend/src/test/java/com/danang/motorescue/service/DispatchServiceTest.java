@@ -17,15 +17,16 @@ class DispatchServiceTest {
         Candidate nearbyWaiting = candidate("00000000-0000-0000-0000-000000000002", 0, 7200, 0);
         Candidate farWaiting = candidate("00000000-0000-0000-0000-000000000003", 0, 7200, 0);
 
-        List<Ranked> ranked = DispatchService.rankCandidates(List.of(
+        var bands = DispatchService.rankEtaBands(List.of(
                 new Ranked(nearest, route(1_000, 300)),
                 new Ranked(nearbyWaiting, route(1_500, 360)),
                 new Ranked(farWaiting, route(3_000, 900))), policy(120, 0.4, 0.6, 0, 3));
 
-        assertThat(ranked).extracting(value -> value.candidate().providerId())
+        assertThat(bands).hasSize(2);
+        assertThat(bands.getFirst()).extracting(value -> value.candidate().providerId())
                 .containsExactly(nearbyWaiting.providerId(), nearest.providerId());
-        assertThat(ranked).extracting(value -> value.candidate().providerId())
-                .doesNotContain(farWaiting.providerId());
+        assertThat(bands.getLast()).extracting(value -> value.candidate().providerId())
+                .containsExactly(farWaiting.providerId());
     }
 
     @Test
@@ -33,11 +34,11 @@ class DispatchServiceTest {
         Candidate frequentlyOffered = candidate("00000000-0000-0000-0000-000000000001", 8, 60, 0);
         Candidate waitingLonger = candidate("00000000-0000-0000-0000-000000000002", 0, 7_200, 0);
 
-        List<Ranked> ranked = DispatchService.rankCandidates(List.of(
+        var bands = DispatchService.rankEtaBands(List.of(
                 new Ranked(frequentlyOffered, route(1_000, 300)),
                 new Ranked(waitingLonger, route(1_100, 330))), policy(300, 0.2, 0.4, 0.4, 3));
 
-        assertThat(ranked).extracting(value -> value.candidate().providerId())
+        assertThat(bands.getFirst()).extracting(value -> value.candidate().providerId())
                 .containsExactly(waitingLonger.providerId(), frequentlyOffered.providerId());
     }
 
@@ -47,15 +48,25 @@ class DispatchServiceTest {
         Candidate starvedNearby = candidate("00000000-0000-0000-0000-000000000002", 10, 0, 3);
         Candidate starvedFarAway = candidate("00000000-0000-0000-0000-000000000003", 0, 0, 99);
 
-        List<Ranked> ranked = DispatchService.rankCandidates(List.of(
+        var bands = DispatchService.rankEtaBands(List.of(
                 new Ranked(normal, route(1_000, 300)),
                 new Ranked(starvedNearby, route(1_500, 420)),
                 new Ranked(starvedFarAway, route(3_000, 900))), policy(180, 1, 0, 0, 3));
 
-        assertThat(ranked).extracting(value -> value.candidate().providerId())
+        assertThat(bands.getFirst()).extracting(value -> value.candidate().providerId())
                 .containsExactly(starvedNearby.providerId(), normal.providerId());
-        assertThat(ranked).extracting(value -> value.candidate().providerId())
-                .doesNotContain(starvedFarAway.providerId());
+        assertThat(bands.getLast()).extracting(value -> value.candidate().providerId())
+                .containsExactly(starvedFarAway.providerId());
+    }
+
+    @Test
+    void sevenProvidersRemainReachableAndEachBandIncludesItsUpperBoundary() {
+        var candidates = List.of(1260, 420, 1940, 120, 1020, 1560, 720).stream()
+                .map(eta -> new Ranked(new Candidate(UUID.randomUUID(), UUID.randomUUID(), 16, 108, 0, 0, 0),
+                        route(1000, eta))).toList();
+        var bands = DispatchService.rankEtaBands(candidates, policy(300, 1, 0, 0, 3));
+        assertThat(bands.stream().map(band -> band.stream().map(r -> r.route().durationSeconds()).toList()).toList())
+                .containsExactly(List.of(120, 420), List.of(720, 1020), List.of(1260, 1560), List.of(1940));
     }
 
     @Test
@@ -73,8 +84,8 @@ class DispatchServiceTest {
     void identicalMetricsUseStableIdRegardlessOfInputOrder() {
         Candidate first = candidate("00000000-0000-0000-0000-000000000001", 0, 100, 0);
         Candidate second = candidate("00000000-0000-0000-0000-000000000002", 0, 100, 0);
-        assertThat(DispatchService.rankCandidates(List.of(new Ranked(second, route(1000, 300)),
-                new Ranked(first, route(1000, 300))), policy(300, .55, .15, .15, 3)))
+        assertThat(DispatchService.rankEtaBands(List.of(new Ranked(second, route(1000, 300)),
+                new Ranked(first, route(1000, 300))), policy(300, .55, .15, .15, 3)).getFirst())
                 .extracting(r -> r.candidate().providerId()).containsExactly(first.providerId(), second.providerId());
     }
 

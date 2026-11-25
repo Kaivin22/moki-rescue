@@ -282,9 +282,6 @@ describe('service coverage wiring (static contracts, not PostgreSQL execution)',
     const dispatch = read('backend/src/main/java/com/danang/motorescue/service/DispatchService.java');
     expect(dispatch).toContain('team.base_latitude = ? AND team.base_longitude = ?');
     expect(dispatch).toContain('FOR UPDATE OF pm');
-    expect(dispatch).toContain('for (Ranked selected : ordered)');
-    expect(dispatch).toContain('if (Boolean.TRUE.equals(offered)) return;');
-    expect(dispatch).toContain('markNoProvider(requestId, false)');
     expect(read('backend/src/main/java/com/danang/motorescue/service/OperatorService.java')).toContain(
       'ORDER BY user_id FOR UPDATE',
     );

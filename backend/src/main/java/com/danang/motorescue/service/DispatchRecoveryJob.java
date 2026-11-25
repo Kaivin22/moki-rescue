@@ -37,8 +37,14 @@ public class DispatchRecoveryJob {
             if (requestId == null) return;
             try {
                 dispatch.match(requestId);
-                jdbc.update("DELETE FROM public.dispatch_recovery_jobs WHERE request_id = ? AND lease_id = ?",
-                        requestId, lease);
+                // A status transition removes the job via trigger. If the same lease
+                // still exists, the case is waiting for newly available providers.
+                jdbc.update("""
+                        UPDATE public.dispatch_recovery_jobs
+                        SET available_at = NOW() + INTERVAL '30 seconds', lease_id = NULL,
+                            attempts = 0, last_error_type = NULL
+                        WHERE request_id = ? AND lease_id = ?
+                        """, requestId, lease);
             } catch (RuntimeException error) {
                 // No SQL exception messages, request payloads or coordinates in the job/log.
                 jdbc.update("""

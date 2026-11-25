@@ -114,7 +114,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         qualityPolicy = new QualityProperties(5, 3.5, 3.0, 3, 3, 30);
         push = mock(PushNotificationService.class);
         routing = mock(RoadRoutingService.class);
-        matchingDispatch = new DispatchService(runtimeJdbc, runtimeTransactions, routing, push);
+        matchingDispatch = new DispatchService(runtimeJdbc, runtimeTransactions, routing, push, 120);
         creationDispatch = mock(DispatchService.class);
         providers = new ProviderService(
                 runtimeJdbc, runtimeTransactions, matchingDispatch, new AuditService(runtimeJdbc), push,
@@ -139,11 +139,10 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         stubSuccessfulRoutes();
         matchingDispatch.match(newRequest);
         assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?",
-                String.class, newRequest)).isEqualTo("no_provider");
+                String.class, newRequest)).isEqualTo("searching");
         jdbc.update("UPDATE public.rescue_requests SET cancelled_at = NOW() - INTERVAL '15 minutes' WHERE id = ?", oldRequest);
         assertThat(runtimeJdbc.queryForObject("SELECT public.api_customer_provider_cooldown(?, ?, NOW())",
                 Boolean.class, customer.id(), provider.actor().id())).isFalse();
-        matchingDispatch.retry(newRequest);
         matchingDispatch.match(newRequest);
         assertThat(jdbc.queryForObject("SELECT provider_id FROM public.dispatch_offers WHERE request_id = ?",
                 UUID.class, newRequest)).isEqualTo(provider.actor().id());
@@ -187,7 +186,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         UUID request = insertRequest(createActor("customer"), "searching", null);
         matchingDispatch.match(request);
         verifyNoInteractions(routing);
-        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, request)).isEqualTo("no_provider");
+        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, request)).isEqualTo("searching");
         matchingDispatch.expireOffers();
         assertThat(jdbc.queryForObject("SELECT is_available FROM public.provider_members WHERE user_id = ?", Boolean.class, provider.actor().id())).isFalse();
         assertThat(providers.setAvailability(provider.actor(), new AvailabilityRequest(true, null, null, null)).available()).isTrue();
@@ -259,7 +258,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     }
 
     @Test
-    void dispatchTriesNextRankedShopIfFirstClosesWhileOsrmResponds() {
+    void dispatchReachesADistantEtaBandIfFirstShopClosesWhileOsrmResponds() {
         UUID firstShop = createTeam();
         UUID secondShop = createTeam();
         addCapability(firstShop);
@@ -273,8 +272,8 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         when(routing.routesToDestination(anyList(), any())).thenAnswer(invocation -> {
             // Clock/shop state changes after filtering, before publishing the invitation.
             jdbc.update("UPDATE public.rescue_teams SET receiving_paused = TRUE WHERE id = ?", closing.teamId());
-            return List.of(Optional.of(new RoadRoute(1000, 300, List.of())),
-                    Optional.of(new RoadRoute(1200, 360, List.of())));
+            return List.of(Optional.of(new RoadRoute(1000, 120, List.of())),
+                    Optional.of(new RoadRoute(5000, 600, List.of())));
         });
         UUID request = insertRequest(createActor("customer"), "searching", null);
         matchingDispatch.match(request);
@@ -530,8 +529,6 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
                     matching_experience_reference_cases = 2
                 WHERE code = 'flat_tire'
                 """);
-        matchingDispatch = new DispatchService(
-                runtimeJdbc, runtimeTransactions, routing, push);
         when(routing.routesToDestination(anyList(), any())).thenAnswer(invocation -> {
             List<RoadPoint> origins = invocation.getArgument(0);
             return origins.stream().map(origin -> {
@@ -630,14 +627,12 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         matchingDispatch.expireOffers();
 
         assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?",
-                String.class, expiredRequest)).isEqualTo("no_provider");
+                String.class, expiredRequest)).isEqualTo("searching");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.dispatch_offers WHERE status = 'pending'",
                 Integer.class)).isEqualTo(100);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.dispatch_offers WHERE status = 'expired'",
                 Integer.class)).isEqualTo(1);
-        UUID customer = jdbc.queryForObject("SELECT customer_id FROM public.rescue_requests WHERE id = ?",
-                UUID.class, expiredRequest);
-        verify(push, times(1)).notifyUser(customer, NotificationKind.NO_PROVIDER, null, expiredRequest);
+        verifyNoInteractions(push);
     }
 
     @Test
@@ -933,7 +928,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         UUID request = insertRequest(createActor("customer"), "searching", null);
         matchingDispatch.match(request);
         assertThat(count("public.dispatch_offers")).isZero();
-        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, request)).isEqualTo("no_provider");
+        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, request)).isEqualTo("searching");
     }
 
     @Test
@@ -1087,14 +1082,99 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     }
 
     @Test
-    void committedSearchingCaseIsRecoveredWithoutOriginalProcess() {
+    void sevenReadyProvidersReceiveOneOfferEachBeforeTheSameCaseWaitsForNewcomers() {
+        List<Integer> etas = List.of(120, 240, 600, 780, 1260, 1440, 1860);
+        Map<UUID, Actor> remaining = new HashMap<>();
+        for (int index = 0; index < etas.size(); index++) {
+            double latitude = PICKUP_LATITUDE + index * 0.001;
+            UUID team = createTeam(latitude, PICKUP_LONGITUDE);
+            addCapability(team);
+            Actor actor = createProvider(team, latitude, PICKUP_LONGITUDE, 20, true).actor();
+            remaining.put(actor.id(), actor);
+        }
+        when(routing.routesToDestination(anyList(), any())).thenAnswer(invocation -> {
+            List<RoadPoint> origins = invocation.getArgument(0);
+            return origins.stream().map(origin -> {
+                int index = (int) Math.round((origin.latitude() - PICKUP_LATITUDE) * 1000);
+                return Optional.of(new RoadRoute(1000, etas.get(index), List.of()));
+            }).toList();
+        });
+        UUID requestId = insertRequest(createActor("customer"), "searching", null);
+        matchingDispatch.match(requestId);
+        // Only the two providers in the winning band have competed for the first invitation.
+        assertThat(count("public.provider_dispatch_stats")).isEqualTo(2);
+        for (int round = 0; round < etas.size(); round++) {
+            UUID recipient = pendingOfferProvider(requestId); // queryForObject also checks there is exactly one
+            Actor actor = remaining.remove(recipient);
+            assertThat(actor).isNotNull();
+            UUID offerId = jdbc.queryForObject(
+                    "SELECT id FROM public.dispatch_offers WHERE request_id = ? AND status = 'pending'",
+                    UUID.class, requestId);
+            providers.decline(actor, offerId);
+        }
+        assertThat(remaining).isEmpty();
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM public.dispatch_offers WHERE request_id = ? AND status = 'declined'
+                """, Integer.class, requestId)).isEqualTo(7);
+        assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, requestId))
+                .isEqualTo("searching");
+        assertThat(count("public.dispatch_recovery_jobs")).isEqualTo(1);
+    }
+
+    @Test
+    void waitingCaseIsRescannedAndOfferedOnTheSameRequestWhenAProviderAppears() {
         UUID requestId = creationService().create(createActor("customer"), UUID.randomUUID(), validCreateRequest("Test"));
         assertThat(count("public.dispatch_recovery_jobs")).isEqualTo(1);
         jdbc.update("UPDATE public.dispatch_recovery_jobs SET available_at = NOW() - INTERVAL '1 second'");
         new DispatchRecoveryJob(runtimeJdbc, matchingDispatch).recover();
         assertThat(jdbc.queryForObject("SELECT status FROM public.rescue_requests WHERE id = ?", String.class, requestId))
-                .isEqualTo("no_provider");
+                .isEqualTo("searching");
+        assertThat(jdbc.queryForObject("""
+                SELECT lease_id IS NULL AND available_at > NOW() FROM public.dispatch_recovery_jobs WHERE request_id = ?
+                """, Boolean.class, requestId)).isTrue();
+        UUID team = createTeam();
+        addCapability(team);
+        var first = createProvider(team, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        stubSuccessfulRoutes();
+        var job = new DispatchRecoveryJob(runtimeJdbc, matchingDispatch);
+        jdbc.update("UPDATE public.dispatch_recovery_jobs SET available_at = NOW() WHERE request_id = ?", requestId);
+        job.recover();
+        assertThat(pendingOfferProvider(requestId)).isEqualTo(first.actor().id());
+        providers.decline(first.actor(), jdbc.queryForObject(
+                "SELECT id FROM public.dispatch_offers WHERE request_id = ?", UUID.class, requestId));
+        var second = createProvider(team, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        jdbc.update("UPDATE public.dispatch_recovery_jobs SET available_at = NOW() WHERE request_id = ?", requestId);
+        job.recover();
+        assertThat(pendingOfferProvider(requestId)).isEqualTo(second.actor().id());
+        assertThat(jdbc.queryForObject("SELECT status FROM public.dispatch_offers WHERE request_id = ? AND provider_id = ?",
+                String.class, requestId, first.actor().id())).isEqualTo("declined");
         assertThat(count("public.dispatch_recovery_jobs")).isZero();
+    }
+
+    @Test
+    void unavailableRoutesCanRecoverAndATimedOutSearchCanBeRetriedOnTheSameCase() {
+        UUID team = createTeam();
+        addCapability(team);
+        var provider = createProvider(team, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+        Actor customer = createActor("customer");
+        UUID requestId = insertRequest(customer, "searching", null);
+        when(routing.routesToDestination(anyList(), any())).thenReturn(List.of(Optional.empty()));
+        matchingDispatch.match(requestId);
+        verifyNoInteractions(push);
+        var oneSecondWait = new DispatchService(runtimeJdbc, runtimeTransactions, routing, push, 1);
+        jdbc.execute("SELECT pg_sleep(1.1)");
+        oneSecondWait.match(requestId);
+        oneSecondWait.match(requestId);
+        verify(push, times(1)).notifyUser(customer.id(), NotificationKind.NO_PROVIDER, null, requestId);
+        assertThat(jdbc.queryForObject("SELECT routing_status FROM public.rescue_requests WHERE id = ? AND status = 'no_provider'",
+                String.class, requestId)).isEqualTo("unavailable");
+        matchingDispatch.retry(requestId);
+        matchingDispatch.match(requestId);
+        assertThat(count("public.dispatch_recovery_jobs")).isEqualTo(1);
+        stubSuccessfulRoutes();
+        jdbc.update("UPDATE public.dispatch_recovery_jobs SET available_at = NOW() WHERE request_id = ?", requestId);
+        new DispatchRecoveryJob(runtimeJdbc, matchingDispatch).recover();
+        assertThat(pendingOfferProvider(requestId)).isEqualTo(provider.actor().id());
     }
 
     @Test
@@ -1109,7 +1189,8 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         UUID requestId = insertRequest(customer, "searching", null);
         jdbc.update("UPDATE public.dispatch_recovery_jobs SET available_at = NOW() + INTERVAL '2 minutes', lease_id = ?",
                 UUID.randomUUID());
-        var job = new DispatchRecoveryJob(runtimeJdbc, matchingDispatch);
+        var noWait = new DispatchService(runtimeJdbc, runtimeTransactions, routing, push, 0);
+        var job = new DispatchRecoveryJob(runtimeJdbc, noWait);
         job.recover();
         assertThat(count("public.dispatch_recovery_jobs")).isEqualTo(1);
         jdbc.update("UPDATE public.dispatch_recovery_jobs SET available_at = NOW() - INTERVAL '1 second'");
@@ -1145,32 +1226,43 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
     @Test
     @Timeout(30)
     void concurrentRequestsDoNotInviteTheSameProviderTwice() throws Exception {
-        assertConcurrentDispatchReservations(1);
+        assertConcurrentDispatchReservations(List.of(120));
     }
 
     @Test
     @Timeout(30)
     void concurrentRequestsTryNextRankedProviderWhenFirstIsReserved() throws Exception {
-        assertConcurrentDispatchReservations(2);
+        assertConcurrentDispatchReservations(List.of(120, 180));
     }
 
-    private void assertConcurrentDispatchReservations(int providerCount) throws Exception {
-        UUID team = createTeam();
-        addCapability(team);
+    @Test
+    @Timeout(30)
+    void concurrentRequestsCanReserveDifferentEtaBandsInTheSameScan() throws Exception {
+        assertConcurrentDispatchReservations(List.of(120, 600));
+    }
+
+    private void assertConcurrentDispatchReservations(List<Integer> etaSeconds) throws Exception {
+        int providerCount = etaSeconds.size();
         for (int index = 0; index < providerCount; index++) {
-            createProvider(team, PICKUP_LATITUDE, PICKUP_LONGITUDE, 20, true);
+            double latitude = PICKUP_LATITUDE + index * 0.001;
+            UUID team = createTeam(latitude, PICKUP_LONGITUDE);
+            addCapability(team);
+            createProvider(team, latitude, PICKUP_LONGITUDE, 20, true);
         }
         UUID first = insertRequest(createActor("customer"), "searching", null);
         UUID second = insertRequest(createActor("customer"), "searching", null);
         CountDownLatch bothSelectedCandidates = new CountDownLatch(2);
         when(routing.routesToDestination(anyList(), any())).thenAnswer(invocation -> {
-            List<?> origins = invocation.getArgument(0);
+            List<RoadPoint> origins = invocation.getArgument(0);
             assertThat(origins).hasSize(providerCount);
             bothSelectedCandidates.countDown();
             if (!bothSelectedCandidates.await(10, TimeUnit.SECONDS)) {
                 throw new IllegalStateException("Both requests must select candidates before either writes an offer");
             }
-            return origins.stream().map(ignored -> Optional.of(new RoadRoute(1_000, 300, List.of()))).toList();
+            return origins.stream().map(origin -> {
+                int index = (int) Math.round((origin.latitude() - PICKUP_LATITUDE) * 1000);
+                return Optional.of(new RoadRoute(1_000, etaSeconds.get(index), List.of()));
+            }).toList();
         });
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
@@ -1188,7 +1280,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
                 Integer.class)).isEqualTo(providerCount);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.rescue_requests WHERE status = 'offered'",
                 Integer.class)).isEqualTo(providerCount);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.rescue_requests WHERE status = 'no_provider'",
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM public.rescue_requests WHERE status = 'searching'",
                 Integer.class)).isEqualTo(2 - providerCount);
         verify(routing, times(2)).routesToDestination(anyList(), any());
     }

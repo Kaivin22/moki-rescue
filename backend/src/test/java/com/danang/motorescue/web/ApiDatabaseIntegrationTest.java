@@ -16,8 +16,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.support.NoOpTaskScheduler;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -32,10 +34,10 @@ import org.junit.jupiter.api.extension.RegisterExtension;
         "app.routing.motorbike-base-url=https://routing.example.invalid", "app.assistant.enabled=false",
         "spring.security.oauth2.resourceserver.jwt.issuer-uri=https://auth.example.invalid/auth/v1",
         "spring.security.oauth2.resourceserver.jwt.jwk-set-uri=https://auth.example.invalid/jwks",
-        "app.legal.current-version=2026-08-22",
-        "app.matching.recovery-scan-interval-ms=3600000", "app.matching.expiry-scan-interval-ms=3600000",
-        "app.case-lifecycle.scan-interval-ms=3600000", "app.push.outbox-scan-interval-ms=3600000"
+        "app.legal.current-version=2026-08-22"
 })
+// Scheduled scans can race fixture TRUNCATEs. Service integration tests invoke the jobs explicitly.
+@Import(NoOpTaskScheduler.class)
 @AutoConfigureMockMvc
 @org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class ApiDatabaseIntegrationTest extends PostgisIntegrationTestSupport {

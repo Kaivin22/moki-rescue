@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -21,6 +22,7 @@ public class DispatchService {
     private record RequestPoint(
             UUID id,
             String status,
+            int version,
             String serviceCode,
             double latitude,
             double longitude,
@@ -36,6 +38,7 @@ public class DispatchService {
             int consecutiveSkips) {}
 
     record Ranked(Candidate candidate, RoadRoute route) {}
+    private enum OfferResult { SENT, PROVIDER_UNAVAILABLE, REQUEST_CHANGED }
 
     record MatchingPolicy(
             int etaWindowSeconds,
@@ -78,16 +81,20 @@ public class DispatchService {
     private final TransactionTemplate transactions;
     private final RoadRoutingService routing;
     private final PushNotificationService push;
+    private final int searchWaitSeconds;
 
     public DispatchService(
             JdbcTemplate jdbc,
             TransactionTemplate transactions,
             RoadRoutingService routing,
-            PushNotificationService push) {
+            PushNotificationService push,
+            @Value("${app.matching.search-wait-seconds}") int searchWaitSeconds) {
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.routing = routing;
         this.push = push;
+        if (searchWaitSeconds < 0) throw new IllegalArgumentException("search-wait-seconds must be non-negative");
+        this.searchWaitSeconds = searchWaitSeconds;
     }
 
     public void match(UUID requestId) {
@@ -96,7 +103,7 @@ public class DispatchService {
 
         List<Candidate> candidates = eligibleCandidates(request);
         if (candidates.isEmpty()) {
-            markNoProvider(requestId, false);
+            finishSearchIfTimedOut(request, false);
             return;
         }
 
@@ -108,40 +115,42 @@ public class DispatchService {
             Candidate candidate = candidates.get(index);
             routes.get(index).ifPresent(value -> ranked.add(new Ranked(candidate, value)));
         }
-        List<Ranked> ordered = rankCandidates(ranked, request.policy());
-
-        if (ordered.isEmpty()) {
-            markNoProvider(requestId, true);
-            return;
-        }
-        // A shop may close during OSRM calculation. Try the next eligible ranked
-        // provider, without rerouting or extending an invitation past closing.
-        for (Ranked selected : ordered) {
-            try {
-                Boolean offered = transactions.execute(status -> {
-                    if (!writeOffer(request, ordered, selected)) return false;
-                    push.notifyUser(selected.candidate().providerId(), NotificationKind.NEW_OFFER, null, requestId);
-                    return true;
-                });
-                if (Boolean.TRUE.equals(offered)) return;
-            } catch (DataAccessException ex) {
-                String detail = ex.getMostSpecificCause().getMessage();
-                if (detail == null || !detail.contains("OFFER_OUTSIDE_WORKING_HOURS")) throw ex;
+        for (List<Ranked> band : rankEtaBands(ranked, request.policy())) {
+            for (int index = 0; index < band.size(); index++) {
+                // Exclude candidates that already failed reservation and bands that never competed.
+                if (tryOffer(request, band.subList(index, band.size())) != OfferResult.PROVIDER_UNAVAILABLE) return;
             }
         }
-        markNoProvider(requestId, false);
+        finishSearchIfTimedOut(request, ranked.isEmpty());
     }
 
-    static List<Ranked> rankCandidates(List<Ranked> candidates, MatchingPolicy policy) {
-        int bestEtaSeconds = candidates.stream()
-                .mapToInt(value -> Math.max(0, value.route().durationSeconds()))
-                .min()
-                .orElse(Integer.MAX_VALUE);
-        long latestAcceptedEta = (long) bestEtaSeconds + policy.etaWindowSeconds();
+    private OfferResult tryOffer(RequestPoint request, List<Ranked> competing) {
+        try {
+            return transactions.execute(status -> writeOffer(request, competing));
+        } catch (DataAccessException ex) {
+            String detail = ex.getMostSpecificCause().getMessage();
+            if (detail == null || !detail.contains("OFFER_OUTSIDE_WORKING_HOURS")) throw ex;
+            return OfferResult.PROVIDER_UNAVAILABLE;
+        }
+    }
 
-        return candidates.stream()
-                .filter(value -> Math.max(0, value.route().durationSeconds()) <= latestAcceptedEta)
-                .sorted(Comparator
+    static List<List<Ranked>> rankEtaBands(List<Ranked> candidates, MatchingPolicy policy) {
+        List<Ranked> byEta = candidates.stream()
+                .sorted(Comparator.comparingInt(value -> value.route().durationSeconds())).toList();
+        List<List<Ranked>> bands = new ArrayList<>();
+        for (int start = 0; start < byEta.size();) {
+            int bestEtaSeconds = Math.max(0, byEta.get(start).route().durationSeconds());
+            long endEta = (long) bestEtaSeconds + policy.etaWindowSeconds();
+            int end = start + 1;
+            while (end < byEta.size() && byEta.get(end).route().durationSeconds() <= endEta) end++;
+            bands.add(byEta.subList(start, end).stream().sorted(priorityOrder(bestEtaSeconds, policy)).toList());
+            start = end;
+        }
+        return bands;
+    }
+
+    private static Comparator<Ranked> priorityOrder(int bestEtaSeconds, MatchingPolicy policy) {
+        return Comparator
                 .comparingInt((Ranked value) -> isStarved(value, policy) ? 0 : 1)
                 .thenComparingInt(value -> isStarved(value, policy)
                         ? -value.candidate().consecutiveSkips()
@@ -151,8 +160,7 @@ public class DispatchService {
                 .thenComparingInt(value -> value.route().distanceMeters())
                 .thenComparing(Comparator.comparingLong(
                         (Ranked value) -> value.candidate().waitingSeconds()).reversed())
-                .thenComparing(value -> value.candidate().providerId()))
-                .toList();
+                .thenComparing(value -> value.candidate().providerId());
     }
 
     static double rankingCost(Ranked candidate, int bestEtaSeconds, MatchingPolicy policy) {
@@ -282,7 +290,7 @@ public class DispatchService {
 
     private RequestPoint loadRequest(UUID requestId) {
         return Optional.ofNullable(jdbc.query("""
-                        SELECT rr.id, rr.status, rr.service_code,
+                        SELECT rr.id, rr.status, rr.version, rr.service_code,
                                rr.pickup_latitude, rr.pickup_longitude,
                                service.matching_eta_window_seconds,
                                service.matching_eta_weight,
@@ -297,7 +305,7 @@ public class DispatchService {
                         JOIN public.service_types service ON service.code = rr.service_code
                         WHERE rr.id = ?
                         """, rs -> rs.next() ? new RequestPoint(
-                        rs.getObject("id", UUID.class), rs.getString("status"), rs.getString("service_code"),
+                        rs.getObject("id", UUID.class), rs.getString("status"), rs.getInt("version"), rs.getString("service_code"),
                         rs.getDouble("pickup_latitude"), rs.getDouble("pickup_longitude"),
                         new MatchingPolicy(
                                 rs.getInt("matching_eta_window_seconds"),
@@ -383,15 +391,16 @@ public class DispatchService {
                 request.serviceCode(), request.id(), request.serviceCode());
     }
 
-    private boolean writeOffer(RequestPoint request, List<Ranked> rankedCandidates, Ranked selected) {
+    private OfferResult writeOffer(RequestPoint request, List<Ranked> rankedCandidates) {
+        Ranked selected = rankedCandidates.getFirst();
         UUID requestId = request.id();
         String current = jdbc.query("""
-                SELECT status FROM public.rescue_requests WHERE id = ?
+                SELECT status FROM public.rescue_requests WHERE id = ? AND version = ?
                   AND vehicle_power_type = 'gasoline' AND service_code <> 'electric_battery'
                 FOR UPDATE
                 """,
-                rs -> rs.next() ? rs.getString(1) : null, requestId);
-        if (!"searching".equals(current)) return false;
+                rs -> rs.next() ? rs.getString(1) : null, requestId, request.version());
+        if (!"searching".equals(current)) return OfferResult.REQUEST_CHANGED;
 
         List<UUID> stillEligible = jdbc.query("""
                 SELECT pm.user_id FROM public.provider_members pm
@@ -413,7 +422,7 @@ public class DispatchService {
                 """, (rs, row) -> rs.getObject("user_id", UUID.class),
                 selected.candidate().providerId(), selected.candidate().teamId(),
                 selected.candidate().latitude(), selected.candidate().longitude(), request.id(), request.serviceCode());
-        if (stillEligible.isEmpty()) return false;
+        if (stillEligible.isEmpty()) return OfferResult.PROVIDER_UNAVAILABLE;
 
         // A separate statement AFTER obtaining the provider lock is intentional:
         // under READ COMMITTED it sees offers committed while the lock was awaited.
@@ -424,7 +433,7 @@ public class DispatchService {
                   WHERE provider_id = ? AND request_id <> ?
                     AND status = 'pending' AND expires_at > clock_timestamp())
                 """, Boolean.class, selected.candidate().providerId(), requestId);
-        if (!Boolean.FALSE.equals(hasPendingOffer)) return false;
+        if (!Boolean.FALSE.equals(hasPendingOffer)) return OfferResult.PROVIDER_UNAVAILABLE;
 
         jdbc.update("""
                 UPDATE public.dispatch_offers SET status = 'withdrawn'
@@ -470,20 +479,26 @@ public class DispatchService {
                 UPDATE public.rescue_requests SET status = 'offered', routing_status = 'road'
                 WHERE id = ? AND status = 'searching'
                 """, requestId);
-        return true;
+        push.notifyUser(selected.candidate().providerId(), NotificationKind.NEW_OFFER, null, requestId);
+        return OfferResult.SENT;
     }
 
-    private void markNoProvider(UUID requestId, boolean routingUnavailable) {
+    private void finishSearchIfTimedOut(RequestPoint request, boolean routingUnavailable) {
+        // Each entry into searching has a durable status event. Polls, edits and worker
+        // restarts must not extend the wait. A manual retry starts a new search on the same case.
         transactions.executeWithoutResult(status -> {
             UUID customerId = jdbc.query("""
-                    UPDATE public.rescue_requests
+                    UPDATE public.rescue_requests rr
                     SET status = 'no_provider', routing_status = ?
-                    WHERE id = ? AND status = 'searching'
+                    WHERE rr.id = ? AND rr.status = 'searching' AND rr.version = ?
+                      AND COALESCE((SELECT MAX(event.created_at) FROM public.request_status_events event
+                                    WHERE event.request_id = rr.id AND event.to_status = 'searching'), rr.requested_at)
+                          <= statement_timestamp() - (? * INTERVAL '1 second')
                     RETURNING customer_id
                     """, rs -> rs.next() ? rs.getObject(1, UUID.class) : null,
-                    routingUnavailable ? "unavailable" : "pending", requestId);
+                    routingUnavailable ? "unavailable" : "pending", request.id(), request.version(), searchWaitSeconds);
             if (customerId != null) {
-                push.notifyUser(customerId, NotificationKind.NO_PROVIDER, null, requestId);
+                push.notifyUser(customerId, NotificationKind.NO_PROVIDER, null, request.id());
             }
         });
     }
