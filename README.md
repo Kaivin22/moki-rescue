@@ -23,7 +23,7 @@ MVP chưa thu tiền trong ứng dụng. Cứu hộ viên gửi báo giá, khác
 - Catalog/chi tiết dịch vụ lấy từ backend; có trung tâm trợ giúp, hướng dẫn an toàn và trạng thái bảo mật tài khoản.
 - Tạo ca có idempotency, giới hạn spam, kiểm tra vùng phục vụ và chỉ một ca đang mở mỗi khách.
 - Khách có thể chọn điểm giao cho ca vận chuyển, hủy có lý do trước khi xác nhận đội đã đến, hoặc gửi yêu cầu hỗ trợ/khiếu nại khi ca đã đi sâu hơn.
-- Lọc PostGIS theo trạng thái/năng lực/bán kính và tọa độ cửa hàng, sau đó dùng ETA OSRM, số ca hoàn thành và chính sách công bằng để xếp hạng trong nhóm ETA phù hợp. Không dùng đường chim bay làm kết quả cuối.
+- PostGIS lọc cứu hộ viên theo khả năng nhận ca và bán kính phục vụ. Backend dùng ETA đường bộ từ OSRM để chia toàn bộ ứng viên có tuyến thành các nhóm từ gần đến xa. Trong mỗi nhóm, hệ thống xét lượt bị bỏ qua, ETA, thời gian chờ và số ca đã nhận gần đây, rồi mời từng người. Khi chưa mời được ai, backend tự kiểm tra lại trên cùng ca trong thời gian chờ mặc định 2 phút.
 - Gửi đề nghị có thời hạn lần lượt từng cứu hộ viên; từ chối hoặc hết hạn thì thử người tiếp theo. Nhận ca được bảo vệ bằng transaction nguyên tử.
 - State machine phía server, optimistic version, lịch sử chỉ thêm và audit log.
 - Lưu tọa độ cửa hàng khi phân công để vẽ tuyến tham khảo; không yêu cầu GPS chờ ca hoặc theo dõi di chuyển trực tiếp.

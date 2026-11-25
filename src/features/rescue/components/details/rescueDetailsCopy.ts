@@ -26,7 +26,7 @@ export const RESCUE_DETAILS_COPY = {
     routingUnavailableBody:
       'Có cứu hộ viên qua bộ lọc nhưng dịch vụ định tuyến chưa trả được tuyến/thời gian đến hợp lệ. Đây không phải thông báo cứu hộ viên từ chối ca. Liên hệ quản trị viên kiểm tra OSRM rồi tìm lại.',
     noProviderBody:
-      'Hệ thống đã dừng tìm, không hiển thị chờ vô thời hạn. Liên hệ hỗ trợ vận hành nếu bạn cần phương án khác.',
+      'Đã hết thời gian tìm đội cho lượt này. Bạn có thể tìm tiếp trên cùng yêu cầu hoặc liên hệ hỗ trợ.',
     callDispatch: 'Gọi hỗ trợ vận hành',
     requestDispatchSupport: 'Yêu cầu hỗ trợ vận hành',
     supportRequested: 'Đã gửi yêu cầu. Quản trị viên vận hành sẽ kiểm tra ca này.',
@@ -195,8 +195,7 @@ export const RESCUE_DETAILS_COPY = {
     routingUnavailableTitle: 'Unable to calculate a route for dispatch',
     routingUnavailableBody:
       'Providers passed the eligibility filter, but routing did not return a valid route/ETA. This does not mean a provider declined. Ask an administrator to check OSRM, then retry.',
-    noProviderBody:
-      'The search has stopped instead of waiting forever. Contact operations support if you need another option.',
+    noProviderBody: 'This search has timed out. You can search again on the same request or contact support.',
     callDispatch: 'Call operations support',
     requestDispatchSupport: 'Request operations support',
     supportRequested: 'Request sent. An operations administrator will review this case.',

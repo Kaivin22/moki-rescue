@@ -4,8 +4,8 @@ import type { Language } from '@/src/i18n';
 
 const STATUS_LABELS_BY_LANGUAGE: Record<Language, Record<RescueStatus, string>> = {
   vi: {
-    searching: 'Đang tìm đội phù hợp',
-    offered: 'Đã gửi đề nghị cho đội cứu hộ',
+    searching: 'Đang tự động tìm đội cứu hộ',
+    offered: 'Đang chờ cứu hộ viên phản hồi',
     assigned: 'Đã có cứu hộ viên',
     en_route: 'Cứu hộ viên đang đến',
     awaiting_arrival_confirmation: 'Chờ khách xác nhận đã đến',
@@ -22,8 +22,8 @@ const STATUS_LABELS_BY_LANGUAGE: Record<Language, Record<RescueStatus, string>> 
     no_provider: 'Chưa tìm được đội phù hợp',
   },
   en: {
-    searching: 'Finding a suitable team',
-    offered: 'Offer sent to rescue providers',
+    searching: 'Automatically looking for a rescue team',
+    offered: 'Waiting for a rescue provider to respond',
     assigned: 'Rescue provider assigned',
     en_route: 'Rescue provider is on the way',
     awaiting_arrival_confirmation: 'Waiting for customer arrival confirmation',

@@ -175,22 +175,21 @@ routing đã bỏ. Tài liệu này không khẳng định OSRM đang chạy ho�
 
 Nguồn: DispatchService.java; V7__configurable_fair_dispatch.sql; V10 shop dispatch.
 Khách chỉ chọn dịch vụ và dữ liệu ca, KHÔNG chọn trọng số hoặc ưu tiên nhiều mục.
-“Experience” còn trong tên biến kỹ thuật, nhưng số đo là số ca hoàn thành ĐÚNG
-LOẠI DỊCH VỤ của từng người, không đại diện toàn bộ kinh nghiệm nghề nghiệp.
 
 Lọc: tài khoản hoạt động, thành viên active/available, đội verified, có capability,
 cửa hàng/khách trong vùng và bán kính phục vụ, không bận ca hoặc offer khác.
 Loại người đã từ chối/hết hạn với yêu cầu này theo policy hiện tại.
-OSRM Table tính ETA; chỉ giữ người có ETA <= ETA thấp nhất + cửa sổ Δ.
+OSRM Table tính ETA cho toàn bộ danh sách. Xếp các ứng viên có tuyến thành từng
+nhóm: bắt đầu với ETA nhỏ nhất còn lại, lấy cả những người cách mốc đó tối đa Δ,
+rồi lặp lại với những người còn lại. Mời theo thứ tự từ nhóm gần đến nhóm xa.
 
 Chi phí, càng THẤP càng ưu tiên:
-C = wETA * A + wCompleted * B + wWait * D + wRecent * R
+C = wETA * A + wWait * D + wRecent * R
 A = min(max(ETA_i - ETA_min, 0) / Δ, 1)
-B = 1 - min(max(completed_i, 0) / completed_ref, 1)
 D = 1 - min(max(wait_seconds_i, 0) / wait_ref, 1)
 R = min(max(recent_accepted_i, 0) / recent_ref, 1)
 
-completed_i: số ca completed cùng service_code.
+ETA_min là ETA nhỏ nhất của nhóm đang xét.
 wait_seconds_i: thời gian từ mốc muộn hơn giữa lần bật sẵn sàng và lần được mời
 gần nhất của dịch vụ; nếu chưa có dùng mốc tạo hồ sơ. KHÔNG phải khách chờ.
 recent_accepted_i: số offer đã accepted cùng dịch vụ trong cửa sổ gần đây.
@@ -198,8 +197,8 @@ Cộng R là tăng chi phí của người vừa nhận nhiều ca, nên giảm 
 Trọng số không âm, backend chuẩn hóa tổng về 1.
 
 Mặc định migration V7:
-Δ=300 giây; wETA=0.55; ba trọng số còn lại=0.15;
-completed_ref=50; wait_ref=7200 giây; recent window=7 ngày; recent_ref=10;
+Δ=300 giây; ba trọng số dùng trong Java trước khi chuẩn hóa lần lượt là 0.55, 0.15, 0.15;
+wait_ref=7200 giây; recent window=7 ngày; recent_ref=10;
 ngưỡng bỏ qua=3; TTL offer=45 giây. Cấu hình theo service_types.
 Giao diện sửa dịch vụ hiện CHƯA có bộ điều chỉnh trọng số; không tự thiết kế nó
 như một chức năng đã có.
@@ -210,14 +209,17 @@ Chống bỏ đói:
 - Từ ngưỡng cấu hình, nhóm này đứng trước nhóm thông thường; số lần bỏ qua cao hơn
   đứng trước, rồi mới chi phí C.
 - Được phát offer thì reset lượt bỏ qua, dù sau đó người nhận không bấm chấp nhận.
-- Hòa tiếp: ETA, quãng đường, chờ lâu hơn, số ca hoàn thành, UUID ổn định.
+- Hòa tiếp: ETA, quãng đường, chờ lâu hơn, UUID ổn định.
 Không bảo đảm người quá xa/không sẵn sàng/không đủ năng lực vẫn phải nhận được ca.
 
 Mỗi thời điểm một offer cho một yêu cầu. Từ chối hoặc hết hạn -> lọc/xếp lại
 người còn phù hợp, không gửi lại ngay cho chính người vừa bỏ offer.
 Quét hết hạn mặc định 15 giây/lần, nên chuyển lượt không phải đúng tuyệt đối giây 45.
-Ba người đều không nhận: kết thúc tìm kiếm bằng no_provider, cho khách thử lại/
-yêu cầu điều phối/gọi hotline nếu đã cấu hình, hoặc hủy theo quyền.
+Nếu chưa phát được lời mời, ca giữ trạng thái searching. Worker kiểm tra lại
+khoảng 30 giây/lần để người mới sẵn sàng có thể nhận chính ca đó. Nếu vẫn chưa
+mời được ai sau MATCHING_SEARCH_WAIT_SECONDS (mặc định 120 giây tính từ lần
+gần nhất vào searching), ca chuyển sang no_provider. Khách có thể tìm tiếp
+trên cùng ca, yêu cầu điều phối hoặc hủy theo quyền.
 Không hứa “chắc chắn nhận trong X giây”. 3 x 45 giây chỉ là tổng cửa sổ offer theo
 mặc định, chưa tính quét hạn, API/OSRM, mạng và thay đổi ứng viên.
 Khách thử lại có cooldown và số lần tối đa (mặc định 2 phút, 3 lần).

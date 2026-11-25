@@ -28,8 +28,9 @@ A. RÀNG BUỘC NGHIỆP VỤ KHÔNG ĐƯỢC THIẾT KẾ SAI
 2. Cửa hàng/đội KHÁC tài khoản cứu hộ viên. Nhiều thành viên có thể thuộc một đội.
    12 cửa hàng seed không đồng nghĩa 12 người dùng hay 12 hồ sơ đang chờ duyệt.
 3. Trước khi gửi yêu cầu, khách không chọn cứu hộ viên, trọng số, “gần nhất” hoặc
-   “nhiều kinh nghiệm”. Hệ thống tự xếp theo ETA, số ca hoàn thành cùng dịch vụ,
-   thời gian chờ được mời, tải ca gần đây và chống bỏ đói.
+   “nhiều kinh nghiệm”. Hệ thống xét từng nhóm theo thời gian đến từ gần tới xa.
+   Trong mỗi nhóm, người đủ ngưỡng bị bỏ qua được ưu tiên. Điểm xếp hạng dựa vào
+   thời gian đến, thời gian chờ được mời và số ca đã nhận gần đây của cùng dịch vụ.
 4. Matching dùng vị trí CỬA HÀNG. Bật sẵn sàng không bắt xin GPS live.
    Người đang ở xa cửa hàng cần tắt sẵn sàng; không vẽ xe di chuyển trên bản đồ.
 5. Bản đồ trong app = nền OSM + tuyến OSRM từ cửa hàng đã lưu tới khách.
