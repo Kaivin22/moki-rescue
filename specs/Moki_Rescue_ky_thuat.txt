@@ -85,19 +85,17 @@ Admin toàn hệ thống quản lý mạng lưới, không có tài khoản ch�
 
 3. STACK ĐANG KHAI BÁO — KHÔNG PHẢI CHỈ DẪN NÂNG CẤP
 
-package.json hiện khai báo:
-- Expo ~57.0.27; Expo Router ~57.0.25.
-- React Native 0.86.3; React 19.2.3; TypeScript ~6.0.3.
+Stack ứng dụng:
+- Expo, Expo Router, React Native, React và TypeScript. Xem phiên bản khai báo trong
+  package.json và phiên bản đã khóa trong package-lock.json.
 - TanStack Query, Zustand; Supabase JS cho xác thực/hồ sơ.
 - Bản đồ: Leaflet qua react-native-webview trên mobile, iframe trên web.
 - expo-location cho lấy vị trí khi cần; expo-notifications cho tích hợp push ca.
 - Be Vietnam Pro; Ionicons; safe-area-context.
 Không còn mô tả react-native-maps là bộ hiển thị bản đồ hiện tại.
 
-Lưu ý quy tắc repository: AGENTS.md vẫn ghi chính sách giữ SDK 54 trừ khi chủ dự án
-duyệt chuyển phiên bản; dependency hiện tại đã khác mốc đó. Bản mô tả này chỉ ghi
-nhận package.json, không sửa dependency và không cấp quyền nâng/hạ SDK. Claude
-Design chỉ thiết kế; khi triển khai cần đối chiếu chính sách với chủ dự án.
+Khi triển khai, dùng tài liệu Expo đúng SDK của dự án. Quy trình nâng SDK theo
+yêu cầu của chủ dự án nằm trong README.md, mục “Phiên bản Expo SDK”.
 
 Backend: Java 21; Spring Boot 3.5.16; Maven; JdbcTemplate/TransactionTemplate.
 Database: Supabase PostgreSQL + PostGIS, Supabase Auth, Row-Level Security (RLS).

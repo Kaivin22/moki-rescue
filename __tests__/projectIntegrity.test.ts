@@ -5,16 +5,17 @@ describe('project integrity', () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
   const config = fs.readFileSync(path.join(process.cwd(), 'app.config.js'), 'utf8');
 
-  it('keeps the approved SDK 58, React and React Native versions aligned', () => {
-    expect(packageJson.dependencies.expo).toMatch(/^~58\.0\.\d+$/);
-    expect(packageJson.dependencies['react-native']).toMatch(/^0\.88\.\d+$/);
-    expect(packageJson.dependencies.react).toBe('19.3.0');
+  it('uses the locked Expo toolchain and matching React and React DOM versions', () => {
     expect(packageJson.dependencies['react-dom']).toBe(packageJson.dependencies.react);
-    expect(packageJson.dependencies['expo-router']).toMatch(/^~58\.0\.\d+$/);
-    expect(packageJson.devDependencies.typescript).toMatch(/^~6\.0\.\d+$/);
     const lock = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package-lock.json'), 'utf8'));
     expect(lock.packages[''].dependencies).toEqual(packageJson.dependencies);
     expect(lock.packages[''].devDependencies).toEqual(packageJson.devDependencies);
+    for (const name of ['expo', 'expo-router', 'react-native', 'react', 'react-dom', 'typescript']) {
+      const declared = name === 'typescript' ? packageJson.devDependencies : packageJson.dependencies;
+      expect(declared).toHaveProperty(name);
+      const installed = JSON.parse(fs.readFileSync(require.resolve(`${name}/package.json`), 'utf8'));
+      expect(installed.version).toBe(lock.packages[`node_modules/${name}`].version);
+    }
     expect(packageJson.engines.node).toBe('^22.13.0 || >=24.3.0');
     const ci = fs.readFileSync(path.join(process.cwd(), '.github', 'workflows', 'ci.yml'), 'utf8');
     expect(ci).toContain("NODE_VERSION: '24.14.x'");

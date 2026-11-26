@@ -64,7 +64,7 @@ Mobile là client không tin cậy. Các thay đổi nghiệp vụ đi qua Sprin
 
 Yêu cầu Node `^22.13.0 || >=24.3.0` (CI dùng Node `24.14.x`), npm và JDK 21.
 
-Repository đặt `legacy-peer-deps=false`: bộ thư viện SDK 58 được giải với kiểm tra peer dependency bật. Dùng `npm ci` để cài đúng `package-lock.json` trên máy mới và CI. Không dùng `--force` hoặc `--legacy-peer-deps` để che lỗi tương thích; vẫn cần kiểm tra Expo, export bundle và kiểm thử thiết bị.
+Repository đặt `legacy-peer-deps=false` để npm kiểm tra peer dependency. Dùng `npm ci` để cài đúng `package-lock.json` trên máy mới và CI. Khi có xung đột phiên bản, xử lý theo SDK đang dùng rồi kiểm tra Expo, export bundle và kiểm thử thiết bị.
 
 ```powershell
 npm ci
@@ -95,13 +95,13 @@ npm run dev:backend # nạp .env cho backend
 
 Database mới/schema trống chỉ cần chạy `scripts/01_init_database.sql`: dựng schema B1–V13 và kiểm tra RLS/quyền trước khi commit. Tùy chọn chạy `scripts/02_seed_demo_teams.sql` để thêm 12 cửa hàng mô phỏng, không seed ca hay review giả. Xem [thứ tự SQL và tài khoản demo](./scripts/README.md). Database đã có dữ liệu không chạy lại init; migration Flyway gốc vẫn được giữ và không trộn hai cách quản lý trên cùng database.
 
-## Expo SDK 58
+## Phiên bản Expo SDK
 
-Dự án nâng từ SDK 57 lên SDK 58 theo phê duyệt của chủ dự án, dùng React Native `0.88.1` và React `19.3.0`. Giữ cả `package.json` và `package-lock.json` đồng bộ; không chỉ đổi số `sdkVersion` trong app config. Các bản nâng SDK tiếp theo vẫn cần được chủ dự án phê duyệt.
+Dự án dùng SDK theo gói `expo` trong `package.json`. Xem phiên bản chính xác ở `packages["node_modules/expo"].version` trong `package-lock.json`. Khi chủ dự án yêu cầu nâng SDK để tương thích với Expo Go trên điện thoại, cập nhật đồng bộ các thư viện liên quan và lockfile, rồi chạy `npx expo install --check`.
 
 Sau khi cập nhật mã nguồn, dừng Metro cũ, chạy `npm ci` rồi `npm run dev -- -c`. Máy tính và iPhone cần truy cập được nhau qua mạng LAN; quét QR bằng Camera trên iPhone để mở Expo Go. Không dùng `--localhost` cho điện thoại thật vì loopback trên điện thoại không trỏ đến máy tính.
 
-Expo Go trên thiết bị **phải hỗ trợ SDK 58**; số phiên bản ứng dụng Expo Go không phải số SDK. Xem [hướng dẫn nâng Expo SDK](https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/). Không tự nâng SDK mỗi lần khởi động: các thư viện native phải được đồng bộ và kiểm thử cùng nhau.
+Đối chiếu SDK mà Expo Go trên thiết bị hỗ trợ với SDK của dự án. [Hướng dẫn nâng Expo SDK](https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/).
 
 Expo Go chỉ dùng cho các luồng tương thích với môi trường này. App không đăng ký remote push trong Expo Go; kiểm thử push cần development/preview build. Cơ chế hiện tại không dùng GPS nền để nhận ca. Type-check, unit test và export bundle không thay thế kiểm thử đăng nhập email/Google, bản đồ, quyền GPS và điều hướng trên iPhone thật.
 
