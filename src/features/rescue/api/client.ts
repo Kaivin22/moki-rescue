@@ -73,6 +73,10 @@ const ENGLISH_API_ERRORS: Record<string, string> = {
   IDEMPOTENCY_KEY_REUSED: 'This submission identifier was already used with different information.',
   CREATE_FAILED: 'The rescue request could not be created.',
   OUTSIDE_SERVICE_AREA: 'This location is outside the current service area.',
+  DEPARTURE_OUTSIDE_SERVICE_AREA:
+    'Your departure point is outside the service area. Try again from within the area.',
+  DEPARTURE_GPS_STALE: 'This location has expired. Check the device clock and get your location again.',
+  DEPARTURE_GPS_INACCURATE: 'GPS is not accurate enough. Get a new location or choose your shop.',
   PROVIDER_OUTSIDE_SERVICE_AREA:
     'You are outside the Da Nang demo service area. Availability is now off. Return to the service area before enabling it again.',
   OFFER_OUTSIDE_SERVICE_AREA:

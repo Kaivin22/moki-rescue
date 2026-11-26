@@ -1,8 +1,8 @@
 {
   "ios": {
     "CFBundleDisplayName": "Moki Rescue",
-    "NSLocationWhenInUseUsageDescription": "Moki Rescue dùng vị trí khi khách chọn điểm cứu hộ. Điều phối dùng tọa độ cửa hàng; Google Maps tự lấy vị trí hiện tại khi mở dẫn đường.",
-    "NSLocationAlwaysAndWhenInUseUsageDescription": "Moki Rescue không sử dụng vị trí trong nền. Điều phối dùng tọa độ cửa hàng.",
+    "NSLocationWhenInUseUsageDescription": "Moki Rescue dùng vị trí để chọn điểm cứu hộ hoặc khi cứu hộ viên chọn xuất phát từ vị trí hiện tại.",
+    "NSLocationAlwaysAndWhenInUseUsageDescription": "Moki Rescue không sử dụng vị trí trong nền.",
     "NSLocationAlwaysUsageDescription": "Moki Rescue không sử dụng vị trí trong nền."
   },
   "android": {

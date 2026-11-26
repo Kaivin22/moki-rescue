@@ -30,7 +30,7 @@ Không có vai trò quản lý cửa hàng riêng, không dùng chung tài kho�
 
 Luồng cốt lõi:
 - Kiểm tra an toàn, chọn sự cố/mô tả xe xăng, xác nhận vị trí, gửi yêu cầu.
-- Tự lọc và xếp hạng cứu hộ viên từ vị trí cửa hàng; lần lượt mời nhận ca.
+- Lọc theo bán kính cửa hàng, xếp hạng từ điểm xuất phát của từng người; lần lượt mời nhận ca.
 - Cứu hộ viên chấp nhận/từ chối; đến nơi, kiểm tra, báo giá nếu cần và làm việc.
 - Khách xác nhận đã đến và hoàn tất; có xử lý tranh chấp, rút ca và can thiệp admin.
 - Đánh giá sau ca là tùy chọn; báo cáo sự cố/khiếu nại có quản trị xử lý.
@@ -59,7 +59,7 @@ Khách hàng:
 Cứu hộ viên:
 - Tài khoản cá nhân có provider_members, trạng thái active; cửa hàng verified,
   vị trí cửa hàng trong vùng phục vụ và có năng lực dịch vụ thích hợp.
-- Bật sẵn sàng nghĩa là có thể xuất phát từ cửa hàng; không yêu cầu GPS liên tục.
+- Bật sẵn sàng mặc định tại cửa hàng. Thợ có thể chọn GPS một lần, có hiệu lực 15 phút, và chủ động cập nhật.
 - Nhận/từ chối đề nghị; chỉ người nhận thành công mới được xử lý ca được giao.
 - Dùng Google Maps bên ngoài app để dẫn đường; không tự xác nhận thay khách.
 - Thống kê CÁ NHÂN: ca hoàn thành, đang xử lý, đã hủy, điểm và số đánh giá.
@@ -130,19 +130,19 @@ Mobile dùng WebView; web dùng iframe. Tile cần internet; có OSRM local khô
 nghĩa tile nền đã tải offline. Lỗi tile và lỗi routing là hai lỗi khác nhau.
 
 4.2. Tính ưu tiên trước khi gán
-Vị trí khách + vị trí CỬA HÀNG -> Spring Boot/DispatchService -> OSRM Table
+Vị trí khách + điểm xuất phát từng cứu hộ viên -> Spring Boot/DispatchService -> OSRM Table
 -> durationSeconds, distanceMeters cho từng ứng viên -> xếp hạng -> gửi offer.
 PostGIS lọc phạm vi ban đầu; không dùng khoảng cách đường chim bay làm ETA cuối.
 OSRM không gọi Google Maps để lấy nền hay kết quả điều phối.
 
 4.3. Hiển thị tuyến sau khi gán
-Khi nhận ca, backend lưu tọa độ cửa hàng thành snapshot của lần gán.
+Backend chốt điểm xuất phát khi mời. Khi người đó nhận ca, điểm đã chốt được dùng để vẽ tuyến.
 GET /api/requests/{id}/road-route -> RescueQueryService -> RoadRoutingService
 -> OSRM Route -> geometry GeoJSON -> chuyển về {latitude, longitude}
 -> app vẽ polyline trên nền OSM.
 Đầu ra gồm purpose=to_pickup, distanceMeters, durationSeconds, coordinates.
 URL OSRM nhận longitude,latitude; UI và Google Maps dùng latitude,longitude.
-Tuyến hiện tại là cửa hàng đã lưu -> điểm nhận cứu hộ, KHÔNG phải marker GPS live.
+Tuyến hiện tại là điểm xuất phát đã lưu -> điểm nhận cứu hộ, KHÔNG phải marker GPS live.
 useRoadRoute cache theo ca/người được gán/snapshot; không gọi lại mỗi giây theo xe.
 Trong code có file/API GPS và nền tảng Realtime cũ, nhưng không dùng sự tồn tại
 của chúng để mô tả luồng hiện tại là đang phát trực tiếp hành trình cứu hộ viên.

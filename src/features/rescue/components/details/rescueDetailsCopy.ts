@@ -34,7 +34,7 @@ export const RESCUE_DETAILS_COPY = {
     admin: 'Quản trị viên vận hành',
     retry: 'Tìm lại đội phù hợp',
     assignmentRouteNote:
-      'Tuyến tham khảo từ điểm xuất phát đã lưu khi nhận ca; ca mới dùng tọa độ cửa hàng. Đây không phải vị trí trực tiếp của cứu hộ viên, không có thời gian giao thông thực tế.',
+      'Tuyến tham khảo từ điểm xuất phát đã lưu khi gửi lời mời. Đây không phải vị trí trực tiếp của cứu hộ viên, không có thời gian giao thông thực tế.',
     departureMarker: 'Điểm xuất phát đã lưu',
     navigate: 'Dẫn đường bằng Google Maps',
     navigationError: 'Không mở được Google Maps. Hãy thử lại.',
@@ -203,7 +203,7 @@ export const RESCUE_DETAILS_COPY = {
     admin: 'Operations administrator',
     retry: 'Find another suitable team',
     assignmentRouteNote:
-      'Reference route from the saved departure point; new assignments use shop coordinates. This is not the provider’s live location and does not include real-time traffic.',
+      'Reference route from the departure point saved when the offer was sent. This is not the provider’s live location and does not include real-time traffic.',
     departureMarker: 'Saved departure point',
     navigate: 'Navigate with Google Maps',
     navigationError: 'Could not open Google Maps. Please try again.',

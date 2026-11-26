@@ -272,6 +272,7 @@ export interface ProviderStatus {
   receivingPaused: boolean;
   receivingUntil: string | null;
   availabilityUntil: string | null;
+  departureExpiresAt?: string | null;
 }
 
 export interface WorkingDay {

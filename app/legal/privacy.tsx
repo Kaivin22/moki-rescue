@@ -18,7 +18,7 @@ const COPY = {
       ],
       [
         'Vị trí',
-        'Vị trí khách được gửi khi khách chủ động xác nhận điểm cứu hộ hoặc điểm giao xe. Điều phối dùng tọa độ cửa hàng, không thu thập GPS nền của cứu hộ viên. Lúc nhận ca mới, hệ thống lưu tọa độ cửa hàng làm điểm xuất phát tham khảo; không theo dõi hành trình trực tiếp. Chỉ người tham gia ca và quản trị viên vận hành xem được vị trí tương ứng. Điểm xuất phát đã lưu bị xóa khỏi ca khi ca đóng hoặc thu hồi phân công; dữ liệu vị trí cũ được xóa theo thời hạn vận hành.',
+        'Vị trí khách được gửi khi khách chủ động xác nhận điểm cứu hộ hoặc điểm giao xe. Cứu hộ viên có thể xuất phát từ cửa hàng hoặc chia sẻ GPS một lần. Hệ thống lưu điểm xuất phát khi gửi lời mời để tính thời gian đến và hiển thị tuyến của ca được nhận. GPS cá nhân không xuất hiện trên bản đồ cửa hàng. App không thu thập GPS trong nền. Chỉ người tham gia ca và quản trị viên vận hành xem được vị trí tương ứng. Điểm xuất phát đã lưu bị xóa khỏi ca khi ca đóng hoặc thu hồi phân công; dữ liệu vị trí cũ được xóa theo thời hạn vận hành.',
       ],
       [
         'Đối tác cứu hộ',
@@ -57,7 +57,7 @@ const COPY = {
       ],
       [
         'Location',
-        'Customer coordinates are submitted when they confirm a pickup or drop-off. Dispatch uses shop coordinates and does not collect provider background GPS. New assignments save the shop coordinates as a reference departure point, without live journey tracking. Only request participants and operations administrators can view the corresponding location. Saved departure points are cleared from the case when it closes or the assignment is withdrawn; legacy data follows the retention policy.',
+        'Customer coordinates are submitted when they confirm a pickup or drop-off. Providers may depart from their shop or share a one-time GPS fix. Each offer saves its departure point for the arrival estimate and the assigned route. Personal GPS does not appear in the shop directory. The app does not collect background GPS. Only request participants and operations administrators can view the corresponding location. Saved departure points are cleared from the case when it closes or the assignment is withdrawn; legacy data follows the retention policy.',
       ],
       [
         'Rescue partners',

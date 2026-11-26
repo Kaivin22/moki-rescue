@@ -31,9 +31,9 @@ A. RÀNG BUỘC NGHIỆP VỤ KHÔNG ĐƯỢC THIẾT KẾ SAI
    “nhiều kinh nghiệm”. Hệ thống xét từng nhóm theo thời gian đến từ gần tới xa.
    Trong mỗi nhóm, người đủ ngưỡng bị bỏ qua được ưu tiên. Điểm xếp hạng dựa vào
    thời gian đến, thời gian chờ được mời và số ca đã nhận gần đây của cùng dịch vụ.
-4. Matching dùng vị trí CỬA HÀNG. Bật sẵn sàng không bắt xin GPS live.
-   Người đang ở xa cửa hàng cần tắt sẵn sàng; không vẽ xe di chuyển trên bản đồ.
-5. Bản đồ trong app = nền OSM + tuyến OSRM từ cửa hàng đã lưu tới khách.
+4. Matching mặc định dùng cửa hàng. Thợ có thể chọn GPS một lần khi bật sẵn sàng.
+   Sau 15 phút cần lấy GPS mới hoặc chọn cửa hàng để bật lại.
+5. Bản đồ trong app = nền OSM + tuyến OSRM từ điểm xuất phát đã lưu tới khách.
    Nhãn phù hợp: “Điểm xuất phát”, “Tuyến đường ban đầu”, “ETA ước tính”.
    Không dùng “Vị trí trực tiếp/Live tracking/Còn đúng X phút” cho snapshot này.
    Provider có nút mở Google Maps bên ngoài để dẫn đường từ vị trí thật.
@@ -135,7 +135,7 @@ R01 | /onboarding | Mọi người
 Nguồn: app/onboarding.tsx.
 Ba slide: Gửi đúng loại sự cố; Ghép theo tuyến đường thật; Ít dữ liệu, nhiều kiểm soát.
 Logo/minh họa, progress, Bỏ qua/Tiếp tục/Bắt đầu. Đây là một route, ba trạng thái.
-Không hứa theo dõi GPS trực tiếp; lời giới thiệu bám cơ chế tuyến cửa hàng.
+Không hứa theo dõi GPS trực tiếp; lời giới thiệu bám tuyến từ điểm xuất phát đã chọn.
 
 R02 | /(auth)/login | Mọi người
 Nguồn: app/(auth)/login.tsx.
@@ -157,7 +157,7 @@ Nguồn: app/(tabs)/index.tsx.
 Customer: lời chào, hero/logo không tràn, nút yêu cầu cứu hộ, thông báo,
 cảnh báo an toàn/gọi 115, ca đang mở và danh mục dịch vụ từ backend.
 Provider: dùng OperationsWorkspace, tiêu đề “Trạm nhận ca của tôi”; thông báo,
-trạng thái thành viên/cửa hàng, switch sẵn sàng, thông tin xuất phát từ cửa hàng,
+trạng thái thành viên/cửa hàng, switch sẵn sàng, dòng “Xuất phát từ” để đổi giữa cửa hàng và vị trí hiện tại,
 đề nghị nhận/từ chối, ca được giao, thống kê cá nhân, uy tín/cảnh báo đội.
 Không sao chép customer home rồi chỉ đổi nhãn vai trò.
 Admin: dùng AdminDashboard, bốn KPI ca mở/chờ tiếp nhận/đội xác minh/cảnh báo;
@@ -270,7 +270,7 @@ Cần các biến thể nghiệp vụ ở phần E, không một form dài chứ
 
 R21 | /rescue/[id]/map | Người có quyền với ca
 Nguồn: app/rescue/[id]/map.tsx.
-Bản đồ lớn với điểm nhận, điểm xuất phát cửa hàng/snapshot, điểm giao nếu có;
+Bản đồ lớn với điểm nhận, điểm xuất phát đã lưu khi mời, điểm giao nếu có;
 polyline OSRM tới điểm nhận, khoảng cách/thời gian dự kiến, back.
 Có tải lại tuyến; liên hệ theo quyền và nút Google Maps cho provider được gán.
 Có trạng thái thiếu snapshot, lỗi router/tile, không có quyền/ca không còn hoạt động.
@@ -609,7 +609,7 @@ E5. Hỗ trợ/thông báo:
 E6. Lỗi dùng chung:
 - API/backend lỗi, mất mạng, phiên hết hạn/không có quyền, dữ liệu không tồn tại.
 - GPS denied/error ở nơi người dùng chủ động lấy GPS, không khóa switch nhận ca
-  vì GPS khi cơ chế đã dùng vị trí cửa hàng.
+  khi thợ chọn xuất phát từ cửa hàng.
 - OSM tile chưa tải; OSRM không có tuyến; ngoài vùng phục vụ.
 - Conflict 409 tải lại trạng thái; 429 báo giới hạn/thử lại khi phù hợp.
 - Loading giữ điều hướng; không dùng ca giả/giá giả như kết quả thật.

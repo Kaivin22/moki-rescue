@@ -26,7 +26,7 @@ MVP chưa thu tiền trong ứng dụng. Cứu hộ viên gửi báo giá, khác
 - PostGIS lọc cứu hộ viên theo khả năng nhận ca và bán kính phục vụ. Backend dùng ETA đường bộ từ OSRM để chia toàn bộ ứng viên có tuyến thành các nhóm từ gần đến xa. Trong mỗi nhóm, hệ thống xét lượt bị bỏ qua, ETA, thời gian chờ và số ca đã nhận gần đây, rồi mời từng người. Khi chưa mời được ai, backend tự kiểm tra lại trên cùng ca trong thời gian chờ mặc định 2 phút.
 - Gửi đề nghị có thời hạn lần lượt từng cứu hộ viên; từ chối hoặc hết hạn thì thử người tiếp theo. Nhận ca được bảo vệ bằng transaction nguyên tử.
 - State machine phía server, optimistic version, lịch sử chỉ thêm và audit log.
-- Lưu tọa độ cửa hàng khi phân công để vẽ tuyến tham khảo; không yêu cầu GPS chờ ca hoặc theo dõi di chuyển trực tiếp.
+- Cứu hộ viên mặc định xuất phát từ cửa hàng, hoặc chủ động lấy GPS một lần để nhận ca trong 15 phút. Điểm xuất phát được chốt khi gửi lời mời. Bán kính phục vụ luôn tính từ cửa hàng.
 - Sau khi nhận ca, khách thấy tên, đội, phương tiện và số liên hệ công việc đã xác minh của cứu hộ viên; số bị ẩn khi ca đóng.
 - Bản đồ OpenStreetMap chỉ vẽ geometry OSRM; cứu hộ viên mở Google Maps bên ngoài để dẫn đường. Xem [cấu hình bản đồ/OSRM](docs/MAP_ROUTING.md).
 - Xác nhận hai phía khi đến và hoàn thành; báo giá phải được khách duyệt.
@@ -93,7 +93,7 @@ cd ..
 npm run dev:backend # nạp .env cho backend
 ```
 
-Database mới/schema trống chỉ cần chạy `scripts/01_init_database.sql`: dựng schema B1–V13 và kiểm tra RLS/quyền trước khi commit. Tùy chọn chạy `scripts/02_seed_demo_teams.sql` để thêm 12 cửa hàng mô phỏng, không seed ca hay review giả. Xem [thứ tự SQL và tài khoản demo](./scripts/README.md). Database đã có dữ liệu không chạy lại init; migration Flyway gốc vẫn được giữ và không trộn hai cách quản lý trên cùng database.
+Với database mới, chạy `scripts/01_init_database.sql` để tạo schema đến V21 và kiểm tra quyền truy cập. Có thể chạy thêm `scripts/02_seed_demo_teams.sql` để tạo 12 cửa hàng mô phỏng. Với database đã có dữ liệu, chỉ áp dụng các phiên bản còn thiếu theo [hướng dẫn SQL](./scripts/README.md).
 
 ## Phiên bản Expo SDK
 

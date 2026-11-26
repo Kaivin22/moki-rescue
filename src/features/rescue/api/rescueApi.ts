@@ -145,6 +145,8 @@ export const rescueApi = {
   providerStatistics: () => apiRequest<ProviderStatistics>('/api/provider/statistics'),
   setAvailability: (input: {
     available: boolean;
+    departureMode?: 'current' | 'shop';
+    recordedAt?: string;
     latitude?: number;
     longitude?: number;
     accuracyM?: number;

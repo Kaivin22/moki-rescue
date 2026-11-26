@@ -35,11 +35,13 @@ describe('focused login and operator screens', () => {
     expect(read('app/(tabs)/operations.tsx')).toContain("role !== 'admin'");
     expect(read('app/(tabs)/request.tsx')).toContain("role !== 'customer'");
     const workspace = read('src/features/rescue/screens/OperationsWorkspace.tsx');
-    expect(workspace).toContain('disabled={!canToggle}');
-    expect(workspace).toContain('if (!canToggle || changing.current) return');
-    expect(workspace).toContain('await availability.mutateAsync({ available: value })');
-    expect(workspace).not.toContain('getCurrentPositionAsync');
-    expect(workspace).not.toContain('requestForegroundPermissionsAsync');
+    expect(workspace).toContain('canChange={canToggle}');
+    expect(workspace).toContain('save={availability.mutateAsync}');
+    const readiness = read('src/features/rescue/components/ProviderAvailabilityCard.tsx');
+    expect(readiness).toContain('if (disabled || locked.current) return');
+    expect(readiness).toContain("if (nextAvailable && nextMode === 'current')");
+    expect(readiness).toContain('Location.getCurrentPositionAsync');
+    expect(readiness).not.toContain('requestBackgroundPermissionsAsync');
   });
   it('uses email sign-in and redirects legacy SMS and test-login routes to the main form', () => {
     const login = read('app/(auth)/login.tsx');

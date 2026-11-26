@@ -2,14 +2,15 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { NotificationEntry } from '@/src/features/communications/InboxScreens';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/src/constants/colors';
 import { Fonts, Radius, Spacing, Typography } from '@/src/constants/spacing';
 import { rescueApi } from '@/src/features/rescue/api/rescueApi';
 import { ApiClientError } from '@/src/features/rescue/api/client';
 import { RequestSummaryCard } from '@/src/features/rescue/components/RequestSummaryCard';
+import { ProviderAvailabilityCard } from '../components/ProviderAvailabilityCard';
 import { RatingBadge } from '@/src/features/rescue/components/RatingBadge';
 import { rescueKeys, useRequests } from '@/src/features/rescue/hooks/useRescueQueries';
 import { useAuthStore } from '@/src/stores/authStore';
@@ -29,17 +30,13 @@ const COPY = {
     qualityNotice: 'Cảnh báo chất lượng từ đơn vị điều phối',
     suspensionReview: 'Đội đã nhận nhiều cảnh báo; admin đang xem xét trạng thái hợp tác.',
     warningCount: 'cảnh báo',
-    availabilityError: 'Không thể cập nhật trạng thái sẵn sàng.',
     offerError: 'Đề nghị không còn khả dụng. Hãy tải lại danh sách.',
     declineError: 'Không thể từ chối đề nghị. Hãy tải lại danh sách.',
     retryError: 'Không thể tìm lại đội cứu hộ.',
     title: 'Vận hành',
     requestError: 'Không tải được danh sách ca. Kéo xuống để thử lại.',
-    available: 'Sẵn sàng nhận ca',
     loadingTeam: 'Đang tải đội cứu hộ…',
     providerError: 'Không tải được trạng thái cứu hộ viên.',
-    notice:
-      'Bật sẵn sàng nghĩa là bạn có thể xuất phát từ cửa hàng. OSRM tính tuyến đường và ETA từ cửa hàng, không theo dõi GPS của bạn. Nếu đang ở nơi khác, hãy tắt nhận ca. Sau khi nhận ca, mở Google Maps để dẫn đường từ vị trí thực tế.',
     offers: 'Đề nghị mới',
     offersError: 'Không tải được đề nghị mới.',
     minutes: 'phút',
@@ -69,17 +66,13 @@ const COPY = {
     qualityNotice: 'Quality warning from dispatch',
     suspensionReview: 'The team has multiple warnings; an admin is reviewing partner status.',
     warningCount: 'warnings',
-    availabilityError: 'Could not update availability.',
     offerError: 'This offer is no longer available. Refresh the list.',
     declineError: 'Could not decline this offer. Refresh the list.',
     retryError: 'Could not find another rescue team.',
     title: 'Operations',
     requestError: 'Could not load requests. Pull down to try again.',
-    available: 'Available for requests',
     loadingTeam: 'Loading rescue team…',
     providerError: 'Could not load provider status.',
-    notice:
-      'Availability means you can depart from your shop. OSRM calculates routes and ETA from the shop; your GPS is not tracked. Turn availability off when elsewhere. After accepting a case, open Google Maps for navigation from your actual location.',
     offers: 'New offers',
     offersError: 'Could not load new offers.',
     minutes: 'min',
@@ -165,7 +158,6 @@ export function OperationsWorkspace() {
   const [message, setMessage] = useState<string | null>(null);
   const c = useCopy(COPY);
   const english = useI18n((state) => state.language === 'en');
-  const changing = useRef(false);
   const canToggle = canChangeAvailability({
     loaded: provider.isSuccess,
     failed: provider.isError,
@@ -178,19 +170,6 @@ export function OperationsWorkspace() {
 
   const report = (error: unknown, fallback: string) => {
     setMessage(error instanceof ApiClientError ? error.message : fallback);
-  };
-
-  const setProviderAvailability = async (value: boolean) => {
-    if (!canToggle || changing.current) return;
-    changing.current = true;
-    setMessage(null);
-    try {
-      await availability.mutateAsync({ available: value });
-    } catch (error) {
-      report(error, c.availabilityError);
-    } finally {
-      changing.current = false;
-    }
   };
 
   const declineOffer = async (id: string) => {
@@ -276,30 +255,15 @@ export function OperationsWorkspace() {
         ) : null}
         {isProvider ? (
           <>
-            <View style={styles.availabilityCard}>
-              <View style={styles.flex}>
-                <Text style={styles.cardTitle}>{c.available}</Text>
-                <Text style={styles.muted}>
-                  {provider.data?.teamName ??
-                    (provider.isError
-                      ? english
-                        ? 'Provider status unavailable'
-                        : 'Chưa kết nối được trạng thái cứu hộ viên'
-                      : c.loadingTeam)}
-                </Text>
-                {provider.data ? (
-                  <RatingBadge rating={provider.data.teamRating} label={c.teamReputation} compact />
-                ) : null}
-              </View>
-              <Switch
-                accessibilityLabel={c.available}
-                value={provider.data?.available ?? false}
-                disabled={!canToggle}
-                onValueChange={(value) => void setProviderAvailability(value)}
-                trackColor={{ false: Colors.borderStrong, true: Colors.success }}
-                thumbColor={Colors.white}
-              />
-            </View>
+            <ProviderAvailabilityCard
+              key={providerId}
+              status={provider.data}
+              teamLabel={provider.data?.teamName ?? (provider.isError ? c.providerError : c.loadingTeam)}
+              ratingLabel={c.teamReputation}
+              canChange={canToggle}
+              english={english}
+              save={availability.mutateAsync}
+            />
             {provider.data &&
             (!provider.data.shopInServiceArea || provider.data.teamStatus !== 'verified') ? (
               <Text style={styles.notice}>
@@ -539,15 +503,6 @@ const styles = StyleSheet.create({
   pageHeading: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   subtitle: { ...Typography.body, color: Colors.textSecondary },
   section: { ...Typography.h3, color: Colors.textPrimary, marginTop: Spacing.sm },
-  availabilityCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.lg,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.cardBg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
   cardTitle: { ...Typography.bodyBold, color: Colors.textPrimary },
   muted: { ...Typography.caption, color: Colors.textSecondary },
   error: {
