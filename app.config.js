@@ -8,7 +8,12 @@ const devPasswordLoginEnabled =
   !isProductionBuild &&
   ['development', 'local', 'staging'].includes(process.env.APP_ENV || 'development') &&
   process.env.DEV_PASSWORD_LOGIN_ENABLED !== 'false';
-const mapTileUrl = process.env.EXPO_PUBLIC_MAP_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const cartoApiKey = (process.env.EXPO_PUBLIC_CARTO_API_KEY || '').trim();
+const mapTileUrl =
+  (process.env.EXPO_PUBLIC_MAP_TILE_URL || '').trim() ||
+  (cartoApiKey
+    ? `https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoApiKey)}`
+    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png');
 const mapTileAttribution = process.env.EXPO_PUBLIC_MAP_TILE_ATTRIBUTION || '';
 try {
   const tileUrl = new URL(mapTileUrl);

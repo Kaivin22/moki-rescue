@@ -15,7 +15,13 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '@/src/i18n';
 import { Colors } from '@/src/constants/colors';
 import { MapSurface } from './MapSurface';
-import { DEFAULT_TILE_URL, mapDocument, OSM_COPYRIGHT_URL, validCoordinate } from './mapDocument';
+import {
+  CARTO_ATTRIBUTION_URL,
+  DEFAULT_TILE_URL,
+  mapDocument,
+  OSM_COPYRIGHT_URL,
+  validCoordinate,
+} from './mapDocument';
 import type {
   MapMarkerProps,
   MapPolylineProps,
@@ -101,9 +107,10 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>((props, ref) => {
             const configured = new URL(tileUrl);
             if (tile.protocol === 'https:' && tile.origin === configured.origin) setFailedTileUrl(tile.href);
           } else setFailedTileUrl(null);
-        } else if (message.type === 'attribution')
-          void Linking.openURL(OSM_COPYRIGHT_URL).catch(() => undefined);
-        else if (validCoordinate(message.coordinate)) {
+        } else if (message.type === 'attribution') {
+          const attributionUrl = message.provider === 'carto' ? CARTO_ATTRIBUTION_URL : OSM_COPYRIGHT_URL;
+          void Linking.openURL(attributionUrl).catch(() => undefined);
+        } else if (validCoordinate(message.coordinate)) {
           const event = { nativeEvent: { coordinate: message.coordinate } };
           if (message.type === 'press') current.current.props.onPress?.(event);
           if (message.type === 'drag' && Number.isInteger(message.index))

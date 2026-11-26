@@ -2,6 +2,7 @@ import { Colors } from '@/src/constants/colors';
 import leaflet from './vendor/leaflet-1.9.4.json';
 
 export const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
+export const CARTO_ATTRIBUTION_URL = 'https://carto.com/attribution/';
 export const DEFAULT_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 // A real project URL identifies the inline document; it is not fetched as a page.
 export const MAP_DOCUMENT_BASE_URL = 'https://github.com/Kaivin22/moki-rescue/';
@@ -44,7 +45,8 @@ export function validTileUrl(value: string): boolean {
 
 export function mapDocument(tileUrl: string, attribution: string, english: boolean): string {
   if (!validTileUrl(tileUrl)) throw new Error('Invalid HTTPS map tile URL');
-  const tileOrigin = new URL(tileUrl).origin;
+  const { origin: tileOrigin, hostname } = new URL(tileUrl);
+  const isCarto = hostname === 'basemaps.cartocdn.com' || hostname.endsWith('.basemaps.cartocdn.com');
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -68,8 +70,15 @@ L.control.zoom({position:'topright',zoomInTitle:${scriptJson(english ? 'Zoom in'
 var attribution=document.createElement('span');attribution.textContent=${scriptJson(attribution)};
 var osmLink=document.createElement('a');osmLink.href=${scriptJson(OSM_COPYRIGHT_URL)};osmLink.textContent='© OpenStreetMap contributors';
 osmLink.onclick=function(e){e.preventDefault();send({type:'attribution'});};
-map.attributionControl.setPrefix(false);map.attributionControl.getContainer().appendChild(osmLink);
-if(attribution.textContent){map.attributionControl.getContainer().appendChild(document.createTextNode(' · '));map.attributionControl.getContainer().appendChild(attribution);}
+map.attributionControl.setPrefix(false);
+var attributionContainer=map.attributionControl.getContainer();
+attributionContainer.appendChild(osmLink);
+if(${isCarto}){
+var cartoLink=document.createElement('a');cartoLink.href=${scriptJson(CARTO_ATTRIBUTION_URL)};cartoLink.textContent='© CARTO';
+cartoLink.onclick=function(e){e.preventDefault();send({type:'attribution',provider:'carto'});};
+attributionContainer.appendChild(document.createTextNode(', '));attributionContainer.appendChild(cartoLink);
+}
+if(attribution.textContent){attributionContainer.appendChild(document.createTextNode(' · '));attributionContainer.appendChild(attribution);}
 var tiles=L.tileLayer(${scriptJson(tileUrl)},{maxZoom:19,updateWhenIdle:true,keepBuffer:1});
 var tileSequence=0,tileRequests={},tileStates={},documentId=Date.now().toString(36);
 function reportTiles(){var values=Object.keys(tileStates).map(function(id){return tileStates[id];});
