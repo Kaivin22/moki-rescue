@@ -9,7 +9,7 @@ Spring Boot là ranh giới tin cậy duy nhất cho mutation nghiệp vụ. Mob
 - Lọc ứng viên hợp lệ bằng PostGIS, route toàn bộ danh sách theo các lô OSRM Table và xếp hạng ETA đường xe máy.
 - Phát đề nghị có TTL, tự hết hạn bằng scheduled job và nhận ca nguyên tử tại PostgreSQL.
 - Kiểm tra state machine, optimistic version, xác nhận hai phía và báo giá.
-- Dùng tọa độ cửa hàng để ghép ca/tính ETA, lưu điểm xuất phát cố định khi phân công, phát push và ghi audit; không nhận GPS chờ ca hoặc theo dõi hành trình trực tiếp.
+- Lọc theo bán kính cửa hàng và tính ETA từ điểm xuất phát đã chọn. Mỗi lời mời lưu điểm dùng để xếp hạng.
 - Quản lý mạng đối tác khép kín: mã hồ sơ nội bộ, checklist ngoại tuyến, năng lực, cứu hộ viên và quản trị viên vận hành. Chỉ kích hoạt đội khi đủ điều kiện; không lưu tài liệu pháp lý hoặc giấy tờ cá nhân.
 - Cung cấp trợ lý Gemini giới hạn trong cách dùng Moki Rescue, lọc input trước model, kiểm output sau model và không lưu nội dung chat.
 
@@ -25,7 +25,7 @@ mã lý do và đánh dấu hủy muộn. Ca mới không có GPS hành trình n
 ca mới tạm dừng 24 giờ; báo chưa thấy đội không bị tính nếu GPS không xác nhận đội ở gần.
 Hệ thống không thu phí và không tự khóa tài khoản. Sau khi đã xác nhận đội đến, khách
 phải liên hệ quản trị viên vận hành để dừng ca.
-- `/api/provider/*`: sẵn sàng xuất phát từ cửa hàng, thống kê cá nhân, đề nghị và nhận ca. Hai endpoint GPS cũ trả 410 để app cũ dừng gửi.
+- `/api/provider/*`: chọn điểm xuất phát, thống kê cá nhân, đề nghị và nhận ca. Hai endpoint GPS cũ trả 410 để app cũ dừng gửi.
 - `/api/operator/*`: hàng đợi, retry dispatch, tạo/checklist/kích hoạt đội đối tác, phân vai trò, review gần đây và xử lý cảnh báo chất lượng.
 - `/api/assistant/message`: trợ lý trong app cho tài khoản active, quota theo phút/ngày.
 
@@ -36,7 +36,7 @@ Giữ ba vai trò `customer/provider/admin`, không có quản lý đội. Cửa
 | API | Quyền và nội dung |
 |---|---|
 | `GET /api/provider/statistics` | Provider: `completedCases`, `activeCases`, `cancelledCases`, `rating` chỉ của bản thân, toàn bộ dữ liệu còn lưu. Ca bị rút phân công không còn tính như ca được giao; không phải doanh thu/lợi nhuận |
-| `PUT /api/provider/availability` | Body `{ "available": true/false }`. Không cần GPS; bật phải có thành viên active, đội verified, tọa độ cửa hàng trong vùng và không có ca đang làm |
+| `PUT /api/provider/availability` | Mặc định `{ "available": true/false }` dùng cửa hàng. Để lấy GPS một lần, gửi `available: true`, `departureMode: "current"`, `latitude`, `longitude`, `accuracyM` và `recordedAt` (ISO 8601); bật phải có thành viên active, đội verified, tọa độ cửa hàng trong vùng và không có ca đang làm |
 | `GET /api/operator/providers` | Chỉ admin: mọi tài khoản provider, gồm `unassigned` khi chưa có membership. Không nhầm 12 cửa hàng seed với 12 tài khoản |
 | `POST /api/operator/providers/{providerId}/review` | Chỉ admin, body `{ "decision": "active" }` hoặc `rejected`. Chỉ quyết định hồ sơ pending, ghi audit, trả 409 nếu đã bị người khác xử lý |
 | `PUT /api/operator/teams/{teamId}/location` | Chỉ admin, body `{ "latitude": 16.061, "longitude": 108.2238 }`. Chặn ngoài vùng và khi đội đang sẵn sàng/có ca hoặc đề nghị mở |
@@ -77,7 +77,7 @@ chỉ tạo cảnh báo vận hành; không tự chuyển ca thành hoàn thành
 - Kết thúc ca đóng cảnh báo vòng đời, không tự đóng khiếu nại/sự cố hay yêu cầu hỗ trợ.
   Không cho đóng riêng cảnh báo hoàn tất/tranh chấp hoàn tất khi ca còn mở.
 - Sau hoàn thành/hủy, cứu hộ viên hết bị ràng buộc bởi ca cũ nhưng ở trạng thái tắt nhận ca;
-  phải chủ động bật hoạt động để sẵn sàng xuất phát từ cửa hàng và nhận ca mới.
+  phải chủ động bật hoạt động để sẵn sàng xuất phát và nhận ca mới.
 
 Kiểm thử thủ công trên app: chạy một ca đến bước chờ hoàn tất, thử lần lượt khách xác nhận,
 khách báo chưa xong, admin ghi chưa xác minh, và admin xác minh hoàn tất (có bước xác nhận lại).
@@ -96,7 +96,7 @@ Xem [API/cách kiểm thử thông báo–hỗ trợ](../docs/COMMUNICATIONS.md)
 Khách/điểm giao/cứu hộ viên dùng chung kiểm tra vùng đang bật, giới hạn trong khung
 OSRM demo 15.95–16.18 Bắc, 108.05–108.34 Đông (gồm biên). Đây không phải toàn thành phố;
 vẫn phải có đường OSRM hợp lệ. Cửa hàng ngoài vùng không được dùng để bật nhận ca.
-Hai endpoint GPS cũ trả 410; tọa độ thiết bị không được dùng để cập nhật vị trí ghép ca.
+Hai endpoint GPS nền cũ trả 410. Khi nhà cung cấp chủ động lấy GPS, điểm xuất phát có hiệu lực 15 phút từ lúc đo, trong giờ nhận ca. Có thể cập nhật vị trí cho lời mời tiếp theo.
 
 ```powershell
 .\mvnw.cmd test

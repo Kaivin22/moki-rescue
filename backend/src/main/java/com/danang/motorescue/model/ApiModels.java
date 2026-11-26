@@ -189,7 +189,12 @@ public final class ApiModels {
             boolean available,
             @DecimalMin("-90") @DecimalMax("90") Double latitude,
             @DecimalMin("-180") @DecimalMax("180") Double longitude,
-            @DecimalMin("0") @DecimalMax("1000") Double accuracyM) {}
+            @DecimalMin("0") @DecimalMax("1000") Double accuracyM,
+            @Pattern(regexp = "shop|current") String departureMode, Instant recordedAt) {
+        public AvailabilityRequest(boolean available, Double latitude, Double longitude, Double accuracyM) {
+            this(available, latitude, longitude, accuracyM, null, null);
+        }
+    }
 
     public record ProviderWithdrawalResponse(UUID requestId, String status) {}
 
@@ -261,7 +266,8 @@ public final class ApiModels {
             boolean suspensionReviewRecommended,
             String qualityNotice,
             String teamStatus, Double shopLatitude, Double shopLongitude, boolean shopInServiceArea, String shopAddress,
-            boolean hoursConfigured, boolean receivingPaused, Instant receivingUntil, Instant availabilityUntil) {}
+            boolean hoursConfigured, boolean receivingPaused, Instant receivingUntil, Instant availabilityUntil,
+            Instant departureExpiresAt) {}
 
     public record ProviderStatisticsResponse(long completedCases, long activeCases, long cancelledCases, RatingSummary rating) {}
 

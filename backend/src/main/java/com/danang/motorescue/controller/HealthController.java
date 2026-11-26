@@ -45,6 +45,10 @@ public class HealthController {
                           ('rescue_teams', 'receiving_paused'),
                           ('rescue_teams', 'working_hours_version'),
                           ('provider_members', 'availability_until'),
+                          ('provider_members', 'departure_expires_at'),
+                          ('dispatch_offers', 'origin_latitude'),
+                          ('dispatch_offers', 'origin_longitude'),
+                          ('dispatch_offers', 'origin_accuracy_m'),
                           ('dispatch_offers', 'availability_started_at')
                         ) required(table_name, column_name)
                         WHERE NOT EXISTS (SELECT 1 FROM information_schema.columns actual

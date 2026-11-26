@@ -223,8 +223,7 @@ public class RescueQueryService {
         if (provider == null) {
             throw new ApiException(HttpStatus.CONFLICT, "PROVIDER_LOCATION_PENDING", "Ca này chưa lưu vị trí cứu hộ viên tại thời điểm nhận ca.");
         }
-        // V10 stores a registered shop snapshot with NULL accuracy: it is not
-        // a GPS measurement. Still validate measured accuracy on legacy snapshots.
+        // A registered shop has no measured accuracy. GPS snapshots retain their fix accuracy.
         // Missing coordinates/timestamp are rejected by assignmentLocation above.
         if (provider.accuracyM() != null
                 && provider.accuracyM() > matchingPolicy.providerLocationMaxAccuracyMeters()) {

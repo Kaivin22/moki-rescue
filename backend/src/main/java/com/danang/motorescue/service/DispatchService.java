@@ -322,7 +322,9 @@ public class DispatchService {
 
     private List<Candidate> eligibleCandidates(RequestPoint request) {
         return jdbc.query("""
-                SELECT pm.user_id, pm.team_id, team.base_latitude, team.base_longitude,
+                SELECT pm.user_id, pm.team_id,
+                       CASE WHEN pm.departure_expires_at IS NULL THEN team.base_latitude ELSE pm.last_latitude END AS origin_latitude,
+                       CASE WHEN pm.departure_expires_at IS NULL THEN team.base_longitude ELSE pm.last_longitude END AS origin_longitude,
                        (
                          SELECT COUNT(*)::INTEGER
                          FROM public.dispatch_offers accepted_offer
@@ -382,8 +384,8 @@ public class DispatchService {
                 """, (rs, rowNum) -> new Candidate(
                         rs.getObject("user_id", UUID.class),
                         rs.getObject("team_id", UUID.class),
-                        rs.getDouble("base_latitude"),
-                        rs.getDouble("base_longitude"),
+                        rs.getDouble("origin_latitude"),
+                        rs.getDouble("origin_longitude"),
                         rs.getInt("recent_accepted_count"),
                         rs.getLong("waiting_seconds"),
                         rs.getInt("consecutive_skips")),
@@ -402,27 +404,32 @@ public class DispatchService {
                 rs -> rs.next() ? rs.getString(1) : null, requestId, request.version());
         if (!"searching".equals(current)) return OfferResult.REQUEST_CHANGED;
 
-        List<UUID> stillEligible = jdbc.query("""
-                SELECT pm.user_id FROM public.provider_members pm
+        List<Double> originAccuracies = jdbc.query("""
+                SELECT CASE WHEN pm.departure_expires_at IS NOT NULL THEN pm.location_accuracy_m END AS accuracy
+                FROM public.provider_members pm
                 JOIN public.rescue_teams team ON team.id = pm.team_id
                 JOIN public.profiles profile ON profile.id = pm.user_id
+                JOIN public.rescue_requests rr ON rr.id = ?
                 WHERE pm.user_id = ? AND pm.team_id = ? AND pm.status = 'active' AND pm.is_available
                   AND public.api_provider_receiving_until(pm.user_id, statement_timestamp()) IS NOT NULL
                   AND profile.role = 'provider' AND profile.is_active AND team.status = 'verified'
-                  AND team.base_latitude = ? AND team.base_longitude = ?
-                  AND NOT public.api_customer_provider_cooldown(
-                    (SELECT customer_id FROM public.rescue_requests WHERE id = ?), pm.user_id, statement_timestamp())
+                  AND CASE WHEN pm.departure_expires_at IS NULL THEN team.base_latitude ELSE pm.last_latitude END = ?
+                  AND CASE WHEN pm.departure_expires_at IS NULL THEN team.base_longitude ELSE pm.last_longitude END = ?
+                  AND NOT public.api_customer_provider_cooldown(rr.customer_id, pm.user_id, statement_timestamp())
                   AND public.api_is_in_service_area(team.base_latitude, team.base_longitude)
+                  AND extensions.ST_DWithin(
+                    extensions.ST_SetSRID(extensions.ST_MakePoint(team.base_longitude, team.base_latitude), 4326)::extensions.geography,
+                    rr.pickup_location, team.service_radius_km * 1000)
                   AND EXISTS (SELECT 1 FROM public.team_capabilities cap
                     WHERE cap.team_id = pm.team_id AND cap.service_code = ? AND cap.is_active)
                   AND NOT EXISTS (SELECT 1 FROM public.rescue_requests active_request
                     WHERE active_request.assigned_provider_id = pm.user_id
                       AND active_request.status NOT IN ('completed', 'cancelled'))
                 FOR UPDATE OF pm
-                """, (rs, row) -> rs.getObject("user_id", UUID.class),
-                selected.candidate().providerId(), selected.candidate().teamId(),
-                selected.candidate().latitude(), selected.candidate().longitude(), request.id(), request.serviceCode());
-        if (stillEligible.isEmpty()) return OfferResult.PROVIDER_UNAVAILABLE;
+                """, (rs, row) -> rs.getObject("accuracy") == null ? null : rs.getDouble("accuracy"),
+                request.id(), selected.candidate().providerId(), selected.candidate().teamId(),
+                selected.candidate().latitude(), selected.candidate().longitude(), request.serviceCode());
+        if (originAccuracies.isEmpty()) return OfferResult.PROVIDER_UNAVAILABLE;
 
         // A separate statement AFTER obtaining the provider lock is intentional:
         // under READ COMMITTED it sees offers committed while the lock was awaited.
@@ -463,18 +470,23 @@ public class DispatchService {
         Instant expiresAt = Instant.now().plusSeconds(request.policy().offerTtlSeconds());
         jdbc.update("""
                 INSERT INTO public.dispatch_offers(
-                  request_id, provider_id, team_id, road_distance_m, eta_seconds, expires_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                  request_id, provider_id, team_id, road_distance_m, eta_seconds, expires_at,
+                  origin_latitude, origin_longitude, origin_accuracy_m
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (request_id, provider_id) DO UPDATE SET
                   team_id = EXCLUDED.team_id,
                   status = 'pending',
                   road_distance_m = EXCLUDED.road_distance_m,
                   eta_seconds = EXCLUDED.eta_seconds,
+                  origin_latitude = EXCLUDED.origin_latitude,
+                  origin_longitude = EXCLUDED.origin_longitude,
+                  origin_accuracy_m = EXCLUDED.origin_accuracy_m,
                   offered_at = NOW(),
                   expires_at = EXCLUDED.expires_at,
                   responded_at = NULL
                 """, requestId, selected.candidate().providerId(), selected.candidate().teamId(),
-                selected.route().distanceMeters(), selected.route().durationSeconds(), Timestamp.from(expiresAt));
+                selected.route().distanceMeters(), selected.route().durationSeconds(), Timestamp.from(expiresAt),
+                selected.candidate().latitude(), selected.candidate().longitude(), originAccuracies.getFirst());
         jdbc.update("""
                 UPDATE public.rescue_requests SET status = 'offered', routing_status = 'road'
                 WHERE id = ? AND status = 'searching'

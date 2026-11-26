@@ -118,7 +118,7 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
         creationDispatch = mock(DispatchService.class);
         providers = new ProviderService(
                 runtimeJdbc, runtimeTransactions, matchingDispatch, new AuditService(runtimeJdbc), push,
-                qualityPolicy);
+                qualityPolicy, matchingPolicy, new ServiceAreaService(runtimeJdbc));
     }
 
     @Test
@@ -1079,6 +1079,90 @@ class RescueDatabaseIntegrationTest extends PostgisIntegrationTestSupport {
 
     private int requestVersion(UUID requestId) {
         return jdbc.queryForObject("SELECT version FROM public.rescue_requests WHERE id = ?", Integer.class, requestId);
+    }
+
+    private AvailabilityRequest gpsDeparture(double latitude) {
+        return new AvailabilityRequest(true, latitude, PICKUP_LONGITUDE, 10.0, "current", java.time.Instant.now());
+    }
+
+    @Test
+    void statusShowsTheEarlierReadinessDeadlineWhenGpsOutlastsTheShift() {
+        UUID shop = createTeam(PICKUP_LATITUDE, PICKUP_LONGITUDE);
+        Actor provider = createProvider(shop, PICKUP_LATITUDE, PICKUP_LONGITUDE, 10, false).actor();
+        providers.setAvailability(provider, gpsDeparture(PICKUP_LATITUDE));
+        jdbc.update("""
+                UPDATE public.provider_members SET availability_until = NOW() + INTERVAL '30 seconds'
+                WHERE user_id = ?
+                """, provider.id());
+        var status = providers.status(provider);
+        assertThat(status.available()).isTrue();
+        assertThat(status.departureExpiresAt()).isEqualTo(status.availabilityUntil());
+    }
+
+    @Test
+    void twoProvidersAtOneShopUseDifferentOriginsAndTheOfferKeepsTheRankedPoint() {
+        double shopLatitude = PICKUP_LATITUDE + 0.035;
+        UUID shop = createTeam(shopLatitude, PICKUP_LONGITUDE);
+        addCapability(shop);
+        createProvider(shop, shopLatitude, PICKUP_LONGITUDE, 10, true);
+        Actor mobile = createProvider(shop, shopLatitude, PICKUP_LONGITUDE, 10, false).actor();
+        var ready = providers.setAvailability(mobile, gpsDeparture(PICKUP_LATITUDE));
+        assertThat(ready.available()).isTrue();
+        assertThat(ready.departureExpiresAt()).isAfter(java.time.Instant.now());
+        var since = jdbc.queryForObject("SELECT available_since FROM public.provider_members WHERE user_id = ?",
+                java.sql.Timestamp.class, mobile.id());
+        when(routing.routesToDestination(anyList(), any())).thenAnswer(call -> {
+            List<RoadPoint> origins = call.getArgument(0);
+            assertThat(origins).extracting(RoadPoint::latitude).containsExactlyInAnyOrder(shopLatitude, PICKUP_LATITUDE);
+            return origins.stream().map(point -> Optional.of(new RoadRoute(1000,
+                    point.latitude() == shopLatitude ? 900 : 120, List.of()))).toList();
+        });
+        UUID request = insertRequest(createActor("customer"), "searching", null);
+        matchingDispatch.match(request);
+        assertThat(pendingOfferProvider(request)).isEqualTo(mobile.id());
+        UUID offer = jdbc.queryForObject("SELECT id FROM public.dispatch_offers WHERE request_id = ?", UUID.class, request);
+        providers.setAvailability(mobile, gpsDeparture(PICKUP_LATITUDE + 0.01));
+        assertThat(jdbc.queryForObject("SELECT available_since FROM public.provider_members WHERE user_id = ?",
+                java.sql.Timestamp.class, mobile.id())).isEqualTo(since);
+        providers.accept(mobile, offer, requestVersion(request));
+        assertThat(jdbc.queryForObject("SELECT assigned_provider_latitude FROM public.rescue_requests WHERE id = ?",
+                Double.class, request)).isEqualTo(PICKUP_LATITUDE);
+        assertThat(jdbc.queryForObject("SELECT origin_latitude FROM public.dispatch_offers WHERE id = ?",
+                Double.class, offer)).isNull();
+        assertThat(jdbc.queryForObject("SELECT last_latitude FROM public.provider_members WHERE user_id = ?",
+                Double.class, mobile.id())).isNull();
+        assertThat(jdbc.queryForObject("SELECT base_latitude FROM public.rescue_teams WHERE id = ?",
+                Double.class, shop)).isEqualTo(shopLatitude);
+    }
+
+    @Test
+    void gpsCannotExtendShopRadiusOrSilentlyRevertToShopAfterExpiry() {
+        UUID shop = createTeam(PICKUP_LATITUDE + 0.035, PICKUP_LONGITUDE);
+        addCapability(shop);
+        jdbc.update("UPDATE public.rescue_teams SET service_radius_km = 1 WHERE id = ?", shop);
+        Actor mobile = createProvider(shop, PICKUP_LATITUDE, PICKUP_LONGITUDE, 10, false).actor();
+        assertApiCode("DEPARTURE_OUTSIDE_SERVICE_AREA", () -> providers.setAvailability(mobile, gpsDeparture(10)));
+        assertApiCode("DEPARTURE_GPS_STALE", () -> providers.setAvailability(mobile, new AvailabilityRequest(
+                true, PICKUP_LATITUDE, PICKUP_LONGITUDE, 10.0, "current", java.time.Instant.now().minusSeconds(600))));
+        assertApiCode("DEPARTURE_GPS_INACCURATE", () -> providers.setAvailability(mobile, new AvailabilityRequest(
+                true, PICKUP_LATITUDE, PICKUP_LONGITUDE, 500.0, "current", java.time.Instant.now())));
+        providers.setAvailability(mobile, gpsDeparture(PICKUP_LATITUDE));
+        UUID request = insertRequest(createActor("customer"), "searching", null);
+        matchingDispatch.match(request);
+        verifyNoInteractions(routing);
+        jdbc.update("UPDATE public.rescue_teams SET service_radius_km = 15 WHERE id = ?", shop);
+        jdbc.update("UPDATE public.provider_members SET departure_expires_at = NOW() - INTERVAL '1 second' WHERE user_id = ?", mobile.id());
+        assertThat(providers.status(mobile).available()).isFalse();
+        matchingDispatch.match(request);
+        verifyNoInteractions(routing);
+        matchingDispatch.expireOffers();
+        assertThat(jdbc.queryForObject("SELECT last_latitude FROM public.provider_members WHERE user_id = ?",
+                Double.class, mobile.id())).isNull();
+        assertThat(providers.status(mobile).departureExpiresAt()).isNotNull();
+        assertThat(providers.setAvailability(mobile, new AvailabilityRequest(true, null, null, null)).available()).isTrue();
+        stubSuccessfulRoutes();
+        matchingDispatch.match(request);
+        assertThat(pendingOfferProvider(request)).isEqualTo(mobile.id());
     }
 
     @Test

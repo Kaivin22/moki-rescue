@@ -55,8 +55,8 @@ class DatabaseMigrationIntegrationTest extends PostgisIntegrationTestSupport {
         MigrateResult remainingMigrations = flyway.migrate();
 
         assertTrue(remainingMigrations.success);
-        assertEquals(16, remainingMigrations.migrationsExecuted); // V5 through V20
-        assertEquals(MigrationVersion.fromVersion("20"), flyway.info().current().getVersion());
+        assertEquals(17, remainingMigrations.migrationsExecuted); // V5 through V21
+        assertEquals(MigrationVersion.fromVersion("21"), flyway.info().current().getVersion());
         assertTrue(flyway.validateWithResult().validationSuccessful);
         assertEquals(0, flyway.migrate().migrationsExecuted);
 

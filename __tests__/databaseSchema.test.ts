@@ -278,9 +278,10 @@ describe('service coverage wiring (static contracts, not PostgreSQL execution)',
     expect(shopMigration).not.toMatch(/DROP SCHEMA|UPDATE auth\./);
     expect(shopMigration).toContain("SET status = 'no_provider'");
   });
-  it('rechecks the shop origin before publishing an OSRM offer', () => {
+  it('rechecks the selected departure coordinates before publishing an OSRM offer', () => {
     const dispatch = read('backend/src/main/java/com/danang/motorescue/service/DispatchService.java');
-    expect(dispatch).toContain('team.base_latitude = ? AND team.base_longitude = ?');
+    expect(dispatch).toContain('THEN team.base_latitude ELSE pm.last_latitude END = ?');
+    expect(dispatch).toContain('THEN team.base_longitude ELSE pm.last_longitude END = ?');
     expect(dispatch).toContain('FOR UPDATE OF pm');
     expect(read('backend/src/main/java/com/danang/motorescue/service/OperatorService.java')).toContain(
       'ORDER BY user_id FOR UPDATE',

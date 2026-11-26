@@ -1,6 +1,7 @@
 package com.danang.motorescue.service;
 
 import com.danang.motorescue.config.QualityProperties;
+import com.danang.motorescue.config.MatchingProperties;
 import com.danang.motorescue.model.ApiModels.AvailabilityRequest;
 import com.danang.motorescue.model.ApiModels.OfferResponse;
 import com.danang.motorescue.model.ApiModels.ProviderLocationRequest;
@@ -12,6 +13,9 @@ import com.danang.motorescue.service.ActorService.Actor;
 import com.danang.motorescue.web.ApiException;
 import java.util.List;
 import java.util.UUID;
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -28,6 +32,9 @@ public class ProviderService {
     private final AuditService audit;
     private final PushNotificationService push;
     private final QualityProperties qualityPolicy;
+    private final MatchingProperties matching;
+    private final ServiceAreaService serviceArea;
+    private static final Duration GPS_READINESS_DURATION = Duration.ofMinutes(15);
 
     public ProviderService(
             JdbcTemplate jdbc,
@@ -35,21 +42,25 @@ public class ProviderService {
             DispatchService dispatch,
             AuditService audit,
             PushNotificationService push,
-            QualityProperties qualityPolicy) {
+            QualityProperties qualityPolicy, MatchingProperties matching, ServiceAreaService serviceArea) {
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.dispatch = dispatch;
         this.audit = audit;
         this.push = push;
         this.qualityPolicy = qualityPolicy;
+        this.matching = matching;
+        this.serviceArea = serviceArea;
     }
 
     public ProviderStatusResponse status(Actor actor) {
         requireProvider(actor);
         ProviderStatusResponse result = jdbc.query("""
-                SELECT public.api_provider_receiving_until(pm.user_id, statement_timestamp()) IS NOT NULL AS is_available,
+                SELECT readiness.ends_at IS NOT NULL AS is_available,
                        team.name, pm.status, team.status AS team_status,
                        team.receiving_paused, pm.availability_until,
+                       CASE WHEN pm.departure_expires_at IS NOT NULL
+                         THEN COALESCE(readiness.ends_at, pm.departure_expires_at) END AS departure_expires_at,
                        EXISTS (SELECT 1 FROM public.team_working_hours hours WHERE hours.team_id = team.id) AS hours_configured,
                        public.api_team_receiving_until(team.id, statement_timestamp()) AS receiving_until,
                        team.base_latitude, team.base_longitude, team.base_address,
@@ -60,6 +71,9 @@ public class ProviderService {
                        latest_warning.action_note AS quality_notice
                 FROM public.provider_members pm
                 JOIN public.rescue_teams team ON team.id = pm.team_id
+                CROSS JOIN LATERAL (
+                  SELECT public.api_provider_receiving_until(pm.user_id, statement_timestamp()) AS ends_at
+                ) readiness
                 LEFT JOIN LATERAL (
                   SELECT ROUND(AVG(review.rating)::NUMERIC, 2) AS average_rating,
                          COUNT(*)::INTEGER AS rating_count
@@ -90,7 +104,8 @@ public class ProviderService {
                     rs.getBoolean("shop_in_area"), rs.getString("base_address"),
                     rs.getBoolean("hours_configured"), rs.getBoolean("receiving_paused"),
                     rs.getTimestamp("receiving_until") == null ? null : rs.getTimestamp("receiving_until").toInstant(),
-                    rs.getTimestamp("availability_until") == null ? null : rs.getTimestamp("availability_until").toInstant());
+                    rs.getTimestamp("availability_until") == null ? null : rs.getTimestamp("availability_until").toInstant(),
+                    rs.getTimestamp("departure_expires_at") == null ? null : rs.getTimestamp("departure_expires_at").toInstant());
         }, actor.id());
         if (result == null) throw providerNotReady();
         return result;
@@ -124,7 +139,6 @@ public class ProviderService {
     public ProviderStatusResponse setAvailability(Actor actor, AvailabilityRequest input) {
         requireProvider(actor);
         if (input.available()) {
-            // Old clients may still send GPS. Never use it for shop-based dispatch.
             ProviderStatusResponse current = status(actor);
             if (!"active".equals(current.status()) || !"verified".equals(current.teamStatus())) {
                 throw providerNotReady();
@@ -134,36 +148,40 @@ public class ProviderService {
                         "Cửa hàng chưa có tọa độ hợp lệ trong vùng phục vụ. Hãy nhờ admin cập nhật vị trí cửa hàng.");
             }
             if (current.receivingUntil() == null) throw workingHoursClosed();
-            Boolean busy = jdbc.queryForObject("""
-                    SELECT EXISTS(
-                      SELECT 1 FROM public.rescue_requests
-                      WHERE assigned_provider_id = ? AND status NOT IN ('completed', 'cancelled')
-                    )
-                    """, Boolean.class, actor.id());
-            if (Boolean.TRUE.equals(busy)) {
-                throw new ApiException(HttpStatus.CONFLICT, "PROVIDER_HAS_ACTIVE_REQUEST", "Không thể bật sẵn sàng khi đang xử lý một ca.");
-            }
         }
+        // Clients predating departureMode sometimes supplied GPS even for a shop shift.
+        boolean useGps = input.available() && "current".equals(input.departureMode());
+        Timestamp expiresAt = useGps ? validateDeparture(input) : null;
         int changed;
         try {
             changed = transactions.execute(status -> {
+                if (input.available()) {
+                    // Acceptance locks this same member. A subsequent statement sees
+                    // the assignment even if it committed while the GPS refresh waited.
+                    jdbc.queryForObject("SELECT user_id FROM public.provider_members WHERE user_id = ? FOR UPDATE",
+                            UUID.class, actor.id());
+                    Boolean busy = jdbc.queryForObject("""
+                            SELECT EXISTS(SELECT 1 FROM public.rescue_requests WHERE assigned_provider_id = ?
+                              AND status NOT IN ('completed', 'cancelled'))
+                            """, Boolean.class, actor.id());
+                    if (Boolean.TRUE.equals(busy)) throw new ApiException(HttpStatus.CONFLICT,
+                            "PROVIDER_HAS_ACTIVE_REQUEST", "Không thể bật sẵn sàng khi đang xử lý một ca.");
+                }
                 int updated = jdbc.update("""
                         UPDATE public.provider_members pm
                         SET is_available = ?,
                             available_since = CASE
-                              WHEN ? AND NOT pm.is_available THEN NOW()
+                              WHEN ? AND (NOT pm.is_available OR pm.departure_expires_at <= NOW()) THEN NOW()
                               WHEN ? THEN pm.available_since
                               ELSE NULL
                             END,
-                            last_latitude = NULL, last_longitude = NULL, location_accuracy_m = NULL
+                            last_latitude = ?, last_longitude = ?, location_accuracy_m = ?, departure_expires_at = ?
                         FROM public.rescue_teams team
                         WHERE pm.user_id = ? AND team.id = pm.team_id
                           AND (NOT ? OR (pm.status = 'active' AND team.status = 'verified'
-                            AND public.api_is_in_service_area(team.base_latitude, team.base_longitude)
-                            AND NOT EXISTS (SELECT 1 FROM public.rescue_requests rr
-                              WHERE rr.assigned_provider_id = pm.user_id
-                                AND rr.status NOT IN ('completed', 'cancelled'))))
-                        """, input.available(), input.available(), input.available(),
+                            AND public.api_is_in_service_area(team.base_latitude, team.base_longitude)))
+                        """, input.available(), input.available(), input.available(), useGps ? input.latitude() : null,
+                        useGps ? input.longitude() : null, useGps ? input.accuracyM() : null, expiresAt,
                         actor.id(), input.available());
                 if (updated > 0) {
                     audit.record(actor.id(), input.available() ? "provider.available" : "provider.unavailable", "provider", actor.id());
@@ -177,6 +195,26 @@ public class ProviderService {
         }
         if (changed == 0) throw providerNotReady();
         return status(actor);
+    }
+
+    private Timestamp validateDeparture(AvailabilityRequest input) {
+        Instant now = Instant.now();
+        if (input.latitude() == null || input.longitude() == null || input.accuracyM() == null
+                || !Double.isFinite(input.accuracyM()) || input.accuracyM() < 0
+                || input.accuracyM() > matching.providerLocationMaxAccuracyMeters()) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "DEPARTURE_GPS_INACCURATE",
+                    "GPS chưa đủ chính xác. Hãy lấy lại vị trí hoặc chọn xuất phát tại cửa hàng.");
+        }
+        if (input.recordedAt() == null || input.recordedAt().isAfter(now.plusSeconds(5))
+                || !input.recordedAt().isAfter(now.minusSeconds(matching.providerLocationMaxAgeSeconds()))) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "DEPARTURE_GPS_STALE",
+                    "Vị trí GPS đã cũ hoặc thời gian trên thiết bị chưa đúng. Hãy lấy lại vị trí.");
+        }
+        if (!serviceArea.contains(input.latitude(), input.longitude())) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "DEPARTURE_OUTSIDE_SERVICE_AREA",
+                    "Điểm xuất phát nằm ngoài vùng cứu hộ. Hãy chọn lại khi bạn ở trong vùng phục vụ.");
+        }
+        return Timestamp.from(input.recordedAt().plus(GPS_READINESS_DURATION));
     }
 
     public List<OfferResponse> offers(Actor actor) {
@@ -334,7 +372,7 @@ public class ProviderService {
         requireProvider(actor);
         // Compatibility endpoint: old clients stop publishing on this code.
         throw new ApiException(HttpStatus.GONE, "PROVIDER_NOT_AVAILABLE",
-                "Điều phối hiện dùng tọa độ cửa hàng. Hãy cập nhật app; không gửi GPS nền nữa.");
+                "Hãy cập nhật app để chọn điểm xuất phát trong mục Sẵn sàng nhận ca.");
     }
 
     private void requireProvider(Actor actor) {

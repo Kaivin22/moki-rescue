@@ -3,6 +3,7 @@ package com.danang.motorescue.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.danang.motorescue.model.ApiModels.*;
+import com.danang.motorescue.config.MatchingProperties;
 import com.danang.motorescue.service.ActorService.Actor;
 import com.danang.motorescue.web.ApiException;
 import java.util.UUID;
@@ -19,14 +20,15 @@ class ProviderServiceAreaTest {
     private final List<String> calls = new ArrayList<>();
     private final JdbcTemplate jdbc = new JdbcTemplate() {
         @Override public <T> T queryForObject(String sql, Class<T> type, Object... args) {
+            if (sql.contains("FOR UPDATE")) return type.cast(actor.id());
             assertThat(sql).contains("assigned_provider_id = ?");
             assertThat(args).containsExactly(actor.id());
             calls.add("busy-check");
             return type.cast(false);
         }
         @Override public int update(String sql, Object... args) {
-            assertThat(sql).contains("public.api_is_in_service_area(team.base_latitude, team.base_longitude)", "last_latitude = NULL");
-            assertThat(args).containsExactly(true, true, true, actor.id(), true);
+            assertThat(sql).contains("public.api_is_in_service_area(team.base_latitude, team.base_longitude)", "departure_expires_at = ?");
+            assertThat(args).containsExactly(true, true, true, null, null, null, null, actor.id(), true);
             calls.add("available");
             return 1;
         }
@@ -44,11 +46,11 @@ class ProviderServiceAreaTest {
         }
     };
     private ProviderService service(boolean validShop, String memberStatus, String teamStatus) {
-        return new ProviderService(jdbc, transactions, null, audit, null, null) {
+        return new ProviderService(jdbc, transactions, null, audit, null, null, new MatchingProperties(180, 150), new ServiceAreaService(jdbc)) {
             @Override public ProviderStatusResponse status(Actor actor) {
                 return new ProviderStatusResponse(false, "Shop", memberStatus, new RatingSummary(null, 0),
                         0, false, null, teamStatus, 16.061, 108.2238, validShop, "Test shop address",
-                        true, false, java.time.Instant.now().plusSeconds(3600), null);
+                        true, false, java.time.Instant.now().plusSeconds(3600), null, null);
             }
         };
     }

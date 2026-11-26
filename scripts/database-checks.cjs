@@ -1,6 +1,6 @@
 // SQL sources for the bundled installer and optional read-only diagnostics.
 // Never connects to a database. Keep checks here, not in the generated SQL.
-const verificationSql = String.raw`-- Kiểm tra trạng thái ĐẾN V19; không dùng để xác minh schema legacy chỉ ở B1.
+const verificationSql = String.raw`-- Kiểm tra schema hiện tại sau khi áp dụng đầy đủ các migration.
 -- Chỉ đọc metadata và một số bất biến dữ liệu; không thay thế test RLS bằng JWT.
 
 DO $$
@@ -43,6 +43,10 @@ BEGIN
     ('rescue_teams', 'receiving_paused'),
     ('rescue_teams', 'working_hours_version'),
     ('provider_members', 'availability_until'),
+    ('provider_members', 'departure_expires_at'),
+    ('dispatch_offers', 'origin_latitude'),
+    ('dispatch_offers', 'origin_longitude'),
+    ('dispatch_offers', 'origin_accuracy_m'),
     ('dispatch_offers', 'availability_started_at'),
     ('team_verification_checks', 'checked_by'),
     ('team_verification_checks', 'checked_at'),
@@ -794,7 +798,7 @@ BEGIN
   END IF;
 END;
 $personal_history_contract$;
-SELECT 'V19 schema/security checks passed; JWT and end-to-end tests still required' AS result;
+SELECT 'Schema/security checks passed; JWT and end-to-end tests still required' AS result;
 `;
 
 const preflightSql = String.raw`-- TÙY CHỌN khi chưa rõ trạng thái database (chỉ đọc, KHÔNG tạo schema).

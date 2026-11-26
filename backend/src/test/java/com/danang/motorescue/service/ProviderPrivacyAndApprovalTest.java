@@ -59,7 +59,7 @@ class ProviderPrivacyAndApprovalTest {
     private OperatorService operator() { return new OperatorService(jdbc, null, audit, transactions, null); }
 
     @Test void personalStatisticsUseOnlyTheAuthenticatedProviderId() {
-        var service = new ProviderService(jdbc, transactions, null, audit, null, null);
+        var service = new ProviderService(jdbc, transactions, null, audit, null, null, null, null);
         assertThat(service.statistics(provider).completedCases()).isEqualTo(2);
         assertThatThrownBy(() -> service.statistics(admin)).isInstanceOfSatisfying(ApiException.class,
                 e -> assertThat(e.code()).isEqualTo("PROVIDER_ROLE_REQUIRED"));
